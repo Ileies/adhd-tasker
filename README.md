@@ -1,5 +1,5 @@
 # ADHD Tasker
-This project is a simple task management application designed to help individuals with ADHD manage their tasks and stay focused. It allows users to create, edit, and delete tasks for specific times during the day, set reminders, and categorize tasks based on priority.
+This project is a simple 24 hour task management application designed to help individuals with ADHD manage their tasks and stay focused. It allows users to create, edit, and delete everyday tasks, set reminders, and categorize tasks based on priority.
 
 ## It works like the following:
 1. Users can create tasks with a title, description, and time.
@@ -11,6 +11,8 @@ This project is a simple task management application designed to help individual
 7. A short sound plays when the task is started, completed, or changes.
 8. From time to time, a short sound plays to remind the user to stay focused.
 
+Users are only connected via Google OAuth, to keep it simple and connect the Google Calendar on an instant.
+
 Roadmap:
 - [ ] Implement task creation and editing functionality
 - [ ] Implement task deletion functionality
@@ -21,3 +23,9 @@ Roadmap:
 - [ ] Sync tasks with Google Calendar
 - [ ] User-friendly interface
 - [ ] Implement user authentication
+
+Stack:
+- SvelteKit with Svelte 5 for webapp and routing
+- DaisyUI and Tailwind for design
+- Bun for package management
+- Arctic for OAuth authentication
