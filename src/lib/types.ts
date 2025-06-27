@@ -1,4 +1,4 @@
-import type { tasks } from '$lib/server/db/schema';
+import type { reminders, tasks } from '$lib/server/db/schema';
 
 export enum Priority {
 	Low = 1,
@@ -16,12 +16,4 @@ export enum TaskStatus {
 }
 
 export type Task = typeof tasks.$inferSelect;
-
-export interface TaskFormData {
-	title: string;
-	description: string;
-	time: string;
-	date: string;
-	priority: Priority;
-	duration?: number;
-}
+export type Reminder = typeof reminders.$inferSelect;
