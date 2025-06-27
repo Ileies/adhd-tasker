@@ -11,7 +11,7 @@ export const tasks = sqliteTable('tasks', {
 	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
 	title: text('title').notNull(),
 	description: text('description').notNull(),
-	email: integer('user_id').references(() => users.email, { onDelete: 'cascade' }).notNull(),
+	email: text('email').references(() => users.email, { onDelete: 'cascade' }).notNull(),
 	startTime: integer('start_time').notNull(),
 	duration: integer('duration').notNull(),
 	priority: integer('priority').$type<Priority>().default(Priority.Medium).notNull(),
