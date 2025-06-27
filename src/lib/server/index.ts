@@ -11,7 +11,7 @@ export const google = new arctic.Google(
 export function login(event: RequestEvent) {
 	const state = arctic.generateState();
 	const codeVerifier = arctic.generateCodeVerifier();
-	const scopes = ['openid', 'profile', 'email'];
+	const scopes = ['email'];
 	const url = google.createAuthorizationURL(state, codeVerifier, scopes);
 
 	// Store state and code verifier in cookies for callback

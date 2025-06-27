@@ -6,15 +6,11 @@ import { users } from '$lib/server/db/schema';
 export const handle: Handle = async ({ event, resolve }) => {
 	console.log('Handling request:', event.url.pathname + event.url.search);
 
-	if (!event.url.pathname.startsWith('/login/callback')) {
+	if (!event.url.pathname.startsWith('/callback')) {
 		const token = event.cookies.get('token');
 		if (!token) login(event);
 
-		const user = await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${token}` } })).json();
-		console.log('User info:', user);
-
-		// Verify token and extract email
-		const email = "";
+		const email = (await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${token}` } })).json())?.email;
 
 		if (!email) login(event);
 		event.locals.user = await db.query.users.findFirst({
