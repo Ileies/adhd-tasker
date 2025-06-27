@@ -1,29 +1,29 @@
 import { Priority, TaskStatus } from '$lib/types';
 import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
 
-export const user = sqliteTable('user', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
+export const users = sqliteTable('user', {
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
 	email: text('email').notNull(),
 	token: text('token').notNull(),
-	resetTime: integer('reset_time').default(0) // day time to reset the tasks
+	resetTime: integer('reset_time').default(0).notNull() // day time to reset the tasks
 	// Further settings can be added here
 });
 
 export const tasks = sqliteTable('tasks', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	title: text('title'),
-	description: text('description'),
-	userId: integer('user_id').references(() => user.id, { onDelete: 'cascade' }),
-	startTime: integer('start_time'),
-	duration: integer('duration'),
-	priority: integer('priority').$type<Priority>().default(Priority.Medium),
-	status: text('status').$type<TaskStatus>().default(TaskStatus.Pending)
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+	title: text('title').notNull(),
+	description: text('description').notNull(),
+	userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+	startTime: integer('start_time').notNull(),
+	duration: integer('duration').notNull(),
+	priority: integer('priority').$type<Priority>().default(Priority.Medium).notNull(),
+	status: text('status').$type<TaskStatus>().default(TaskStatus.Pending).notNull()
 });
 
 // Only for Google Calendar
 export const reminders = sqliteTable('reminders', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	taskId: integer('task_id').references(() => tasks.id, { onDelete: 'cascade' }),
-	reminderTime: integer('reminder_time')
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+	taskId: integer('task_id').references(() => tasks.id, { onDelete: 'cascade' }).notNull(),
+	reminderTime: integer('reminder_time').notNull()
 });
 
