@@ -1,7 +1,7 @@
 import { Priority, TaskStatus } from '../../types';
 import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
 
-export const users = sqliteTable('user', {
+export const users = sqliteTable('users', {
 	email: text('email').notNull().primaryKey(),
 	resetTime: integer('reset_time').default(0).notNull() // day time to reset the tasks
 	// Further settings can be added here
