@@ -1,0 +1,19 @@
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <!-- Outer ring - thicker -->
+    <circle cx="50" cy="50" r="35" fill="none" stroke="#3B82F6" stroke-width="8" opacity="0.9"/>
+
+    <!-- Progress arc (3/4 circle) -->
+    <path d="M 50 15 A 35 35 0 1 1 25.25 74.75" fill="none" stroke="#10B981" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Unique checkmark with circular background -->
+    <circle cx="50" cy="50" r="18" fill="#10B981" opacity="0.15"/>
+    <path d="M 40 50 L 47 57 L 62 42" fill="none" stroke="#10B981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Small accent dot at checkmark junction -->
+    <circle cx="47" cy="57" r="2" fill="#10B981"/>
+
+    <!-- Three task indicator dots positioned symmetrically -->
+    <circle cx="50" cy="25" r="2.5" fill="#3B82F6"/>
+    <circle cx="71" cy="62" r="2.5" fill="#3B82F6" opacity="0.7"/>
+    <circle cx="29" cy="62" r="2.5" fill="#3B82F6" opacity="0.7"/>
+</svg>
