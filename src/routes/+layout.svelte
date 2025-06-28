@@ -1,10 +1,11 @@
 <script lang="ts">
 	import '../app.css';
-	import { Calendar, User, Volume2, VolumeX } from 'lucide-svelte';
+	import { Calendar, Moon, Sun, User, Volume2, VolumeX } from 'lucide-svelte';
 	import { Priority, TaskStatus } from '$lib/types';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { tasker } from '$lib/state.svelte';
+	import { onMount } from 'svelte';
 
 	let { children, data } = $props();
 
@@ -12,6 +13,21 @@
 
 	let sidebarOpen = $state(false);
 	let profileMenuOpen = $state(false);
+	let isDarkMode = $state(false);
+
+	// Initialize theme from localStorage or system preference
+	onMount(() => {
+		const savedTheme = localStorage.getItem('theme');
+		if (savedTheme) {
+			isDarkMode = savedTheme === 'dark';
+		} else {
+			isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		}
+	});
+
+	$effect(() => {
+		localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+	});
 
 	const priorityColors = {
 		[Priority.Critical]: 'badge-error',
@@ -79,7 +95,7 @@
 				<img src="/logo.svg" alt="Logo" class="h-10 mr-1"><span class="text-xl font-bold">ADHD Tasker</span>
 			</button>
 
-			<!-- Right side - Sound toggle and profile -->
+			<!-- Right side - Sound toggle, theme toggle and profile -->
 			<div class="navbar-end gap-2">
 				<!-- Sound toggle -->
 				<button
@@ -93,6 +109,23 @@
 						<Volume2 class="h-5 w-5" />
 					{/if}
 				</button>
+
+				<!-- Dark mode toggle -->
+				<label class="swap swap-rotate">
+					<!-- this hidden checkbox controls the state -->
+					<input
+						type="checkbox"
+						class="theme-controller"
+						value={isDarkMode ? 'aqua' : 'cupcake'}
+						onchange={() => isDarkMode = !isDarkMode}
+					/>
+
+					<!-- sun icon (light mode) -->
+					<Sun class="swap-off h-6 w-6" />
+
+					<!-- moon icon (dark mode) -->
+					<Moon class="swap-on h-6 w-6" />
+				</label>
 
 				<!-- Profile dropdown -->
 				<form method="POST" class="dropdown dropdown-end dropdown-open" action="?/login" use:enhance>
@@ -109,14 +142,18 @@
 							{#if data.user}
 								<li class="menu-title text-sm opacity-70">{data.user.email}</li>
 							{:else}
-								<li><button>Log in</button></li>
+								<li>
+									<button>Log in</button>
+								</li>
 							{/if}
 							<div class="divider my-1"></div>
 							<li><a href="/edit" onclick={() => profileMenuOpen = false}>Edit Tasks</a></li>
 							<li><a href="/settings" onclick={() => profileMenuOpen = false}>Settings</a></li>
 							{#if data.user}
 								<div class="divider my-1"></div>
-								<li><button formaction="?/logout" onclick={() => profileMenuOpen = false}>Log out</button></li>
+								<li>
+									<button formaction="?/logout" onclick={() => profileMenuOpen = false}>Log out</button>
+								</li>
 							{/if}
 						</ul>
 					{/if}
