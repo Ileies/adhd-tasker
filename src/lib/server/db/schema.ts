@@ -8,7 +8,7 @@ export const users = sqliteTable('users', {
 	enableOverdueNotifications: integer('enable_overdue_notifications', { mode: 'boolean' }).default(true).notNull(),
 	enableFocusMode: integer('enable_focus_mode', { mode: 'boolean' }).default(false).notNull(),
 	darkMode: integer('dark_mode', { mode: 'boolean' }).default(false).notNull(),
-	openaiKey: text('openai_key').notNull(),
+	openaiKey: text('openai_key'),
 });
 
 export const tasks = sqliteTable('tasks', {
