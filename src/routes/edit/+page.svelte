@@ -218,11 +218,11 @@
 											<Clock class="h-3 w-3" />
 											{formatTime(task.startTime)} • {formatDuration(task.duration)}
 										</p>
-										{#if task.description}
+										<!--{#if task.description}
 											<p class="text-xs text-base-content/60 mt-1 line-clamp-2">
 												{task.description}
 											</p>
-										{/if}
+										{/if}-->
 									</div>
 									<div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 										<button

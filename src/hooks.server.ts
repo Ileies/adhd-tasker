@@ -8,7 +8,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const token = event.cookies.get('token');
 
 	if (token) {
-		const email = (await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${token}` } })).json())?.email;
+		const email: string | undefined = (await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${token}` } })).json())?.email;
 		if (email) {
 			event.locals.user = await db.query.users.findFirst({
 				where: (users, { eq }) => eq(users.email, email),
