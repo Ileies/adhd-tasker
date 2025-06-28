@@ -1,33 +1,18 @@
 <script lang="ts">
 	import '../app.css';
-	import { Calendar, Moon, Sun, User, Volume2, VolumeX } from 'lucide-svelte';
+	import { Calendar, User, Volume2, VolumeX } from 'lucide-svelte';
 	import { Priority, TaskStatus } from '$lib/types';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { tasker } from '$lib/state.svelte';
-	import { onMount } from 'svelte';
+	import DarkModeSwitch from '$lib/components/DarkModeSwitch.svelte';
 
 	let { children, data } = $props();
 
-	tasker.tasks = data.tasks;
+	tasker.tasks = data.user ? data.tasks : JSON.parse(localStorage.getItem('tasks') || '[]');
 
 	let sidebarOpen = $state(false);
 	let profileMenuOpen = $state(false);
-	let isDarkMode = $state(false);
-
-	// Initialize theme from localStorage or system preference
-	onMount(() => {
-		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme) {
-			isDarkMode = savedTheme === 'dark';
-		} else {
-			isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-		}
-	});
-
-	$effect(() => {
-		localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-	});
 
 	const priorityColors = {
 		[Priority.Critical]: 'badge-error',
@@ -111,21 +96,7 @@
 				</button>
 
 				<!-- Dark mode toggle -->
-				<label class="swap swap-rotate">
-					<!-- this hidden checkbox controls the state -->
-					<input
-						type="checkbox"
-						class="theme-controller"
-						value={isDarkMode ? 'aqua' : 'cupcake'}
-						onchange={() => isDarkMode = !isDarkMode}
-					/>
-
-					<!-- sun icon (light mode) -->
-					<Sun class="swap-off h-6 w-6" />
-
-					<!-- moon icon (dark mode) -->
-					<Moon class="swap-on h-6 w-6" />
-				</label>
+				<DarkModeSwitch />
 
 				<!-- Profile dropdown -->
 				<form method="POST" class="dropdown dropdown-end dropdown-open" action="?/login" use:enhance>
