@@ -126,11 +126,11 @@
 						class="select select-bordered w-full"
 						bind:value={form.priority}
 					>
-						<option value={Priority.Low}>🟢 Low (P1)</option>
-						<option value={Priority.Medium}>🔵 Medium (P2)</option>
-						<option value={Priority.High}>🟡 High (P3)</option>
-						<option value={Priority.Urgent}>🟠 Urgent (P4)</option>
-						<option value={Priority.Critical}>🔴 Critical (P5)</option>
+						<option value={Priority.Low}>🟢 Low</option>
+						<option value={Priority.Medium}>🔵 Medium</option>
+						<option value={Priority.High}>🟡 High</option>
+						<option value={Priority.Urgent}>🟠 Urgent</option>
+						<option value={Priority.Critical}>🔴 Critical</option>
 					</select>
 				</div>
 
