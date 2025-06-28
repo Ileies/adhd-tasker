@@ -14,15 +14,15 @@ This project is a simple 24 hour task management application designed to help in
 Users are only connected via Google OAuth, to keep it simple and connect the Google Calendar on an instant.
 
 Roadmap:
-- [ ] Implement task creation and editing functionality
-- [ ] Implement task deletion functionality
+- [X] Implement task creation and editing functionality
+- [X] Implement task deletion functionality
 - [ ] Implement task categorization by priority
-- [ ] Reminder notifications
-- [ ] Calendar view for tasks
-- [ ] Add Sounds
+- [X] Reminder notifications
+- [X] Calendar view for tasks
+- [X] Add Sounds
 - [ ] Sync tasks with Google Calendar
-- [ ] User-friendly interface
-- [ ] Implement user authentication
+- [X] User-friendly interface
+- [X] Implement user authentication
 
 Stack:
 - SvelteKit with Svelte 5 for webapp and routing
