@@ -3,7 +3,7 @@
 	import { Priority, type Task } from '$lib/types';
 	import { deleteTask, updateTask } from '$lib';
 	import { goto } from '$app/navigation';
-	import { taskState } from '$lib/state.svelte';
+	import { tasker } from '$lib/state.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
 	import type { TaskForm as TaskFormType } from '$lib/types';
 
@@ -149,7 +149,7 @@
 			<div class="relative {isCompactView ? 'flex flex-col' : ''}">
 				{#if isCompactView}
 					<!-- Compact view: Tasks in flexbox layout -->
-					{#each taskState.tasks as task (task.id)}
+					{#each tasker.tasks as task (task.id)}
 						<div
 							class="pointer-events-auto cursor-move rounded-lg border-l-4 p-1 shadow-sm hover:shadow-md transition-shadow group {priorityColors[task.priority]} text-xs m-1"
 							style="flex: {task.duration};"
@@ -196,7 +196,7 @@
 
 					<!-- Tasks overlay for expanded view -->
 					<div class="absolute inset-0 pointer-events-none">
-						{#each taskState.tasks as task (task.id)}
+						{#each tasker.tasks as task (task.id)}
 							{@const taskDate = new Date(task.startTime * 1000)}
 							{@const startMinutes = taskDate.getHours() * 60 + taskDate.getMinutes()}
 							{@const topPixels = (startMinutes / 60) * 56}

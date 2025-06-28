@@ -1,10 +1,10 @@
 import { browser } from '$app/environment';
 import type { tasks } from '$lib/server/db/schema';
 import type { Task } from '$lib/types';
-import { taskState } from '$lib/state.svelte';
+import { tasker } from '$lib/state.svelte';
 
 export function playSound(type: 'task-started' | 'reminder') {
-	if (!browser || taskState.isMuted) return;
+	if (!browser || tasker.isMuted) return;
 
 	const audioContext = new AudioContext();
 
@@ -83,7 +83,7 @@ export async function createTask(taskData: typeof tasks.$inferInsert) {
 		throw new Error('Failed to create task');
 	}
 
-	taskState.tasks = [...taskState.tasks, await response.json()];
+	tasker.tasks = [...tasker.tasks, await response.json()];
 }
 
 export async function updateTask(taskData: Task) {
@@ -95,9 +95,9 @@ export async function updateTask(taskData: Task) {
 		body: JSON.stringify(taskData)
 	});
 
-	const taskIndex = taskState.tasks.findIndex((t) => t.id === taskData.id);
+	const taskIndex = tasker.tasks.findIndex((t) => t.id === taskData.id);
 	if (taskIndex === -1) return;
-	taskState.tasks[taskIndex] = { ...taskData };
+	tasker.tasks[taskIndex] = { ...taskData };
 }
 
 export async function deleteTask(id: number) {
@@ -108,5 +108,5 @@ export async function deleteTask(id: number) {
 		},
 		body: JSON.stringify({ id })
 	});
-	taskState.tasks = taskState.tasks.filter((task) => task.id !== id);
+	tasker.tasks = tasker.tasks.filter((task) => task.id !== id);
 }
