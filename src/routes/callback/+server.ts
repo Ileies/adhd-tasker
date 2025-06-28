@@ -9,7 +9,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const codeVerifier = cookies.get('google_code_verifier');
 
 	if (!code || !codeVerifier || state !== storedState) {
-		console.log('Invalid OAuth request');
 		throw redirect(302, '/error?error=invalid_request');
 	}
 
