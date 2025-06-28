@@ -8,7 +8,9 @@ declare global {
 		interface Locals {
 			user?: users.$inferSelect;
 		}
-		// interface PageData {}
+		interface PageData {
+			user?: users.$inferSelect;
+		}
 		// interface PageState {}
 		// interface Platform {}
 	}
