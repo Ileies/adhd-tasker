@@ -6,10 +6,11 @@
 	import { goto } from '$app/navigation';
 	import { tasker } from '$lib/state.svelte';
 	import DarkModeSwitch from '$lib/components/DarkModeSwitch.svelte';
+	import { browser } from '$app/environment';
 
 	let { children, data } = $props();
 
-	tasker.tasks = data.user ? data.tasks : JSON.parse(localStorage.getItem('tasks') || '[]');
+	if (browser) tasker.tasks = data.user ? data.tasks : JSON.parse(localStorage.getItem('tasks') || '[]');
 
 	let sidebarOpen = $state(false);
 	let profileMenuOpen = $state(false);

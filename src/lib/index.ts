@@ -115,16 +115,15 @@ export async function updateTask(taskData: Task) {
 	} else saveTasksLocally();
 }
 
-export async function deleteTask(id: number) {
-	const task: Task = tasker.tasks.filter((task) => task.id === id)[0];
-	tasker.tasks = tasker.tasks.filter((task) => task.id !== id);
+export async function deleteTask(task: Task) {
+	tasker.tasks = tasker.tasks.filter((t) => t.id !== task.id);
 	if (task.email) {
 		await fetch('/edit', {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({ id })
+			body: JSON.stringify({ id: task.id })
 		});
 	} else saveTasksLocally();
 }

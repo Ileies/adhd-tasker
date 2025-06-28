@@ -22,7 +22,7 @@ export interface TaskForm {
 	title: string;
 	description: string;
 	duration: number; // Duration in minutes
-	startTime: Date; // Start time as a Date object
+	startTime: number; // Start time in seconds since start of the day
 	priority: Priority; // Priority level
 }
 

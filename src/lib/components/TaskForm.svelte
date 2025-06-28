@@ -3,18 +3,16 @@
 	import { Priority, type TaskForm } from '$lib/types';
 	import { Edit, Plus } from 'lucide-svelte';
 
-	const { email, form }: {email: string, form: TaskForm} = $props();
+	const { email, form = $bindable() }: {email: string, form: TaskForm} = $props();
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
-
-		const startTime = Math.floor(form.startTime.getTime() / 1000);
 
 		const taskData = {
 			title: form.title,
 			description: form.description,
 			duration: form.duration,
-			startTime,
+			startTime: form.startTime,
 			priority: form.priority,
 			email
 		};
@@ -86,10 +84,10 @@
 						</label>
 						<input
 							id="startTime"
-							type="datetime-local"
+							type="time"
 							class="input input-bordered w-full"
-							value={form.startTime.toISOString().slice(0, 16)}
-							onchange={(e) => form.startTime = new Date(e.currentTarget.value)}
+							value={Math.floor(form.startTime / 60).toString().padStart(2, '0') + ':' + (form.startTime % 60).toString().padStart(2, '0')}
+							onchange={(e) => form.startTime = parseInt(e.currentTarget.value.split(':')[0], 10) * 60 + parseInt(e.currentTarget.value.split(':')[1], 10)}
 							required
 						/>
 					</div>
