@@ -1,4 +1,6 @@
 import { browser } from '$app/environment';
+import type { tasks } from '$lib/server/db/schema';
+import type { Task } from '$lib/types';
 
 export function playSound(type: 'task-created' | 'task-started' | 'task-completed' | 'reminder') {
 	if (!browser) return;
@@ -32,4 +34,44 @@ export function playSound(type: 'task-created' | 'task-started' | 'task-complete
 
 	oscillator.start(audioContext.currentTime);
 	oscillator.stop(audioContext.currentTime + 0.3);
+}
+
+export async function createTask(taskData: typeof tasks.$inferInsert): Promise<Task|undefined> {
+	const response = await fetch('/edit', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(taskData)
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to create task');
+	}
+
+	return await response.json();
+}
+
+export async function updateTask(taskData: Task): Promise<boolean> {
+	const response = await fetch('/edit', {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(taskData)
+	});
+
+	return await response.json();
+}
+
+export async function deleteTask(id: number) {
+	const response = await fetch('/edit', {
+		method: 'DELETE',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({ id })
+	});
+
+	return await response.json();
 }
