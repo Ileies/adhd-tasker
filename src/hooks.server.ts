@@ -6,6 +6,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	console.log('Handling request:', event.url.pathname + event.url.search);
 
 	const token = event.cookies.get('token');
+
 	if (token) {
 		const email = (await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${token}` } })).json())?.email;
 		if (email) {

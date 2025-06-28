@@ -36,7 +36,7 @@ export function playSound(type: 'task-created' | 'task-started' | 'task-complete
 	oscillator.stop(audioContext.currentTime + 0.3);
 }
 
-export async function createTask(taskData: typeof tasks.$inferInsert): Promise<Task|undefined> {
+export async function createTask(taskData: typeof tasks.$inferInsert): Promise<Task | undefined> {
 	const response = await fetch('/edit', {
 		method: 'POST',
 		headers: {

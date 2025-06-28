@@ -1,11 +1,11 @@
 import * as arctic from 'arctic';
-import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from '$env/static/private';
+import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } from '$env/static/private';
 import { redirect, type RequestEvent } from '@sveltejs/kit';
 
 export const google = new arctic.Google(
 	GOOGLE_CLIENT_ID,
 	GOOGLE_CLIENT_SECRET,
-	'https://tasker.rizinos.com/callback'
+	GOOGLE_REDIRECT_URI
 );
 
 export function login(event: RequestEvent) {

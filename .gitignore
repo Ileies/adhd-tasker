@@ -1,6 +1,7 @@
 node_modules
 /.svelte-kit
 /build
+local.db
 
 # Vite
 vite.config.js.timestamp-*

@@ -6,15 +6,18 @@ import { json } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const { title, description, duration, startTime, priority } = await request.json();
-
-	const newTask = await db.insert(tasks).values({
-		title,
-		description,
-		duration,
-		email: locals.user!.email,
-		startTime,
-		priority
-	}).returning();
+	
+	const newTask = await db
+		.insert(tasks)
+		.values({
+			title,
+			description,
+			duration,
+			email: locals.user!.email,
+			startTime,
+			priority
+		})
+		.returning();
 
 	return json(newTask[0]);
 };
@@ -27,13 +30,16 @@ export const PUT: RequestHandler = async (event) => {
 		return json(false);
 	}
 
-	await db.update(tasks).set({
-		title,
-		description,
-		duration,
-		startTime,
-		priority
-	}).where(eq(tasks.id, taskId));
+	await db
+		.update(tasks)
+		.set({
+			title,
+			description,
+			duration,
+			startTime,
+			priority
+		})
+		.where(eq(tasks.id, taskId));
 	return json(true);
 };
 

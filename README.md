@@ -29,3 +29,5 @@ Stack:
 - DaisyUI and Tailwind for design
 - Bun for package management
 - Arctic for OAuth authentication
+- SQLite for database management
+- Lucide for icons
