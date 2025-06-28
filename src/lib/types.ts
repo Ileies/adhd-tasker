@@ -15,5 +15,16 @@ export enum TaskStatus {
 	Overdue = 'overdue'
 }
 
+export interface TaskForm {
+	selectedTask?: Task; // For editing existing tasks
+	isEditing: boolean; // True if editing an existing task
+	showTaskForm: boolean; // Controls visibility of the task form
+	title: string;
+	description: string;
+	duration: number; // Duration in minutes
+	startTime: Date; // Start time as a Date object
+	priority: Priority; // Priority level
+}
+
 export type Task = typeof tasks.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
