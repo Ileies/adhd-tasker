@@ -1,33 +1,32 @@
 <script lang="ts">
 	import '../app.css';
-	import { User, VolumeX, Volume2, Calendar } from 'lucide-svelte';
+	import { Calendar, User, Volume2, VolumeX } from 'lucide-svelte';
 	import { Priority, TaskStatus } from '$lib/types';
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { tasker } from '$lib/state.svelte';
 
 	let { children, data } = $props();
 
+	tasker.tasks = data.tasks;
+
 	let sidebarOpen = $state(false);
 	let profileMenuOpen = $state(false);
-	let soundMuted = $state(false);
 
-	function getPriorityColor(priority: Priority): string {
-		switch (priority) {
-			case Priority.Critical: return 'badge-error';
-			case Priority.Urgent: return 'badge-warning';
-			case Priority.High: return 'badge-info';
-			case Priority.Medium: return 'badge-secondary';
-			default: return 'badge-ghost';
-		}
-	}
+	const priorityColors = {
+		[Priority.Critical]: 'badge-error',
+		[Priority.Urgent]: 'badge-warning',
+		[Priority.High]: 'badge-info',
+		[Priority.Medium]: 'badge-secondary',
+		[Priority.Low]: 'badge-ghost'
+	};
 
-	function getStatusColor(status: TaskStatus): string {
-		switch (status) {
-			case TaskStatus.Completed: return 'text-success';
-			case TaskStatus.Active: return 'text-info';
-			case TaskStatus.Overdue: return 'text-error';
-			default: return 'text-base-content';
-		}
-	}
+	const statusColors = {
+		[TaskStatus.Completed]: 'text-success',
+		[TaskStatus.Active]: 'text-info',
+		[TaskStatus.Overdue]: 'text-error',
+		[TaskStatus.Pending]: 'text-base-content'
+	};
 
 	function formatTime(timestamp: number): string {
 		return new Date(timestamp * 1000).toLocaleTimeString('en-US', {
@@ -54,9 +53,11 @@
 	}
 </script>
 
-<svelte:window onclick={handleOutsideClick} />
+{#if profileMenuOpen}
+	<button class="fixed inset-0 z-10" aria-label="Close Profile Menu" onclick={handleOutsideClick}></button>
+{/if}
 
-<div class="drawer h-screen overflow-hidden">
+<div class="drawer h-screen">
 	<input id="sidebar-toggle" type="checkbox" class="drawer-toggle" bind:checked={sidebarOpen} />
 
 	<!-- Main content -->
@@ -74,19 +75,19 @@
 			</div>
 
 			<!-- Center - App title -->
-			<div class="navbar-center">
-				<span class="text-xl font-bold">ADHD Tasker</span>
-			</div>
+			<button class="navbar-center cursor-pointer" onclick={() => goto('/')}>
+				<img src="/logo.svg" alt="Logo" class="h-10 mr-1"><span class="text-xl font-bold">ADHD Tasker</span>
+			</button>
 
 			<!-- Right side - Sound toggle and profile -->
 			<div class="navbar-end gap-2">
 				<!-- Sound toggle -->
 				<button
 					class="btn btn-ghost btn-circle"
-					onclick={() => soundMuted = !soundMuted}
-					title={soundMuted ? 'Unmute sounds' : 'Mute sounds'}
+					onclick={() => tasker.isMuted = !tasker.isMuted}
+					title={tasker.isMuted ? 'Unmute sounds' : 'Mute sounds'}
 				>
-					{#if soundMuted}
+					{#if tasker.isMuted}
 						<VolumeX class="h-5 w-5" />
 					{:else}
 						<Volume2 class="h-5 w-5" />
@@ -94,7 +95,7 @@
 				</button>
 
 				<!-- Profile dropdown -->
-				<form method="POST" class="dropdown dropdown-end" action="?/login" use:enhance>
+				<form method="POST" class="dropdown dropdown-end dropdown-open" action="?/login" use:enhance>
 					<button
 						class="btn btn-ghost btn-circle"
 						type="button"
@@ -104,18 +105,18 @@
 					</button>
 
 					{#if profileMenuOpen}
-						<ul class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300">
+						<ul class="dropdown-content menu bg-base-100 rounded-box w-52 p-2 shadow-lg border border-base-300 z-20">
 							{#if data.user}
-								<li class="menu-title">
-									<span class="text-sm opacity-70">{data.user.email}</span>
-								</li>
-								<div class="divider my-1"></div>
-								<li><a href="/edit">Edit Tasks</a></li>
-								<li><a href="#settings">Settings</a></li>
-								<div class="divider my-1"></div>
-								<li><button formaction="?/logout">Log out</button></li>
+								<li class="menu-title text-sm opacity-70">{data.user.email}</li>
 							{:else}
 								<li><button>Log in</button></li>
+							{/if}
+							<div class="divider my-1"></div>
+							<li><a href="/edit" onclick={() => profileMenuOpen = false}>Edit Tasks</a></li>
+							<li><a href="/settings" onclick={() => profileMenuOpen = false}>Settings</a></li>
+							{#if data.user}
+								<div class="divider my-1"></div>
+								<li><button formaction="?/logout" onclick={() => profileMenuOpen = false}>Log out</button></li>
 							{/if}
 						</ul>
 					{/if}
@@ -124,14 +125,15 @@
 		</div>
 
 		<!-- Page content -->
-		<main class="flex-1 overflow-auto">
+		<main class="flex-1">
 			{@render children()}
 		</main>
 	</div>
 
 	<!-- Sidebar -->
 	<div class="drawer-side z-40">
-		<label for="sidebar-toggle" class="drawer-overlay" onclick={() => sidebarOpen = false}></label>
+		<button aria-label="Sidebar Toggle" class="drawer-overlay" onclick={() => sidebarOpen = false}><label
+			for="sidebar-toggle" class="w-full h-full"></label></button>
 		<aside class="min-h-full w-80 bg-base-200 flex flex-col">
 			<!-- Sidebar header -->
 			<div class="p-4 border-b border-base-300">
@@ -143,7 +145,7 @@
 						aria-label="Close sidebar"
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 						</svg>
 					</button>
 				</div>
@@ -168,7 +170,7 @@
 												<p class="text-xs text-base-content/70 mt-1 line-clamp-2">{task.description}</p>
 											{/if}
 										</div>
-										<div class="badge {getPriorityColor(task.priority)} badge-sm">
+										<div class="badge {priorityColors[task.priority]} badge-sm">
 											P{task.priority}
 										</div>
 									</div>
@@ -179,7 +181,7 @@
 											<span class="opacity-50">•</span>
 											<span>{formatDuration(task.duration)}</span>
 										</div>
-										<div class="badge badge-outline badge-xs {getStatusColor(task.status)}">
+										<div class="badge badge-outline badge-xs {statusColors[task.status]}">
 											{task.status}
 										</div>
 									</div>
