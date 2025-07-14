@@ -7,6 +7,7 @@
 	import { tasker } from '$lib/state.svelte';
 	import DarkModeSwitch from '$lib/components/DarkModeSwitch.svelte';
 	import { browser } from '$app/environment';
+	import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$env/static/public';
 
 	let { children, data } = $props();
 
@@ -202,4 +203,10 @@
 			</div>
 		</aside>
 	</div>
+</div>
+
+<div id="g_id_onload"
+		 data-client_id={PUBLIC_GOOGLE_CLIENT_ID}
+		 data-login_uri={PUBLIC_REDIRECT_URI}
+		 data-auto_select="true">
 </div>

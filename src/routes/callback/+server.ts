@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { google } from '$lib/server';
 
@@ -30,4 +30,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		redirect(302, '/error?auth_failed');
 	}
 	redirect(302, '/');
+};
+
+export const POST: RequestHandler = async (event) => {
+	return json(await event.request.formData());
 };

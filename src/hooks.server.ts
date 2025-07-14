@@ -3,7 +3,7 @@ import { db } from '$lib/server/db';
 import { users } from '$lib/server/db/schema';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	console.log('Handling request:', event.url.pathname + event.url.search);
+	console.log(`[${new Date().toISOString()}]:`, event.url.pathname + event.url.search);
 
 	const token = event.cookies.get('token');
 

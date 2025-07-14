@@ -1,11 +1,12 @@
 import * as arctic from 'arctic';
-import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } from '$env/static/private';
+import { GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import { redirect, type RequestEvent } from '@sveltejs/kit';
+import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$env/static/public';
 
 export const google = new arctic.Google(
-	GOOGLE_CLIENT_ID,
+	PUBLIC_GOOGLE_CLIENT_ID,
 	GOOGLE_CLIENT_SECRET,
-	GOOGLE_REDIRECT_URI
+	PUBLIC_REDIRECT_URI
 );
 
 export function login(event: RequestEvent) {
