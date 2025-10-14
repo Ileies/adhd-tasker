@@ -3,7 +3,7 @@
 	import { Priority, type Task } from '$lib/types';
 	import { deleteTask, updateTask } from '$lib';
 	import { goto } from '$app/navigation';
-	import { tasker } from '$lib/state.svelte';
+	import { tasker } from '$lib/app.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
 	import type { TaskForm as TaskFormType } from '$lib/types';
 

@@ -4,7 +4,7 @@
 	import { Priority, TaskStatus } from '$lib/types';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { tasker } from '$lib/state.svelte';
+	import { tasker } from '$lib/app.svelte';
 	import DarkModeSwitch from '$lib/components/DarkModeSwitch.svelte';
 	import { browser } from '$app/environment';
 	import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$env/static/public';
@@ -154,7 +154,7 @@
 						onclick={() => sidebarOpen = false}
 						aria-label="Close sidebar"
 					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<svg class="h-4 w-4" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
 						</svg>
 					</button>
