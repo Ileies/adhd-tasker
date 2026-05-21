@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { Calendar, User, Volume2, VolumeX } from 'lucide-svelte';
+	import { Calendar, User, Volume2, VolumeX } from '@lucide/svelte';
 	import { Priority, TaskStatus } from '$lib/types';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Clock, Edit, Plus, Trash2, Maximize2, Minimize2 } from 'lucide-svelte';
+	import { Clock, Edit, Plus, Trash2, Maximize2, Minimize2 } from '@lucide/svelte';
 	import { Priority, type Task } from '$lib/types';
 	import { deleteTask, updateTask } from '$lib';
 	import { goto } from '$app/navigation';

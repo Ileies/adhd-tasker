@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createTask, updateTask } from '$lib';
 	import { Priority, type TaskForm } from '$lib/types';
-	import { Edit, Plus } from 'lucide-svelte';
+	import { Edit, Plus } from '@lucide/svelte';
 
 	const { email, form = $bindable() }: {email: string, form: TaskForm} = $props();
 
