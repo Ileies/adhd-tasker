@@ -1,11 +1,11 @@
 <script lang="ts">
 	import '../app.css';
-	import { Calendar, User, Volume2, VolumeX } from '@lucide/svelte';
+	import { Calendar, User } from '@lucide/svelte';
 	import { Priority, TaskStatus } from '#lib/types.js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
-	import DarkModeSwitch from '#lib/components/DarkModeSwitch.svelte';
+	import SoundThemeMenu from '#lib/components/SoundThemeMenu.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
@@ -72,21 +72,7 @@
 		</button>
 
 		<div class="flex items-center justify-end gap-1">
-			<Button
-				variant="ghost"
-				size="icon-lg"
-				onclick={() => (tasker.isMuted = !tasker.isMuted)}
-				title={tasker.isMuted ? 'Unmute sounds' : 'Mute sounds'}
-				aria-label={tasker.isMuted ? 'Unmute sounds' : 'Mute sounds'}
-			>
-				{#if tasker.isMuted}
-					<VolumeX class="h-5 w-5" />
-				{:else}
-					<Volume2 class="h-5 w-5" />
-				{/if}
-			</Button>
-
-			<DarkModeSwitch />
+			<SoundThemeMenu />
 
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>

@@ -10,7 +10,9 @@
 		<script>
 			try {
 				const saved = localStorage.getItem('theme');
-				const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+				const hour = new Date().getHours();
+				const dark =
+					saved === 'dark' || ((saved === 'auto' || !saved) && (hour < 7 || hour >= 19));
 				document.documentElement.classList.toggle('dark', dark);
 			} catch {}
 		</script>

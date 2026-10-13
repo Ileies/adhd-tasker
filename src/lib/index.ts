@@ -4,9 +4,12 @@ import { type Task, TaskStatus } from '#lib/types.js';
 import { tasker } from '#lib/app.svelte.js';
 
 export function playSound(type: 'task-started' | 'reminder') {
-	if (!browser || tasker.isMuted) return;
+	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
 
 	const audioContext = new AudioContext();
+	const master = audioContext.createGain();
+	master.gain.value = tasker.volume / 100;
+	master.connect(audioContext.destination);
 
 	switch (type) {
 		case 'task-started': {
@@ -20,7 +23,7 @@ export function playSound(type: 'task-started' | 'reminder') {
 			fundamental.connect(gainNode);
 			harmonic1.connect(gainNode);
 			harmonic2.connect(gainNode);
-			gainNode.connect(audioContext.destination);
+			gainNode.connect(master);
 
 			// Bright, energetic frequencies - like a notification "ding" but richer
 			fundamental.frequency.setValueAtTime(880, audioContext.currentTime); // A5 - bright and attention-grabbing
@@ -49,7 +52,7 @@ export function playSound(type: 'task-started' | 'reminder') {
 
 			oscillator1.connect(gainNode);
 			oscillator2.connect(gainNode);
-			gainNode.connect(audioContext.destination);
+			gainNode.connect(master);
 
 			// Gentle harmonic interval (perfect fifth)
 			oscillator1.frequency.setValueAtTime(440, audioContext.currentTime); // A4
