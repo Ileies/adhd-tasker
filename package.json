@@ -2,6 +2,7 @@
 	"name": "adhd-tasker",
 	"private": true,
 	"version": "0.0.1",
+	"homepage": "https://tasker.ileies.de",
 	"type": "module",
 	"scripts": {
 		"dev": "bun --bun vite dev",
