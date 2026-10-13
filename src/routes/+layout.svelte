@@ -1,18 +1,18 @@
 <script lang="ts">
 	import '../app.css';
 	import { Calendar, User, Volume2, VolumeX } from '@lucide/svelte';
-	import { Priority, TaskStatus } from '$lib/types';
+	import { Priority, TaskStatus } from '#lib/types.js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { tasker } from '$lib/app.svelte';
-	import DarkModeSwitch from '$lib/components/DarkModeSwitch.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as Card from '$lib/components/ui/card';
-	import * as Sheet from '$lib/components/ui/sheet';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { browser } from '$app/environment';
-	import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$env/static/public';
+	import { tasker } from '#lib/app.svelte.js';
+	import DarkModeSwitch from '#lib/components/DarkModeSwitch.svelte';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import * as Sheet from '#lib/components/ui/sheet/index.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import { browser } from '$app/env';
+	import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$app/env/public';
 
 	let { children, data } = $props();
 

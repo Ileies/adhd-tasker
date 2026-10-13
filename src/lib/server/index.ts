@@ -1,7 +1,7 @@
 import * as arctic from 'arctic';
-import { GOOGLE_CLIENT_SECRET } from '$env/static/private';
+import { GOOGLE_CLIENT_SECRET } from '$app/env/private';
 import { redirect, type RequestEvent } from '@sveltejs/kit';
-import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$env/static/public';
+import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$app/env/public';
 
 export const google = new arctic.Google(
 	PUBLIC_GOOGLE_CLIENT_ID,
@@ -30,5 +30,5 @@ export function login(event: RequestEvent) {
 		maxAge: 60 * 10 // 10 minutes
 	});
 
-	redirect(303, url.toString());
+	redirect(303, url, { external: ['https://accounts.google.com'] });
 }

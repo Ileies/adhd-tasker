@@ -1,8 +1,7 @@
-import { db } from '$lib/server/db';
+import { db } from '#lib/server/db/index.js';
 import type { RequestHandler } from './$types';
-import { tasks } from '$lib/server/db/schema';
+import { tasks } from '#lib/server/db/schema.js';
 import { eq } from 'drizzle-orm';
-import { json } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const { title, description, duration, startTime, priority } = await request.json();
@@ -19,7 +18,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		})
 		.returning();
 
-	return json(newTask[0]);
+	return Response.json(newTask[0]);
 };
 
 export const PUT: RequestHandler = async (event) => {
@@ -27,7 +26,7 @@ export const PUT: RequestHandler = async (event) => {
 	const taskId = parseInt(id as string);
 
 	if (isNaN(taskId)) {
-		return json(false);
+		return Response.json(false);
 	}
 
 	await db
@@ -40,7 +39,7 @@ export const PUT: RequestHandler = async (event) => {
 			priority
 		})
 		.where(eq(tasks.id, taskId));
-	return json(true);
+	return Response.json(true);
 };
 
 export const DELETE: RequestHandler = async ({ request }) => {
@@ -48,9 +47,9 @@ export const DELETE: RequestHandler = async ({ request }) => {
 	const taskId = parseInt(id as string);
 
 	if (isNaN(taskId)) {
-		return json(false);
+		return Response.json(false);
 	}
 
 	await db.delete(tasks).where(eq(tasks.id, taskId));
-	return json(true);
+	return Response.json(true);
 };

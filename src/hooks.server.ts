@@ -1,6 +1,6 @@
-import { type Handle } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { users } from '$lib/server/db/schema';
+import type { Handle } from '@sveltejs/kit/hooks';
+import { db } from '#lib/server/db/index.js';
+import { users } from '#lib/server/db/schema.js';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	console.log(`[${new Date().toISOString()}]:`, event.url.pathname + event.url.search);

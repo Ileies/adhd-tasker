@@ -1,4 +1,4 @@
-import type { reminders, tasks } from '$lib/server/db/schema';
+import type { reminders, tasks } from '#lib/server/db/schema.js';
 
 export enum Priority {
 	Low = 1,

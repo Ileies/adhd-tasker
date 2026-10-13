@@ -1,5 +1,5 @@
 import type { Actions } from './$types';
-import { google, login } from '$lib/server';
+import { google, login } from '#lib/server/index.js';
 
 export const actions = {
 	login: async (event) => {

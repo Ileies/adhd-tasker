@@ -1,7 +1,7 @@
-import { browser } from '$app/environment';
-import type { tasks } from '$lib/server/db/schema';
-import { type Task, TaskStatus } from '$lib/types';
-import { tasker } from '$lib/app.svelte';
+import { browser } from '$app/env';
+import type { tasks } from '#lib/server/db/schema.js';
+import { type Task, TaskStatus } from '#lib/types.js';
+import { tasker } from '#lib/app.svelte.js';
 
 export function playSound(type: 'task-started' | 'reminder') {
 	if (!browser || tasker.isMuted) return;

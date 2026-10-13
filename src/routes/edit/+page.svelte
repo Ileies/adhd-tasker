@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { Clock, Edit, Plus, Trash2, Maximize2, Minimize2 } from '@lucide/svelte';
-	import { Priority, type Task } from '$lib/types';
-	import { deleteTask, updateTask } from '$lib';
+	import { Priority, type Task } from '#lib/types.js';
+	import { deleteTask, updateTask } from '#lib';
 	import { goto } from '$app/navigation';
-	import { tasker } from '$lib/app.svelte';
-	import TaskForm from '$lib/components/TaskForm.svelte';
-	import type { TaskForm as TaskFormType } from '$lib/types';
-	import { Button } from '$lib/components/ui/button';
-	import * as AlertDialog from '$lib/components/ui/dialog';
+	import { tasker } from '#lib/app.svelte.js';
+	import TaskForm from '#lib/components/TaskForm.svelte';
+	import type { TaskForm as TaskFormType } from '#lib/types.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as AlertDialog from '#lib/components/ui/dialog/index.js';
 
 	const { data } = $props();
 

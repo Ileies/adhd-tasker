@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { Priority, TaskStatus, type Task } from '$lib/types';
-	import { tasker } from '$lib/app.svelte.js';
-	import { deleteTask, updateTask } from '$lib';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as Card from '$lib/components/ui/card';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { Priority, TaskStatus, type Task } from '#lib/types.js';
+	import { tasker } from '#lib/app.svelte.js';
+	import { deleteTask, updateTask } from '#lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { Check, EllipsisVertical, ClipboardList, Trash2 } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
 

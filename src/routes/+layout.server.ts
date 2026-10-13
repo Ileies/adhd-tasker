@@ -1,5 +1,5 @@
 import type { LayoutServerLoad } from './$types';
-import { db } from '$lib/server/db';
+import { db } from '#lib/server/db/index.js';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	const tasks = await db.query.tasks.findMany({

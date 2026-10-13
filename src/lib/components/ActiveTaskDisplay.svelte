@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { Priority } from '$lib/types';
-	import { tasker } from '$lib/app.svelte.js';
-	import { updateTask } from '$lib';
-	import { TaskStatus } from '$lib/types.js';
-	import { Button } from '$lib/components/ui/button';
-	import { Progress } from '$lib/components/ui/progress';
+	import { Priority } from '#lib/types.js';
+	import { tasker } from '#lib/app.svelte.js';
+	import { updateTask } from '#lib';
+	import { TaskStatus } from '#lib/types.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Progress } from '#lib/components/ui/progress/index.js';
 	import { Check, X } from '@lucide/svelte';
 
 	function getPriorityLabel(priority: Priority): string {

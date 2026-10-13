@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { tasker } from '$lib/app.svelte';
-	import TaskList from '$lib/components/TaskList.svelte';
-	import ActiveTaskDisplay from '$lib/components/ActiveTaskDisplay.svelte';
-	import { Priority, TaskStatus } from '$lib/types';
-	import { playSound, updateTask } from '$lib';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
+	import { tasker } from '#lib/app.svelte.js';
+	import TaskList from '#lib/components/TaskList.svelte';
+	import ActiveTaskDisplay from '#lib/components/ActiveTaskDisplay.svelte';
+	import { Priority, TaskStatus } from '#lib/types.js';
+	import { playSound, updateTask } from '#lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
 	import { Clock, Focus } from '@lucide/svelte';
 
 	// neuer chat button, builder wirft error -> feld kann nicht bearbeitet werden "feld existiert bereits", bitte füll alle Pflichtfelder aus?!

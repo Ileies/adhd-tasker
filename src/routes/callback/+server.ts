@@ -1,6 +1,6 @@
-import { json, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { google } from '$lib/server';
+import { google } from '#lib/server/index.js';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
 	const code = url.searchParams.get('code');
@@ -9,7 +9,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const codeVerifier = cookies.get('google_code_verifier');
 
 	if (!code || !codeVerifier || state !== storedState) {
-		throw redirect(302, '/error?error=invalid_request');
+		redirect(302, '/error?error=invalid_request');
 	}
 
 	try {
@@ -33,5 +33,5 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 };
 
 export const POST: RequestHandler = async (event) => {
-	return json(await event.request.formData());
+	return Response.json(await event.request.formData());
 };

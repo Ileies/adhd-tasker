@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { createTask, updateTask } from '$lib';
-	import { Priority, type TaskForm } from '$lib/types';
+	import { createTask, updateTask } from '#lib';
+	import { Priority, type TaskForm } from '#lib/types.js';
 	import { Edit, Plus } from '@lucide/svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { Label } from '$lib/components/ui/label';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import * as Select from '$lib/components/ui/select';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import * as Select from '#lib/components/ui/select/index.js';
 
 	const { email, form = $bindable() }: {email: string, form: TaskForm} = $props();
 
