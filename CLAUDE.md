@@ -37,7 +37,7 @@ When implementing new features, think carefully about the ADHD experience. When 
 | `/edit` | 24-hour timeline calendar for scheduling tasks |
 | `/edit` (API) | Task CRUD - POST (create), PUT (update), DELETE |
 | `/callback` | Google OAuth callback |
-| `/settings` | **Not yet implemented** - user preferences |
+| `/settings` | User preferences (currently theme only; stored in localStorage) |
 
 ### State Management
 
@@ -94,7 +94,6 @@ bun run db:studio    # Drizzle Studio GUI
 
 ## Current Gaps & Known Issues
 
-- `/settings` is linked in the navbar but doesn't exist (404)
 - Overdue task status (`TaskStatus.Overdue`) is defined but never automatically set
 - Reminder notifications are schema-ready but not wired up
 - `test.ts` in root is a leftover - should be deleted

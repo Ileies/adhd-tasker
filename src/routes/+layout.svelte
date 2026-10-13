@@ -2,10 +2,13 @@
 	import '../app.css';
 	import { Calendar, User } from '@lucide/svelte';
 	import { Priority, TaskStatus } from '#lib/types.js';
+	import { onMount } from 'svelte';
+	import { initPreferences } from '#lib/theme.js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
-	import SoundThemeMenu from '#lib/components/SoundThemeMenu.svelte';
+	import VolumeMenu from '#lib/components/VolumeMenu.svelte';
+	import SetupDialog from '#lib/components/SetupDialog.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
@@ -17,6 +20,8 @@
 	let { children, data } = $props();
 
 	if (browser) tasker.tasks = data.user ? data.tasks : JSON.parse(localStorage.getItem('tasks') || '[]');
+
+	onMount(initPreferences);
 
 	let sidebarOpen = $state(false);
 	let loginForm: HTMLFormElement | undefined = $state();
@@ -54,6 +59,8 @@
 	}
 </script>
 
+<SetupDialog />
+
 <!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
 <form method="POST" action="?/login" use:enhance bind:this={loginForm} class="hidden"></form>
 <form method="POST" action="?/logout" use:enhance bind:this={logoutForm} class="hidden"></form>
@@ -72,7 +79,7 @@
 		</button>
 
 		<div class="flex items-center justify-end gap-1">
-			<SoundThemeMenu />
+			<VolumeMenu />
 
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
