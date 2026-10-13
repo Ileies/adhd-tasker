@@ -30,7 +30,7 @@ People with ADHD struggle less with *doing* things and more with *knowing what t
 | Layer | Technology |
 |---|---|
 | Framework | SvelteKit 2 + Svelte 5 (Runes) |
-| Styling | Tailwind CSS 4 + DaisyUI 5 |
+| Styling | Tailwind CSS 4 + shadcn-svelte |
 | Database | SQLite + Drizzle ORM |
 | Auth | Google OAuth 2.0 via Arctic |
 | Runtime | Bun |

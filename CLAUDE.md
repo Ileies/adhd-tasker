@@ -21,7 +21,7 @@ When implementing new features, think carefully about the ADHD experience. When 
 ## Tech Stack
 
 - **Framework:** SvelteKit 2 + Svelte 5 (Runes API - `$state`, `$derived`, `$effect`)
-- **Styling:** Tailwind CSS 4 + DaisyUI 5
+- **Styling:** Tailwind CSS 4 + shadcn-svelte (components in `src/lib/components/ui`, add more with `bun x shadcn-svelte@latest add <name>`). Dark mode is a `.dark` class on `<html>`; status colors are `success`, `warning`, `info` tokens in `src/app.css`
 - **Database:** SQLite via Drizzle ORM (file: `local.db`)
 - **Auth:** Google OAuth 2.0 via Arctic 3
 - **Runtime:** Bun (dev + production)
