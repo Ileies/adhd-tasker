@@ -1,8 +1,9 @@
 node_modules
-/.svelte-kit
+.*
+!.gitignore
+!.prettierrc
 /build
 local.db
-.env
 !.env.example
 
 # Vite
