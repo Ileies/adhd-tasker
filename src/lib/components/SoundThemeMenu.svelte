@@ -4,11 +4,9 @@
 	import { tasker, type ThemeMode } from '#lib/app.svelte.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Popover from '#lib/components/ui/popover/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
 	import { Slider } from '#lib/components/ui/slider/index.js';
 
-	// Auto mode: light from 07:00 to 18:59 local time, dark otherwise
-	const DAY_START_HOUR = 7;
-	const DAY_END_HOUR = 19;
 
 	const themeOptions: { mode: ThemeMode; label: string; icon: typeof Sun }[] = [
 		{ mode: 'light', label: 'Light', icon: Sun },
@@ -22,8 +20,11 @@
 
 	function resolveDark(mode: ThemeMode): boolean {
 		if (mode === 'auto') {
-			const hour = new Date().getHours();
-			return hour < DAY_START_HOUR || hour >= DAY_END_HOUR;
+			const now = new Date();
+			const minutes = now.getHours() * 60 + now.getMinutes();
+			const { dayStart, dayEnd } = tasker;
+			const isDay = dayStart <= dayEnd ? minutes >= dayStart && minutes < dayEnd : minutes >= dayStart || minutes < dayEnd;
+			return !isDay;
 		}
 		return mode === 'dark';
 	}
@@ -60,6 +61,20 @@
 		transitionTo(resolveDark(mode));
 	}
 
+	function toTimeString(minutes: number): string {
+		const h = String(Math.floor(minutes / 60)).padStart(2, '0');
+		const m = String(minutes % 60).padStart(2, '0');
+		return `${h}:${m}`;
+	}
+
+	function setDayTime(key: 'dayStart' | 'dayEnd', value: string) {
+		const [h, m] = value.split(':').map(Number);
+		if (Number.isNaN(h) || Number.isNaN(m)) return;
+		tasker[key] = h * 60 + m;
+		save(key, String(tasker[key]));
+		transitionTo(resolveDark(tasker.themeMode));
+	}
+
 	function setVolume(value: number) {
 		tasker.volume = value;
 		save('volume', String(value));
@@ -79,6 +94,11 @@
 			const volume = Number(localStorage.getItem('volume'));
 			if (localStorage.getItem('volume') !== null && volume >= 0 && volume <= 100) tasker.volume = volume;
 			tasker.isMuted = localStorage.getItem('muted') === 'true';
+			for (const key of ['dayStart', 'dayEnd'] as const) {
+				const raw = localStorage.getItem(key);
+				const minutes = Number(raw);
+				if (raw !== null && minutes >= 0 && minutes < 1440) tasker[key] = minutes;
+			}
 		} catch {}
 
 		// The inline script in app.html only guesses, so sync to the loaded settings
@@ -95,20 +115,23 @@
 <Popover.Root>
 	<Popover.Trigger>
 		{#snippet child({ props })}
-			<Button {...props} variant="ghost" size="icon-lg" aria-label="Sound and theme">
-				<span class="relative grid h-5 w-5 place-items-center">
-					{#if silent}
-						<VolumeX class="h-5 w-5" />
-					{:else if tasker.volume < 50}
-						<Volume1 class="h-5 w-5" />
-					{:else}
-						<Volume2 class="h-5 w-5" />
-					{/if}
-				</span>
+			<Button {...props} variant="ghost" size="lg" class="gap-1.5 px-2" aria-label="Sound and theme">
+				{#if silent}
+					<VolumeX class="size-5" />
+				{:else if tasker.volume < 50}
+					<Volume1 class="size-5" />
+				{:else}
+					<Volume2 class="size-5" />
+				{/if}
+				{#if isDark}
+					<Moon class="size-5" />
+				{:else}
+					<Sun class="size-5" />
+				{/if}
 			</Button>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content align="end" class="w-64 space-y-4">
+	<Popover.Content align="end" class="w-72 space-y-4">
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
 				<span class="text-sm font-medium">Volume</span>
@@ -157,7 +180,25 @@
 				{/each}
 			</div>
 			{#if tasker.themeMode === 'auto'}
-				<p class="text-xs text-muted-foreground">Light from {DAY_START_HOUR}:00 to {DAY_END_HOUR}:00, dark otherwise.</p>
+				<div class="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+					<span>Light</span>
+					<Input
+						type="time"
+						class="h-8 px-2 text-xs"
+						value={toTimeString(tasker.dayStart)}
+						onchange={(e) => setDayTime('dayStart', e.currentTarget.value)}
+						aria-label="Daytime starts"
+					/>
+					<span>to</span>
+					<Input
+						type="time"
+						class="h-8 px-2 text-xs"
+						value={toTimeString(tasker.dayEnd)}
+						onchange={(e) => setDayTime('dayEnd', e.currentTarget.value)}
+						aria-label="Daytime ends"
+					/>
+				</div>
+				<p class="text-xs text-muted-foreground">Dark outside these hours.</p>
 			{/if}
 		</div>
 	</Popover.Content>

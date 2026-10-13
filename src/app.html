@@ -10,9 +10,12 @@
 		<script>
 			try {
 				const saved = localStorage.getItem('theme');
-				const hour = new Date().getHours();
-				const dark =
-					saved === 'dark' || ((saved === 'auto' || !saved) && (hour < 7 || hour >= 19));
+				const now = new Date();
+				const minutes = now.getHours() * 60 + now.getMinutes();
+				const start = Number(localStorage.getItem('dayStart') ?? 420);
+				const end = Number(localStorage.getItem('dayEnd') ?? 1140);
+				const isDay = start <= end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
+				const dark = saved === 'dark' || ((saved === 'auto' || !saved) && !isDay);
 				document.documentElement.classList.toggle('dark', dark);
 			} catch {}
 		</script>

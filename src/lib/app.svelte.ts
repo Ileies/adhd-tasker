@@ -10,6 +10,8 @@ export const tasker: {
 	isMuted: boolean;
 	volume: number; // 0-100
 	themeMode: ThemeMode;
+	dayStart: number; // minutes since midnight, daytime theme starts
+	dayEnd: number; // minutes since midnight, daytime theme ends
 } = $state({
 	tasks: [],
 	activeTask: null,
@@ -17,5 +19,7 @@ export const tasker: {
 	timeLeft: 0,
 	isMuted: false,
 	volume: 100,
-	themeMode: 'auto'
+	themeMode: 'auto',
+	dayStart: 420,
+	dayEnd: 1140
 });
