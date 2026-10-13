@@ -3,66 +3,42 @@
 	import { tasker } from '#lib/app.svelte.js';
 	import { setMuted, setVolume } from '#lib/theme.js';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import * as Popover from '#lib/components/ui/popover/index.js';
 	import { Slider } from '#lib/components/ui/slider/index.js';
 
 	const silent = $derived(tasker.isMuted || tasker.volume === 0);
-
-	let open = $state(false);
-	let closeTimer: ReturnType<typeof setTimeout> | undefined;
-
-	function show() {
-		clearTimeout(closeTimer);
-		open = true;
-	}
-
-	// Short delay so the pointer can travel from the button to the popover
-	function hide() {
-		clearTimeout(closeTimer);
-		closeTimer = setTimeout(() => (open = false), 150);
-	}
 </script>
 
-<Popover.Root bind:open>
-	<Popover.Trigger>
-		{#snippet child({ props })}
-			<Button
-				{...props}
-				variant="ghost"
-				size="icon-lg"
-				onclick={() => setMuted(!tasker.isMuted)}
-				onmouseenter={show}
-				onmouseleave={hide}
-				aria-label={tasker.isMuted ? 'Unmute sounds' : 'Mute sounds'}
-			>
-				{#if silent}
-					<VolumeX class="size-5" />
-				{:else if tasker.volume < 50}
-					<Volume1 class="size-5" />
-				{:else}
-					<Volume2 class="size-5" />
-				{/if}
-			</Button>
-		{/snippet}
-	</Popover.Trigger>
-	<Popover.Content
-		align="end"
-		class="flex w-52 items-center gap-3 p-3"
-		onmouseenter={show}
-		onmouseleave={hide}
-		onOpenAutoFocus={(e) => e.preventDefault()}
+<!-- The slider slides out on hover or focus (a tap on touch screens), the button itself mutes -->
+<div class="group flex items-center">
+	<div
+		class="w-0 overflow-hidden opacity-0 transition-all duration-200 group-focus-within:w-32 group-focus-within:opacity-100 group-hover:w-32 group-hover:opacity-100"
 	>
-		<Slider
-			type="single"
-			min={0}
-			max={100}
-			step={5}
-			value={tasker.isMuted ? 0 : tasker.volume}
-			onValueChange={setVolume}
-			aria-label="Volume"
-		/>
-		<span class="w-9 shrink-0 text-right font-mono text-sm text-muted-foreground">
-			{tasker.isMuted ? 'Off' : `${tasker.volume}%`}
-		</span>
-	</Popover.Content>
-</Popover.Root>
+		<div class="px-3">
+			<Slider
+				type="single"
+				min={0}
+				max={100}
+				step={5}
+				value={tasker.isMuted ? 0 : tasker.volume}
+				onValueChange={setVolume}
+				aria-label="Volume"
+			/>
+		</div>
+	</div>
+
+	<Button
+		variant="ghost"
+		size="icon-lg"
+		onclick={() => setMuted(!tasker.isMuted)}
+		title={tasker.isMuted ? 'Unmute' : `Mute (${tasker.volume}%)`}
+		aria-label={tasker.isMuted ? 'Unmute sounds' : 'Mute sounds'}
+	>
+		{#if silent}
+			<VolumeX class="size-5" />
+		{:else if tasker.volume < 50}
+			<Volume1 class="size-5" />
+		{:else}
+			<Volume2 class="size-5" />
+		{/if}
+	</Button>
+</div>
