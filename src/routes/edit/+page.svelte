@@ -6,6 +6,8 @@
 	import { tasker } from '$lib/app.svelte';
 	import TaskForm from '$lib/components/TaskForm.svelte';
 	import type { TaskForm as TaskFormType } from '$lib/types';
+	import { Button } from '$lib/components/ui/button';
+	import * as AlertDialog from '$lib/components/ui/dialog';
 
 	const { data } = $props();
 
@@ -24,11 +26,11 @@
 	});
 
 	const priorityColors = {
-		[Priority.Critical]: 'bg-error/80 border-error',
-		[Priority.Urgent]: 'bg-warning/80 border-warning',
-		[Priority.High]: 'bg-info/80 border-info',
-		[Priority.Medium]: 'bg-secondary/80 border-secondary',
-		[Priority.Low]: 'bg-base-300/80 border-base-300'
+		[Priority.Critical]: 'bg-destructive/80 border-destructive text-white',
+		[Priority.Urgent]: 'bg-warning/80 border-warning text-warning-foreground',
+		[Priority.High]: 'bg-info/80 border-info text-info-foreground',
+		[Priority.Medium]: 'bg-secondary border-primary/50 text-secondary-foreground',
+		[Priority.Low]: 'bg-muted border-border text-muted-foreground'
 	};
 
 	function formatDuration(minutes: number): string {
@@ -63,9 +65,16 @@
 		form.showTaskForm = true;
 	}
 
-	async function handleDelete(event: Event, task: Task) {
+	let taskToDelete: Task | null = $state(null);
+
+	function handleDelete(event: Event, task: Task) {
 		event.stopPropagation();
-		if (confirm('Are you sure you want to delete this task?')) await deleteTask(task);
+		taskToDelete = task;
+	}
+
+	async function confirmDelete() {
+		if (taskToDelete) await deleteTask(taskToDelete);
+		taskToDelete = null;
 	}
 
 	function handleDrop(event: DragEvent, hour: number) {
@@ -74,31 +83,30 @@
 	}
 </script>
 
-<div class="h-full flex flex-col bg-base-100">
+<div class="h-full flex flex-col bg-background">
 	<!-- Header -->
-	<div class="sticky top-0 p-4 border-b border-base-300 bg-base-100 z-30">
+	<div class="sticky top-0 p-4 border-b bg-background z-30">
 		<div class="flex items-center justify-between">
-			<button class="btn btn-primary" onclick={() => goto('/')}>Back to Focus</button>
+			<Button onclick={() => goto('/')}>Back to Focus</Button>
 			<h1 class="text-2xl font-bold">Edit Tasks</h1>
 			<div class="flex items-center gap-2">
-				<button
-					class="btn btn-ghost"
+				<Button
+					variant="ghost"
+					size="icon"
 					onclick={() => isCompactView = !isCompactView}
 					title={isCompactView ? 'Switch to Expanded View' : 'Switch to Compact View'}
+					aria-label={isCompactView ? 'Switch to Expanded View' : 'Switch to Compact View'}
 				>
 					{#if isCompactView}
 						<Maximize2 class="h-5 w-5" />
 					{:else}
 						<Minimize2 class="h-5 w-5" />
 					{/if}
-				</button>
-				<button
-					class="btn btn-primary"
-					onclick={openTaskForm}
-				>
-					<Plus class="h-4 w-4" />
+				</Button>
+				<Button onclick={openTaskForm}>
+					<Plus />
 					New Task
-				</button>
+				</Button>
 			</div>
 		</div>
 	</div>
@@ -107,10 +115,10 @@
 	<div class="{isCompactView ? 'flex-1 overflow-hidden' : 'flex-1 overflow-auto'}">
 		<div class="grid grid-cols-[80px_1fr] h-full">
 			<!-- Time labels -->
-			<div class="bg-base-100 border-r border-base-300 sticky left-0 z-20 {isCompactView ? 'flex flex-col' : ''}">
+			<div class="bg-background border-r sticky left-0 z-20 {isCompactView ? 'flex flex-col' : ''}">
 				{#each [...Array(24).keys()] as hour (hour)}
-					<div class="{isCompactView ? 'flex-1 min-h-0' : 'h-14'} border-b border-base-300/50 flex items-start justify-end pr-2 pt-1">
-						<span class="text-xs text-base-content/70 font-mono">
+					<div class="{isCompactView ? 'flex-1 min-h-0' : 'h-14'} border-b border-border/50 flex items-start justify-end pr-2 pt-1">
+						<span class="text-xs text-muted-foreground font-mono">
 							{hour.toString().padStart(2, '0')}:00
 						</span>
 					</div>
@@ -132,23 +140,17 @@
 						>
 							<div class="flex items-start justify-between gap-1 h-full">
 								<div class="flex-1 min-w-0">
-									<h3 class="font-medium text-xs text-base-content truncate">
+									<h3 class="font-medium text-xs truncate">
 										{task.title}
 									</h3>
 								</div>
 								<div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-									<button
-										class="btn btn-ghost btn-xs"
-										onclick={(e) => openEditForm(e, task)}
-									>
-										<Edit class="h-3 w-3" />
-									</button>
-									<button
-										class="btn btn-ghost btn-xs text-error"
-										onclick={(e) => { handleDelete(e, task); }}
-									>
-										<Trash2 class="h-3 w-3" />
-									</button>
+									<Button variant="ghost" size="icon-xs" aria-label="Edit task" onclick={(e) => openEditForm(e, task)}>
+										<Edit />
+									</Button>
+									<Button variant="ghost" size="icon-xs" class="text-destructive" aria-label="Delete task" onclick={(e) => handleDelete(e, task)}>
+										<Trash2 />
+									</Button>
 								</div>
 							</div>
 						</div>
@@ -157,7 +159,8 @@
 					<!-- Expanded view: Traditional time slots -->
 					{#each [...Array(24).keys()] as hour (hour)}
 						<button
-							class="w-full h-14 border-b border-base-300/50 hover:bg-base-200/50 cursor-pointer relative block"
+							class="w-full h-14 border-b border-border/50 hover:bg-muted/50 cursor-pointer relative block"
+							aria-label="Create task at {hour.toString().padStart(2, '0')}:00"
 							onclick={() => {openTaskForm();form.startTime = hour * 60;}}
 							ondrop={(e) => handleDrop(e, hour)}
 							ondragover={(e) => e.preventDefault()}
@@ -181,10 +184,10 @@
 							>
 								<div class="flex items-start justify-between gap-1 h-full">
 									<div class="flex-1 min-w-0">
-										<h3 class="font-medium text-sm text-base-content truncate">
+										<h3 class="font-medium text-sm truncate">
 											{task.title}
 										</h3>
-										<p class="text-xs text-base-content/70 flex items-center gap-1 mt-1">
+										<p class="text-xs opacity-70 flex items-center gap-1 mt-1">
 											<Clock class="h-3 w-3" />
 											{Math.floor(task.startTime / 60).toString().padStart(2, '0') + ':' + (task.startTime % 60).toString().padStart(2, '0')} • {formatDuration(task.duration)}
 										</p>
@@ -195,18 +198,12 @@
 										{/if}-->
 									</div>
 									<div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-										<button
-											class="btn btn-ghost btn-xs"
-											onclick={(e) => openEditForm(e, task)}
-										>
-											<Edit class="h-3 w-3" />
-										</button>
-										<button
-											class="btn btn-ghost btn-xs text-error"
-											onclick={(e) => { handleDelete(e, task); }}
-										>
-											<Trash2 class="h-3 w-3" />
-										</button>
+										<Button variant="ghost" size="icon-xs" aria-label="Edit task" onclick={(e) => openEditForm(e, task)}>
+											<Edit />
+										</Button>
+										<Button variant="ghost" size="icon-xs" class="text-destructive" aria-label="Delete task" onclick={(e) => handleDelete(e, task)}>
+											<Trash2 />
+										</Button>
 									</div>
 								</div>
 							</div>
@@ -217,6 +214,22 @@
 		</div>
 	</div>
 </div>
+
+<!-- Delete confirmation -->
+<AlertDialog.Root open={taskToDelete !== null} onOpenChange={(open) => { if (!open) taskToDelete = null; }}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Delete this task?</AlertDialog.Title>
+			<AlertDialog.Description>
+				"{taskToDelete?.title}" will be removed from your schedule.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<Button variant="ghost" onclick={() => (taskToDelete = null)}>Cancel</Button>
+			<Button variant="destructive" onclick={confirmDelete}>Delete</Button>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 <!-- Task Form Modal -->
 <TaskForm email={data.user?.email || ''} bind:form={form} />

@@ -1,7 +1,13 @@
 <script lang="ts">
-	import { Priority, TaskStatus } from '$lib/types';
+	import { Priority, TaskStatus, type Task } from '$lib/types';
 	import { tasker } from '$lib/app.svelte.js';
 	import { deleteTask, updateTask } from '$lib';
+	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
+	import * as Card from '$lib/components/ui/card';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { Check, EllipsisVertical, ClipboardList, Trash2 } from '@lucide/svelte';
+	import type { Snippet } from 'svelte';
 
 	const priorityLabels: Record<Priority, string> = {
 		[Priority.Low]: 'Low',
@@ -12,11 +18,11 @@
 	};
 
 	const priorityColors: Record<Priority, string> = {
-		[Priority.Low]: 'badge-success',
-		[Priority.Medium]: 'badge-info',
-		[Priority.High]: 'badge-warning',
-		[Priority.Urgent]: 'badge-error',
-		[Priority.Critical]: 'badge-error'
+		[Priority.Low]: 'bg-success/20 text-success',
+		[Priority.Medium]: 'bg-info/20 text-info',
+		[Priority.High]: 'bg-warning/25 text-warning',
+		[Priority.Urgent]: 'bg-destructive/15 text-destructive',
+		[Priority.Critical]: 'bg-destructive text-white'
 	};
 
 	function formatDateTime(timestamp: number): string {
@@ -39,172 +45,124 @@
 	const completedTasks = $derived(sortedTasks.filter(task => task.status === TaskStatus.Completed));
 </script>
 
+{#snippet taskRow(task: Task, actions: Snippet, rowClass = '')}
+	<div class="flex items-center gap-3 rounded-lg border bg-card p-3 {rowClass}">
+		<div class="min-w-0 flex-1">
+			<h4 class="font-semibold">{task.title}</h4>
+			{#if task.description}
+				<p class="text-sm text-muted-foreground">{task.description}</p>
+			{/if}
+			<div class="mt-2 flex flex-wrap items-center gap-2">
+				<Badge class={priorityColors[task.priority]}>{priorityLabels[task.priority]}</Badge>
+				<span class="font-mono text-xs">{formatDateTime(task.startTime)}</span>
+				<span class="text-xs text-muted-foreground">Duration: {formatDuration(task.duration)}</span>
+			</div>
+		</div>
+		<div class="flex-none">{@render actions()}</div>
+	</div>
+{/snippet}
+
 <div class="space-y-6">
 	<!-- Active Tasks -->
 	{#if activeTasks.length > 0}
-		<div class="card bg-primary/10 border border-primary/20">
-			<div class="card-body">
-				<h3 class="card-title text-primary">
-					<span class="badge badge-primary">Active</span>
+		<Card.Root class="bg-primary/10 ring-primary/30">
+			<Card.Header>
+				<Card.Title class="flex items-center gap-2 text-primary">
+					<Badge>Active</Badge>
 					Active Tasks
-				</h3>
-				<div class="space-y-3">
-					{#each activeTasks as task (task.id)}
-						<div class="alert alert-info">
-							<div class="flex-1">
-								<h4 class="font-semibold">{task.title}</h4>
-								{#if task.description}
-									<p class="text-sm opacity-75">{task.description}</p>
-								{/if}
-								<div class="flex items-center gap-2 mt-2">
-									<span class="badge {priorityColors[task.priority]}">
-										{priorityLabels[task.priority]}
-									</span>
-									<span class="text-xs">
-										{formatDateTime(task.startTime)}
-									</span>
-									<span class="text-xs">
-										Duration: {formatDuration(task.duration)}
-									</span>
-								</div>
-							</div>
-							<div class="flex-none">
-								<button
-									class="btn btn-success btn-sm"
-									onclick={() => updateTask({ ...task, status: TaskStatus.Completed })}
-								>
-									Complete
-								</button>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
+				</Card.Title>
+			</Card.Header>
+			<Card.Content class="space-y-3">
+				{#each activeTasks as task (task.id)}
+					{#snippet actions()}
+						<Button
+							class="bg-success text-success-foreground hover:bg-success/80"
+							onclick={() => updateTask({ ...task, status: TaskStatus.Completed })}
+						>
+							<Check />
+							Complete
+						</Button>
+					{/snippet}
+					{@render taskRow(task, actions, 'border-primary/40')}
+				{/each}
+			</Card.Content>
+		</Card.Root>
 	{/if}
 
 	<!-- Pending Tasks -->
 	{#if pendingTasks.length > 0}
-		<div class="card bg-base-100 shadow-lg">
-			<div class="card-body">
-				<h3 class="card-title">
-					<span class="badge badge-ghost">Pending</span>
+		<Card.Root>
+			<Card.Header>
+				<Card.Title class="flex items-center gap-2">
+					<Badge variant="secondary">Pending</Badge>
 					Upcoming Tasks
-				</h3>
-				<div class="space-y-3">
-					{#each pendingTasks as task (task.id)}
-						<div class="alert">
-							<div class="flex-1">
-								<h4 class="font-semibold">{task.title}</h4>
-								{#if task.description}
-									<p class="text-sm opacity-75">{task.description}</p>
-								{/if}
-								<div class="flex items-center gap-2 mt-2">
-									<span class="badge {priorityColors[task.priority]}">
-										{priorityLabels[task.priority]}
-									</span>
-									<span class="text-xs">
-										{formatDateTime(task.startTime)}
-									</span>
-									<span class="text-xs">
-										Duration: {formatDuration(task.duration)}
-									</span>
-								</div>
-							</div>
-							<div class="flex-none">
-								<div class="dropdown dropdown-end">
-									<div tabindex="0" role="button" class="btn btn-ghost btn-sm">
-										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-										</svg>
-									</div>
-									<ul class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow">
-										<li>
-											<button
-												class="text-success"
-												onclick={() => updateTask({ ...task, status: TaskStatus.Completed })}
-											>
-												Mark Complete
-											</button>
-										</li>
-										<li>
-											<button
-												class="text-error"
-												onclick={() => deleteTask(task)}
-											>
-												Delete
-											</button>
-										</li>
-									</ul>
-								</div>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
+				</Card.Title>
+			</Card.Header>
+			<Card.Content class="space-y-3">
+				{#each pendingTasks as task (task.id)}
+					{#snippet actions()}
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
+								{#snippet child({ props })}
+									<Button {...props} variant="ghost" size="icon" aria-label="Task actions">
+										<EllipsisVertical />
+									</Button>
+								{/snippet}
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content align="end" class="w-48">
+								<DropdownMenu.Item onSelect={() => updateTask({ ...task, status: TaskStatus.Completed })}>
+									<Check class="text-success" />
+									Mark Complete
+								</DropdownMenu.Item>
+								<DropdownMenu.Item variant="destructive" onSelect={() => deleteTask(task)}>
+									<Trash2 />
+									Delete
+								</DropdownMenu.Item>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
+					{/snippet}
+					{@render taskRow(task, actions)}
+				{/each}
+			</Card.Content>
+		</Card.Root>
 	{/if}
 
 	<!-- Completed Tasks -->
 	{#if completedTasks.length > 0}
-		<div class="card bg-success/10 border border-success/20">
-			<div class="card-body">
-				<h3 class="card-title text-success">
-					<span class="badge badge-success">Completed</span>
+		<Card.Root class="bg-success/10 ring-success/30">
+			<Card.Header>
+				<Card.Title class="flex items-center gap-2 text-success">
+					<Badge class="bg-success text-success-foreground">Completed</Badge>
 					Completed Tasks
-				</h3>
-				<div class="space-y-3">
-					{#each completedTasks.slice(-5) as task (task.id)}
-						<div class="alert alert-success">
-							<div class="flex-1">
-								<h4 class="font-semibold">{task.title}</h4>
-								{#if task.description}
-									<p class="text-sm opacity-75">{task.description}</p>
-								{/if}
-								<div class="flex items-center gap-2 mt-2">
-									<span class="badge {priorityColors[task.priority]}">
-										{priorityLabels[task.priority]}
-									</span>
-									<span class="text-xs">
-										{formatDateTime(task.startTime)}
-									</span>
-									<span class="text-xs">
-										Duration: {formatDuration(task.duration)}
-									</span>
-								</div>
-							</div>
-							<div class="flex-none">
-								<button
-									class="btn btn-error btn-sm btn-outline"
-									onclick={() => deleteTask(task)}
-								>
-									Delete
-								</button>
-							</div>
-						</div>
-					{/each}
-					{#if completedTasks.length > 5}
-						<p class="text-sm text-center opacity-50">
-							... and {completedTasks.length - 5} more completed tasks
-						</p>
-					{/if}
-				</div>
-			</div>
-		</div>
+				</Card.Title>
+			</Card.Header>
+			<Card.Content class="space-y-3">
+				{#each completedTasks.slice(-5) as task (task.id)}
+					{#snippet actions()}
+						<Button variant="destructive" size="sm" onclick={() => deleteTask(task)}>
+							<Trash2 />
+							Delete
+						</Button>
+					{/snippet}
+					{@render taskRow(task, actions, 'border-success/40')}
+				{/each}
+				{#if completedTasks.length > 5}
+					<p class="text-center text-sm text-muted-foreground">
+						... and {completedTasks.length - 5} more completed tasks
+					</p>
+				{/if}
+			</Card.Content>
+		</Card.Root>
 	{/if}
 
 	<!-- Empty State -->
 	{#if tasker.tasks.length === 0}
-		<div class="card bg-base-100 shadow-lg">
-			<div class="card-body text-center">
-				<h3 class="card-title justify-center">No Tasks Yet</h3>
-				<p class="opacity-75">Create your first task to get started with your ADHD management journey!</p>
-				<div class="mt-4">
-					<svg class="mx-auto w-16 h-16 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-					</svg>
-				</div>
-			</div>
-		</div>
+		<Card.Root>
+			<Card.Content class="flex flex-col items-center gap-3 text-center">
+				<ClipboardList class="size-16 opacity-25" />
+				<h3 class="text-lg font-semibold">No Tasks Yet</h3>
+				<p class="text-muted-foreground">Create your first task to get started with your ADHD management journey!</p>
+			</Card.Content>
+		</Card.Root>
 	{/if}
-</div> 
+</div>

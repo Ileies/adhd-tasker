@@ -3,6 +3,9 @@
 	import { tasker } from '$lib/app.svelte.js';
 	import { updateTask } from '$lib';
 	import { TaskStatus } from '$lib/types.js';
+	import { Button } from '$lib/components/ui/button';
+	import { Progress } from '$lib/components/ui/progress';
+	import { Check, X } from '@lucide/svelte';
 
 	function getPriorityLabel(priority: Priority): string {
 		switch (priority) {
@@ -43,12 +46,20 @@
 
 	function getProgressColor(): string {
 		const progress = getProgressPercentage();
-		if (progress < 50) return 'progress-success';
-		if (progress < 80) return 'progress-warning';
-		return 'progress-error';
+		if (progress < 50) return '*:data-[slot=progress-indicator]:bg-success';
+		if (progress < 80) return '*:data-[slot=progress-indicator]:bg-warning';
+		return '*:data-[slot=progress-indicator]:bg-destructive';
 	}
 
-	const backgroundClass = $derived(tasker.activeTask ? (tasker.timeLeft / tasker.activeTask.duration > 0.8 ? 'bg-success' : tasker.timeLeft / tasker.activeTask.duration > 0.5 ? 'bg-warning' : 'bg-error') : 'bg-base-100');
+	const backgroundClass = $derived(
+		tasker.activeTask
+			? tasker.timeLeft / tasker.activeTask.duration > 0.8
+				? 'bg-success text-success-foreground'
+				: tasker.timeLeft / tasker.activeTask.duration > 0.5
+					? 'bg-warning text-warning-foreground'
+					: 'bg-destructive text-white'
+			: 'bg-background'
+	);
 </script>
 
 <!-- ESC key handler -->
@@ -66,15 +77,15 @@
 		<!-- Main task display -->
 		<div class="relative w-full max-w-4xl mx-auto text-center">
 			<!-- Close button -->
-			<button
-				class="absolute top-0 right-0 btn btn-circle btn-ghost btn-lg z-10"
+			<Button
+				variant="ghost"
+				size="icon-lg"
+				class="absolute top-0 right-0 z-10 size-12 hover:bg-black/10"
 				onclick={() => tasker.isFullScreen = !tasker.isFullScreen}
 				aria-label="Close Task Display"
 			>
-				<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-				</svg>
-			</button>
+				<X class="size-6" />
+			</Button>
 
 			<!-- Priority indicator -->
 			<div class="mb-8">
@@ -110,26 +121,21 @@
 
 			<!-- Progress bar -->
 			<div class="mb-8 max-w-md mx-auto">
-				<progress
-					class="progress {getProgressColor()} w-full h-4"
-					value={getProgressPercentage()}
-					max="100"
-				></progress>
+				<Progress class="h-4 bg-black/15 {getProgressColor()}" value={getProgressPercentage()} max={100} />
 				<div class="text-sm opacity-75 mt-2">
 					{Math.round(getProgressPercentage())}% Complete
 				</div>
 			</div>
 
 			<!-- Complete task button -->
-			<button
-				class="btn btn-success btn-lg text-xl px-12 py-4 hover:scale-105 transition-transform duration-200"
+			<Button
+				size="lg"
+				class="h-16 bg-foreground px-12 text-xl text-background transition-transform duration-200 hover:scale-105 hover:bg-foreground/90 [&_svg:not([class*='size-'])]:size-6"
 				onclick={() => tasker.activeTask && updateTask({ ...tasker.activeTask, status: TaskStatus.Completed })}
 			>
-				<svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-				</svg>
+				<Check />
 				Complete Task
-			</button>
+			</Button>
 
 			<!-- Instructions -->
 			<div class="mt-8 text-sm opacity-60">

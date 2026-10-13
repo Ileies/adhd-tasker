@@ -2,8 +2,32 @@
 	import { createTask, updateTask } from '$lib';
 	import { Priority, type TaskForm } from '$lib/types';
 	import { Edit, Plus } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Textarea } from '$lib/components/ui/textarea';
+	import { Label } from '$lib/components/ui/label';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Select from '$lib/components/ui/select';
 
 	const { email, form = $bindable() }: {email: string, form: TaskForm} = $props();
+
+	const priorityOptions = [
+		{ value: Priority.Low, label: '🟢 Low' },
+		{ value: Priority.Medium, label: '🔵 Medium' },
+		{ value: Priority.High, label: '🟡 High' },
+		{ value: Priority.Urgent, label: '🟠 Urgent' },
+		{ value: Priority.Critical, label: '🔴 Critical' }
+	];
+
+	const quickDurations = [
+		{ label: '15m', minutes: 15 },
+		{ label: '30m', minutes: 30 },
+		{ label: '1h', minutes: 60 },
+		{ label: '2h', minutes: 120 },
+		{ label: '4h', minutes: 240 }
+	];
+
+	const priorityLabel = $derived(priorityOptions.find((o) => o.value === form.priority)?.label ?? 'Select priority');
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -31,169 +55,105 @@
 	}
 </script>
 
-{#if form.showTaskForm}
-	<div class="modal modal-open">
-		<div class="modal-box w-11/12 max-w-lg relative">
-			<!-- Close button -->
-			<button
-				class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-				onclick={() => form.showTaskForm = false}
-			>
-				✕
-			</button>
+<Dialog.Root bind:open={form.showTaskForm}>
+	<Dialog.Content class="sm:max-w-lg">
+		<Dialog.Header>
+			<Dialog.Title class="text-xl">{form.isEditing ? 'Edit Task' : 'New Task'}</Dialog.Title>
+			<Dialog.Description class="sr-only">Fill in the task details and save</Dialog.Description>
+		</Dialog.Header>
 
-			<h3 class="font-bold text-xl mb-6">
-				{form.isEditing ? 'Edit Task' : 'New Task'}
-			</h3>
+		<form onsubmit={handleSubmit} class="space-y-5">
+			<div class="grid gap-2">
+				<Label for="title">Title *</Label>
+				<Input id="title" type="text" bind:value={form.title} placeholder="Enter task title..." required />
+			</div>
 
-			<form onsubmit={handleSubmit} class="space-y-6">
-				<!-- Title -->
-				<div class="form-control w-full">
-					<label class="label" for="title">
-						<span class="label-text font-medium">Title *</span>
-					</label>
-					<input
-						id="title"
-						type="text"
-						class="input input-bordered w-full"
-						bind:value={form.title}
-						placeholder="Enter task title..."
+			<div class="grid gap-2">
+				<Label for="description">Description</Label>
+				<Textarea
+					id="description"
+					class="resize-none"
+					rows={3}
+					bind:value={form.description}
+					placeholder="Add a description (optional)..."
+				/>
+			</div>
+
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<div class="grid gap-2">
+					<Label for="startTime">Start Time *</Label>
+					<Input
+						id="startTime"
+						type="time"
+						value={Math.floor(form.startTime / 60).toString().padStart(2, '0') + ':' + (form.startTime % 60).toString().padStart(2, '0')}
+						onchange={(e) => form.startTime = parseInt(e.currentTarget.value.split(':')[0], 10) * 60 + parseInt(e.currentTarget.value.split(':')[1], 10)}
 						required
 					/>
 				</div>
 
-				<!-- Description -->
-				<div class="form-control w-full">
-					<label class="label" for="description">
-						<span class="label-text font-medium">Description</span>
-					</label>
-					<textarea
-						id="description"
-						class="textarea textarea-bordered w-full resize-none"
-						rows="3"
-						bind:value={form.description}
-						placeholder="Add a description (optional)..."
-					></textarea>
-				</div>
-
-				<!-- Time and Duration Row -->
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<div class="form-control w-full">
-						<label class="label" for="startTime">
-							<span class="label-text font-medium">Start Time *</span>
-						</label>
-						<input
-							id="startTime"
-							type="time"
-							class="input input-bordered w-full"
-							value={Math.floor(form.startTime / 60).toString().padStart(2, '0') + ':' + (form.startTime % 60).toString().padStart(2, '0')}
-							onchange={(e) => form.startTime = parseInt(e.currentTarget.value.split(':')[0], 10) * 60 + parseInt(e.currentTarget.value.split(':')[1], 10)}
+				<div class="grid gap-2">
+					<Label for="duration">Duration *</Label>
+					<div class="relative">
+						<Input
+							id="duration"
+							type="number"
+							class="pr-12"
+							min={5}
+							max={1440}
+							bind:value={form.duration}
+							placeholder="60"
 							required
 						/>
-					</div>
-
-					<div class="form-control w-full">
-						<label class="label" for="duration">
-							<span class="label-text font-medium">Duration *</span>
-						</label>
-						<div class="relative">
-							<input
-								id="duration"
-								type="number"
-								class="input input-bordered w-full pr-16"
-								min="5"
-								max="1440"
-								bind:value={form.duration}
-								placeholder="60"
-								required
-							/>
-							<span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-base-content/60">
-								min
-							</span>
-						</div>
+						<span class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
+							min
+						</span>
 					</div>
 				</div>
+			</div>
 
-				<!-- Priority -->
-				<div class="form-control w-full">
-					<label class="label" for="priority">
-						<span class="label-text font-medium">Priority</span>
-					</label>
-					<select
-						id="priority"
-						class="select select-bordered w-full"
-						bind:value={form.priority}
-					>
-						<option value={Priority.Low}>🟢 Low</option>
-						<option value={Priority.Medium}>🔵 Medium</option>
-						<option value={Priority.High}>🟡 High</option>
-						<option value={Priority.Urgent}>🟠 Urgent</option>
-						<option value={Priority.Critical}>🔴 Critical</option>
-					</select>
+			<div class="grid gap-2">
+				<Label for="priority">Priority</Label>
+				<Select.Root
+					type="single"
+					value={String(form.priority)}
+					onValueChange={(v) => (form.priority = Number(v) as Priority)}
+				>
+					<Select.Trigger id="priority" class="w-full">{priorityLabel}</Select.Trigger>
+					<Select.Content>
+						{#each priorityOptions as option (option.value)}
+							<Select.Item value={String(option.value)} label={option.label}>{option.label}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+
+			<div class="grid gap-2">
+				<Label>Quick Duration</Label>
+				<div class="flex flex-wrap gap-2">
+					{#each quickDurations as quick (quick.minutes)}
+						<Button
+							variant={form.duration === quick.minutes ? 'default' : 'outline'}
+							size="sm"
+							onclick={() => (form.duration = quick.minutes)}
+						>
+							{quick.label}
+						</Button>
+					{/each}
 				</div>
+			</div>
 
-				<!-- Quick Duration Buttons -->
-				<div class="form-control w-full">
-					<div class="label">
-						<span class="label-text font-medium">Quick Duration</span>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						<button
-							type="button"
-							class="btn btn-sm btn-outline"
-							onclick={() => form.duration = 15}
-						>
-							15m
-						</button>
-						<button
-							type="button"
-							class="btn btn-sm btn-outline"
-							onclick={() => form.duration = 30}
-						>
-							30m
-						</button>
-						<button
-							type="button"
-							class="btn btn-sm btn-outline"
-							onclick={() => form.duration = 60}
-						>
-							1h
-						</button>
-						<button
-							type="button"
-							class="btn btn-sm btn-outline"
-							onclick={() => form.duration = 120}
-						>
-							2h
-						</button>
-						<button
-							type="button"
-							class="btn btn-sm btn-outline"
-							onclick={() => form.duration = 240}
-						>
-							4h
-						</button>
-					</div>
-				</div>
-
-				<!-- Actions -->
-				<div class="flex justify-end gap-3 pt-4 border-t border-base-300">
-					<button type="button" class="btn btn-ghost" onclick={() => form.showTaskForm = false}>
-						Cancel
-					</button>
-					<button class="btn btn-primary gap-2">
-						{#if form.isEditing}
-							<Edit class="h-4 w-4" />
-							Update Task
-						{:else}
-							<Plus class="h-4 w-4" />
-							Create Task
-						{/if}
-					</button>
-				</div>
-			</form>
-		</div>
-
-		<button aria-label="Close Task Form" class="modal-backdrop" onclick={() => form.showTaskForm = false}></button>
-	</div>
-{/if}
+			<Dialog.Footer>
+				<Button variant="ghost" onclick={() => (form.showTaskForm = false)}>Cancel</Button>
+				<Button type="submit">
+					{#if form.isEditing}
+						<Edit />
+						Update Task
+					{:else}
+						<Plus />
+						Create Task
+					{/if}
+				</Button>
+			</Dialog.Footer>
+		</form>
+	</Dialog.Content>
+</Dialog.Root>

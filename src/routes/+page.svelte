@@ -4,6 +4,9 @@
 	import ActiveTaskDisplay from '$lib/components/ActiveTaskDisplay.svelte';
 	import { Priority, TaskStatus } from '$lib/types';
 	import { playSound, updateTask } from '$lib';
+	import { Button } from '$lib/components/ui/button';
+	import * as Card from '$lib/components/ui/card';
+	import { Clock, Focus } from '@lucide/svelte';
 
 	// neuer chat button, builder wirft error -> feld kann nicht bearbeitet werden "feld existiert bereits", bitte füll alle Pflichtfelder aus?!
 	// nicht alle chats immer anzeigen, fehler beim löschen der Kategorie, history sieht schlecht aus,
@@ -36,14 +39,18 @@
 			playSound('task-started')
 		}
 	});
+
+	const stats = $derived([
+		{ label: 'Total', value: tasker.tasks.length, class: 'text-primary' },
+		{ label: 'Active', value: tasker.activeTask ? 1 : 0, class: 'text-success' },
+		{ label: 'Done', value: tasker.tasks.filter((t) => t.status === 'completed').length, class: 'text-info' }
+	]);
 </script>
 
 <!-- Main application interface -->
-<div class="container mx-auto px-4 py-8 max-w-6xl">
-	<header class="text-center mb-8">
-		<h2 class="text-xl opacity-75">
-			Stay focused, one task at a time
-		</h2>
+<div class="container mx-auto max-w-6xl px-4 py-8">
+	<header class="mb-8 text-center">
+		<h2 class="text-xl text-muted-foreground">Stay focused, one task at a time</h2>
 	</header>
 
 	{#if tasker.activeTask}
@@ -51,79 +58,49 @@
 			<ActiveTaskDisplay />
 		{:else}
 			<!-- Active task banner (when not in full screen) -->
-			<div class="alert alert-info mb-6 shadow-lg">
-			<div class="flex-1">
-				<div class="flex items-center gap-4">
-					<div class="flex-shrink-0">
-						<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-							<svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							</svg>
-						</div>
+			<Card.Root class="mb-6 bg-primary/10 ring-primary/30">
+				<Card.Content class="flex items-center gap-4">
+					<div class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/20">
+						<Clock class="size-6 text-primary" />
 					</div>
-					<div class="flex-1">
-						<h3 class="font-semibold text-lg">Current Task: {tasker.activeTask.title}</h3>
-						<p class="text-sm opacity-75">
+					<div class="min-w-0 flex-1">
+						<h3 class="truncate text-lg font-semibold">Current Task: {tasker.activeTask.title}</h3>
+						<p class="text-sm text-muted-foreground">
 							Time remaining: {Math.floor(tasker.timeLeft / 60) + ':' + (tasker.timeLeft % 60).toString().padStart(2, '0')}
 						</p>
 					</div>
-				</div>
-			</div>
-			<div class="flex-none">
-				<button
-					class="btn btn-primary btn-sm"
-					onclick={() => tasker.isFullScreen = !tasker.isFullScreen}
-				>
-					Focus Mode
-				</button>
-			</div>
-		</div>
+					<Button onclick={() => (tasker.isFullScreen = !tasker.isFullScreen)}>Focus Mode</Button>
+				</Card.Content>
+			</Card.Root>
 		{/if}
 	{/if}
 
 	<!-- Task management section -->
-	<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-		<!-- Task creation and controls -->
+	<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
 		<div class="lg:col-span-1">
 			<div class="sticky top-8">
-					<div class="card bg-base-100 shadow-lg">
-						<div class="card-body">
-							<h2 class="card-title text-primary">Quick Actions</h2>
-
-							<!-- Stats -->
-							<div class="stats stats-vertical shadow">
-								<div class="stat">
-									<div class="stat-title">Total Tasks</div>
-									<div class="stat-value text-primary">{tasker.tasks.length}</div>
+				<Card.Root>
+					<Card.Header>
+						<Card.Title class="text-primary">Quick Actions</Card.Title>
+					</Card.Header>
+					<Card.Content class="space-y-4">
+						<div class="grid grid-cols-3 gap-2 text-center">
+							{#each stats as stat (stat.label)}
+								<div class="rounded-lg bg-muted/50 p-3">
+									<div class="text-xs text-muted-foreground">{stat.label}</div>
+									<div class="text-3xl font-bold {stat.class}">{stat.value}</div>
 								</div>
-								<div class="stat">
-									<div class="stat-title">Active Now</div>
-									<div class="stat-value text-success">
-										{tasker.activeTask ? 1 : 0}
-									</div>
-								</div>
-								<div class="stat">
-									<div class="stat-title">Completed</div>
-									<div class="stat-value text-info">
-										{tasker.tasks.filter(t => t.status === 'completed').length}
-									</div>
-								</div>
-							</div>
-
-							<!-- Focus mode button -->
-							{#if tasker.activeTask}
-								<button
-									class="btn btn-secondary w-full mt-4"
-									onclick={() => tasker.isFullScreen = !tasker.isFullScreen}
-								>
-									<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-									</svg>
-									Enter Focus Mode
-								</button>
-							{/if}
+							{/each}
 						</div>
-					</div>
+
+						{#if tasker.activeTask}
+							<Button variant="secondary" size="lg" class="w-full" onclick={() => (tasker.isFullScreen = !tasker.isFullScreen)}>
+								<Focus />
+								Enter Focus Mode
+							</Button>
+						{/if}
+					</Card.Content>
+				</Card.Root>
 			</div>
 		</div>
 
@@ -134,12 +111,8 @@
 	</div>
 
 	<!-- Footer -->
-	<footer class="text-center mt-16 py-8 border-t border-base-300">
-		<p class="text-sm opacity-50">
-			ADHD Tasker - Helping you stay focused, one task at a time 🎯
-		</p>
-		<p class="text-xs opacity-30 mt-2">
-			Built with SvelteKit and DaisyUI, 3 days before an exam :)
-		</p>
+	<footer class="mt-16 border-t py-8 text-center">
+		<p class="text-sm text-muted-foreground">ADHD Tasker - Helping you stay focused, one task at a time 🎯</p>
+		<p class="mt-2 text-xs text-muted-foreground/60">Built with SvelteKit and shadcn-svelte</p>
 	</footer>
 </div>

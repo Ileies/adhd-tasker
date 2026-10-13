@@ -1,36 +1,26 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Moon, Sun } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	let isDarkMode = $state(false);
 
-	// Initialize theme from localStorage or system preference
+	// The initial class is set by the inline script in app.html, so just sync state
 	onMount(() => {
-		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme) {
-			isDarkMode = savedTheme === 'dark';
-		} else {
-			isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-		}
+		isDarkMode = document.documentElement.classList.contains('dark');
 	});
 
-	$effect(() => {
+	function toggle() {
+		isDarkMode = !isDarkMode;
+		document.documentElement.classList.toggle('dark', isDarkMode);
 		localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-	});
+	}
 </script>
 
-<label class="swap swap-rotate">
-	<!-- this hidden checkbox controls the state -->
-	<input
-		type="checkbox"
-		class="theme-controller"
-		value={isDarkMode ? 'aqua' : 'cupcake'}
-		onchange={() => isDarkMode = !isDarkMode}
-	/>
-
-	<!-- sun icon (light mode) -->
-	<Sun class="swap-off h-6 w-6" />
-
-	<!-- moon icon (dark mode) -->
-	<Moon class="swap-on h-6 w-6" />
-</label>
+<Button variant="ghost" size="icon" onclick={toggle} aria-label="Toggle dark mode">
+	{#if isDarkMode}
+		<Moon class="h-5 w-5" />
+	{:else}
+		<Sun class="h-5 w-5" />
+	{/if}
+</Button>
