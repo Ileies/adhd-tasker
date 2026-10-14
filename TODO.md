@@ -13,7 +13,7 @@ Plans in `docs/`:
 ## Later
 
 - Google Calendar sync (needs dated days)
-- Recurring tasks
+- Recurring tasks (core: sleep, food, water, hygiene by cadence, with a floor the AI cannot trade below without asking)
 - Capture inbox (`Shift+Space`)
 - End-of-day summary
 - Morning briefing (`day.started` event)

@@ -79,12 +79,12 @@ These cuts are my call and open to veto. The two I would argue hardest to keep o
 
 ### C. Daily rhythm (0 of 13)
 
-| ID  | Criterion                                                                                                  | Pts | Proof                                                                                                   | Source        |     |
-| --- | ---------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------------------------------------------------------------------- | ------------- | --- |
-| C1  | Recurring tasks: daily, weekdays, weekly. Edit one or all, DST safe, Undo                                  | 5   | Pure `recurrence.test.ts` with property test; a daily task appears on the right days in the user's zone | planned       |     |
-| C2  | Capture inbox: `Shift+Space` anywhere, no time, schedule or drop from a list                               | 4   | Capture in under 3 s; an inbox item can become a task in two taps; survives reload                      | planned       |     |
-| C3  | End-of-day shutdown at day end: what got done, move unfinished to tomorrow or drop in one tap, calm screen | 3   | Pure summary test; works without a key                                                                  | planned       |     |
-| C4  | `startedAt` and `completedAt` recorded on tasks (schema, no UI)                                            | 1   | Test; `bun run db:push` applied; set on Done                                                            | feature ideas |     |
+| ID  | Criterion                                                                                                                      | Pts | Proof                                                                                                   | Source        |     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | --- | ------------------------------------------------------------------------------------------------------- | ------------- | --- |
+| C1  | Recurring tasks, the core feature: essentials (sleep, meals, water, shower, nails) by cadence. Edit one or all, DST safe, Undo | 5   | Pure `recurrence.test.ts` with property test; a daily task appears on the right days in the user's zone | planned       |     |
+| C2  | Capture inbox: `Shift+Space` anywhere, no time, schedule or drop from a list                                                   | 4   | Capture in under 3 s; an inbox item can become a task in two taps; survives reload                      | planned       |     |
+| C3  | End-of-day shutdown at day end: what got done, move unfinished to tomorrow or drop in one tap, calm screen                     | 3   | Pure summary test; works without a key                                                                  | planned       |     |
+| C4  | `startedAt` and `completedAt` recorded on tasks (schema, no UI)                                                                | 1   | Test; `bun run db:push` applied; set on Done                                                            | feature ideas |     |
 
 ### D. Assistant (12 of 14)
 
@@ -98,15 +98,15 @@ These cuts are my call and open to veto. The two I would argue hardest to keep o
 
 ### E. Craft (0 of 20)
 
-| ID  | Criterion                                                                                                                 | Pts | Proof                                                            | Source     |     |
-| --- | ------------------------------------------------------------------------------------------------------------------------- | --- | ---------------------------------------------------------------- | ---------- | --- |
-| E1  | Navigation: Now/Plan switch, context slot, menu, sound popover with timed mute, shortcuts                                 | 3   | `shortcuts.test.ts` green; every route reachable in two taps     | ux plan 3  |     |
-| E2  | One priority color ramp, page frame, type scale, 44 px targets, sentence case                                             | 3   | No priority color is defined twice (architecture test)           | ux plan 5  |     |
-| E3  | Plan rework: day switcher in bar, live parse preview, 30 min default, drag to create, keyboard blocks, grouped phone list | 5   | `visibleHours` test; a day can be planned with the keyboard only | ux plan 6  |     |
-| E4  | Task sheet with chips and priority control, failed save shows a toast                                                     | 2   | Seen on a real screen                                            | ux plan 7  |     |
-| E5  | Settings: auto-save, presets, sections, My day, Google card hidden                                                        | 4   | No Save button except the key; schema applied                    | ux plan 8  |     |
-| E6  | First run: no theme question, empty day with quick add, one-time second screen hint                                       | 1   | A new account reaches a useful screen with zero decisions        | ux plan 10 |     |
-| E7  | Accessibility: axe has no serious or critical violation on Now in light and dark, everything reachable by keyboard        | 2   | `bun run test:e2e` axe spec green                                | ux plan 13 |     |
+| ID  | Criterion                                                                                                                                                                   | Pts | Proof                                                                              | Source     |     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------------------------------------------------------------------------- | ---------- | --- |
+| E1  | Navigation: Now/Plan switch, context slot, menu, sound popover with timed mute, shortcuts                                                                                   | 3   | `shortcuts.test.ts` green; every route reachable in two taps                       | ux plan 3  |     |
+| E2  | One priority color ramp, page frame, type scale, 44 px targets, sentence case                                                                                               | 3   | No priority color is defined twice (architecture test)                             | ux plan 5  |     |
+| E3  | Plan rework: day switcher in bar, live parse preview, 30 min default, drag to create, keyboard blocks, grouped phone list                                                   | 5   | `visibleHours` test; a day can be planned with the keyboard only                   | ux plan 6  |     |
+| E4  | Task sheet with chips and priority control, failed save shows a toast                                                                                                       | 2   | Seen on a real screen                                                              | ux plan 7  |     |
+| E5  | Settings: auto-save, presets, sections, My day, Google card hidden                                                                                                          | 4   | No Save button except the key; schema applied                                      | ux plan 8  |     |
+| E6  | First run: no theme question, essentials intro (sleep, meals, water, shower, nails: pick a time for each, needs planning first, see section 6), one-time second screen hint | 1   | A new account reaches a useful screen after only choosing times for the essentials | ux plan 10 |     |
+| E7  | Accessibility: axe has no serious or critical violation on Now in light and dark, everything reachable by keyboard                                                          | 2   | `bun run test:e2e` axe spec green                                                  | ux plan 13 |     |
 
 ### F. Trust (3 of 21)
 
@@ -159,15 +159,17 @@ Notes on the order:
 
 ## 6. Risks and open decisions
 
-| Risk or question                                                                                              | Plan                                                                                                                                   |
-| ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Web Push on iOS needs an installed PWA and has quirks. The in-process SSE design also assumes a single server | Build for the author's devices first. State plainly in Settings which platforms get push. The single process stays, no queue needed    |
-| Recurring tasks conflict with "a task belongs to one `task.date`". Materialize or compute?                    | Decide at the start of C1. Leaning to materialize rows ahead (14 days) so `rank()` and every other module stay untouched               |
-| The soon plan open question: how long time up stays on screen relative to the hyperfocus tap                  | Decide at the start of soon plan 4.1, as written there                                                                                 |
-| `CLAUDE.md` says no stat tiles. The "3 done today" line is an exception already agreed in the UX plan         | Write the exception into `CLAUDE.md` in UX phase 4                                                                                     |
-| Scope creep from `feature-ideas.md`. Many ideas rate 9 out of 10                                              | Nothing joins 1.0 without a new row in section 4 with points and a proof, and without removing points of equal size or moving the date |
-| The estimate is mine, not measured. UX phases have no estimate in their own plan                              | Re-estimate at each milestone. A phase that took twice the points is recorded here so the next estimate is honest                      |
-| 8b removed from 1.0 against decision 5 in the UX plan                                                         | Revisit when Calm ends. If wanted, it is 4 points and replaces nothing                                                                 |
+| Risk or question                                                                                                                      | Plan                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Web Push on iOS needs an installed PWA and has quirks. The in-process SSE design also assumes a single server                         | Build for the author's devices first. State plainly in Settings which platforms get push. The single process stays, no queue needed    |
+| Recurring tasks conflict with "a task belongs to one `task.date`". Materialize or compute?                                            | Decide at the start of C1. Leaning to materialize rows ahead (14 days) so `rank()` and every other module stay untouched               |
+| Essentials usually beat other tasks but not always (one less hour of sleep for the only exam hour)                                    | Decide at the start of C1: each essential has a floor, numbers decide small trades, the user is asked for anything below the floor     |
+| First run asks for the essentials and their times (E6). Not planned yet: which items, defaults, skippable or required, how it fits C1 | Plan it before E6 and C1 start, together, since the intro creates the recurring tasks. E6 points will grow                             |
+| The soon plan open question: how long time up stays on screen relative to the hyperfocus tap                                          | Decide at the start of soon plan 4.1, as written there                                                                                 |
+| `CLAUDE.md` says no stat tiles. The "3 done today" line is an exception already agreed in the UX plan                                 | Write the exception into `CLAUDE.md` in UX phase 4                                                                                     |
+| Scope creep from `feature-ideas.md`. Many ideas rate 9 out of 10                                                                      | Nothing joins 1.0 without a new row in section 4 with points and a proof, and without removing points of equal size or moving the date |
+| The estimate is mine, not measured. UX phases have no estimate in their own plan                                                      | Re-estimate at each milestone. A phase that took twice the points is recorded here so the next estimate is honest                      |
+| 8b removed from 1.0 against decision 5 in the UX plan                                                                                 | Revisit when Calm ends. If wanted, it is 4 points and replaces nothing                                                                 |
 
 ## 7. Next actions
 
