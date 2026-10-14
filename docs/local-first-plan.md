@@ -92,6 +92,12 @@ Measured in a real browser, results written into this section:
 - The Realtime WebSocket from the browser with the key as subprotocol (`openai-insecure-api-key.<key>`), as `src/lib/server/voice.ts` uses it.
 - `fake-indexeddb` under Bun with `--isolate`.
 
+**Results (2026-10-14, from a shell, no browser and no key at hand):**
+
+- CORS: the preflight for `/v1/responses` and `/v1/audio/transcriptions` from a foreign origin answers 200 with `access-control-allow-headers: authorization,content-type` and an allowed origin. An unauthenticated POST answers 401 with `access-control-allow-origin: *`, so the browser can read the error. Still to see once with a real key in a browser: a full `responses` call and a transcription upload.
+- Realtime WebSocket: not measurable with curl (HTTP/2 answers 405 to the upgrade). Browsers do not apply CORS to WebSockets, so only the subprotocol key handshake is open. Check it in a browser console with a key before Part 3.5 relies on it. If it fails, voice replies for guests are the only feature that needs the relay.
+- `fake-indexeddb` 6.2.5 works under `bun test --isolate --randomize`: each file gets its own database. Inside one file, tests share it, so the local repo tests need a fresh `IDBFactory` in `beforeEach` (the same shape as `resetDb`).
+
 If OpenAI refuses browser calls, D3 needs a stateless relay on this server that forwards and stores nothing. The key would then pass through the server, and Privacy must say so. Decide then, not now.
 
 ### 2.2 `Repo` port
