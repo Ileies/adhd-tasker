@@ -1,40 +1,39 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { OVERRUN_LIMITS, REMINDER_LIMITS } from '#lib/anchoring.js';
-	import { Button } from '#lib/components/ui/button/index.js';
+	import { invalidateAll } from '$app/navigation';
+	import { OVERRUN_LIMITS, REMINDER_LIMITS, parseAnchoringForm } from '#lib/anchoring.js';
+	import { saveSettings } from '#lib/autosave.js';
+	import { anchoringPatch } from '#lib/settings.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 
 	const {
 		reminders,
 		advance,
 		hyperfocus,
-		overrun,
-		message,
-		saved
+		overrun
 	}: {
 		reminders: boolean;
 		advance: number;
 		hyperfocus: boolean;
 		overrun: number;
-		message?: string;
-		saved?: boolean;
 	} = $props();
 
-	let busy = $state(false);
+	let message = $state<string | null>(null);
+	let saved = $state(false);
+
+	async function save(event: Event) {
+		saved = false;
+		const parsed = parseAnchoringForm(new FormData(event.currentTarget as HTMLFormElement));
+		message = await saveSettings(
+			parsed.ok ? { ok: true, value: anchoringPatch(parsed.value) } : parsed
+		);
+		if (message === null) {
+			saved = true;
+			await invalidateAll();
+		}
+	}
 </script>
 
-<form
-	method="POST"
-	action="?/saveAnchoring"
-	class="space-y-5"
-	use:enhance={() => {
-		busy = true;
-		return async ({ update }) => {
-			await update({ reset: false });
-			busy = false;
-		};
-	}}
->
+<form class="space-y-5" onchange={save} onsubmit={(event) => event.preventDefault()}>
 	<div class="space-y-2">
 		<label class="flex cursor-pointer items-start gap-3">
 			<input
@@ -102,6 +101,4 @@
 
 	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 	{#if saved}<p class="text-success text-sm" role="status">Saved.</p>{/if}
-
-	<Button type="submit" disabled={busy}>Save</Button>
 </form>

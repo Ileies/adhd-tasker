@@ -1,7 +1,5 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { parseAnchoringForm } from '#lib/anchoring.js';
-import { parseSettingsForm } from '#lib/guardrails.js';
 import { encrypt } from '#lib/server/crypto.js';
 import { OPENAI_KEY_PURPOSE } from '#lib/server/ctx.js';
 import { dbRepo } from '#lib/server/db-repo.js';
@@ -26,51 +24,6 @@ export const actions = {
 			openaiKey: encrypt(key, GOOGLE_CLIENT_SECRET, OPENAI_KEY_PURPOSE)
 		});
 		return { openaiSaved: true };
-	},
-
-	/** Autonomy, which events it may react to, quiet hours and the daily budget. */
-	saveAgent: async ({ locals, request }) => {
-		if (!locals.user) return fail(401, { agentMessage: 'Sign in first' });
-
-		const parsed = parseSettingsForm(await request.formData());
-		if (!parsed.ok) return fail(400, { agentMessage: parsed.error });
-
-		const { autonomy, events, quietStart, quietEnd, dailyTokenBudget } = parsed.value;
-		await dbRepo(locals.user.email).settings.update({
-			aiAutonomy: autonomy,
-			aiEvents: events.join(' '),
-			quietStart,
-			quietEnd,
-			dailyTokenBudget
-		});
-		return { agentSaved: true };
-	},
-
-	/** Heads-up before a task starts and the tap when one runs over. */
-	saveAnchoring: async ({ locals, request }) => {
-		if (!locals.user) return fail(401, { anchoringMessage: 'Sign in first' });
-
-		const parsed = parseAnchoringForm(await request.formData());
-		if (!parsed.ok) return fail(400, { anchoringMessage: parsed.error });
-
-		await dbRepo(locals.user.email).settings.update(parsed.value);
-		return { anchoringSaved: true };
-	},
-
-	/** Whether the assistant speaks its replies and notes. */
-	saveVoice: async ({ locals, request }) => {
-		if (!locals.user) return fail(401, { voiceMessage: 'Sign in first' });
-		const replies = (await request.formData()).has('replies');
-		await dbRepo(locals.user.email).settings.update({ voiceReplies: replies });
-		return { voiceSaved: true };
-	},
-
-	/** Whether the Now screen shows the time of day. */
-	saveClock: async ({ locals, request }) => {
-		if (!locals.user) return fail(401, { clockMessage: 'Sign in first' });
-		const show = (await request.formData()).has('show');
-		await dbRepo(locals.user.email).settings.update({ showClock: show });
-		return { clockSaved: true };
 	},
 
 	removeOpenaiKey: async ({ locals }) => {

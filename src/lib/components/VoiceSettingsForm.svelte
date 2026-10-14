@@ -1,30 +1,30 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { Button } from '#lib/components/ui/button/index.js';
+	import { invalidateAll } from '$app/navigation';
+	import { saveSettings } from '#lib/autosave.js';
 
-	const { replies, saved }: { replies: boolean; saved?: boolean } = $props();
+	const { replies }: { replies: boolean } = $props();
 
-	let busy = $state(false);
+	let message = $state<string | null>(null);
+	let saved = $state(false);
+
+	async function save(event: Event) {
+		saved = false;
+		const checked = (event.target as HTMLInputElement).checked;
+		message = await saveSettings({ ok: true, value: { voiceReplies: checked } });
+		if (message === null) {
+			saved = true;
+			await invalidateAll();
+		}
+	}
 </script>
 
-<form
-	method="POST"
-	action="?/saveVoice"
-	class="space-y-4"
-	use:enhance={() => {
-		busy = true;
-		return async ({ update }) => {
-			await update({ reset: false });
-			busy = false;
-		};
-	}}
->
+<div class="space-y-4">
 	<label class="flex cursor-pointer items-start gap-3">
 		<input
 			type="checkbox"
-			name="replies"
 			class="accent-primary mt-1 size-4 shrink-0"
 			checked={replies}
+			onchange={save}
 		/>
 		<span>
 			<span class="font-medium">Speak replies and notes</span>
@@ -39,7 +39,6 @@
 		Recordings and spoken text go to OpenAI with your key and are not kept.
 	</p>
 
+	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 	{#if saved}<p class="text-success text-sm" role="status">Saved.</p>{/if}
-
-	<Button type="submit" disabled={busy}>Save</Button>
-</form>
+</div>

@@ -1,8 +1,15 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { AUTONOMY, REACTION_EVENTS, parseEvents, type Autonomy } from '#lib/guardrails.js';
+	import { invalidateAll } from '$app/navigation';
+	import {
+		AUTONOMY,
+		REACTION_EVENTS,
+		parseEvents,
+		parseSettingsForm,
+		type Autonomy
+	} from '#lib/guardrails.js';
+	import { saveSettings } from '#lib/autosave.js';
+	import { agentPatch } from '#lib/settings.js';
 	import { formatClock } from '#lib/format.js';
-	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 
 	const {
@@ -10,17 +17,13 @@
 		events,
 		quietStart,
 		quietEnd,
-		budget,
-		message,
-		saved
+		budget
 	}: {
 		autonomy: Autonomy;
 		events: string;
 		quietStart: number;
 		quietEnd: number;
 		budget: number | null;
-		message?: string;
-		saved?: boolean;
 	} = $props();
 
 	const AUTONOMY_TEXT: Record<Autonomy, { label: string; detail: string }> = {
@@ -47,21 +50,23 @@
 	};
 
 	const enabled = $derived(parseEvents(events));
-	let busy = $state(false);
+	let message = $state<string | null>(null);
+	let saved = $state(false);
+
+	async function save(event: Event) {
+		saved = false;
+		const parsed = parseSettingsForm(new FormData(event.currentTarget as HTMLFormElement));
+		message = await saveSettings(
+			parsed.ok ? { ok: true, value: agentPatch(parsed.value) } : parsed
+		);
+		if (message === null) {
+			saved = true;
+			await invalidateAll();
+		}
+	}
 </script>
 
-<form
-	method="POST"
-	action="?/saveAgent"
-	class="space-y-5"
-	use:enhance={() => {
-		busy = true;
-		return async ({ update }) => {
-			await update({ reset: false });
-			busy = false;
-		};
-	}}
->
+<form class="space-y-5" onchange={save} onsubmit={(event) => event.preventDefault()}>
 	<fieldset class="space-y-3">
 		<legend class="mb-1 font-medium">How much may it do on its own</legend>
 		{#each AUTONOMY as level (level)}
@@ -147,6 +152,4 @@
 
 	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 	{#if saved}<p class="text-success text-sm" role="status">Saved.</p>{/if}
-
-	<Button type="submit" disabled={busy}>Save</Button>
 </form>

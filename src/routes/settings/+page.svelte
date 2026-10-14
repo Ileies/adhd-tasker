@@ -62,7 +62,7 @@
 				<Card.Description>Show the time of day on the Now screen.</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				<ClockSettingsForm show={data.user.showClock} saved={!!form && 'clockSaved' in form} />
+				<ClockSettingsForm show={data.user.showClock} />
 			</Card.Content>
 		</Card.Root>
 
@@ -79,8 +79,6 @@
 					advance={data.user.reminderAdvanceTime}
 					hyperfocus={data.user.hyperfocusAlarm}
 					overrun={data.user.overrunMinutes}
-					message={form && 'anchoringMessage' in form ? form.anchoringMessage : undefined}
-					saved={!!form && 'anchoringSaved' in form}
 				/>
 			</Card.Content>
 		</Card.Root>
@@ -108,10 +106,7 @@
 				>
 			</Card.Header>
 			<Card.Content>
-				<VoiceSettingsForm
-					replies={data.user.voiceReplies}
-					saved={!!form && 'voiceSaved' in form}
-				/>
+				<VoiceSettingsForm replies={data.user.voiceReplies} />
 			</Card.Content>
 		</Card.Root>
 
@@ -132,8 +127,6 @@
 					quietStart={data.user.quietStart}
 					quietEnd={data.user.quietEnd}
 					budget={data.user.dailyTokenBudget}
-					message={form && 'agentMessage' in form ? form.agentMessage : undefined}
-					saved={!!form && 'agentSaved' in form}
 				/>
 			</Card.Content>
 		</Card.Root>
