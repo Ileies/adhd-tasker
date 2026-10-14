@@ -65,7 +65,7 @@ export const tasker: {
 		ringing: { id: number; label: string } | null;
 		loaded: boolean;
 	};
-	device: { id: string; display: string | null; streaming: boolean }; // display: the device that plays sound, null means every device
+	device: { id: string; display: string | null; streaming: boolean; audioBlocked: boolean }; // display: the device that plays sound, null means every device. audioBlocked: the browser has not unlocked audio yet
 	voice: { replies: boolean; recording: boolean; transcribing: boolean; speaking: boolean }; // replies: the user's setting to hear the assistant
 } = $state({
 	backend: remoteBackend,
@@ -80,6 +80,6 @@ export const tasker: {
 	assistant: { open: false, busy: false, messages: [] },
 	agent: { cards: [], cursor: null },
 	schedule: { alarms: [], wakeups: [], ringing: null, loaded: false },
-	device: { id: '', display: null, streaming: false },
+	device: { id: '', display: null, streaming: false, audioBlocked: false },
 	voice: { replies: false, recording: false, transcribing: false, speaking: false }
 });

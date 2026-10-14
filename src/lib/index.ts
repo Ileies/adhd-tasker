@@ -2,13 +2,16 @@ import { tasker } from '#lib/app.svelte.js';
 import { browser } from '$app/env';
 import { readTone, ringTimeline, toneLength, toneNotes, type Note, type Tone } from '#lib/tones.js';
 import { duckSpeech } from '#lib/speech.js';
+import { audioContext as sharedAudio, runningAudio } from '#lib/audio.js';
 
-export function playSound(type: 'task-started' | 'reminder' | 'wrap-up') {
+export function playSound(type: 'task-started' | 'reminder' | 'wrap-up' | 'done') {
 	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
+	// A browser that has not unlocked audio yet stays silent, the silence line says so
+	const audioContext = runningAudio();
+	if (!audioContext) return;
 	// Anchor sounds win over speech
 	duckSpeech(type === 'task-started' ? 200 : 1200);
 
-	const audioContext = new AudioContext();
 	const master = audioContext.createGain();
 	master.gain.value = tasker.volume / 100;
 	master.connect(audioContext.destination);
@@ -93,6 +96,24 @@ export function playSound(type: 'task-started' | 'reminder' | 'wrap-up') {
 			oscillator.stop(start + 1.3);
 			break;
 		}
+		case 'done': {
+			// Three soft notes stepping up, a warm "finished": slower and rounder than the task-started ding
+			const start = audioContext.currentTime;
+			[523.25, 659.25, 783.99].forEach((hz, index) => {
+				const at = start + index * 0.14;
+				const oscillator = audioContext.createOscillator();
+				const gainNode = audioContext.createGain();
+				oscillator.connect(gainNode);
+				gainNode.connect(master);
+				oscillator.frequency.setValueAtTime(hz, at);
+				gainNode.gain.setValueAtTime(0, at);
+				gainNode.gain.linearRampToValueAtTime(0.22, at + 0.03);
+				gainNode.gain.exponentialRampToValueAtTime(0.001, at + 0.9);
+				oscillator.start(at);
+				oscillator.stop(at + 0.9);
+			});
+			break;
+		}
 	}
 }
 
@@ -103,19 +124,17 @@ export function playSound(type: 'task-started' | 'reminder' | 'wrap-up') {
 export function playTone(tone: Tone) {
 	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
 	const { wave, notes } = toneNotes(readTone(tone));
+	const audioContext = runningAudio();
+	if (!audioContext) return;
 
-	const audioContext = new AudioContext();
-	void audioContext.resume();
 	const master = audioContext.createGain();
 	master.gain.value = tasker.volume / 100;
 	master.connect(audioContext.destination);
 
 	const at = scheduleNotes(audioContext, master, wave, notes, audioContext.currentTime + 0.02);
 	duckSpeech((at - audioContext.currentTime) * 1000);
-	setTimeout(
-		() => void audioContext.close().catch(() => {}),
-		(at - audioContext.currentTime) * 1000 + 300
-	);
+	// The context is shared, so only this tone's own gain node goes once the last note has ended
+	setTimeout(() => master.disconnect(), (at - audioContext.currentTime) * 1000 + 300);
 }
 
 /** Schedules a note sequence from `start` (audio clock seconds) and returns the time it ends. */
@@ -160,8 +179,9 @@ export function startRinging(tone: Tone, durationMs: number): () => void {
 	const timeline = ringTimeline({ wave, notes }, durationMs);
 	if (timeline.length === 0) return () => {};
 
-	const audioContext = new AudioContext();
-	void audioContext.resume();
+	// Not `runningAudio`: a ring that waits on a locked context starts at the first tap, while its banner still shows
+	const audioContext = sharedAudio();
+	void audioContext.resume().catch(() => {});
 	const master = audioContext.createGain();
 	master.connect(audioContext.destination);
 	const startedAt = audioContext.currentTime + 0.05;
@@ -175,7 +195,8 @@ export function startRinging(tone: Tone, durationMs: number): () => void {
 		if (stopped) return;
 		stopped = true;
 		clearTimeout(timer);
-		void audioContext.close().catch(() => {});
+		// Notes already on the clock go silent with their master gain, the shared context stays open
+		master.disconnect();
 	};
 
 	const tick = () => {

@@ -3,6 +3,7 @@
 	import { CalendarDays, Maximize, Minimize, MessageSquare, User } from '@lucide/svelte';
 	import AssistantDrawer from '#lib/components/AssistantDrawer.svelte';
 	import { onMount, untrack } from 'svelte';
+	import { initAudio } from '#lib/audio.js';
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
 	import { toggleFullscreen } from '#lib/display.js';
@@ -27,7 +28,15 @@
 	// Hydrate once: later invalidations must not overwrite optimistic edits or days loaded since
 	if (browser) tasker.tasks = untrack(() => data.tasks);
 
-	onMount(initPreferences);
+	onMount(() => {
+		const stopPreferences = initPreferences();
+		// One audio context for the page, unlocked by the first tap or key
+		const stopAudio = initAudio();
+		return () => {
+			stopPreferences();
+			stopAudio();
+		};
+	});
 
 	// Legal pages are read-only and public: no welcome dialog and no One Tap prompt in the way
 	const legal = $derived(['/privacy', '/terms'].includes(page.url.pathname));

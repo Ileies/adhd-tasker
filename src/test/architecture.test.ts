@@ -83,6 +83,7 @@ describe('pairing rule', () => {
 		'app.svelte.ts': 'the state object, used by every client test',
 		'display.ts': 'browser API wiring, its rules live in tested modules',
 		'speech.ts': 'browser API wiring, its rules live in tested modules',
+		'audio.ts': 'the shared AudioContext, browser API wiring (the line it feeds is silence.ts)',
 		'server/index.ts': 'covered by the login route tests',
 		'server/db/index.ts': 'used by every integration test',
 		'index.ts': 'audio synthesis, browser API wiring (the task mutations live in tasks.ts)',
