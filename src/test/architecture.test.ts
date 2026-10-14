@@ -85,7 +85,6 @@ describe('pairing rule', () => {
 		'server/db/index.ts': 'used by every integration test',
 		'server/db/schema.ts': 'used by every integration test',
 		'format.ts': 'until soon plan 5.2 (formatLeft)',
-		'server/session.ts': 'until soon plan 2.2',
 		'index.ts': 'until soon plan 3.5',
 		'theme.ts': 'until UX phase 8b replaces its day window with sun.ts',
 		'server/agent.ts': 'until checks plan phase 4',
