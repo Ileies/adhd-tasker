@@ -107,6 +107,7 @@ The full plan is in `docs/ui-rework-plan.md`. Summary:
 - Now shows the current top-priority task in an urgency color, plus a rail of the following tasks. Ranking lives in one pure function (`src/lib/priority.ts`).
 - Plan screen with dated days replaces the dashboard list and sidebar.
 - An assistant (text and push-to-talk voice) reads and edits the plan through server-side tool calls.
+- The assistant is event-driven: task completed, created, changed, switched or missed, alarms and its own scheduled wakeups all become events it may react to or ignore. It can schedule wakeups and set alarms with tones. Guardrails (autonomy setting, rate limits, undo for every agent change) come before autonomy. The app must work fully without AI.
 
 ## Planned Features (Do Not Implement Without Discussion)
 

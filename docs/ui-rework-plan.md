@@ -15,6 +15,8 @@ Usage **[decided]**: desktop-first (permanent second screen), fully responsive d
 | **Now** (home) | Current top-priority task in an urgency color, countdown, Done + undo, and a rail of the following tasks so the user can prepare mentally |
 | **Plan** | Dated days, timeline and list view, quick add, touch-friendly drag and resize |
 | **Assistant** | Text + voice conversation that reads and edits the plan, challenges conflicts, and talks back |
+| **Agent events** | Every plan change and task switch becomes an event the AI can react to (comment, ask, edit the plan, set an alarm) or ignore |
+| **Scheduler and alarms** | The AI can wake itself at chosen times (e.g. "check if the user is done at 15:40") and set timed alarms with its own tones, plus user-made alarms |
 | **Anchoring** | Chime on switch and every 5 min, overdue handling, hyperfocus alarm, "I'm stuck" |
 | **Settings** | Timezone, sound, theme, reminders, OpenAI key |
 | **Platform** | Fullscreen API, Screen Wake Lock, PWA install |
@@ -35,6 +37,8 @@ The screen is only trustworthy if the ranking is predictable and explainable. Ex
 5. **Missed** = window ended without completion. Never silently the top item. Shown as a quiet strip with one-tap "reschedule" or "drop".
 6. When nothing is current: show the next task with a "starts in" countdown, or a calm "free time" state.
 7. Every switch shows a one-line reason ("Critical task started", "Previous task done"), so the user keeps trusting it.
+
+`rank()` is shared code: the client renders its result, and the server runs the same function on a scheduler tick to detect `task.switched`, `task.missed` and `task.overrun` for the agent (section 6). One ranking, two consumers, so what the screen shows and what the AI reacts to can never disagree.
 
 ## 3. Visual design
 
@@ -99,37 +103,107 @@ Persistent drawer on desktop, full sheet on phone. Text field plus mic button.
 - Server endpoint `POST /assistant` streams the reply. Tools: `list_tasks(range)`, `add_task`, `update_task`, `delete_task`. The model gets today and tomorrow as context on every turn. Tool calls run server-side with the logged-in user's id only.
 - Writes go through the same code path as the UI so the optimistic `tasker` state, undo and the Now screen all update live.
 - Voice is phased: push-to-talk first (an always-listening mic on a wall display is a privacy and false-trigger problem). Speech to text, then spoken replies. Spoken replies are short; long details stay on screen.
-- Assistant speech must duck or pause while the task chime plays, and never start unprompted except for explicit alarms.
+- Assistant speech must duck or pause while the task chime plays, and only speak unprompted for reactions allowed by the guardrails in 6.4 or for alarms.
 - **Security**: `openaiKey` is currently stored in plain text. Encrypt it at rest, never send it to the client, and make all model calls server-side.
 
 **[default] Provider approach**: text chat with tools first. Then Whisper (STT) and OpenAI TTS since the user already supplies an OpenAI key. Evaluate the Realtime API later if latency feels bad. Browser `SpeechRecognition` is not available in Firefox, so it is only an optional fallback.
 
-## 6. Data changes
+## 6. Event-driven agent
+
+The assistant is not only a chat box. It is an agent that observes the plan and may act on it. The core app must work fully without it (no key, key invalid, API down): AI is an enhancement, never a dependency.
+
+### 6.1 Events
+
+One server-side `emit(event)` is called from every mutation path and from the scheduler. Events are persisted in an `events` log.
+
+| Event | Trigger |
+|---|---|
+| `task.completed` | User marks a task done (or undoes it) |
+| `task.created`, `task.updated`, `task.deleted` | Any plan edit, from UI or assistant |
+| `task.switched` | The ranking's current task changed, payload has the reason (higher priority started, previous done, window ended) |
+| `task.missed` | A task's window ended without completion ("not done for too long") |
+| `task.overrun` | A task is past its planned time by the hyperfocus threshold |
+| `stuck.pressed` | User pressed "I'm stuck" and chose an option |
+| `alarm.fired` | A timed alarm went off |
+| `wakeup.fired` | A wakeup the agent scheduled for itself arrived, carrying its own note |
+| `day.started` | First load of the day or configured wake time (morning briefing) |
+| `user.message` | Text or voice input |
+
+Every event carries `origin: user | agent | system`. **Events caused by the agent never trigger the agent again**, which prevents loops. A reaction may use at most 4 tool calls.
+
+### 6.2 What a reaction can be
+
+The model answers each event with zero or more of these, and **doing nothing is the default**:
+- `say(text)`: a short line shown in a bounded assistant strip on Now, optionally spoken
+- `ask(text, options?)`: a question card (e.g. "Done with the call? Move study to 17:00?")
+- plan tools: `add_task`, `update_task`, `delete_task`
+- `schedule_wakeup`, `set_alarm`, `play_tone` (see 6.3)
+
+The reaction never covers the hero. The assistant strip is a fixed small region on the Now screen, so the priority display stays trustworthy.
+
+### 6.3 Scheduler, wakeups and alarms
+
+The server owns time for the agent. A persisted `schedule` table is polled every 15 s by a scheduler in the Bun process (PM2 restart safe). On startup, entries that are less than 10 minutes late fire, older ones are dropped with a note in the log.
+
+- `schedule_wakeup(at | in_minutes, note)`: the agent wakes itself later. The note is fed back when it fires, so it has memory ("at 15:40 check whether the dentist call is done, if not offer to move the next task"). Max 10 pending wakeups, no wakeups during quiet hours unless the user requested one.
+- `set_alarm(at, tone, label, repeat?, task_id?)`: a user-visible alarm, listed and cancellable in the UI. Created by the user or the agent (`created_by`). Examples: 5 minutes before a task, a "leave now" alarm, a recurring evening wind-down.
+- `play_tone(tone)` and the tone library: tones are synthesized with Web Audio (no files). The agent may pick named tones (`chime`, `soft`, `nudge`, `rising`, `urgent`) or **define a custom one** as a short note sequence (waveform, notes, durations). Safety caps: max 5 s, never louder than the user's volume, max 3 custom tones per day, flashing and strobing never used. Tones are stored with the alarm so they replay identically.
+- Alarms play on the client. Server-side schedule entries are pushed to connected clients over an event stream (SSE), and the client also keeps the next alarms locally so a brief disconnect does not lose them. Web Push for a closed app comes with the PWA.
+
+### 6.4 Guardrails (the AI must not become another source of nagging)
+
+- **Autonomy setting**: `observe` (log only), `suggest` (cards, never edits), `act` (may edit, with undo). Default `suggest`. Voice replies are a separate toggle.
+- **Coalescing**: events within 5 s are batched into one call (dragging a task triggers one reaction, not 20).
+- **Rate limit**: at most 6 unprompted reactions per hour and a minimum 3 minute gap, quiet hours respected. `user.message` and alarms the user set are exempt.
+- **Per-event toggles**: the user can switch each event type on or off in Settings.
+- **Cost control**: reactions use a small, cheap model, chat uses the stronger one. Show a daily usage meter and an optional daily token budget, after which the agent goes silent instead of failing.
+- **Visibility and undo**: every agent change is tagged `source: agent`, listed in an activity log ("Moved Study to 17:00 because ..."), and has an Undo toast. The plan view marks agent-made tasks and alarms.
+- **Output device**: with several open devices, only the device marked "display" speaks and plays agent tones, to avoid double audio. Others show cards silently.
+- **Privacy**: task text is sent to OpenAI using the user's own key. Say so in Settings. The key is encrypted at rest and never reaches the client.
+
+### 6.5 Context given to the model
+
+Today and tomorrow's tasks, the current ranking, last 20 events, pending wakeups and alarms, a small `agent_notes` store it can write to (e.g. "exam on Thursday, user studies in the evenings"), user preferences (autonomy, quiet hours, timezone).
+
+## 7. Data changes
 
 - `tasks.date` (`YYYY-MM-DD`, user timezone). Migration sets all existing tasks to today. `bun run db:push` afterwards.
 - `startTime` stays minutes since midnight, `duration` stays minutes. Tasks crossing midnight are out of scope (split them).
-- Later: recurrence rule column, conversation history table (not needed for v1, the drawer session is enough).
+- `events` (id, email, type, payload JSON, origin, createdAt, handledAt).
+- `schedule` (id, email, kind `wakeup | alarm`, fireAt, note, tone JSON, label, repeat, taskId, createdBy, status).
+- `agent_actions` (id, email, eventId, tool, before JSON, after JSON, createdAt) for the activity log and undo.
+- `agent_notes` (email, key, value).
+- `users`: `aiAutonomy`, `quietHoursStart/End`, `dailyTokenBudget`, `displayDeviceId`, per-event toggle flags.
+- `tasks.source` (`user | agent`) for marking agent-made tasks.
+- `current_task_id` per user so the server can detect `task.switched` by diffing the ranking on each scheduler tick.
+- Later: recurrence rule column, conversation history table (the drawer session is enough for v1).
 - Server load returns the current day plus tomorrow, other dates are fetched when the Plan screen navigates.
 
-## 7. Phases
+## 8. Phases
 
-Each phase ends with `bun run check`, a browser check at 3 widths (1920 wide, tablet, phone) via the `run` skill, and its own small commits.
+Each phase ends with `bun run check`, `bun run test`, a browser check at 3 widths (1920 wide, tablet, phone) via the `run` skill, and its own small commits. Phases 0 and 1 are done.
 
 0. **Cleanup**: delete `test.ts` (it contains tokens), stale German comments, localStorage fallback, marketing footer, dead README/TODO entries. Update `CLAUDE.md` with the new scope.
 1. **Design foundations**: urgency tokens, typography, shared priority module, remove duplicated color maps.
 2. **Priority engine + Now screen**: `priority.ts` with unit tests, new hero + rail, switch reasons, overdue to `missed`, fullscreen and wake lock, auto-hiding bar. Delete dashboard, stat tiles, sidebar and the separate fullscreen overlay.
 3. **Dated days + Plan screen**: schema, migration, day switcher, pointer-based timeline, quick add, undo.
 4. **Responsive and PWA**: manifest, installability, phone layouts for Now and Plan.
-5. **Assistant (text)**: endpoint, tools, drawer UI, key encryption, undo integration.
-6. **Assistant (voice)**: push-to-talk, STT, TTS, chime ducking.
-7. **Anchoring and settings**: "I'm stuck", next-up preview behavior, hyperfocus alarm, reminders, real settings page.
+5. **Assistant (text)**: endpoint, plan tools, drawer UI, key encryption, `agent_actions` log with undo.
+6. **Event bus and reactions**: `emit()` in every mutation path, `events` log, server-side `task.switched`, `task.missed` and `task.overrun` detection by running the shared `rank()` on a scheduler tick, event coalescing, rate limits, autonomy setting, assistant strip on Now, activity log UI.
+7. **Scheduler, wakeups and alarms**: `schedule` table and poller, SSE stream to clients, `schedule_wakeup`, `set_alarm`, alarm list UI, tone library plus custom tone definitions with safety caps, display-device selection. User-made alarms ship here too and work without AI.
+8. **Assistant (voice)**: push-to-talk, STT, TTS, chime ducking, spoken reactions.
+9. **Anchoring and settings**: "I'm stuck" (emits an event), next-up preview behavior, hyperfocus alarm, reminders, real settings page including per-event toggles, quiet hours and token budget.
 
-Phases 0 to 2 already deliver the core idea and are worth shipping before the data and AI work.
+Phases 0 to 2 already deliver the core idea and are worth shipping before the data and AI work. Phases 5 to 7 are the agent: build them in order, because each one is only safe once the previous guardrails exist (undo before autonomy, rate limits before events, caps before free-form tones).
 
-## 8. Open questions
+## 9. Open questions
 
 1. **Missed tasks**: should a critical missed task ever outrank the current one, or is the quiet strip always enough? (default: strip only)
 2. **Rail length**: next 4 tasks, or "everything today"? (default: 4, configurable)
 3. **Voice provider**: Whisper + OpenAI TTS (default) vs browser APIs vs Realtime API.
 4. **Assistant wake**: push-to-talk only (default) vs a wake word later.
 5. **Existing data**: OK to assign all current tasks to today in the migration?
+6. **Agent autonomy default**: `suggest` (default) or should it edit the plan on its own with undo from day one?
+7. **Reaction model**: a cheap model for events and a stronger one for chat (default), or one model for everything?
+8. **Closed app**: should wakeups and alarms still reach you when no tab is open (needs Web Push, comes with the PWA phase), or is the always-on screen enough for now? (default: screen only)
+9. **Custom tones**: allow fully custom note sequences (default, capped) or only the named tone library?
