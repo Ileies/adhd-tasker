@@ -6,8 +6,10 @@ import { error } from '@sveltejs/kit';
 import { TaskStatus } from '#lib/types.js';
 import { isDateKey } from '#lib/time.js';
 import { emitChange } from '#lib/server/events.js';
+import { fitsInDay, parseTaskId, parseTaskInput } from '#lib/task-input.js';
 
-const statuses = Object.values(TaskStatus);
+/** The JSON body of a request, an empty object when it is missing or not JSON. */
+const readBody = (request: Request) => request.json().catch(() => ({}));
 
 /** All tasks of one day, for days the layout did not preload. */
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -23,72 +25,64 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) error(401, 'Login required');
-	const { title, description, date, duration, startTime, priority, status } = await request.json();
-	if (!isDateKey(date)) error(400, 'date must be YYYY-MM-DD');
+	const parsed = parseTaskInput(await readBody(request), 'create');
+	if (!parsed.ok) error(400, parsed.error);
+	const fields = parsed.value;
 
-	const newTask = await db
+	const [created] = await db
 		.insert(tasks)
 		.values({
-			title,
-			description,
-			date,
-			duration,
+			title: fields.title!,
+			description: fields.description!,
+			date: fields.date!,
+			startTime: fields.startTime!,
+			duration: fields.duration!,
+			priority: fields.priority!,
 			email: locals.user.email,
-			startTime,
-			priority,
-			...(statuses.includes(status) && { status })
+			...(fields.status && { status: fields.status as TaskStatus })
 		})
 		.returning();
 
-	await emitChange(locals.user.email, null, newTask[0], 'user');
-	return Response.json(newTask[0]);
+	await emitChange(locals.user.email, null, created, 'user');
+	return Response.json(created);
 };
 
 export const PUT: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) error(401, 'Login required');
-	const { id, title, description, date, duration, startTime, priority, status } =
-		await request.json();
-	const taskId = parseInt(id as string);
-
-	if (isNaN(taskId)) {
-		return Response.json(false);
-	}
-	if (date !== undefined && !isDateKey(date)) error(400, 'date must be YYYY-MM-DD');
+	const body = await readBody(request);
+	const taskId = parseTaskId(body.id);
+	if (taskId === undefined) error(400, 'id must be a task id');
+	const parsed = parseTaskInput(body, 'update');
+	if (!parsed.ok) error(400, parsed.error);
+	const patch = parsed.value;
 
 	const owned = and(eq(tasks.id, taskId), eq(tasks.email, locals.user.email));
 	const [before] = await db.select().from(tasks).where(owned);
+	if (!before) error(404, 'Task not found');
+	// A start or a duration alone can still push the task over midnight together with the saved other one
+	if (!fitsInDay({ ...before, ...patch }))
+		error(400, 'tasks cannot cross midnight, split the task');
 
 	const [after] = await db
 		.update(tasks)
-		.set({
-			title,
-			description,
-			duration,
-			startTime,
-			priority,
-			...(date !== undefined && { date }),
-			...(statuses.includes(status) && { status })
-		})
+		.set({ ...patch, status: patch.status as TaskStatus | undefined })
 		.where(owned)
 		.returning();
 
-	if (before && after) await emitChange(locals.user.email, before, after, 'user');
+	await emitChange(locals.user.email, before, after, 'user');
 	return Response.json(true);
 };
 
 export const DELETE: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) error(401, 'Login required');
-	const { id } = await request.json();
-	const taskId = parseInt(id as string);
-
-	if (isNaN(taskId)) {
-		return Response.json(false);
-	}
+	const taskId = parseTaskId((await readBody(request)).id);
+	if (taskId === undefined) error(400, 'id must be a task id');
 
 	const [before] = await db
 		.delete(tasks)
 		.where(and(eq(tasks.id, taskId), eq(tasks.email, locals.user.email)))
 		.returning();
-	if (before) await emitChange(locals.user.email, before, null, 'user');
+	if (!before) error(404, 'Task not found');
+	await emitChange(locals.user.email, before, null, 'user');
 	return Response.json(true);
 };

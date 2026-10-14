@@ -16,14 +16,14 @@ export interface TaskFields {
 }
 
 export const MAX_LIST_DAYS = 14;
-const DAY = 1440;
+export const DAY = 1440;
 
 function fail(error: string): { ok: false; error: string } {
 	return { ok: false, error };
 }
 
 /** Accepts `HH:MM` (what the model is told to send) or minutes since midnight. */
-function parseTime(value: unknown): number | undefined {
+export function parseTime(value: unknown): number | undefined {
 	if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < DAY)
 		return value;
 	const match =
@@ -31,19 +31,19 @@ function parseTime(value: unknown): number | undefined {
 	return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
 }
 
-function parseDuration(value: unknown): number | undefined {
+export function parseDuration(value: unknown): number | undefined {
 	return typeof value === 'number' && Number.isInteger(value) && value >= 5 && value <= DAY
 		? value
 		: undefined;
 }
 
-function parsePriority(value: unknown): Priority | undefined {
+export function parsePriority(value: unknown): Priority | undefined {
 	return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5
 		? (value as Priority)
 		: undefined;
 }
 
-function parseTitle(value: unknown): string | undefined {
+export function parseTitle(value: unknown): string | undefined {
 	const title = typeof value === 'string' ? value.trim() : '';
 	return title && title.length <= 200 ? title : undefined;
 }
