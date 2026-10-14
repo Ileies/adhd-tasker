@@ -130,8 +130,8 @@
 			{@render children()}
 		</div>
 
-		<!-- The edit timeline fills the viewport, so it has no footer -->
-		{#if page.url.pathname !== '/edit'}
+		<!-- No footer in focus mode, and the edit timeline fills the viewport -->
+		{#if !tasker.isFullScreen && page.url.pathname !== '/edit'}
 			<footer class="mt-16 shrink-0 border-t py-8 text-center">
 				<p class="text-sm text-muted-foreground">ADHD Tasker - Helping you stay focused, one task at a time 🎯</p>
 				<p class="mt-2 text-xs text-muted-foreground/60">Built with SvelteKit and shadcn-svelte</p>
