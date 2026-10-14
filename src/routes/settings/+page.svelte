@@ -7,16 +7,31 @@
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
+	import PageFrame from '#lib/components/PageFrame.svelte';
 
 	const { data, form } = $props();
+
+	const sections = $derived([
+		{ id: 'theme', label: 'Theme' },
+		{ id: 'timezone', label: 'Timezone' },
+		...(data.user
+			? [
+					{ id: 'reminders', label: 'Reminders and overruns' },
+					{ id: 'assistant', label: 'Assistant' },
+					{ id: 'voice', label: 'Voice' },
+					{ id: 'agent', label: 'Assistant on its own' },
+					{ id: 'google', label: 'Google Workspace' }
+				]
+			: [])
+	]);
 </script>
 
 <svelte:head>
 	<title>Settings - ADHD Tasker</title>
 </svelte:head>
 
-<div class="mx-auto max-w-xl p-4">
-	<Card.Root>
+<PageFrame title="Settings" {sections}>
+	<Card.Root id="theme" class="scroll-mt-6">
 		<Card.Header>
 			<Card.Title>Theme</Card.Title>
 			<Card.Description
@@ -28,7 +43,7 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="mt-4">
+	<Card.Root id="timezone" class="mt-4 scroll-mt-6">
 		<Card.Header>
 			<Card.Title>Timezone</Card.Title>
 			<Card.Description>Task times and the active task follow this timezone.</Card.Description>
@@ -39,7 +54,7 @@
 	</Card.Root>
 
 	{#if data.user}
-		<Card.Root class="mt-4">
+		<Card.Root id="reminders" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Reminders and overruns</Card.Title>
 				<Card.Description
@@ -58,7 +73,7 @@
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root class="mt-4">
+		<Card.Root id="assistant" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Assistant</Card.Title>
 				<Card.Description
@@ -73,7 +88,7 @@
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root class="mt-4">
+		<Card.Root id="voice" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Voice</Card.Title>
 				<Card.Description
@@ -88,7 +103,7 @@
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root class="mt-4">
+		<Card.Root id="agent" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Assistant on its own</Card.Title>
 				<Card.Description>
@@ -111,7 +126,7 @@
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root class="mt-4">
+		<Card.Root id="google" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Google Workspace</Card.Title>
 				<Card.Description
@@ -124,4 +139,4 @@
 			</Card.Content>
 		</Card.Root>
 	{/if}
-</div>
+</PageFrame>

@@ -1,24 +1,41 @@
+<script lang="ts">
+	import PageFrame from '#lib/components/PageFrame.svelte';
+
+	const sections = [
+		{ id: 'who-is-responsible', label: 'Who is responsible' },
+		{ id: 'what-is-stored', label: 'What is stored' },
+		{ id: 'how-long-it-is-kept', label: 'How long it is kept' },
+		{ id: 'other-services-involved', label: 'Other services involved' },
+		{ id: 'cookies-and-local-storage', label: 'Cookies and local storage' },
+		{ id: 'server-logs', label: 'Server logs' },
+		{ id: 'legal-basis', label: 'Legal basis' },
+		{ id: 'your-rights', label: 'Your rights' },
+		{ id: 'changes', label: 'Changes' }
+	];
+</script>
+
 <svelte:head>
 	<title>Privacy - ADHD Tasker</title>
 </svelte:head>
 
-<article class="mx-auto max-w-2xl p-4 pb-12 leading-relaxed">
-	<h1 class="text-2xl font-bold">Privacy</h1>
-	<p class="text-muted-foreground mt-1 text-sm">Last updated October 14, 2026</p>
-
-	<p class="mt-6">
+<PageFrame title="Privacy" subtitle="Last updated October 14, 2026" {sections} prose>
+	<p>
 		ADHD Tasker is a small, privately run planner. It stores what it needs to show you your plan and
 		nothing more. There is no advertising, no analytics, no tracking and no selling of data.
 	</p>
 
-	<h2 class="mt-8 text-lg font-semibold">Who is responsible</h2>
+	<h2 id="who-is-responsible" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
+		Who is responsible
+	</h2>
 	<p class="mt-2">
 		Elias Klassen, reachable at <a class="underline" href="mailto:admin@ileies.de"
 			>admin@ileies.de</a
 		>. Write to this address for every question or request about your data.
 	</p>
 
-	<h2 class="mt-8 text-lg font-semibold">What is stored</h2>
+	<h2 id="what-is-stored" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
+		What is stored
+	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
 		<li>
 			<strong>Your account:</strong> the email address of your Google account. Nothing else from your
@@ -52,14 +69,18 @@
 		diagnosis.
 	</p>
 
-	<h2 class="mt-8 text-lg font-semibold">How long it is kept</h2>
+	<h2 id="how-long-it-is-kept" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
+		How long it is kept
+	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
 		<li>Events the assistant saw and token counts: 30 days.</li>
 		<li>Alarms and wakeups: 7 days after they ended. Resolved assistant notes: 7 days.</li>
 		<li>Your account, tasks, settings and the change history: until you ask for deletion.</li>
 	</ul>
 
-	<h2 class="mt-8 text-lg font-semibold">Other services involved</h2>
+	<h2 id="other-services-involved" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
+		Other services involved
+	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
 		<li>
 			<strong>Google</strong> handles sign-in. The sign-in script is loaded from Google on every
@@ -89,7 +110,9 @@
 		Data Privacy Framework.
 	</p>
 
-	<h2 class="mt-8 text-lg font-semibold">Cookies and local storage</h2>
+	<h2 id="cookies-and-local-storage" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
+		Cookies and local storage
+	</h2>
 	<p class="mt-2">
 		Only what is needed to keep you signed in and to remember this device's preferences:
 	</p>
@@ -107,14 +130,14 @@
 	</ul>
 	<p class="mt-2">There are no tracking or advertising cookies, so there is no cookie banner.</p>
 
-	<h2 class="mt-8 text-lg font-semibold">Server logs</h2>
+	<h2 id="server-logs" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Server logs</h2>
 	<p class="mt-2">
 		The server records which page was requested and when, and the web server in front of it may
 		record your IP address. These logs are used only to keep the service running and secure, and are
 		rotated regularly.
 	</p>
 
-	<h2 class="mt-8 text-lg font-semibold">Legal basis</h2>
+	<h2 id="legal-basis" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Legal basis</h2>
 	<p class="mt-2">
 		Storing your account, plan and settings is needed to provide the service you signed up for (Art.
 		6(1)(b) GDPR). Server logs and sign-in protection rest on the legitimate interest in a secure
@@ -122,7 +145,7 @@
 		use the assistant.
 	</p>
 
-	<h2 class="mt-8 text-lg font-semibold">Your rights</h2>
+	<h2 id="your-rights" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Your rights</h2>
 	<p class="mt-2">
 		You can ask for a copy of your data, for corrections, for deletion of your account and
 		everything in it, for a restriction of processing, and you can object to processing based on
@@ -140,6 +163,6 @@
 		>. Your OpenAI key can be removed under Settings and is then deleted.
 	</p>
 
-	<h2 class="mt-8 text-lg font-semibold">Changes</h2>
+	<h2 id="changes" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Changes</h2>
 	<p class="mt-2">If this policy changes, the date at the top changes with it.</p>
-</article>
+</PageFrame>

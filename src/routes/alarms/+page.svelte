@@ -8,8 +8,15 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
+	import PageFrame from '#lib/components/PageFrame.svelte';
 
 	const { data } = $props();
+
+	const sections = $derived([
+		{ id: 'alarms', label: 'Alarms' },
+		{ id: 'sound', label: 'Sound' },
+		...(tasker.schedule.wakeups.length ? [{ id: 'wakeups', label: 'Assistant wakeups' }] : [])
+	]);
 
 	const select =
 		'h-8 rounded-lg border border-input bg-transparent px-2 text-base md:text-sm dark:bg-input/30';
@@ -54,8 +61,8 @@
 </svelte:head>
 
 {#if data.user}
-	<div class="mx-auto max-w-xl p-4">
-		<Card.Root>
+	<PageFrame title="Alarms" {sections}>
+		<Card.Root id="alarms" class="scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Alarms</Card.Title>
 				<Card.Description
@@ -119,7 +126,7 @@
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root class="mt-4">
+		<Card.Root id="sound" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Sound</Card.Title>
 				<Card.Description
@@ -150,7 +157,7 @@
 		</Card.Root>
 
 		{#if tasker.schedule.wakeups.length}
-			<Card.Root class="mt-4">
+			<Card.Root id="wakeups" class="mt-4 scroll-mt-6">
 				<Card.Header>
 					<Card.Title>Assistant wakeups</Card.Title>
 					<Card.Description
@@ -175,5 +182,5 @@
 				</Card.Content>
 			</Card.Root>
 		{/if}
-	</div>
+	</PageFrame>
 {/if}

@@ -4,8 +4,14 @@
 	import { undoChange } from '#lib/assistant.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
+	import PageFrame from '#lib/components/PageFrame.svelte';
 
 	const { data } = $props();
+
+	const sections = [
+		{ id: 'changes', label: 'Changes' },
+		{ id: 'events', label: 'Events it saw' }
+	];
 
 	const clock = $derived(
 		new Intl.DateTimeFormat(undefined, {
@@ -28,8 +34,8 @@
 	<title>Activity - ADHD Tasker</title>
 </svelte:head>
 
-<div class="mx-auto max-w-2xl p-4">
-	<Card.Root>
+<PageFrame title="Activity" {sections}>
+	<Card.Root id="changes" class="scroll-mt-6">
 		<Card.Header>
 			<Card.Title>Changes by the assistant</Card.Title>
 			<Card.Description>
@@ -71,7 +77,7 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="mt-4">
+	<Card.Root id="events" class="mt-4 scroll-mt-6">
 		<Card.Header>
 			<Card.Title>Events it saw</Card.Title>
 			<Card.Description
@@ -95,4 +101,4 @@
 			{/if}
 		</Card.Content>
 	</Card.Root>
-</div>
+</PageFrame>
