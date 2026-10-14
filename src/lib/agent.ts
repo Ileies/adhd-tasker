@@ -53,3 +53,8 @@ export async function resolveCard(card: AgentCard, answer?: string) {
 	chat.open = true;
 	await sendMessage(answer);
 }
+
+/** Tells the server the user is stuck on a task. The on-screen hint does not wait for it, a failure costs only the assistant's answer. */
+export async function reportStuck(taskId: number, reason: string) {
+	await fetch('/agent/stuck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ taskId, reason }) }).catch(() => {});
+}

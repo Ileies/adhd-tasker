@@ -5,7 +5,10 @@
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { keepAwake } from '#lib/display.js';
-	import { createTask, deleteTask, loadDay, playSound, showToast, updateTask } from '#lib';
+	import { createTask, deleteTask, loadDay, playSound, playTone, showToast, updateTask } from '#lib';
+	import { playsSound } from '#lib/alarms.js';
+	import { reportStuck } from '#lib/agent.js';
+	import { hyperfocusDue, momentKey, reminderDue } from '#lib/anchoring.js';
 	import { rank, switchReason } from '#lib/priority.js';
 	import { minutesNow, todayIn } from '#lib/time.js';
 	import { untrack } from 'svelte';
@@ -49,6 +52,35 @@
 		if (!hasCurrent) return;
 		const timer = setInterval(() => playSound('reminder'), 300_000);
 		return () => clearInterval(timer);
+	});
+
+	// Heads-up before the next task starts and a tap when the latest task runs over. Each moment sounds once on the display device,
+	// and a late page load stays quiet because `hyperfocusDue` only reports the minutes right after the threshold.
+	const sounded = new Set<string>();
+	$effect(() => {
+		const user = data.user;
+		if (!user) return;
+		const quiet = !playsSound();
+
+		const upcoming = user.enableReminders ? reminderDue(ranking.upcoming, now, user.reminderAdvanceTime) : null;
+		if (upcoming) {
+			const key = momentKey('reminder', today, upcoming);
+			if (!sounded.has(key)) {
+				sounded.add(key);
+				showToast(`${upcoming.title} starts in ${upcoming.startTime - now} min`);
+				if (!quiet) playSound('reminder');
+			}
+		}
+
+		const over = user.hyperfocusAlarm ? hyperfocusDue(ranking.missed, now, user.overrunMinutes) : null;
+		if (over) {
+			const key = momentKey('overrun', today, over);
+			if (!sounded.has(key)) {
+				sounded.add(key);
+				showToast(`${over.title} ended ${now - over.startTime - over.duration} min ago`);
+				if (!quiet) playTone('nudge');
+			}
+		}
 	});
 
 	// Explain every switch, and chime for switches that happen while the page is open
@@ -100,7 +132,7 @@
 	</div>
 {:else}
 	<div class="grid min-h-svh md:min-h-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
-		<NowHero task={ranking.current} next={ranking.upcoming[0] ?? null} {now} {reason} onDone={complete} />
+		<NowHero task={ranking.current} next={ranking.upcoming[0] ?? null} {now} {reason} onDone={complete} onStuck={(task, why) => reportStuck(task.id, why.id)} />
 		<UpcomingRail upcoming={ranking.upcoming} missed={ranking.missed} {now} onDone={complete} onExtend={extend} onDrop={drop} />
 	</div>
 {/if}

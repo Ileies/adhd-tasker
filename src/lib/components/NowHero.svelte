@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Check } from '@lucide/svelte';
+	import { STUCK_REASONS, type StuckReason } from '#lib/anchoring.js';
 	import type { Task } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
@@ -12,8 +13,19 @@
 		next,
 		now,
 		reason,
-		onDone
-	}: { task: Task | null; next: Task | null; now: number; reason: string | null; onDone: (task: Task) => void } = $props();
+		onDone,
+		onStuck
+	}: { task: Task | null; next: Task | null; now: number; reason: string | null; onDone: (task: Task) => void; onStuck: (task: Task, reason: StuckReason) => void } = $props();
+
+	// The stuck panel belongs to one task, it closes when another one becomes current
+	let stuckFor = $state<{ id: number; reason: StuckReason | null } | null>(null);
+	const stuck = $derived(task && stuckFor?.id === task.id ? stuckFor : null);
+
+	function choose(reason: StuckReason) {
+		if (!task) return;
+		stuckFor = { id: task.id, reason };
+		onStuck(task, reason);
+	}
 
 	const left = $derived(task ? minutesLeft(task, now) : 0);
 	const progress = $derived(task ? Math.min(100, Math.max(0, 100 - (100 * left) / task.duration)) : 0);
@@ -46,7 +58,7 @@
 				<div class="h-full rounded-full bg-current transition-[width] duration-1000" style="width: {progress}%"></div>
 			</div>
 
-			<div>
+			<div class="flex flex-wrap items-center gap-3">
 				<Button
 					size="lg"
 					class="h-16 bg-foreground px-10 text-xl text-background hover:bg-foreground/85 [&_svg:not([class*='size-'])]:size-6"
@@ -55,7 +67,28 @@
 					<Check />
 					Done
 				</Button>
+				{#if !stuck}
+					<Button size="lg" variant="outline" class="h-16 border-current bg-transparent px-8 text-xl hover:bg-current/10" onclick={() => (stuckFor = { id: task.id, reason: null })}>
+						I'm stuck
+					</Button>
+				{/if}
 			</div>
+
+			{#if stuck}
+				<div class="max-w-xl space-y-3 rounded-lg border border-current/30 p-4" role="group" aria-label="I'm stuck">
+					{#if stuck.reason}
+						<p class="text-xl leading-relaxed">{stuck.reason.hint}</p>
+						<Button variant="ghost" class="px-0 text-base hover:bg-transparent hover:underline" onclick={() => (stuckFor = null)}>Close</Button>
+					{:else}
+						<p class="text-lg">What is in the way?</p>
+						<div class="flex flex-wrap gap-2">
+							{#each STUCK_REASONS as option (option.id)}
+								<Button variant="outline" class="h-11 border-current bg-transparent text-base hover:bg-current/10" onclick={() => choose(option)}>{option.label}</Button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			{#if reason}
 				<p class="text-base opacity-80">{reason}</p>
