@@ -6,7 +6,7 @@
 	import { initAudio } from '#lib/audio.js';
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
-	import { toggleFullscreen } from '#lib/display.js';
+	import { keepAwake, toggleFullscreen } from '#lib/display.js';
 	import { startStream } from '#lib/stream.js';
 	import { showOneTap } from '#lib/onetap.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
@@ -65,6 +65,9 @@
 		if (!data.user) return;
 		return startStream();
 	});
+
+	// The screen stays on on every page while the app is in view, like a playing video
+	$effect(keepAwake);
 
 	$effect(() => {
 		tasker.voice.replies = !!data.user?.voiceReplies;

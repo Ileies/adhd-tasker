@@ -4,7 +4,6 @@
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import { keepAwake } from '#lib/display.js';
 	import {
 		createTask,
 		deleteTask,
@@ -83,8 +82,6 @@
 		checkedDay = today;
 		if (data.user) loadDay(today).catch(() => {});
 	});
-
-	$effect(keepAwake);
 
 	// Soft chime every 5 minutes while there is something to do, to pull attention back
 	$effect(() => {
