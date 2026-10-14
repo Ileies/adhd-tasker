@@ -10,7 +10,7 @@
  * Usage:
  *   bun run deploy                   preflight, pull, build, back up, restart, verify
  *   bun run deploy --push            push the current branch first, instead of refusing
- *   bun run deploy --dry-run         print every step without touching the server
+ *   bun run deploy --dry-run         run verify, print every server step without touching it
  *   bun run deploy --skip-check      skip `bun run verify` (format, tests, types, lint, build)
  *   bun run deploy --db-push         run `drizzle-kit push --force` after the backup (schema changes)
  *   bun run deploy --schema-applied  deploy a schema.ts change that is already applied by hand
@@ -142,13 +142,9 @@ if (ahead !== '0') {
 
 if (!flag('skip-check')) {
 	step('bun run verify');
-	if (DRY) {
-		console.log('  [dry-run] verify');
-	} else {
-		// Run before anything touches the server so a broken build never replaces a working one.
-		// verify prints one line per step, or the output of the step that failed.
-		await $`bun run verify`.catch(() => fail('`bun run verify` failed - not deploying'));
-	}
+	// Run before anything touches the server so a broken build never replaces a working one. Also in
+	// a dry run, which only spares the server. verify prints one line per step, or the failing output.
+	await $`bun run verify`.catch(() => fail('`bun run verify` failed - not deploying'));
 }
 
 // === PREFLIGHT: REMOTE ===
