@@ -73,6 +73,10 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 2. Google redirects to `/callback` → validates state, exchanges code for token, sets 7-day token cookie
 3. Every request: `hooks.server.ts` validates token with Google OIDC, creates user in DB on first login, populates `event.locals.user`
 
+### PWA
+
+`static/manifest.webmanifest` and icons make the app installable (standalone, fullscreen preferred). `src/service-worker/` caches only built assets and static files, pages and task data always come from the server. The service worker has its own tsconfig and is excluded from the root one (SvelteKit 3 layout). `DATABASE_URL` is a static env: it is baked in at build time, so a production build always uses the DB from `.env`.
+
 ### Time Representation
 
 All times are stored as **minutes since midnight** (0–1440). A task at 9:30am = `570`. Duration of 90 minutes = `90`. Convert carefully when working with JS `Date` objects.
@@ -115,7 +119,7 @@ The full plan is in `docs/ui-rework-plan.md`. Summary:
 
 - **Google Calendar sync** - two-way, needs dated days first
 - **End-of-day summary** - small retrospective, replaces the full analytics dashboard
-- **Recurring tasks, capture inbox, PWA** - dated days exist now
+- **Recurring tasks, capture inbox** - dated days exist now
 - Parked on purpose: adaptive behavior model, Crisis Mode, anti-context-switch scheduler
 
 ## What to Avoid
