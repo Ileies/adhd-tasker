@@ -125,9 +125,9 @@ describe('pairing rule', () => {
 describe('OpenAI call sites', () => {
 	test('only openai.ts, voice.ts and the key check name the OpenAI host', () => {
 		expect(appCodeMentioning(/api\.openai\.com/)).toEqual([
+			'src/lib/core/openai-key.ts',
 			'src/lib/openai.ts',
-			'src/lib/voice.ts',
-			'src/routes/settings/+page.server.ts'
+			'src/lib/voice.ts'
 		]);
 	});
 
@@ -201,12 +201,12 @@ describe('network access', () => {
 	test('fetch is only called by backends, adapters and server code, never by a component or a route page', () => {
 		expect(appCodeMentioning(/\bfetch\(/)).toEqual([
 			'src/hooks.server.ts',
+			'src/lib/core/openai-key.ts',
 			'src/lib/core/voice.ts',
 			'src/lib/openai.ts',
 			'src/lib/remote-backend.ts',
 			'src/lib/server/session.ts',
 			'src/routes/callback/+server.ts',
-			'src/routes/settings/+page.server.ts',
 			'src/service-worker/index.ts'
 		]);
 	});

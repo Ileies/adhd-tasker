@@ -9,22 +9,25 @@
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import PageFrame from '#lib/components/PageFrame.svelte';
+	import { browser } from '$app/env';
+	import { tasker } from '#lib/app.svelte.js';
 
-	const { data, form } = $props();
+	const { data } = $props();
+
+	// The server render has no shared client state, so an account reads its load data there
+	const settings = $derived(browser ? tasker.settings : (data.user ?? tasker.settings));
+	// A guest's settings are on the device: the forms wait until they were read, so they never show defaults that are not theirs
+	const ready = $derived(!!data.user || tasker.account.ready);
 
 	const sections = $derived([
 		{ id: 'theme', label: 'Theme' },
 		{ id: 'timezone', label: 'Timezone' },
-		...(data.user
-			? [
-					{ id: 'clock', label: 'Clock' },
-					{ id: 'reminders', label: 'Reminders and overruns' },
-					{ id: 'assistant', label: 'Assistant' },
-					{ id: 'voice', label: 'Voice' },
-					{ id: 'agent', label: 'Assistant on its own' },
-					{ id: 'google', label: 'Google Workspace' }
-				]
-			: [])
+		{ id: 'clock', label: 'Clock' },
+		{ id: 'reminders', label: 'Reminders and overruns' },
+		{ id: 'assistant', label: 'Assistant' },
+		{ id: 'voice', label: 'Voice' },
+		{ id: 'agent', label: 'Assistant on its own' },
+		...(data.user ? [{ id: 'google', label: 'Google Workspace' }] : [])
 	]);
 </script>
 
@@ -55,14 +58,14 @@
 		</Card.Content>
 	</Card.Root>
 
-	{#if data.user}
+	{#if ready}
 		<Card.Root id="clock" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Clock</Card.Title>
 				<Card.Description>Show the time of day on the Now screen.</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				<ClockSettingsForm show={data.user.showClock} />
+				<ClockSettingsForm show={settings.showClock} />
 			</Card.Content>
 		</Card.Root>
 
@@ -75,10 +78,10 @@
 			</Card.Header>
 			<Card.Content>
 				<AnchoringSettingsForm
-					reminders={data.user.enableReminders}
-					advance={data.user.reminderAdvanceTime}
-					hyperfocus={data.user.hyperfocusAlarm}
-					overrun={data.user.overrunMinutes}
+					reminders={settings.enableReminders}
+					advance={settings.reminderAdvanceTime}
+					hyperfocus={settings.hyperfocusAlarm}
+					overrun={settings.overrunMinutes}
 				/>
 			</Card.Content>
 		</Card.Root>
@@ -91,10 +94,7 @@
 				>
 			</Card.Header>
 			<Card.Content>
-				<OpenAiKeyForm
-					hasKey={data.user.hasOpenaiKey}
-					message={form && 'openaiMessage' in form ? form.openaiMessage : undefined}
-				/>
+				<OpenAiKeyForm hasKey={settings.hasOpenaiKey} signedIn={!!data.user} />
 			</Card.Content>
 		</Card.Root>
 
@@ -106,7 +106,7 @@
 				>
 			</Card.Header>
 			<Card.Content>
-				<VoiceSettingsForm replies={data.user.voiceReplies} />
+				<VoiceSettingsForm replies={settings.voiceReplies} />
 			</Card.Content>
 		</Card.Root>
 
@@ -117,31 +117,37 @@
 					The assistant can notice what happens in your plan. By default it stays quiet and only
 					offers a note or a question. See what it did on the <a class="underline" href="/activity"
 						>Activity</a
-					> page.
+					>
+					page.
+					{#if !data.user}
+						Without an account it only works while this app is open.
+					{/if}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
 				<AgentSettingsForm
-					autonomy={data.user.aiAutonomy}
-					events={data.user.aiEvents}
-					quietStart={data.user.quietStart}
-					quietEnd={data.user.quietEnd}
-					budget={data.user.dailyTokenBudget}
+					autonomy={settings.aiAutonomy}
+					events={settings.aiEvents}
+					quietStart={settings.quietStart}
+					quietEnd={settings.quietEnd}
+					budget={settings.dailyTokenBudget}
 				/>
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root id="google" class="mt-4 scroll-mt-6">
-			<Card.Header>
-				<Card.Title>Google Workspace</Card.Title>
-				<Card.Description
-					>Ask your Google account for more permissions. Nothing is read or changed until a feature
-					uses them.</Card.Description
-				>
-			</Card.Header>
-			<Card.Content>
-				<GoogleLinkPicker linked={data.user.googleServices} />
-			</Card.Content>
-		</Card.Root>
+		{#if data.user}
+			<Card.Root id="google" class="mt-4 scroll-mt-6">
+				<Card.Header>
+					<Card.Title>Google Workspace</Card.Title>
+					<Card.Description
+						>Ask your Google account for more permissions. Nothing is read or changed until a
+						feature uses them.</Card.Description
+					>
+				</Card.Header>
+				<Card.Content>
+					<GoogleLinkPicker linked={data.user.googleServices} />
+				</Card.Content>
+			</Card.Root>
+		{/if}
 	{/if}
 </PageFrame>

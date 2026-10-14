@@ -9,6 +9,7 @@ import { parseMessages, runAssistant, undoAction } from '#lib/core/assistant.js'
 import { AssistantError, type Ctx, type Hint, type Model } from '#lib/core/context.js';
 import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
 import { createPlanTask, deletePlanTask, updatePlanTask } from '#lib/core/plan.js';
+import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
 import type { Repo } from '#lib/core/repo.js';
 import { addUserAlarm, cancelEntry, scheduleOverview } from '#lib/core/schedule.js';
@@ -137,6 +138,12 @@ export function localBackend(deps: LocalDeps): Backend {
 					if (!isValidTimezone(timezone)) throw new AssistantError('Invalid timezone', 400);
 					await repo.settings.update({ timezone });
 				}),
+			// The guest's key is checked from the browser and stays on the device
+			saveKey: (key) =>
+				guarded(
+					async () => void (await repo.settings.update({ openaiKey: await checkOpenaiKey(key) }))
+				),
+			removeKey: async () => void (await repo.settings.update({ openaiKey: null })),
 			save: (patch) =>
 				guarded(async () => {
 					const parsed = parseSettingsPatch(patch);

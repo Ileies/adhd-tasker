@@ -71,6 +71,9 @@ export interface Backend {
 		/** What the screens show and the forms start from. */
 		load(): Promise<ClientSettings>;
 		saveTimezone(timezone: string): Promise<void>;
+		/** Checks the key with OpenAI, then stores it (encrypted on the server, plain on a guest's device). Rejects with the reason. */
+		saveKey(key: string): Promise<void>;
+		removeKey(): Promise<void>;
 		/** Stores the changed settings. Rejects with the reason when a value is out of range. */
 		save(patch: SettingsPatch): Promise<void>;
 	};

@@ -153,6 +153,27 @@ describe('remoteBackend requests', () => {
 		expect(new URL(requests[0].url).search).toBe('?from=2026-10-13');
 	});
 
+	test('settings: the key is a PUT of just the key, removing it a DELETE', async () => {
+		const { requests } = fakeFetch({
+			'PUT http://localhost:5173/settings/openai-key': json(true),
+			'DELETE http://localhost:5173/settings/openai-key': json(true)
+		});
+		await remoteBackend.settings.saveKey('sk-x');
+		await remoteBackend.settings.removeKey();
+		expect(await requests[0].json()).toEqual({ key: 'sk-x' });
+		expect(requests[1].method).toBe('DELETE');
+	});
+
+	test('settings: a refused key carries the reason', async () => {
+		fakeFetch({
+			'PUT http://localhost:5173/settings/openai-key': refuse(400, 'OpenAI did not accept this key')
+		});
+		expect(await failure(() => remoteBackend.settings.saveKey('sk-bad'))).toMatchObject({
+			status: 400,
+			message: 'OpenAI did not accept this key'
+		});
+	});
+
 	test('settings: the timezone is a PUT', async () => {
 		const { requests } = fakeFetch({ 'PUT http://localhost:5173/settings/timezone': json(true) });
 		await remoteBackend.settings.saveTimezone('Asia/Tokyo');

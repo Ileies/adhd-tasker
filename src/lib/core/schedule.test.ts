@@ -10,6 +10,7 @@ import {
 } from '#lib/core/schedule.js';
 import { SCHEDULE_LIMITS } from '#lib/schedule.js';
 import { NOW, testCtx } from '#test/ctx.js';
+import { failureOf } from '#test/errors.js';
 
 const MIN = 60_000;
 const alarm = { in_minutes: 10, label: 'Stretch', tone: 'chime' };
@@ -35,13 +36,13 @@ describe('addUserAlarm', () => {
 		['no time', { label: 'x' }]
 	])('%s answers 400', async (_name, body) => {
 		const { ctx } = await testCtx();
-		await expect(addUserAlarm(ctx, body, 'UTC')).rejects.toMatchObject({ status: 400 });
+		expect(await failureOf(addUserAlarm(ctx, body, 'UTC'))).toMatchObject({ status: 400 });
 	});
 
 	test('refuses an alarm beyond the limit', async () => {
 		const { ctx } = await testCtx();
 		for (let i = 0; i < SCHEDULE_LIMITS.maxAlarms; i++) await addUserAlarm(ctx, alarm, 'UTC');
-		await expect(addUserAlarm(ctx, alarm, 'UTC')).rejects.toMatchObject({ status: 400 });
+		expect(await failureOf(addUserAlarm(ctx, alarm, 'UTC'))).toMatchObject({ status: 400 });
 	});
 });
 

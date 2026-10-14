@@ -1,5 +1,6 @@
 /// <reference types="bun" />
 import { beforeEach, describe, expect, test } from 'bun:test';
+import { failureOf } from '#test/errors.js';
 import { freshIndexedDb } from '#test/idb.js';
 import {
 	UPGRADE_STEPS,
@@ -76,12 +77,13 @@ describe('transact', () => {
 
 	test('a throw inside aborts the whole transaction, nothing is half written', async () => {
 		const db = await openLocalDb(factory, 'guest:abort');
-		await expect(
+		const error = await failureOf(
 			transact(db, ['tasks'], 'readwrite', async (tx) => {
 				tx.objectStore('tasks').add({ ...task, status: 'pending' });
 				throw new Error('boom');
 			})
-		).rejects.toThrow('boom');
+		);
+		expect(error.message).toBe('boom');
 		expect(await localRepo(db).tasks.between('2000-01-01')).toEqual([]);
 	});
 });

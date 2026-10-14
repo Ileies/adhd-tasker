@@ -123,6 +123,16 @@ export const remoteBackend: Backend = {
 				body: JSON.stringify({ timezone })
 			});
 		},
+		async saveKey(key) {
+			await request(
+				'/settings/openai-key',
+				{ method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ key }) },
+				'Could not save the key'
+			);
+		},
+		async removeKey() {
+			await request('/settings/openai-key', { method: 'DELETE' }, 'Could not remove the key');
+		},
 		async save(patch) {
 			await send('/settings', {
 				method: 'PUT',

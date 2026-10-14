@@ -4,6 +4,7 @@ import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
 import { createPlanTask } from '#lib/core/plan.js';
 import { STUCK_REASONS } from '#lib/anchoring.js';
 import { testCtx } from '#test/ctx.js';
+import { failureOf } from '#test/errors.js';
 
 const valid = {
 	title: 'Write intro',
@@ -69,13 +70,13 @@ describe('dismissCard', () => {
 		const card = await repo.cards.show({ kind: 'say', text: 'x', createdAt: 1 });
 		await dismissCard(ctx, card.id);
 		expect(await repo.cards.open()).toBeNull();
-		await expect(dismissCard(ctx, card.id)).rejects.toMatchObject({ status: 404 });
+		expect(await failureOf(dismissCard(ctx, card.id))).toMatchObject({ status: 404 });
 	});
 
 	test('a card id must be a whole number', async () => {
 		const { ctx } = await testCtx();
-		await expect(dismissCard(ctx, 'x')).rejects.toMatchObject({ status: 400 });
-		await expect(dismissCard(ctx, NaN)).rejects.toMatchObject({ status: 400 });
+		expect(await failureOf(dismissCard(ctx, 'x'))).toMatchObject({ status: 400 });
+		expect(await failureOf(dismissCard(ctx, NaN))).toMatchObject({ status: 400 });
 	});
 });
 
@@ -100,6 +101,6 @@ describe('reportStuck', () => {
 		['a task that does not exist', { taskId: 999, reason: STUCK_REASONS[0].id }, 404]
 	])('%s answers %d', async (_name, body, status) => {
 		const { ctx } = await testCtx();
-		await expect(reportStuck(ctx, body)).rejects.toMatchObject({ status });
+		expect(await failureOf(reportStuck(ctx, body))).toMatchObject({ status });
 	});
 });
