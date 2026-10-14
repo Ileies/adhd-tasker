@@ -83,7 +83,6 @@ describe('pairing rule', () => {
 		'speech.ts': 'browser API wiring, its rules live in tested modules',
 		'server/index.ts': 'covered by the login route tests',
 		'server/db/index.ts': 'used by every integration test',
-		'server/db/schema.ts': 'used by every integration test',
 		'format.ts': 'until soon plan 5.2 (formatLeft)',
 		'index.ts': 'until soon plan 3.5',
 		'theme.ts': 'until UX phase 8b replaces its day window with sun.ts',
