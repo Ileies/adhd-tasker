@@ -69,3 +69,10 @@ export function wrapUpStarted(task: RankTask, now: number): boolean {
 	const window = wrapUpWindow(task.duration);
 	return left <= window && left > window - WRAP_UP_FRESH_MINUTES;
 }
+
+/** The heads-up line for the next task, in the hero instead of a toast. Only a task being wrapped up is told to wrap up. */
+export function headsUpLine(next: RankTask, now: number, wrappingUp: boolean): string {
+	const minutes = next.startTime - now;
+	const line = `${next.title} starts in ${minutes} min`;
+	return wrappingUp ? `${line}. Start wrapping up.` : line;
+}

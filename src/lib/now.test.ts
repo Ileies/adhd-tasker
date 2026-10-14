@@ -3,7 +3,14 @@ import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
 import { Priority, TaskStatus } from '#lib/types.js';
 import { rank, type RankTask } from '#lib/priority.js';
-import { BAR_MINUTES, endedAgo, heroState, wrapUpStarted, wrapUpWindow } from '#lib/now.js';
+import {
+	BAR_MINUTES,
+	endedAgo,
+	headsUpLine,
+	heroState,
+	wrapUpStarted,
+	wrapUpWindow
+} from '#lib/now.js';
 
 let nextId = 1;
 const task = (
@@ -190,5 +197,19 @@ describe('wrapUpStarted', () => {
 
 	test('false once the task is over', () => {
 		expect(wrapUpStarted(a, h(10, 5))).toBe(false);
+	});
+});
+
+describe('headsUpLine', () => {
+	const next = task('Call dentist', h(10), 30);
+
+	test('names the task and the minutes', () => {
+		expect(headsUpLine(next, h(9, 55), false)).toBe('Call dentist starts in 5 min');
+	});
+
+	test('tells a task that is wrapping up to wrap up', () => {
+		expect(headsUpLine(next, h(9, 55), true)).toBe(
+			'Call dentist starts in 5 min. Start wrapping up.'
+		);
 	});
 });

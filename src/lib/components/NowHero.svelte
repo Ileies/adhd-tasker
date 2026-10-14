@@ -5,7 +5,7 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import { formatClock, formatCountdown } from '#lib/format.js';
-	import { endedAgo, type HeroState } from '#lib/now.js';
+	import { endedAgo, headsUpLine, type HeroState } from '#lib/now.js';
 	import { minutesLeft } from '#lib/priority.js';
 	import { urgencyLevel, urgencySurface } from '#lib/urgency.js';
 
@@ -13,6 +13,7 @@
 		hero,
 		now,
 		reason,
+		headsUp,
 		onDone,
 		onStuck,
 		onExtend,
@@ -21,6 +22,7 @@
 		hero: HeroState<Task>;
 		now: number;
 		reason: string | null;
+		headsUp: Task | null;
 		onDone: (task: Task) => void;
 		onStuck: (task: Task, reason: StuckReason) => void;
 		onExtend: (task: Task) => void;
@@ -161,6 +163,12 @@
 					style="width: {progress}%"
 				></div>
 			</div>
+
+			{#if headsUp}
+				<p class="text-xl font-semibold">
+					{headsUpLine(headsUp, now, hero.kind === 'wrapping-up')}
+				</p>
+			{/if}
 
 			<div class="flex flex-wrap items-center gap-3">
 				<Button size="lg" class={doneClass} onclick={() => onDone(task)}>

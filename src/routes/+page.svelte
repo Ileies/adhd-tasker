@@ -37,6 +37,12 @@
 		)
 	);
 	const hasCurrent = $derived(ranking.current !== null);
+	// The next task when it starts within the heads-up minutes, shown in the hero (the chime sounds below)
+	const headsUp = $derived(
+		data.user?.enableReminders
+			? reminderDue(ranking.upcoming, now, data.user.reminderAdvanceTime)
+			: null
+	);
 	const hero = $derived(
 		heroState(ranking, now, { overrunMinutes: data.user?.overrunMinutes ?? OVERRUN_LIMITS.default })
 	);
@@ -80,15 +86,12 @@
 		const quiet = !playsSound();
 
 		let chimed = false;
-		const upcoming = user.enableReminders
-			? reminderDue(ranking.upcoming, now, user.reminderAdvanceTime)
-			: null;
+		const upcoming = headsUp;
 		if (upcoming) {
 			const key = momentKey('reminder', today, upcoming);
 			if (!sounded.has(key)) {
 				sounded.add(key);
 				chimed = true;
-				showToast(`${upcoming.title} starts in ${upcoming.startTime - now} min`);
 				if (!quiet) playSound('reminder');
 			}
 		}
@@ -187,6 +190,7 @@
 			{hero}
 			{now}
 			{reason}
+			{headsUp}
 			onDone={complete}
 			onExtend={extend}
 			onLater={later}
