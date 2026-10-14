@@ -6,10 +6,11 @@ export type Autonomy = (typeof AUTONOMY)[number];
 export const isAutonomy = (value: unknown): value is Autonomy => AUTONOMY.includes(value as Autonomy);
 
 /**
- * Types that are never a toggle: `user.message` is the chat itself, an alarm only rings, and a wakeup is the
- * agent's own appointment (it is still bound by autonomy, quiet hours, rate limit and budget).
+ * Types that are never a toggle: `user.message` is the chat itself, an alarm only rings, a wakeup is the
+ * agent's own appointment (it is still bound by autonomy, quiet hours, rate limit and budget), and "I'm stuck" is
+ * a request for help the user just made.
  */
-const NOT_TOGGLES: EventType[] = ['user.message', 'alarm.fired', 'wakeup.fired'];
+const NOT_TOGGLES: EventType[] = ['user.message', 'alarm.fired', 'wakeup.fired', 'stuck.pressed'];
 /** Event types the user can switch on or off. */
 export const REACTION_EVENTS = EVENT_TYPES.filter((type) => !NOT_TOGGLES.includes(type));
 /** Plan edits and every switch are too frequent to react to by default, the user can opt in. */
@@ -62,12 +63,14 @@ export function decideReaction(context: ReactionContext, types: EventType[]): De
 	const { settings } = context;
 	if (settings.autonomy === 'observe') return { run: false, reason: 'autonomy is observe' };
 	if (!context.hasKey) return { run: false, reason: 'no OpenAI key' };
-	if (!types.some((type) => type === 'wakeup.fired' || settings.events.includes(type))) return { run: false, reason: 'event type is switched off' };
-	if (inQuietHours(context.now, settings.quietStart, settings.quietEnd)) return { run: false, reason: 'quiet hours' };
-	if (settings.dailyTokenBudget !== null && context.tokensToday >= settings.dailyTokenBudget) return { run: false, reason: 'daily token budget used up' };
+	// Someone who pressed "I'm stuck" is here and asking, so quiet hours, the budget and the gap between reactions do not apply
+	const asked = types.includes('stuck.pressed');
+	if (!asked && !types.some((type) => type === 'wakeup.fired' || settings.events.includes(type))) return { run: false, reason: 'event type is switched off' };
+	if (!asked && inQuietHours(context.now, settings.quietStart, settings.quietEnd)) return { run: false, reason: 'quiet hours' };
+	if (!asked && settings.dailyTokenBudget !== null && context.tokensToday >= settings.dailyTokenBudget) return { run: false, reason: 'daily token budget used up' };
 	if (context.recentReactions.length >= LIMITS.perHour) return { run: false, reason: 'hourly limit reached' };
 	const latest = Math.max(0, ...context.recentReactions);
-	if (context.nowMs - latest < LIMITS.minGapMs) return { run: false, reason: 'too soon after the last reaction' };
+	if (!asked && context.nowMs - latest < LIMITS.minGapMs) return { run: false, reason: 'too soon after the last reaction' };
 	return { run: true };
 }
 

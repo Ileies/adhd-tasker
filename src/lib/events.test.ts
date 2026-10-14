@@ -76,6 +76,13 @@ describe('task.missed and task.overrun', () => {
 		expect(types(events)).toContain('task.missed');
 	});
 
+	test('the overrun threshold can be changed', () => {
+		const overrun = (now: number, minutes: number) => detectEvents(tasks, now, 1, minutes).events.some((e) => e.type === 'task.overrun');
+		expect(overrun(540 + 20, 30)).toBe(false);
+		expect(overrun(540 + 30, 30)).toBe(true);
+		expect(overrun(540 + 10, 10)).toBe(true);
+	});
+
 	test('ignores completed tasks and old history', () => {
 		expect(detectEvents([task(1, 480, 60, Priority.Medium, TaskStatus.Completed)], 700, 1).events.filter((e) => e.type !== 'task.switched')).toEqual([]);
 		expect(detectEvents([task(1, 100, 30)], 130 + STALE_MINUTES + 1, null).events).toEqual([]);

@@ -11,6 +11,7 @@ export const EVENT_TYPES = [
 	'task.switched',
 	'task.missed',
 	'task.overrun',
+	'stuck.pressed',
 	'user.message',
 	'alarm.fired',
 	'wakeup.fired'
@@ -23,7 +24,7 @@ export const isEventType = (value: unknown): value is EventType => EVENT_TYPES.i
 
 /** Minutes after a window ended until a task counts as missed, so finishing a little late is not an event. */
 export const MISSED_GRACE_MINUTES = 5;
-/** Minutes after the window ended until the latest unfinished task counts as an overrun (hyperfocus). */
+/** Default minutes after the window ended until the latest unfinished task counts as an overrun (hyperfocus), the user can change it. */
 export const OVERRUN_MINUTES = 15;
 /** Windows that ended longer ago than this are history, a restart must not announce them. */
 export const STALE_MINUTES = 90;
@@ -48,7 +49,7 @@ type DetectTask = RankTask & { date: string };
  * `previousId` is the task that was current at the last tick, undefined when it was never tracked
  * (then nothing is reported as a switch). `tasks` are today's tasks only.
  */
-export function detectEvents<T extends DetectTask>(tasks: T[], now: number, previousId: number | null | undefined): Detection {
+export function detectEvents<T extends DetectTask>(tasks: T[], now: number, previousId: number | null | undefined, overrunMinutes = OVERRUN_MINUTES): Detection {
 	const ranking = rank(tasks, now);
 	const currentId = ranking.current?.id ?? null;
 	const events: DetectedEvent[] = [];
@@ -72,7 +73,7 @@ export function detectEvents<T extends DetectTask>(tasks: T[], now: number, prev
 		const base = { taskId: task.id, title: task.title, minutesOver: overBy };
 		const stamp = `${task.id}:${task.date}:${task.startTime + task.duration}`;
 		if (overBy >= MISSED_GRACE_MINUTES) events.push({ type: 'task.missed', key: `missed:${stamp}`, payload: base });
-		if (index === 0 && overBy >= OVERRUN_MINUTES) events.push({ type: 'task.overrun', key: `overrun:${stamp}`, payload: base });
+		if (index === 0 && overBy >= overrunMinutes) events.push({ type: 'task.overrun', key: `overrun:${stamp}`, payload: base });
 	});
 
 	return { events, currentId };
@@ -126,6 +127,8 @@ function describeBase(type: EventType, payload: Record<string, unknown>): string
 			return `Task ${title} was not finished, its time ended ${payload.minutesOver} minutes ago`;
 		case 'task.overrun':
 			return `Task ${title} is still not marked done ${payload.minutesOver} minutes after its planned end`;
+		case 'stuck.pressed':
+			return `The user pressed "I'm stuck" on ${title} and said: "${payload.reason}"`;
 		case 'user.message':
 			return 'The user sent a message';
 		case 'alarm.fired':

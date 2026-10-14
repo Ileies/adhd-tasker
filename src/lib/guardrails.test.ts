@@ -32,6 +32,16 @@ describe('decideReaction', () => {
 		expect(decideReaction(context(), ['task.missed'])).toEqual({ run: true });
 	});
 
+	test('"I\'m stuck" ignores toggles, quiet hours, budget and the gap, but not autonomy, key or the hourly limit', () => {
+		const stuck = ['stuck.pressed'] as const;
+		const busy = context({ now: 23 * 60, tokensToday: 9000, recentReactions: [1_000_000_000 - 1000] }, { dailyTokenBudget: 5000, events: [] });
+		expect(decideReaction(busy, [...stuck])).toEqual({ run: true });
+		expect(decideReaction({ ...busy, hasKey: false }, [...stuck]).run).toBe(false);
+		expect(decideReaction({ ...busy, settings: { ...busy.settings, autonomy: 'observe' } }, [...stuck]).run).toBe(false);
+		const many = Array.from({ length: LIMITS.perHour }, (_, i) => 1_000_000_000 - (i + 10) * 60_000);
+		expect(decideReaction({ ...busy, recentReactions: many }, [...stuck]).run).toBe(false);
+	});
+
 	test('stays silent for each guardrail', () => {
 		const reason = (c: ReactionContext, types = ['task.missed'] as const) => {
 			const decision = decideReaction(c, [...types]);
