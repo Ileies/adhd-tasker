@@ -61,17 +61,18 @@ Environment variables (all read at build time):
 
 ## Commands
 
-| Command             | Description                                         |
-| ------------------- | --------------------------------------------------- |
-| `bun run dev`       | Dev server                                          |
-| `bun run build`     | Production build                                    |
-| `bun run check`     | Type check (svelte-check)                           |
-| `bun test`          | Unit tests                                          |
-| `bun run lint`      | Prettier and ESLint                                 |
-| `bun run format`    | Auto-format                                         |
-| `bun run db:push`   | Apply the schema to the database                    |
-| `bun run db:studio` | Drizzle Studio                                      |
-| `bun run deploy`    | Deploy the committed HEAD to the server (see below) |
+| Command             | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| `bun run dev`       | Dev server                                                  |
+| `bun run build`     | Production build                                            |
+| `bun run check`     | Type check (svelte-check and tsc)                           |
+| `bun run test`      | Unit tests, short output                                    |
+| `bun run verify`    | Format, tests, types, lint, build. `--quick` before commits |
+| `bun run lint`      | Prettier and ESLint                                         |
+| `bun run format`    | Auto-format                                                 |
+| `bun run db:push`   | Apply the schema to the database                            |
+| `bun run db:studio` | Drizzle Studio                                              |
+| `bun run deploy`    | Deploy the committed HEAD to the server (see below)         |
 
 ## Project Layout
 
@@ -105,7 +106,7 @@ Times are stored as minutes since midnight, each task belongs to a dated day (`Y
 
 ## Deployment
 
-`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), backs up the database, restarts PM2 and verifies the site. Useful flags: `--push`, `--dry-run`, `--db-push` (after schema changes), `--skip-check`. The app runs as a single process on port 3002, which the event stream requires.
+`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), backs up the database, restarts PM2 and verifies the site. It refuses to start when `bun run verify` fails, and when `schema.ts` changed since the server's commit unless `--db-push` (apply it) or `--schema-applied` (applied by hand) is given. Useful flags: `--push`, `--dry-run`, `--db-push`, `--schema-applied`, `--skip-check` (skips `verify`). The app runs as a single process on port 3002, which the event stream requires.
 
 ## Roadmap
 

@@ -30,16 +30,18 @@ Judge every design and implementation decision against this: does it reduce cogn
 ```bash
 bun run dev          # dev server
 bun run build        # production build
-bun run check        # svelte-kit sync + svelte-check
-bun run test         # unit tests (*.test.ts next to the code), one line on pass, only failures on fail, -v for full output
-bun run lint         # prettier --check + eslint
+bun run check        # svelte-kit sync + svelte-check --fail-on-warnings, tsc for the service worker and scripts
+bun run test         # unit tests (*.test.ts next to the code), isolated, random order, one line on pass, only failures on fail, -v for full output
+bun run verify       # the gate: format, tests with coverage, tests in two more timezones, types, lint, build
+bun run verify --quick  # the same without lint and build (about 20 s)
+bun run lint         # prettier --check + eslint (type aware)
 bun run format       # prettier --write
 bun run db:push      # apply schema to SQLite
 bun run db:studio    # Drizzle Studio
 bun run deploy       # see Deployment
 ```
 
-Run `bun run check` and `bun run test` before committing. Prefer `bun run test` over plain `bun test`: it keeps the output short (`scripts/test.ts`).
+Run `bun run verify --quick` before committing. While working, prefer `bun run test` over plain `bun test`: it keeps the output short (`scripts/test.ts`). `verify` stops at the first failing step and prints its output. Tests need 90 % of all lines and functions covered, counted over the whole report (`scripts/coverage.ts`), not per file.
 
 ## Conventions
 
@@ -49,6 +51,19 @@ Run `bun run check` and `bun run test` before committing. Prefer `bun run test` 
 - **Time:** times are minutes since midnight (0 to 1440), durations in minutes. A task belongs to `task.date` (`YYYY-MM-DD` in the user's timezone, helpers in `src/lib/time.ts`). Tasks never cross midnight, split them. Convert carefully around JS `Date`.
 - **Schema changes** must be applied afterwards: `bun run db:push`, or a one-off script in `scripts/` (like `scripts/add-schedule.ts`) when drizzle-kit cannot run. Production uses `bun run deploy --db-push`.
 - **No em dashes** in code, comments, docs or replies.
+
+## Tests
+
+- Next to the code as `name.test.ts`; route tests next to the route without the `+` prefix; helpers in `src/test/` (`db.ts`, `fixtures.ts`, `fakes.ts`), imported as `#test/...`.
+- `describe` names the unit, `test` states the behavior as a sentence ("window is start inclusive and end exclusive").
+- Import through `#lib`. Keep the `/// <reference types="bun" />` header in tests under `src/` (Bun's types in the root tsconfig would leak into client code).
+- No network: fakes only (`fakeFetch`). The preload (`src/test/preload.ts`) refuses every real request and fails the test even when the code swallowed the error.
+- No wall clock or machine timezone: `setSystemTime`, fake timers or an explicit `now`. The gate runs three timezones.
+- Database tests start with `beforeEach(resetDb)` (in-memory SQLite, own database per file), build data with `makeUser`/`makeTask` and assert on rows. Routes are called directly with `callRoute`.
+- One behavior per test, tables for matrices.
+- Prompts: assert the facts that matter, never the full text.
+- A bug fix starts with a failing test, in its own commit before the fix.
+- `src/test/architecture.test.ts` checks the repo rules (no em dashes, `bun x` only, every module paired with a test or listed as untested with a reason, OpenAI call sites, module-level `$state`, browser storage). Remove a module from its untested list once it has a test.
 
 ## Architecture
 
@@ -146,7 +161,7 @@ Everything is synthesized with the Web Audio API. `playSound('task-started')` wh
 
 ## Deployment
 
-`bun run deploy` (`scripts/deploy.ts`) deploys the committed HEAD of the current branch to the server (`tasker.ileies.de`, ssh alias `home`, clone at `/var/www/adhd-tasker`): preflight, `git reset`, install, build on the server (because `DATABASE_URL` is baked in from the server's `.env`), database backup, pm2 restart, verify. Flags: `--push`, `--dry-run`, `--skip-check`, `--db-push` (needed after schema changes), `--host <alias>`. `pm2.config.cjs` is the local pm2 spec (port 3002).
+`bun run deploy` (`scripts/deploy.ts`) deploys the committed HEAD of the current branch to the server (`tasker.ileies.de`, ssh alias `home`, clone at `/var/www/adhd-tasker`): preflight, `git reset`, install, build on the server (because `DATABASE_URL` is baked in from the server's `.env`), database backup, pm2 restart, verify. Preflight runs `bun run verify` in full and refuses to deploy when it fails. A change to `schema.ts` since the server's commit stops the deploy before the server is touched, unless `--db-push` applies it or `--schema-applied` says it was applied by hand. Flags: `--push`, `--dry-run`, `--skip-check` (skips `verify`), `--db-push`, `--schema-applied`, `--host <alias>`. `pm2.config.cjs` is the local pm2 spec (port 3002).
 
 ## Known Gaps
 
