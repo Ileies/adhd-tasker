@@ -3,7 +3,9 @@
 	import { Calendar, User } from '@lucide/svelte';
 	import { Priority, TaskStatus } from '#lib/types.js';
 	import { onMount } from 'svelte';
-	import { initPreferences } from '#lib/theme.js';
+	import { initPreferences, setTimezone } from '#lib/theme.js';
+	import { deviceTimezone } from '#lib/time.js';
+	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -32,6 +34,13 @@
 		cancel();
 		const timer = setTimeout(cancel, 1000);
 		return () => clearTimeout(timer);
+	});
+
+	// The saved timezone is the source of truth, the first login saves this device's timezone
+	$effect(() => {
+		if (!data.user) return;
+		if (data.user.timezone) tasker.timezone = data.user.timezone;
+		else setTimezone(deviceTimezone());
 	});
 
 	let sidebarOpen = $state(false);
@@ -74,6 +83,7 @@
 </script>
 
 <SetupDialog />
+<TimezoneDialog loggedIn={!!data.user} />
 
 <!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
 <form method="POST" action="?/login" use:enhance bind:this={loginForm} class="hidden"></form>
