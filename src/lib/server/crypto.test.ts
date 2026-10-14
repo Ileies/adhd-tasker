@@ -18,7 +18,10 @@ describe('crypto', () => {
 		const stored = encrypt('sk-test-123', 'secret', 'openai');
 		expect(decrypt(stored, 'other', 'openai')).toBeUndefined();
 		expect(decrypt(stored, 'secret', 'other')).toBeUndefined();
-		expect(decrypt(stored.slice(0, -2) + 'AA', 'secret', 'openai')).toBeUndefined();
+		// Flip the first ciphertext character, replacing it with a fixed one would sometimes change nothing
+		const [prefix, iv, tag, data] = stored.split('.');
+		const flipped = (data![0] === 'A' ? 'B' : 'A') + data!.slice(1);
+		expect(decrypt([prefix, iv, tag, flipped].join('.'), 'secret', 'openai')).toBeUndefined();
 	});
 
 	test('plain text and empty values are not accepted', () => {
