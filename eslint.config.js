@@ -22,7 +22,19 @@ export default ts.config(
 		languageOptions: {
 			globals: { ...globals.browser, ...globals.node }
 		},
-		rules: { 'no-undef': 'off' }
+		rules: {
+			'no-undef': 'off',
+			// A leading underscore marks a binding that is unused on purpose
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }
+			]
+		}
+	},
+	{
+		// pm2 loads its config as CommonJS
+		files: ['**/*.cjs'],
+		rules: { '@typescript-eslint/no-require-imports': 'off' }
 	},
 	{
 		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
