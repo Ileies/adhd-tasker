@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import { Priority } from '#lib/types.js';
 import { urgencyLevel } from '#lib/urgency.js';
