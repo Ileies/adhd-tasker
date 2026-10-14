@@ -15,6 +15,7 @@
 	import * as Sheet from '#lib/components/ui/sheet/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { browser } from '$app/env';
+	import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$app/env/public';
 
 	let { children, data } = $props();
 
@@ -157,3 +158,10 @@
 		</div>
 	</Sheet.Content>
 </Sheet.Root>
+
+<div
+	id="g_id_onload"
+	data-client_id={PUBLIC_GOOGLE_CLIENT_ID}
+	data-login_uri={PUBLIC_REDIRECT_URI}
+	data-auto_select="true"
+></div>

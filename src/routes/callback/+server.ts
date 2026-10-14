@@ -32,3 +32,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	}
 	redirect(302, '/');
 };
+
+export const POST: RequestHandler = async (event) => {
+	return Response.json(await event.request.formData());
+};
