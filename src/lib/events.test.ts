@@ -7,8 +7,8 @@ import {
 	describeChange,
 	describeEvent,
 	detectEvents
-} from './events';
-import { Priority, TaskStatus } from './types';
+} from '#lib/events.js';
+import { Priority, TaskStatus } from '#lib/types.js';
 
 const task = (
 	id: number,

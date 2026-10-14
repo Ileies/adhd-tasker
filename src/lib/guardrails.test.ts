@@ -8,7 +8,7 @@ import {
 	inQuietHours,
 	parseSettingsForm,
 	type ReactionContext
-} from './guardrails';
+} from '#lib/guardrails.js';
 
 const context = (
 	patch: Partial<ReactionContext> = {},

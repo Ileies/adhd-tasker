@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { decrypt, encrypt } from './crypto';
+import { decrypt, encrypt } from '#lib/server/crypto.js';
 
 describe('crypto', () => {
 	test('round trips', () => {

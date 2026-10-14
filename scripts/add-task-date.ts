@@ -4,7 +4,7 @@
  * Usage: DATABASE_URL=local.db bun scripts/add-task-date.ts
  */
 import { Database } from 'bun:sqlite';
-import { todayIn } from '../src/lib/time';
+import { todayIn } from '#lib/time.js';
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL is not set');

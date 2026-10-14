@@ -1,8 +1,8 @@
-import { Priority, TaskStatus } from '../../types';
-import type { EventOrigin, EventType } from '../../events';
-import type { Autonomy } from '../../guardrails';
-import type { Repeat, ScheduleKind } from '../../schedule';
-import type { Tone } from '../../tones';
+import { Priority, TaskStatus } from '#lib/types.js';
+import type { EventOrigin, EventType } from '#lib/events.js';
+import type { Autonomy } from '#lib/guardrails.js';
+import type { Repeat, ScheduleKind } from '#lib/schedule.js';
+import type { Tone } from '#lib/tones.js';
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {

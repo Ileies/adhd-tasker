@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { reactionTools } from './assistant-tools';
+import { reactionTools } from '#lib/assistant-tools.js';
 import {
 	EFFORT_BY_USE,
 	OPENAI_URL,
@@ -8,7 +8,7 @@ import {
 	functionCalls,
 	outputText,
 	type Use
-} from './openai';
+} from '#lib/openai.js';
 
 describe('buildRequest', () => {
 	for (const use of Object.keys(EFFORT_BY_USE) as Use[]) {

@@ -12,7 +12,7 @@ import {
 	readSpeechEvent,
 	speakable,
 	speechVolume
-} from './voice';
+} from '#lib/voice.js';
 
 describe('pickRecordingType', () => {
 	test('takes the first supported container', () => {

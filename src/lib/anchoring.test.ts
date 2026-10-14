@@ -6,8 +6,8 @@ import {
 	momentKey,
 	parseAnchoringForm,
 	reminderDue
-} from './anchoring';
-import { Priority, TaskStatus } from './types';
+} from '#lib/anchoring.js';
+import { Priority, TaskStatus } from '#lib/types.js';
 
 const task = (id: number, startTime: number, duration: number) => ({
 	id,

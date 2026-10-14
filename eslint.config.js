@@ -39,6 +39,24 @@ export default ts.config(
 		}
 	},
 	{
+		// Imports go through #lib/..., the generated shadcn components keep their own style
+		files: ['**/*.ts', '**/*.svelte'],
+		ignores: ['src/lib/components/ui/**'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['./*', '../*', '!./$types', '!../app.css'],
+							message: 'Import through #lib/... instead of a relative path.'
+						}
+					]
+				}
+			]
+		}
+	},
+	{
 		// pm2 loads its config as CommonJS
 		files: ['**/*.cjs'],
 		rules: { '@typescript-eslint/no-require-imports': 'off' }

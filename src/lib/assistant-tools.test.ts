@@ -11,7 +11,7 @@ import {
 	parseSay,
 	parseToolArguments,
 	parseUpdateTask
-} from './assistant-tools';
+} from '#lib/assistant-tools.js';
 
 describe('strict tool schemas', () => {
 	type Schema = {

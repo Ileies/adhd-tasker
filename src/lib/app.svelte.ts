@@ -1,6 +1,6 @@
-import { type Task } from './types';
-import type { Repeat } from './schedule';
-import type { Tone } from './tones';
+import { type Task } from '#lib/types.js';
+import type { Repeat } from '#lib/schedule.js';
+import type { Tone } from '#lib/tones.js';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 

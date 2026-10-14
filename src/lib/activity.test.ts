@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { datesOfAction, summarizeAction } from './activity';
+import { datesOfAction, summarizeAction } from '#lib/activity.js';
 
 const task = { title: 'Study', date: '2026-10-14', startTime: 1020, duration: 120 };
 
