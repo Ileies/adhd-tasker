@@ -24,10 +24,7 @@
 		nothing more. There is no advertising, no analytics, no tracking and no selling of data.
 	</p>
 
-	<h2
-		id="who-is-responsible"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="who-is-responsible" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		Who is responsible
 	</h2>
 	<p class="mt-2">
@@ -36,10 +33,7 @@
 		>. Write to this address for every question or request about your data.
 	</p>
 
-	<h2
-		id="what-is-stored"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="what-is-stored" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		What is stored
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
@@ -75,10 +69,7 @@
 		diagnosis.
 	</p>
 
-	<h2
-		id="how-long-it-is-kept"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="how-long-it-is-kept" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		How long it is kept
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
@@ -87,10 +78,7 @@
 		<li>Your account, tasks, settings and the change history: until you ask for deletion.</li>
 	</ul>
 
-	<h2
-		id="other-services-involved"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="other-services-involved" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		Other services involved
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
@@ -122,10 +110,7 @@
 		Data Privacy Framework.
 	</p>
 
-	<h2
-		id="cookies-and-local-storage"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="cookies-and-local-storage" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		Cookies and local storage
 	</h2>
 	<p class="mt-2">
@@ -145,24 +130,14 @@
 	</ul>
 	<p class="mt-2">There are no tracking or advertising cookies, so there is no cookie banner.</p>
 
-	<h2
-		id="server-logs"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
-		Server logs
-	</h2>
+	<h2 id="server-logs" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Server logs</h2>
 	<p class="mt-2">
 		The server records which page was requested and when, and the web server in front of it may
 		record your IP address. These logs are used only to keep the service running and secure, and are
 		rotated regularly.
 	</p>
 
-	<h2
-		id="legal-basis"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
-		Legal basis
-	</h2>
+	<h2 id="legal-basis" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Legal basis</h2>
 	<p class="mt-2">
 		Storing your account, plan and settings is needed to provide the service you signed up for (Art.
 		6(1)(b) GDPR). Server logs and sign-in protection rest on the legitimate interest in a secure
@@ -170,12 +145,7 @@
 		use the assistant.
 	</p>
 
-	<h2
-		id="your-rights"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
-		Your rights
-	</h2>
+	<h2 id="your-rights" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Your rights</h2>
 	<p class="mt-2">
 		You can ask for a copy of your data, for corrections, for deletion of your account and
 		everything in it, for a restriction of processing, and you can object to processing based on
@@ -193,11 +163,6 @@
 		>. Your OpenAI key can be removed under Settings and is then deleted.
 	</p>
 
-	<h2
-		id="changes"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
-		Changes
-	</h2>
+	<h2 id="changes" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Changes</h2>
 	<p class="mt-2">If this policy changes, the date at the top changes with it.</p>
 </PageFrame>

@@ -25,22 +25,14 @@
 		<a class="underline" href="/privacy">Privacy</a>.
 	</p>
 
-	<h2
-		id="the-service"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
-		The service
-	</h2>
+	<h2 id="the-service" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">The service</h2>
 	<p class="mt-2">
 		The app is offered free of charge and as it is. Features can change or be removed, and the
 		service can be paused or ended. If it ends, you will be able to ask for a copy of your data
 		first.
 	</p>
 
-	<h2
-		id="not-a-medical-service"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="not-a-medical-service" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		Not a medical service
 	</h2>
 	<p class="mt-2">
@@ -50,7 +42,7 @@
 
 	<h2
 		id="do-not-rely-on-it-for-anything-critical"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
+		class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl"
 	>
 		Do not rely on it for anything critical
 	</h2>
@@ -61,10 +53,7 @@
 		cause harm.
 	</p>
 
-	<h2
-		id="the-assistant"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="the-assistant" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		The assistant
 	</h2>
 	<p class="mt-2">
@@ -76,10 +65,7 @@
 		listed under Activity and can be undone.
 	</p>
 
-	<h2
-		id="your-account-and-content"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="your-account-and-content" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		Your account and content
 	</h2>
 	<p class="mt-2">
@@ -93,21 +79,13 @@
 		<a class="underline" href="mailto:admin@ileies.de">admin@ileies.de</a>.
 	</p>
 
-	<h2
-		id="liability"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
-		Liability
-	</h2>
+	<h2 id="liability" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Liability</h2>
 	<p class="mt-2">
 		As the service is free, liability is limited to intent and gross negligence. This does not limit
 		liability for injury to life, body or health, or where the law does not allow a limitation.
 	</p>
 
-	<h2
-		id="changes-and-law"
-		class="3xl:text-3xl mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl 2xl:text-2xl"
-	>
+	<h2 id="changes-and-law" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		Changes and law
 	</h2>
 	<p class="mt-2">
