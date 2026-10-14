@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { TaskStatus } from '#lib/types.js';
 import { isDateKey } from '#lib/time.js';
+import { emitChange } from '#lib/server/events.js';
 
 const statuses = Object.values(TaskStatus);
 
@@ -36,6 +37,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		})
 		.returning();
 
+	await emitChange(locals.user.email, null, newTask[0], 'user');
 	return Response.json(newTask[0]);
 };
 
@@ -49,7 +51,10 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 	}
 	if (date !== undefined && !isDateKey(date)) error(400, 'date must be YYYY-MM-DD');
 
-	await db
+	const owned = and(eq(tasks.id, taskId), eq(tasks.email, locals.user.email));
+	const [before] = await db.select().from(tasks).where(owned);
+
+	const [after] = await db
 		.update(tasks)
 		.set({
 			title,
@@ -60,7 +65,10 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 			...(date !== undefined && { date }),
 			...(statuses.includes(status) && { status })
 		})
-		.where(and(eq(tasks.id, taskId), eq(tasks.email, locals.user.email)));
+		.where(owned)
+		.returning();
+
+	if (before && after) await emitChange(locals.user.email, before, after, 'user');
 	return Response.json(true);
 };
 
@@ -73,6 +81,10 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 		return Response.json(false);
 	}
 
-	await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.email, locals.user.email)));
+	const [before] = await db
+		.delete(tasks)
+		.where(and(eq(tasks.id, taskId), eq(tasks.email, locals.user.email)))
+		.returning();
+	if (before) await emitChange(locals.user.email, before, null, 'user');
 	return Response.json(true);
 };

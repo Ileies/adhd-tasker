@@ -4,7 +4,8 @@ import { db } from '#lib/server/db/index.js';
 import { agentActions, tasks, users } from '#lib/server/db/schema.js';
 import { decrypt } from '#lib/server/crypto.js';
 import { OPENAI_URL, buildRequest, functionCalls, outputText, type ResponseBody, type Use } from '#lib/openai.js';
-import { parseAddTask, parseDeleteTask, parseListTasks, parseUpdateTask } from '#lib/assistant-tools.js';
+import { TOOLS, parseAddTask, parseDeleteTask, parseListTasks, parseReason, parseUpdateTask, type Tool } from '#lib/assistant-tools.js';
+import { emit, emitChange, recordUsage } from '#lib/server/events.js';
 import { addDays, minutesNow, todayIn } from '#lib/time.js';
 import { formatClock } from '#lib/format.js';
 import { TaskStatus, type Task } from '#lib/types.js';
@@ -54,7 +55,7 @@ export function parseMessages(value: unknown): ChatMessage[] {
 		.map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE) }));
 }
 
-function describe(task: Task) {
+export function describe(task: Task) {
 	const done = task.status === TaskStatus.Completed ? ' (done)' : '';
 	return `#${task.id} ${task.date} ${formatClock(task.startTime)}-${formatClock(task.startTime + task.duration)} P${task.priority} ${task.title}${done}`;
 }
@@ -65,7 +66,7 @@ function overlapsOf(task: Task, sameDay: Task[]) {
 		.map(describe);
 }
 
-async function tasksBetween(email: string, from: string, to: string) {
+export async function tasksBetween(email: string, from: string, to: string) {
 	const rows = await db
 		.select()
 		.from(tasks)
@@ -92,8 +93,8 @@ async function systemPrompt(email: string, timezone: string) {
 const FLEX_TIMEOUT_MS = 120_000;
 const FLEX_RETRY_DELAY_MS = 3000;
 
-async function complete(key: string, input: unknown[], instructions: string, use: Use): Promise<ResponseBody> {
-	const body = JSON.stringify(buildRequest(input, instructions, use));
+export async function complete(key: string, input: unknown[], instructions: string, use: Use, tools: Tool[] = TOOLS): Promise<ResponseBody> {
+	const body = JSON.stringify(buildRequest(input, instructions, use, tools));
 
 	for (let attempt = 0; ; attempt++) {
 		let response: Response;
@@ -118,18 +119,25 @@ async function complete(key: string, input: unknown[], instructions: string, use
 	}
 }
 
-async function record(email: string, tool: string, before: Task | null, after: Task | null) {
-	const [row] = await db.insert(agentActions).values({ email, tool, before, after, createdAt: Date.now() }).returning();
+/** What a plan change belongs to: the event a reaction answers, and the model's own reason. */
+export interface ToolContext {
+	eventId?: number;
+}
+
+async function record(email: string, tool: string, before: Task | null, after: Task | null, eventId: number | undefined, reason: string | null) {
+	const [row] = await db.insert(agentActions).values({ email, tool, before, after, eventId: eventId ?? null, reason, createdAt: Date.now() }).returning();
 	return row.id;
 }
 
-async function runTool(email: string, name: string, rawArguments: string, changes: Change[]): Promise<unknown> {
+/** Runs one plan tool for the model. Every change is logged for undo and emitted as an agent event, so it never wakes the agent again. */
+export async function runTool(email: string, name: string, rawArguments: string, changes: Change[], context: ToolContext = {}): Promise<unknown> {
 	let args: Record<string, unknown>;
 	try {
 		args = JSON.parse(rawArguments || '{}');
 	} catch {
 		return { error: 'arguments were not valid JSON' };
 	}
+	const reason = parseReason(args.reason);
 
 	switch (name) {
 		case 'list_tasks': {
@@ -141,7 +149,8 @@ async function runTool(email: string, name: string, rawArguments: string, change
 			const parsed = parseAddTask(args);
 			if (!parsed.ok) return { error: parsed.error };
 			const [task] = await db.insert(tasks).values({ ...parsed.value, email }).returning();
-			const id = await record(email, 'add_task', null, task);
+			const id = await record(email, 'add_task', null, task, context.eventId, reason);
+			await emitChange(email, null, task, 'agent');
 			changes.push({ id, summary: `Added ${task.title} at ${formatClock(task.startTime)}`, dates: [task.date] });
 			return { added: describe(task), overlaps_with: overlapsOf(task, await tasksBetween(email, task.date, task.date)) };
 		}
@@ -156,7 +165,8 @@ async function runTool(email: string, name: string, rawArguments: string, change
 				.set({ ...rest, ...(status && { status: status === 'completed' ? TaskStatus.Completed : TaskStatus.Pending }) })
 				.where(and(eq(tasks.id, before.id), eq(tasks.email, email)))
 				.returning();
-			const id = await record(email, 'update_task', before, task);
+			const id = await record(email, 'update_task', before, task, context.eventId, reason);
+			await emitChange(email, before, task, 'agent');
 			changes.push({ id, summary: `Updated ${task.title}`, dates: [...new Set([before.date, task.date])] });
 			return { updated: describe(task), overlaps_with: overlapsOf(task, await tasksBetween(email, task.date, task.date)) };
 		}
@@ -166,7 +176,8 @@ async function runTool(email: string, name: string, rawArguments: string, change
 			const [before] = await db.select().from(tasks).where(and(eq(tasks.id, parsed.value.id), eq(tasks.email, email)));
 			if (!before) return { error: 'no such task' };
 			await db.delete(tasks).where(and(eq(tasks.id, before.id), eq(tasks.email, email)));
-			const id = await record(email, 'delete_task', before, null);
+			const id = await record(email, 'delete_task', before, null, context.eventId, reason);
+			await emitChange(email, before, null, 'agent');
 			changes.push({ id, summary: `Deleted ${before.title}`, dates: [before.date] });
 			return { deleted: describe(before) };
 		}
@@ -188,19 +199,26 @@ export async function runAssistant(email: string, history: ChatMessage[]) {
 	// Nothing is stored at OpenAI (store: false), so every round sends the whole conversation including its own output
 	const input: unknown[] = [...history];
 	const changes: Change[] = [];
+	await emit(email, 'user.message', { chars: history.at(-1)!.content.length }, 'user');
 
-	for (let round = 0; round < MAX_ROUNDS; round++) {
-		const response = await complete(key, input, instructions, 'chat');
-		const calls = functionCalls(response);
-		if (calls.length === 0) return { reply: outputText(response) || 'Done.', changes };
+	let tokens = 0;
+	try {
+		for (let round = 0; round < MAX_ROUNDS; round++) {
+			const response = await complete(key, input, instructions, 'chat');
+			tokens += response.usage?.total_tokens ?? 0;
+			const calls = functionCalls(response);
+			if (calls.length === 0) return { reply: outputText(response) || 'Done.', changes };
 
-		input.push(...response.output);
-		for (const call of calls) {
-			const result = await runTool(email, call.name!, call.arguments ?? '', changes);
-			input.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(result) });
+			input.push(...response.output);
+			for (const call of calls) {
+				const result = await runTool(email, call.name!, call.arguments ?? '', changes);
+				input.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(result) });
+			}
 		}
+		return { reply: 'I stopped after too many steps. Check the plan and tell me what is still missing.', changes };
+	} finally {
+		await recordUsage(email, 'chat', tokens).catch(() => {});
 	}
-	return { reply: 'I stopped after too many steps. Check the plan and tell me what is still missing.', changes };
 }
 
 /** Reverts one logged change. Returns the dates the client has to refresh. */
@@ -221,5 +239,7 @@ export async function undoAction(email: string, id: number) {
 	}
 
 	await db.update(agentActions).set({ undoneAt: Date.now() }).where(eq(agentActions.id, id));
+	// The user reverted something, so the event is theirs. The reaction prompt tells the agent not to comment on it.
+	await emitChange(email, after, before, 'user', { undoOfAgentChange: true });
 	return { dates: [...new Set([before?.date, after?.date].filter((d): d is string => !!d))] };
 }

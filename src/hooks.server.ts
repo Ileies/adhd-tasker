@@ -2,6 +2,11 @@ import type { Handle } from '@sveltejs/kit/hooks';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { readSession } from '#lib/server/session.js';
+import { startAgent } from '#lib/server/agent.js';
+import { building } from '$app/env';
+
+// The build only analyses the app, a timer must not start there
+if (!building) startAgent();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	console.log(`[${new Date().toISOString()}]:`, event.url.pathname + event.url.search);
