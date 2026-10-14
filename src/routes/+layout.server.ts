@@ -8,5 +8,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const tasks = await db.query.tasks.findMany({
 		where: (tasks, { and, eq, gte }) => and(eq(tasks.email, locals.user?.email), gte(tasks.date, since))
 	});
-	return { user: locals.user, tasks };
+	// The OpenAI key stays on the server, the client only learns whether one is saved
+	const { openaiKey, ...user } = locals.user ?? {};
+	return { user: locals.user ? { ...user, hasOpenaiKey: !!openaiKey } : undefined, tasks };
 };

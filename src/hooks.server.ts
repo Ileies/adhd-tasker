@@ -19,7 +19,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			where: (users, { eq }) => eq(users.email, email),
 		});
 		if (!event.locals.user) {
-			event.locals.user = await db.insert(users).values({ email }).returning();
+			[event.locals.user] = await db.insert(users).values({ email }).returning();
 		}
 	}
 

@@ -9,7 +9,7 @@ declare global {
 			user?: users.$inferSelect;
 		}
 		interface PageData {
-			user?: users.$inferSelect;
+			user?: Omit<users.$inferSelect, 'openaiKey'> & { hasOpenaiKey: boolean };
 		}
 		// interface PageState {}
 		// interface Platform {}
