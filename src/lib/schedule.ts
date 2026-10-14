@@ -127,7 +127,7 @@ export function parseId(args: Args): Parsed<number> {
 /** A one-line description for the model and the lists. */
 export function describeEntry(entry: { id: number; kind: ScheduleKind; fireAt: number; label: string | null; note: string | null; repeat: Repeat; createdBy: string }, timezone: string): string {
 	const when = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(entry.fireAt)).replace(',', '');
-	const repeat = entry.repeat === 'none' ? '' : `, ${REPEAT_TEXT[entry.repeat].toLowerCase()}`;
+	const repeat = entry.repeat === 'none' ? '' : `, ${REPEAT_TEXT[entry.repeat]}`;
 	const text = entry.kind === 'alarm' ? `alarm "${entry.label}"` : `wakeup note "${entry.note}"`;
 	return `#${entry.id} ${when} ${text}${repeat} (by ${entry.createdBy})`;
 }

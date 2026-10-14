@@ -107,6 +107,6 @@ describe('parseWakeup', () => {
 describe('describeEntry', () => {
 	test('one line with the local time', () => {
 		const line = describeEntry({ id: 4, kind: 'alarm', fireAt: NOW, label: 'Leave now', note: null, repeat: 'daily', createdBy: 'user' }, BERLIN);
-		expect(line).toBe('#4 2026-10-14 10:00 alarm "Leave now", every day (by user)');
+		expect(line).toBe('#4 2026-10-14 10:00 alarm "Leave now", Every day (by user)');
 	});
 });
