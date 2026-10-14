@@ -14,7 +14,11 @@ export type FakeRoute = (request: Request) => Response | Promise<Response>;
 export function fakeFetch(routes: Record<string, FakeRoute>) {
 	const requests: Request[] = [];
 	const fake = async (input: RequestInfo | URL, init?: RequestInit) => {
-		const request = new Request(input, init);
+		// The browser resolves a relative url against the page, so do the same
+		const request = new Request(
+			typeof input === 'string' ? new URL(input, 'http://localhost:5173') : input,
+			init
+		);
 		const url = new URL(request.url);
 		const bare = `${url.origin}${url.pathname}`;
 		const route = routes[`${request.method} ${bare}`] ?? routes[bare];
