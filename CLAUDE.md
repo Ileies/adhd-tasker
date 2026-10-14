@@ -62,6 +62,7 @@ Run `bun run check` and `bun test` before committing.
 | `/alarms` | User alarms with tone preview, "use this device for sound", the assistant's wakeups |
 | `/activity` | What the assistant changed (reason, Undo), events it saw and their outcome, today's token use |
 | `/settings` | Theme, timezone, OpenAI key (`saveOpenaiKey`/`removeOpenaiKey`), assistant autonomy (`saveAgent`), voice replies (`saveVoice`), reminders and overrun tap (`saveAnchoring`), Google services (`linkGoogle`/`unlinkGoogle`). `/settings/timezone` saves the timezone |
+| `/privacy`, `/terms` | Privacy policy and terms of use, public, linked from the profile menu. Keep them in sync when data handling changes (new fields, retention, third parties, cookies) |
 | `/callback` | Google OAuth callback (GET) and One Tap credential (POST) |
 | `/assistant` (API) | `POST` one chat turn (tool loop against OpenAI with the user's own key). `POST /assistant/undo` reverts one logged change. `POST /assistant/transcribe` speech to text, `POST /assistant/speak` text to wav (see Voice) |
 | `/agent` (API) | `GET` what the agent did on its own (open card, changes since `?since=<action id>`). `POST /agent/cards/[id]` dismisses or answers a card. `POST /agent/stuck` (`{ taskId, reason }`) logs `stuck.pressed` |
@@ -157,7 +158,7 @@ Everything is synthesized with the Web Audio API. `playSound('task-started')` wh
 
 ## Roadmap (`TODO.md`, rationale in `docs/ui-rework-plan.md`)
 
-Phases 0 to 7 are done (cleanup, design foundations, priority engine and Now, dated days and Plan, responsive and PWA, assistant, event bus and reactions, scheduler/alarms/tones). Phase 8 (voice) and phase 9 (anchoring: "I'm stuck", configurable hyperfocus alarm, reminders) are done too. The roadmap is complete, what is left is under Planned.
+The UI rework roadmap (phases 0 to 9) is complete and removed from `TODO.md`. What is left is under Planned.
 
 **Planned, do not implement without discussion:** Google Calendar sync (two-way), end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
 
