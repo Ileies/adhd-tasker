@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { Check } from '@lucide/svelte';
-	import { STUCK_REASONS, type StuckReason } from '#lib/anchoring.js';
+	import { STUCK_REASONS, type StuckAction, type StuckReason } from '#lib/anchoring.js';
 	import type { Task } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
+	import HeroMenu from '#lib/components/HeroMenu.svelte';
 	import { formatClock, formatCountdown } from '#lib/format.js';
 	import { endedAgo, headsUpLine, type HeroState } from '#lib/now.js';
 	import { minutesLeft } from '#lib/priority.js';
@@ -17,7 +18,12 @@
 		onDone,
 		onStuck,
 		onExtend,
-		onLater
+		onLater,
+		onTomorrow,
+		onEdit,
+		onDrop,
+		onTimer,
+		concurrent
 	}: {
 		hero: HeroState<Task>;
 		now: number;
@@ -27,6 +33,11 @@
 		onStuck: (task: Task, reason: StuckReason) => void;
 		onExtend: (task: Task) => void;
 		onLater: (task: Task) => void;
+		onTomorrow: (task: Task) => void;
+		onEdit: (task: Task) => void;
+		onDrop: (task: Task) => void;
+		onTimer: (action: StuckAction) => void;
+		concurrent: number;
 	} = $props();
 
 	// Time up without a current task owns the whole hero, with one it is a bar above that task
@@ -47,12 +58,12 @@
 	);
 
 	// The stuck panel belongs to one task, it closes when another one becomes current
-	let stuckFor = $state<{ id: number; reason: StuckReason | null } | null>(null);
+	let stuckFor = $state<{ id: number; reason: StuckReason | null; timer: boolean } | null>(null);
 	const stuck = $derived(task && stuckFor?.id === task.id ? stuckFor : null);
 
 	function choose(reason: StuckReason) {
 		if (!task) return;
-		stuckFor = { id: task.id, reason };
+		stuckFor = { id: task.id, reason, timer: false };
 		onStuck(task, reason);
 	}
 
@@ -131,10 +142,14 @@
 			{/if}
 
 			<div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-lg opacity-90">
-				<PriorityMeter priority={task.priority} />
+				<!-- The bars carry the priority without color, the urgency color says the rest -->
+				<PriorityMeter priority={task.priority} showLabel={false} />
 				<span class="tabular"
 					>{formatClock(task.startTime)} - {formatClock(task.startTime + task.duration)}</span
 				>
+				{#if concurrent > 1}
+					<span>Highest of {concurrent} right now</span>
+				{/if}
 			</div>
 
 			<h1 class="text-display line-clamp-3 font-bold break-words">{task.title}</h1>
@@ -189,12 +204,13 @@
 					<Button
 						size="lg"
 						variant="outline"
-						class={secondaryClass}
-						onclick={() => (stuckFor = { id: task.id, reason: null })}
+						class="h-14 border-current bg-transparent px-6 text-lg hover:bg-current/10"
+						onclick={() => (stuckFor = { id: task.id, reason: null, timer: false })}
 					>
 						I'm stuck
 					</Button>
 				{/if}
+				<HeroMenu {task} {onEdit} {onExtend} {onLater} {onTomorrow} {onDrop} />
 			</div>
 
 			{#if stuck}
@@ -205,6 +221,18 @@
 				>
 					{#if stuck.reason}
 						<p class="text-xl leading-relaxed">{stuck.reason.hint}</p>
+						{@const action = stuck.reason.action}
+						<Button
+							variant="outline"
+							class="h-11 border-current bg-transparent text-base hover:bg-current/10"
+							disabled={stuck.timer}
+							onclick={() => {
+								if (stuckFor) stuckFor.timer = true;
+								onTimer(action);
+							}}
+						>
+							{stuck.timer ? 'Timer set' : action.label}
+						</Button>
 						<Button
 							variant="ghost"
 							class="px-0 text-base hover:bg-transparent hover:underline"

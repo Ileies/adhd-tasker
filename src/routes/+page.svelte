@@ -3,6 +3,7 @@
 	import { tasker } from '#lib/app.svelte.js';
 	import NowHero from '#lib/components/NowHero.svelte';
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
+	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { keepAwake } from '#lib/display.js';
 	import {
@@ -14,16 +15,22 @@
 		showToast,
 		updateTask
 	} from '#lib';
-	import { playsSound } from '#lib/alarms.js';
+	import { addAlarm, playsSound } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
-	import { OVERRUN_LIMITS, hyperfocusDue, momentKey, reminderDue } from '#lib/anchoring.js';
+	import {
+		OVERRUN_LIMITS,
+		hyperfocusDue,
+		momentKey,
+		reminderDue,
+		type StuckAction
+	} from '#lib/anchoring.js';
 	import { heroState, wrapUpStarted } from '#lib/now.js';
 	import { extendTask, moveLater } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
 	import { formatClock } from '#lib/format.js';
-	import { minutesNow, todayIn } from '#lib/time.js';
+	import { addDays, minutesNow, todayIn } from '#lib/time.js';
 	import { untrack } from 'svelte';
-	import { TaskStatus, type Task } from '#lib/types.js';
+	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
 
 	const { data } = $props();
 
@@ -165,10 +172,53 @@
 		);
 	}
 
+	/** Keeps the start time and moves the task to the next day. */
+	function tomorrow(task: Task) {
+		const before = task.date;
+		void updateTask({ ...task, date: addDays(today, 1) });
+		showToast(`${task.title} moved to tomorrow`, () => updateTask({ ...task, date: before }));
+	}
+
 	function drop(task: Task) {
 		const { id: _id, ...rest } = task;
 		void deleteTask(task);
 		showToast(`Dropped: ${task.title}`, () => createTask(rest));
+	}
+
+	// The edit dialog opens over Now, UX phase 7 replaces it with the task sheet
+	let form: TaskFormType = $state({
+		selectedTask: undefined,
+		isEditing: true,
+		showTaskForm: false,
+		title: '',
+		description: '',
+		date: '',
+		duration: 60,
+		startTime: 0,
+		priority: Priority.Medium
+	});
+
+	function edit(task: Task) {
+		form.selectedTask = task;
+		form.title = task.title;
+		form.description = task.description;
+		form.date = task.date;
+		form.duration = task.duration;
+		form.startTime = task.startTime;
+		form.priority = task.priority;
+		form.isEditing = true;
+		form.showTaskForm = true;
+	}
+
+	/** A short alarm from the "I'm stuck" hint, the app holds the timer. */
+	async function startTimer(action: StuckAction) {
+		const failure = await addAlarm({
+			in_minutes: action.minutes,
+			label: action.alarm,
+			tone: 'soft',
+			repeat: 'none'
+		});
+		showToast(failure ?? `Timer set: ${action.minutes} min`);
 	}
 </script>
 
@@ -194,6 +244,11 @@
 			onDone={complete}
 			onExtend={extend}
 			onLater={later}
+			onTomorrow={tomorrow}
+			onEdit={edit}
+			onDrop={drop}
+			onTimer={startTimer}
+			concurrent={ranking.concurrent}
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
 		/>
 		<UpcomingRail
@@ -205,4 +260,5 @@
 			onDrop={drop}
 		/>
 	</div>
+	<TaskForm email={data.user.email} bind:form onDelete={drop} />
 {/if}
