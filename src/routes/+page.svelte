@@ -12,13 +12,20 @@
 	// nicht alle chats immer anzeigen, fehler beim löschen der Kategorie, history sieht schlecht aus,
 	// chat löschen button funktionieren machen und verschieben
 
+	// Local time as minutes since midnight, same unit as task.startTime
+	const localMinutes = () => {
+		const d = new Date();
+		return d.getHours() * 60 + d.getMinutes();
+	};
+	let now = $state(localMinutes());
+
 	const activeTasks = $derived(tasker.tasks.filter((task) => {
-		const now = Math.floor(Date.now() / 1000 / 60); // Current time in minutes
 		return task.status === TaskStatus.Pending && task.startTime <= now && now < task.startTime + task.duration;
 	}).sort((a, b) => (b.priority || Priority.Medium) - (a.priority || Priority.Medium)));
 
 	setInterval(() => {
-		tasker.timeLeft = tasker.activeTask ? (tasker.activeTask.startTime + tasker.activeTask.duration) - Math.floor(Date.now() / 1000 / 60) : 0;
+		now = localMinutes();
+		tasker.timeLeft = tasker.activeTask ? (tasker.activeTask.startTime + tasker.activeTask.duration) - now : 0;
 	}, 1000);
 
 	// Play reminder sound every 5 minutes while a task is active
