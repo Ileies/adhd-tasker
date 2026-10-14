@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
 	import { undoChange } from '#lib/assistant.js';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -12,7 +12,7 @@
 
 	async function undo(action: (typeof data.actions)[number]) {
 		await undoChange({ id: action.id, summary: action.summary, dates: action.dates });
-		await invalidateAll();
+		await refreshAll();
 	}
 </script>
 
