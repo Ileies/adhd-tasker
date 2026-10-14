@@ -4,7 +4,7 @@ import { db } from '#lib/server/db/index.js';
 import { agentActions, tasks, users } from '#lib/server/db/schema.js';
 import { decrypt } from '#lib/server/crypto.js';
 import { OPENAI_URL, buildRequest, functionCalls, outputText, type ResponseBody, type Use } from '#lib/openai.js';
-import { SCHEDULE_TOOLS, TOOLS, parseAddTask, parseDeleteTask, parseListTasks, parseReason, parseUpdateTask, type Tool } from '#lib/assistant-tools.js';
+import { SCHEDULE_TOOLS, TOOLS, parseToolArguments, parseAddTask, parseDeleteTask, parseListTasks, parseReason, parseUpdateTask, type Tool } from '#lib/assistant-tools.js';
 import { describePending, pendingFor, runScheduleTool } from '#lib/server/schedule.js';
 import { emit, emitChange, recordUsage } from '#lib/server/events.js';
 import { addDays, minutesNow, todayIn } from '#lib/time.js';
@@ -135,12 +135,8 @@ async function record(email: string, tool: string, before: Task | null, after: T
 
 /** Runs one plan tool for the model. Every change is logged for undo and emitted as an agent event, so it never wakes the agent again. */
 export async function runTool(email: string, name: string, rawArguments: string, changes: Change[], context: ToolContext = {}): Promise<unknown> {
-	let args: Record<string, unknown>;
-	try {
-		args = JSON.parse(rawArguments || '{}');
-	} catch {
-		return { error: 'arguments were not valid JSON' };
-	}
+	const args = parseToolArguments(rawArguments);
+	if (!args) return { error: 'arguments were not valid JSON' };
 	const reason = parseReason(args.reason);
 
 	switch (name) {
@@ -204,7 +200,8 @@ export async function runAssistant(email: string, history: ChatMessage[]) {
 
 	const instructions = await systemPrompt(email, user?.timezone ?? 'UTC');
 	// Nothing is stored at OpenAI (store: false), so every round sends the whole conversation including its own output
-	const input: unknown[] = [...history];
+	// Earlier assistant replies are final answers, OpenAI wants the phase kept so a preamble is never mistaken for one
+	const input: unknown[] = history.map((message) => (message.role === 'assistant' ? { ...message, phase: 'final_answer' } : message));
 	const changes: Change[] = [];
 	await emit(email, 'user.message', { chars: history.at(-1)!.content.length }, 'user');
 

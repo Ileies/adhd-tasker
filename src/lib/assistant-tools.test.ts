@@ -1,6 +1,40 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { MAX_SAY, parseAddTask, parseAsk, parseDeleteTask, parseListTasks, parseReason, parseSay, parseUpdateTask } from './assistant-tools';
+import { MAX_SAY, TOOLS, parseAddTask, parseAsk, parseDeleteTask, parseListTasks, parseReason, parseSay, parseToolArguments, parseUpdateTask } from './assistant-tools';
+
+describe('strict tool schemas', () => {
+	type Schema = { type?: unknown; properties?: Record<string, Schema>; required?: string[]; additionalProperties?: boolean; anyOf?: Schema[]; items?: Schema };
+
+	function expectStrict(schema: Schema) {
+		if (schema.type === 'object') {
+			expect(schema.additionalProperties).toBe(false);
+			expect(schema.required?.toSorted()).toEqual(Object.keys(schema.properties ?? {}).toSorted());
+			Object.values(schema.properties ?? {}).forEach(expectStrict);
+		}
+		schema.anyOf?.forEach(expectStrict);
+		if (schema.items) expectStrict(schema.items);
+	}
+
+	test('every tool is strict, every field required and the optional ones nullable', () => {
+		for (const tool of TOOLS) {
+			expect(tool.strict).toBe(true);
+			expectStrict(tool.parameters as Schema);
+		}
+		const update = TOOLS.find((tool) => tool.name === 'update_task')!.parameters as Schema;
+		expect(update.properties!.id.type).toBe('integer');
+		expect(update.properties!.title.type).toEqual(['string', 'null']);
+	});
+
+	test('null means not sent, also inside a custom tone', () => {
+		expect(parseToolArguments('{"id":3,"title":null,"tone":{"wave":"sine","notes":[{"hz":440,"ms":100,"rest":null}]}}')).toEqual({
+			id: 3,
+			tone: { wave: 'sine', notes: [{ hz: 440, ms: 100 }] }
+		});
+		expect(parseToolArguments('')).toEqual({});
+		expect(parseToolArguments('nope')).toBeUndefined();
+		expect(parseToolArguments('[1]')).toBeUndefined();
+	});
+});
 
 describe('say, ask and reason', () => {
 	test('say needs short text', () => {

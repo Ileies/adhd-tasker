@@ -7,6 +7,8 @@ import { TOOLS, type Tool } from '#lib/assistant-tools.js';
 export const OPENAI_URL = 'https://api.openai.com/v1/responses';
 export const MODEL = 'gpt-6-luna';
 export const SERVICE_TIER = 'flex';
+/** The cap includes the hidden reasoning tokens, OpenAI recommends reserving at least 25 000 for reasoning models. Replies stay short through the prompt. */
+export const MAX_OUTPUT_TOKENS = 25_000;
 
 export type Effort = 'low' | 'medium' | 'high';
 
@@ -43,13 +45,12 @@ export function buildRequest(input: unknown[], instructions: string, use: Use, t
 		model: MODEL,
 		service_tier: SERVICE_TIER,
 		store: false,
-		// Without stored state the reasoning has to travel with the conversation
-		include: ['reasoning.encrypted_content'],
+		// With store false the response carries encrypted reasoning items by itself, they travel with the conversation
 		reasoning: { effort: EFFORT_BY_USE[use] },
 		instructions,
 		input,
 		tools,
-		max_output_tokens: 2000
+		max_output_tokens: MAX_OUTPUT_TOKENS
 	};
 }
 

@@ -44,6 +44,25 @@ function parseTitle(value: unknown): string | undefined {
 
 type Args = Record<string, unknown>;
 
+/** Strict mode makes the model send `null` for every optional field, the parsers below treat a missing field and `null` the same. */
+function withoutNulls(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(withoutNulls);
+	if (value && typeof value === 'object') {
+		return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== null).map(([k, v]) => [k, withoutNulls(v)]));
+	}
+	return value;
+}
+
+/** The arguments of a tool call as the parsers expect them, `undefined` when they are not a JSON object. */
+export function parseToolArguments(raw: string | undefined): Args | undefined {
+	try {
+		const args = withoutNulls(JSON.parse(raw || '{}'));
+		return args && typeof args === 'object' && !Array.isArray(args) ? (args as Args) : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export function parseListTasks(args: Args): Parsed<{ from: string; to: string }> {
 	const { from, to = from } = args;
 	if (!isDateKey(from) || !isDateKey(to)) return fail('from and to must be YYYY-MM-DD');
@@ -159,7 +178,27 @@ const whenProps = {
 };
 
 const toneProp = {
-	description: `A library name (${TONE_NAMES.join(', ')}) or a custom tone: an object { wave: ${WAVES.join('|')}, notes: [{ hz, ms, rest? }] } with at most ${TONE_LIMITS.maxNotes} notes, ${TONE_LIMITS.minHz} to ${TONE_LIMITS.maxHz} Hz, ${TONE_LIMITS.minNoteMs} to ${TONE_LIMITS.maxNoteMs} ms per note and ${TONE_LIMITS.maxMs / 1000} seconds in total. Custom tones are limited to ${TONE_LIMITS.customPerDay} per day, prefer a name.`
+	description: `A library name (${TONE_NAMES.join(', ')}) or a custom tone: { wave, notes: [{ hz, ms, rest }] } with at most ${TONE_LIMITS.maxNotes} notes, ${TONE_LIMITS.minHz} to ${TONE_LIMITS.maxHz} Hz, ${TONE_LIMITS.minNoteMs} to ${TONE_LIMITS.maxNoteMs} ms per note, rest (silence after the note in ms, or null) and ${TONE_LIMITS.maxMs / 1000} seconds in total. Custom tones are limited to ${TONE_LIMITS.customPerDay} per day, prefer a name.`,
+	anyOf: [
+		{ type: 'string', enum: [...TONE_NAMES] },
+		{
+			type: 'object',
+			properties: {
+				wave: { type: 'string', enum: [...WAVES] },
+				notes: {
+					type: 'array',
+					items: {
+						type: 'object',
+						properties: { hz: { type: 'number' }, ms: { type: 'number' }, rest: { type: ['number', 'null'] } },
+						required: ['hz', 'ms', 'rest'],
+						additionalProperties: false
+					}
+				}
+			},
+			required: ['wave', 'notes'],
+			additionalProperties: false
+		}
+	]
 };
 
 const DEFINITIONS = [
@@ -262,10 +301,34 @@ export interface Tool {
 	name: string;
 	description: string;
 	parameters: object;
+	strict: true;
 }
 
-/** Tool definitions in the Responses API format (flat, not nested under `function`). */
-const ALL_TOOLS: Tool[] = DEFINITIONS.map(({ function: fn }) => ({ type: 'function' as const, ...fn }));
+type Schema = Record<string, unknown>;
+
+/** In strict mode an optional field stays in `required` and is allowed to be `null` instead. */
+function nullable(schema: Schema): Schema {
+	if (Array.isArray(schema.anyOf)) return { ...schema, anyOf: [...schema.anyOf, { type: 'null' }] };
+	const type = [schema.type, 'null'].flat();
+	return Array.isArray(schema.enum) ? { ...schema, type, enum: [...schema.enum, null] } : { ...schema, type };
+}
+
+/** Strict mode rules: every property is required, optional ones are nullable, no extra properties. */
+function strictParameters(parameters: { properties: Schema; required: readonly string[] }) {
+	const properties = Object.fromEntries(
+		Object.entries(parameters.properties).map(([key, schema]) => [key, parameters.required.includes(key) ? schema : nullable(schema as Schema)])
+	);
+	return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
+}
+
+/** Tool definitions in the Responses API format (flat, not nested under `function`) with strict mode on, as OpenAI recommends. */
+const ALL_TOOLS: Tool[] = DEFINITIONS.map(({ function: fn }) => ({
+	type: 'function' as const,
+	name: fn.name,
+	description: fn.description,
+	parameters: strictParameters(fn.parameters),
+	strict: true as const
+}));
 const pick = (...names: string[]) => ALL_TOOLS.filter((tool) => names.includes(tool.name));
 
 export const WRITE_TOOLS = ['add_task', 'update_task', 'delete_task'];

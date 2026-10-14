@@ -7,7 +7,7 @@ import { OPENAI_KEY_PURPOSE, complete, describe, runTool, tasksBetween, type Cha
 import { emit, reactionTimes, recordUsage, setReactor, startOfDayMs, tokensSince } from '#lib/server/events.js';
 import { describeEvent, detectEvents, type EventType } from '#lib/events.js';
 import { LIMITS, decideReaction, parseEvents, type AgentSettings } from '#lib/guardrails.js';
-import { ACT_ONLY_TOOLS, SCHEDULE_TOOLS, parseAsk, reactionTools } from '#lib/assistant-tools.js';
+import { ACT_ONLY_TOOLS, SCHEDULE_TOOLS, parseAsk, parseToolArguments, reactionTools } from '#lib/assistant-tools.js';
 import { describePending, fireDue, pendingFor, pruneSchedule, runScheduleTool } from '#lib/server/schedule.js';
 import { publish } from '#lib/server/stream.js';
 import { functionCalls } from '#lib/openai.js';
@@ -201,13 +201,7 @@ export async function react(email: string) {
 
 const SCHEDULE_DID: Record<string, string> = { schedule_wakeup: 'scheduled a wakeup', set_alarm: 'set an alarm', play_tone: 'played a tone', cancel_schedule: 'cancelled a schedule entry' };
 
-const safeJson = (raw: string | undefined): Record<string, unknown> => {
-	try {
-		return JSON.parse(raw || '{}');
-	} catch {
-		return {};
-	}
-};
+const safeJson = (raw: string | undefined): Record<string, unknown> => parseToolArguments(raw) ?? {};
 
 /** One card at a time: a new one replaces what is still open, so the strip on the Now screen stays small. */
 async function showCard(email: string, kind: 'say' | 'ask', text: string, options: string[], eventId: number) {

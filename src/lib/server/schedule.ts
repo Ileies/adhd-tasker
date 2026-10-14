@@ -4,6 +4,7 @@ import { schedule, users } from '#lib/server/db/schema.js';
 import { countUses, emit, recordUsage, startOfDayMs } from '#lib/server/events.js';
 import { effectiveDisplay, publish } from '#lib/server/stream.js';
 import { inQuietHours } from '#lib/guardrails.js';
+import { parseToolArguments } from '#lib/assistant-tools.js';
 import { SCHEDULE_LIMITS, describeEntry, minutesOf, nextRepeat, parseAlarm, parseId, parseWakeup, type AlarmFields } from '#lib/schedule.js';
 import { TONE_LIMITS, parseTone, readTone } from '#lib/tones.js';
 import { minutesNow } from '#lib/time.js';
@@ -73,12 +74,8 @@ async function customTonesLeft(email: string, user: UserRow) {
  * Everything is validated by the pure parsers, the caps are enforced here and not left to the prompt.
  */
 export async function runScheduleTool(email: string, user: UserRow, name: string, rawArguments: string, fromChat: boolean): Promise<unknown> {
-	let args: Record<string, unknown>;
-	try {
-		args = JSON.parse(rawArguments || '{}');
-	} catch {
-		return { error: 'arguments were not valid JSON' };
-	}
+	const args = parseToolArguments(rawArguments);
+	if (!args) return { error: 'arguments were not valid JSON' };
 	const timezone = user.timezone ?? 'UTC';
 	const now = Date.now();
 

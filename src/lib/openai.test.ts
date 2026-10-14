@@ -11,7 +11,7 @@ describe('buildRequest', () => {
 			expect(request.store).toBe(false);
 			expect(request.service_tier).toBe('flex');
 			expect(request.reasoning).toEqual({ effort: EFFORT_BY_USE[use] });
-			expect(request.include).toContain('reasoning.encrypted_content');
+			expect(request.max_output_tokens).toBeGreaterThanOrEqual(25_000);
 			expect(request.tools.every((tool) => tool.type === 'function' && typeof tool.name === 'string')).toBe(true);
 		});
 	}
