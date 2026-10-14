@@ -49,6 +49,10 @@
 	const isDisplay = $derived(tasker.device.display === tasker.device.id);
 </script>
 
+<svelte:head>
+	<title>Alarms - ADHD Tasker</title>
+</svelte:head>
+
 {#if data.user}
 	<div class="mx-auto max-w-xl p-4">
 		<Card.Root>

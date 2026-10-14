@@ -11,6 +11,10 @@
 	const { data, form } = $props();
 </script>
 
+<svelte:head>
+	<title>Settings - ADHD Tasker</title>
+</svelte:head>
+
 <div class="mx-auto max-w-xl p-4">
 	<Card.Root>
 		<Card.Header>

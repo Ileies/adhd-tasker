@@ -24,6 +24,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Activity - ADHD Tasker</title>
+</svelte:head>
+
 <div class="mx-auto max-w-2xl p-4">
 	<Card.Root>
 		<Card.Header>

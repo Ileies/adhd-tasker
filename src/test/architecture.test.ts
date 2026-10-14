@@ -173,3 +173,15 @@ describe('client state', () => {
 		]);
 	});
 });
+
+describe('pages', () => {
+	test('every page sets its own title', () => {
+		const pages = appCode.filter(({ path }) =>
+			/^src\/routes\/(.*\/)?\+(page|error)\.svelte$/.test(path)
+		);
+		expect(pages.length).toBeGreaterThan(0);
+		expect(pages.filter(({ content }) => !/<title>/.test(content)).map(({ path }) => path)).toEqual(
+			[]
+		);
+	});
+});

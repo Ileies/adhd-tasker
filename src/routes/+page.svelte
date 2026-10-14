@@ -224,6 +224,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Now - ADHD Tasker</title>
+</svelte:head>
+
 {#if !data.user}
 	<div class="flex min-h-full flex-col items-center justify-center gap-6 px-6 py-12 text-center">
 		<h1 class="text-display font-bold">ADHD Tasker</h1>

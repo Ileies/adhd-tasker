@@ -139,6 +139,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Plan - ADHD Tasker</title>
+</svelte:head>
+
 <div class="bg-background flex h-full flex-col">
 	<div class="z-30 flex flex-wrap items-center gap-x-4 gap-y-2 border-b p-3 sm:px-6">
 		<Button variant="outline" onclick={() => goto('/')}>Back to Now</Button>
