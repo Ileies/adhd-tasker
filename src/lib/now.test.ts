@@ -6,9 +6,11 @@ import { rank, type RankTask } from '#lib/priority.js';
 import {
 	BAR_MINUTES,
 	endedAgo,
+	heroFocus,
 	headsUpLine,
 	heroState,
 	wrapUpStarted,
+	tabTitle,
 	wrapUpWindow
 } from '#lib/now.js';
 
@@ -211,5 +213,49 @@ describe('headsUpLine', () => {
 		expect(headsUpLine(next, h(9, 55), true)).toBe(
 			'Call dentist starts in 5 min. Start wrapping up.'
 		);
+	});
+});
+
+describe('heroFocus', () => {
+	const a = task('Write intro', h(9), 60);
+	const b = task('Call dentist', h(10), 30);
+
+	test('is the running task, whether active or wrapping up', () => {
+		expect(heroFocus(stateAt([a], h(9, 10)))).toBe(a);
+		expect(heroFocus(stateAt([a], h(9, 55)))).toBe(a);
+	});
+
+	test('is the ended task on the time up screen', () => {
+		expect(heroFocus(stateAt([a], h(10, 3)))).toBe(a);
+	});
+
+	test('is the new task under the transition bar, it owns the screen', () => {
+		expect(heroFocus(stateAt([a, b], h(10, 2)))).toBe(b);
+	});
+
+	test('is nothing when free or empty', () => {
+		expect(heroFocus(stateAt([b], h(8)))).toBeNull();
+		expect(heroFocus(stateAt([], h(8)))).toBeNull();
+	});
+});
+
+describe('tabTitle', () => {
+	const a = task('Write intro', h(9), 60);
+	const b = task('Call dentist', h(15), 30);
+
+	test.each([
+		['active', [a], h(9, 20), '40 min - Write intro'],
+		['wrapping up', [a], h(9, 52), '8 min - Write intro'],
+		['a long task in hours', [task('Deep work', h(9), 240)], h(9, 20), '3 h 40 min - Deep work'],
+		['time up', [a], h(10, 3), 'Time is up - Write intro'],
+		['free', [b], h(14), 'Free until 15:00'],
+		['empty', [], h(14), 'Nothing left today']
+	])('%s', (_name, tasks, now, title) => {
+		expect(tabTitle(stateAt(tasks, now))).toBe(title);
+	});
+
+	test('time up under the transition bar still says time is up', () => {
+		const next = task('Review', h(10), 30);
+		expect(tabTitle(stateAt([a, next], h(10, 2)))).toBe('Time is up - Write intro');
 	});
 });

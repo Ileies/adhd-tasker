@@ -1,3 +1,4 @@
+import { formatClock, formatMinutes } from '#lib/format.js';
 import type { RankTask, Ranking } from '#lib/priority.js';
 
 /** The last minutes of a task are its wrap-up, at most this many... */
@@ -53,6 +54,33 @@ export function heroState<T extends RankTask>(
 	if (left <= wrapUpWindow(current.duration))
 		return { kind: 'wrapping-up', task: current, left, next };
 	return { kind: 'active', task: current, left };
+}
+
+/** The hero confirms Done for this long before it moves on to the next state. */
+export const DONE_CONFIRM_MS = 1500;
+/** The reason for a switch fades out after this long. */
+export const REASON_MS = 60_000;
+
+/** The task the hero's main area is about, the one Done confirms: the running task, or the one time up shows (under the transition bar the new one). */
+export function heroFocus<T extends RankTask>(hero: HeroState<T>): T | null {
+	if (hero.kind === 'active' || hero.kind === 'wrapping-up') return hero.task;
+	if (hero.kind === 'time-up') return hero.current ?? hero.ended;
+	return null;
+}
+
+/** The browser tab title, so a tab in the background is still an anchor: `28 min - Write intro`. */
+export function tabTitle<T extends RankTask>(hero: HeroState<T>): string {
+	switch (hero.kind) {
+		case 'active':
+		case 'wrapping-up':
+			return `${formatMinutes(hero.left)} - ${hero.task.title}`;
+		case 'time-up':
+			return `Time is up - ${hero.ended.title}`;
+		case 'free':
+			return `Free until ${formatClock(hero.next.startTime)}`;
+		case 'empty':
+			return 'Nothing left today';
+	}
 }
 
 /** How long ago a task ended, for the time up screen. */
