@@ -1,5 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
+import fc from 'fast-check';
 import { Priority, TaskStatus } from '#lib/types.js';
 import { minutesLeft, rank, switchReason, type RankTask } from '#lib/priority.js';
 
@@ -154,5 +155,85 @@ describe('switchReason', () => {
 		const a = task('A', h(9), 60);
 		const b = task('B', h(9), 60, Priority.Low);
 		expect(switchReason(a, rank([b], h(9, 10)), [b], h(9, 10))).toBe('Previous task removed');
+	});
+});
+
+describe('properties', () => {
+	const tasks = fc
+		.array(
+			fc.record({
+				startTime: fc.integer({ min: 0, max: 1435 }),
+				length: fc.integer({ min: 5, max: 1440 }),
+				priority: fc.integer({ min: 1, max: 5 }),
+				done: fc.boolean()
+			}),
+			{ maxLength: 12 }
+		)
+		.map((specs) =>
+			specs.map(
+				(spec, index): RankTask => ({
+					id: index + 1,
+					title: `Task ${index + 1}`,
+					startTime: spec.startTime,
+					duration: Math.min(spec.length, 1440 - spec.startTime),
+					priority: spec.priority as Priority,
+					status: spec.done ? TaskStatus.Completed : TaskStatus.Pending
+				})
+			)
+		);
+	const now = fc.integer({ min: 0, max: 1439 });
+	const runs = (task: RankTask, at: number) =>
+		task.startTime <= at && at < task.startTime + task.duration;
+
+	test('the current task is open and contains now, or there is none', () => {
+		fc.assert(
+			fc.property(tasks, now, (list, at) => {
+				const { current } = rank(list, at);
+				if (current) {
+					expect(runs(current, at)).toBe(true);
+					expect(current.status).not.toBe(TaskStatus.Completed);
+				} else {
+					expect(list.some((task) => task.status !== TaskStatus.Completed && runs(task, at))).toBe(
+						false
+					);
+				}
+			})
+		);
+	});
+
+	test('no open task running now has a higher priority than the current one', () => {
+		fc.assert(
+			fc.property(tasks, now, (list, at) => {
+				const { current } = rank(list, at);
+				if (!current) return;
+				for (const task of list)
+					if (task.status !== TaskStatus.Completed && runs(task, at))
+						expect(task.priority).toBeLessThanOrEqual(current.priority);
+			})
+		);
+	});
+
+	test('every open task is exactly one of running, upcoming or missed', () => {
+		fc.assert(
+			fc.property(tasks, now, (list, at) => {
+				const { upcoming, missed, concurrent } = rank(list, at);
+				const open = list.filter((task) => task.status !== TaskStatus.Completed);
+				expect(concurrent + upcoming.length + missed.length).toBe(open.length);
+				expect(concurrent).toBe(open.filter((task) => runs(task, at)).length);
+			})
+		);
+	});
+
+	test('the result does not depend on the order of the input', () => {
+		fc.assert(
+			fc.property(tasks, now, (list, at) => {
+				const ids = (items: RankTask[]) => items.map((task) => task.id);
+				const forward = rank(list, at);
+				const backward = rank([...list].reverse(), at);
+				expect(backward.current?.id).toBe(forward.current?.id);
+				expect(ids(backward.upcoming)).toEqual(ids(forward.upcoming));
+				expect(ids(backward.missed)).toEqual(ids(forward.missed));
+			})
+		);
 	});
 });

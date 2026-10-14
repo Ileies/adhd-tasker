@@ -1,5 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
+import fc from 'fast-check';
 import {
 	DEFAULT_TONE,
 	TONE_LIMITS,
@@ -60,5 +61,50 @@ describe('readTone', () => {
 		expect(readTone('nope')).toBe(DEFAULT_TONE);
 		expect(readTone(null)).toBe(DEFAULT_TONE);
 		expect(readTone('soft')).toBe('soft');
+	});
+});
+
+describe('properties', () => {
+	const number = fc.oneof(
+		fc.integer({ min: -100, max: 4000 }),
+		fc.double({ min: -100, max: 4000, noNaN: true })
+	);
+	const note = fc.record(
+		{ hz: number, ms: number, rest: fc.oneof(number, fc.constant(undefined)) },
+		{ requiredKeys: ['hz', 'ms'] }
+	);
+	const custom = fc.record({
+		wave: fc.oneof(fc.constantFrom('sine', 'triangle', 'square', 'sawtooth'), fc.string()),
+		notes: fc.array(note, { maxLength: 16 })
+	});
+
+	test('anything accepted is within the caps', () => {
+		fc.assert(
+			fc.property(custom, (value) => {
+				const parsed = parseTone(value);
+				if (!parsed.ok || typeof parsed.value === 'string') return;
+				const { notes } = parsed.value;
+				expect(notes.length).toBeGreaterThanOrEqual(1);
+				expect(notes.length).toBeLessThanOrEqual(TONE_LIMITS.maxNotes);
+				for (const { hz, ms, rest = 0 } of notes) {
+					expect(hz).toBeGreaterThanOrEqual(TONE_LIMITS.minHz);
+					expect(hz).toBeLessThanOrEqual(TONE_LIMITS.maxHz);
+					expect(ms).toBeGreaterThanOrEqual(TONE_LIMITS.minNoteMs);
+					expect(ms).toBeLessThanOrEqual(TONE_LIMITS.maxNoteMs);
+					expect(rest).toBeGreaterThanOrEqual(0);
+					expect(rest).toBeLessThanOrEqual(TONE_LIMITS.maxRestMs);
+				}
+				expect(toneLength(parsed.value)).toBeLessThanOrEqual(TONE_LIMITS.maxMs);
+			})
+		);
+	});
+
+	test('arbitrary JSON never throws and always reads back as a playable tone', () => {
+		fc.assert(
+			fc.property(fc.jsonValue(), (value) => {
+				const tone = readTone(value);
+				expect(toneLength(toneNotes(tone))).toBeLessThanOrEqual(TONE_LIMITS.maxMs);
+			})
+		);
 	});
 });
