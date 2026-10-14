@@ -8,6 +8,7 @@ import type { NewTask, Task } from '#lib/core/repo.js';
 import type { Alarm, AgentCard, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
 import type { Repeat } from '#lib/schedule.js';
+import type { SettingsPatch } from '#lib/settings.js';
 import type { ToneName } from '#lib/tones.js';
 
 /** A failure with a reason to show. `status` is the HTTP status, `null` when nothing could be reached. */
@@ -67,6 +68,8 @@ export interface Backend {
 	};
 	settings: {
 		saveTimezone(timezone: string): Promise<void>;
+		/** Stores the changed settings. Rejects with the reason when a value is out of range. */
+		save(patch: SettingsPatch): Promise<void>;
 	};
 	voice: {
 		/** The recognized text. */

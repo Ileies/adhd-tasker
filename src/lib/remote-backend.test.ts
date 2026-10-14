@@ -126,6 +126,12 @@ describe('remoteBackend requests', () => {
 		expect(await requests[1].json()).toEqual({ taskId: 9, reason: 'Do not know where to start' });
 	});
 
+	test('settings: a changed setting is a PUT of just that patch', async () => {
+		const { requests } = fakeFetch({ 'PUT http://localhost:5173/settings': json(true) });
+		await remoteBackend.settings.save({ showClock: true });
+		expect(await requests[0].json()).toEqual({ showClock: true });
+	});
+
 	test('settings: the timezone is a PUT', async () => {
 		const { requests } = fakeFetch({ 'PUT http://localhost:5173/settings/timezone': json(true) });
 		await remoteBackend.settings.saveTimezone('Asia/Tokyo');

@@ -110,6 +110,13 @@ export const remoteBackend: Backend = {
 				headers: JSON_HEADERS,
 				body: JSON.stringify({ timezone })
 			});
+		},
+		async save(patch) {
+			await send('/settings', {
+				method: 'PUT',
+				headers: JSON_HEADERS,
+				body: JSON.stringify(patch)
+			});
 		}
 	},
 
