@@ -61,10 +61,10 @@ Run `bun run check` and `bun test` before committing.
 | `/edit` (API) | Task CRUD: GET one day (`?date=`), POST, PUT, DELETE |
 | `/alarms` | User alarms with tone preview, "use this device for sound", the assistant's wakeups |
 | `/activity` | What the assistant changed (reason, Undo), events it saw and their outcome, today's token use |
-| `/settings` | Theme, timezone, OpenAI key (`saveOpenaiKey`/`removeOpenaiKey`), assistant autonomy (`saveAgent`), voice replies (`saveVoice`), Google services (`linkGoogle`/`unlinkGoogle`). `/settings/timezone` saves the timezone |
+| `/settings` | Theme, timezone, OpenAI key (`saveOpenaiKey`/`removeOpenaiKey`), assistant autonomy (`saveAgent`), voice replies (`saveVoice`), reminders and overrun tap (`saveAnchoring`), Google services (`linkGoogle`/`unlinkGoogle`). `/settings/timezone` saves the timezone |
 | `/callback` | Google OAuth callback (GET) and One Tap credential (POST) |
 | `/assistant` (API) | `POST` one chat turn (tool loop against OpenAI with the user's own key). `POST /assistant/undo` reverts one logged change. `POST /assistant/transcribe` speech to text, `POST /assistant/speak` text to wav (see Voice) |
-| `/agent` (API) | `GET` what the agent did on its own (open card, changes since `?since=<action id>`). `POST /agent/cards/[id]` dismisses or answers a card |
+| `/agent` (API) | `GET` what the agent did on its own (open card, changes since `?since=<action id>`). `POST /agent/cards/[id]` dismisses or answers a card. `POST /agent/stuck` (`{ taskId, reason }`) logs `stuck.pressed` |
 | `/stream` (API) | Server-Sent Events (`?device=<id>`) with hints `agent`, `schedule`, `alarm`, `tone`, `display`. Hints only: the client fetches the data itself, a missed push costs nothing |
 | `/schedule` (API) | `GET` pending alarms and wakeups, `POST` a user alarm, `DELETE /schedule/[id]`, `POST /schedule/display` chooses the display device |
 
@@ -78,7 +78,7 @@ There is no stored active task. What is current is derived on every tick by the 
 
 ### Database (`src/lib/server/db/schema.ts`)
 
-- `users`: keyed by Google email. Reminder and focus flags, `darkMode`, `timezone`, encrypted `openaiKey`, `googleServices` (space separated, scopes in `src/lib/google.ts`), agent settings (`aiAutonomy` observe|suggest|act default suggest, `aiEvents`, `quietStart`/`quietEnd`, `dailyTokenBudget`), `lastCurrentTaskId` (what the scheduler last saw as current, 0 = free time, null = never tracked), `displayDevice`, `voiceReplies`
+- `users`: keyed by Google email. Reminder flags (`enableReminders`, `reminderAdvanceTime`), hyperfocus (`hyperfocusAlarm`, `overrunMinutes`), `enableFocusMode` (unused), `darkMode`, `timezone`, encrypted `openaiKey`, `googleServices` (space separated, scopes in `src/lib/google.ts`), agent settings (`aiAutonomy` observe|suggest|act default suggest, `aiEvents`, `quietStart`/`quietEnd`, `dailyTokenBudget`), `lastCurrentTaskId` (what the scheduler last saw as current, 0 = free time, null = never tracked), `displayDevice`, `voiceReplies`
 - `tasks`: `title`, `description`, `email`, `date`, `startTime`, `duration`, `priority` (1 to 5), `status`. Only `completed` is meaningful; `active` and `overdue` are no longer written or read and can be removed from the enum in a cleanup
 - `agent_actions`: every plan change by the assistant with `before`/`after` JSON, `eventId`, `reason`, `undoneAt`. Undo restores `before`
 - `events`: everything the agent can observe (`type`, `payload`, `origin` user|agent|system, unique `key` per user for detected events, `handledAt`, `outcome`). Pruned after 30 days
@@ -109,12 +109,21 @@ Push-to-talk only (no always-listening mic). The mic button in `AssistantDrawer.
 
 ### Event-driven agent
 
-Every plan edit calls `emit()` (`src/lib/server/events.ts`): the `/edit` routes, assistant tools and undo. Events are logged first and `emit` never throws. Types and detection are pure and shared in `src/lib/events.ts` (`detectEvents` uses `rank()` to find `task.switched`, `task.missed` after 5 min, `task.overrun` after 15 min, `OVERRUN_MINUTES`; `describeChange` turns a before/after pair into an event). The scheduler in `src/lib/server/agent.ts` ticks every 15 s and compares with `users.lastCurrentTaskId`.
+Every plan edit calls `emit()` (`src/lib/server/events.ts`): the `/edit` routes, assistant tools and undo. Events are logged first and `emit` never throws. Types and detection are pure and shared in `src/lib/events.ts` (`detectEvents` uses `rank()` to find `task.switched`, `task.missed` after 5 min, `task.overrun` after `users.overrunMinutes`, default 15 = `OVERRUN_MINUTES`; `describeChange` turns a before/after pair into an event). The scheduler in `src/lib/server/agent.ts` ticks every 15 s and compares with `users.lastCurrentTaskId`.
 
 - **Agent-caused events never wake the agent.** Its edits are emitted with `origin: agent` and only logged; a switch within 60 s of an agent edit counts as agent too. A reaction may use at most 4 tool calls and show at most one card.
 - **Guardrails** are pure in `src/lib/guardrails.ts` (`decideReaction`, tested) and run before any model call: autonomy (`observe` logs only, `suggest` offers `say`/`ask` and cannot edit, `act` may also edit with a reason and Undo, enforced again server side), per-event toggles (default completed, missed, overrun), quiet hours (default 22:00 to 07:00), events within 5 s coalesced, at most 6 reactions per hour and 3 minutes apart, optional daily token budget (unprompted only, chat is exempt), no key means silence. Events older than 10 minutes are dropped. Every event gets an `outcome`, shown on `/activity`.
 - **Client side:** one event stream (`src/lib/stream.ts`, started in the layout). It fetches `/agent` when the stream says so, on every (re)connect and when the page becomes visible, and polls every 30 s while the stream is down. Agent edits made on their own show an Undo toast. Answering a card continues in the chat.
 - The stream is in process (`src/lib/server/stream.ts`), so the app must run as one server process.
+
+### Anchoring: "I'm stuck", reminders, hyperfocus alarm
+
+Pure rules in `src/lib/anchoring.ts` (tested). All three work without an OpenAI key.
+
+- **"I'm stuck"** is a button next to Done in `NowHero.svelte`. The user picks what is in the way (`STUCK_REASONS`), a fixed hint with one small first step shows at once, and `POST /agent/stuck` logs `stuck.pressed` (origin user). The agent answers with one `say`/`ask` card when it can. The event is not a toggle: it ignores per-event toggles, quiet hours, the budget and the 3 minute gap (the user is here and asking), but `observe`, a missing key and the hourly limit still apply.
+- **Reminders:** a toast and the soft `reminder` chime when the next task starts within `users.reminderAdvanceTime` minutes (`reminderDue`), if `enableReminders`.
+- **Hyperfocus alarm:** a toast and the `nudge` tone when the latest unfinished task passed its end by `users.overrunMinutes` (`hyperfocusDue`), if `hyperfocusAlarm`. The same minutes drive the `task.overrun` event. A page loaded long after the moment stays quiet.
+- Both run in `src/routes/+page.svelte`, sound only on the display device (`playsSound()`), once per moment (`momentKey`), muted when muted. Both settings are on `/settings` (`saveAnchoring`).
 
 ### Schedule, alarms, wakeups, tones
 
@@ -141,15 +150,14 @@ Everything is synthesized with the Web Audio API. `playSound('task-started')` wh
 ## Known Gaps
 
 - Linking Google services only records the grant, no access or refresh tokens are stored. Store them encrypted when the first feature (Calendar sync) needs them. Google Clock has no API
-- Reminder notifications are schema-ready but not wired up
+- Reminders and the overrun tap only reach an open Now screen (no Web Push). The `reminders` table (Calendar sync) and `enableFocusMode`, `enableOverdueNotifications` are unused
 - Alarms and wakeups reach only open screens (no Web Push for a closed app). Alarms cannot be tied to a task, the agent computes the time
 - Agent-made tasks are not marked in the Plan view (the activity page lists them). Every open device shows the agent card, only sound follows the display device
-- The overrun threshold is a fixed 15 minutes
-- Events `stuck.pressed` and `day.started` arrive with their phases
+- The event `day.started` (morning briefing) is not built yet
 
 ## Roadmap (`TODO.md`, rationale in `docs/ui-rework-plan.md`)
 
-Phases 0 to 7 are done (cleanup, design foundations, priority engine and Now, dated days and Plan, responsive and PWA, assistant, event bus and reactions, scheduler/alarms/tones). Phase 8 (voice) is done too. Open: phase 9 ("I'm stuck", configurable hyperfocus alarm, reminders).
+Phases 0 to 7 are done (cleanup, design foundations, priority engine and Now, dated days and Plan, responsive and PWA, assistant, event bus and reactions, scheduler/alarms/tones). Phase 8 (voice) and phase 9 (anchoring: "I'm stuck", configurable hyperfocus alarm, reminders) are done too. The roadmap is complete, what is left is under Planned.
 
 **Planned, do not implement without discussion:** Google Calendar sync (two-way), end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
 
