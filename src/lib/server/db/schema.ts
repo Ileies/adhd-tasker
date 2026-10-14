@@ -19,6 +19,7 @@ export const tasks = sqliteTable('tasks', {
 	email: text('email')
 		.references(() => users.email, { onDelete: 'cascade' })
 		.notNull(),
+	date: text('date').notNull(), // YYYY-MM-DD in the user's timezone
 	startTime: integer('start_time').notNull(),
 	duration: integer('duration').notNull(),
 	priority: integer('priority').$type<Priority>().default(Priority.Medium).notNull(),

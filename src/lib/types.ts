@@ -21,6 +21,7 @@ export interface TaskForm {
 	showTaskForm: boolean; // Controls visibility of the task form
 	title: string;
 	description: string;
+	date: string; // YYYY-MM-DD
 	duration: number; // Duration in minutes
 	startTime: number; // Start time in seconds since start of the day
 	priority: Priority; // Priority level
