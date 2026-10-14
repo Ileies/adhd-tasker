@@ -309,13 +309,13 @@ Done stays the largest control. After a tap the hero shows a short confirmation 
 
 ## 7. Order and done
 
-| Part                        | Effort | Exit criterion                                                                |
-| --------------------------- | ------ | ----------------------------------------------------------------------------- |
-| 1. The gate (done)          | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
-| 2. Pure module tests (done) | 4 h    | Every pure module tested, property tests in place                             |
-| 3. Defect fixes (done)      | 1 day  | D1 to D8 each have a test that failed before its fix                          |
-| 4. Transitions (in code)    | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
-| 5. Feedback and silence     | 1 day  | Done feedback, draining bar, silence line and tab title work on a real screen |
+| Part                           | Effort | Exit criterion                                                                |
+| ------------------------------ | ------ | ----------------------------------------------------------------------------- |
+| 1. The gate (done)             | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
+| 2. Pure module tests (done)    | 4 h    | Every pure module tested, property tests in place                             |
+| 3. Defect fixes (done)         | 1 day  | D1 to D8 each have a test that failed before its fix                          |
+| 4. Transitions (done)          | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
+| 5. Feedback and silence (done) | 1 day  | Done feedback, draining bar, silence line and tab title work on a real screen |
 
 Parts go in this order: 1 before everything, 3 before 4.
 
@@ -324,8 +324,8 @@ Parts go in this order: 1 before everything, 3 before 4.
 1. [x] `bun run verify` is green and deploy refuses to ship without it.
 2. [x] Every rule in 1.6 fails the gate when broken.
 3. [x] D1 to D8 each have a test that failed before its fix.
-4. The suite passes in three timezones, isolated and in random order, in under 3 s.
-5. A task that runs out is never silent: the hero shows time up or the transition bar, and more time is one tap.
-6. Done, a task ending and a blocked or muted sound are each visible and audible as in 5.4.
+4. [x] The suite passes in three timezones, isolated and in random order, in under 3 s (about 2.9 s on 2026-10-14, 572 tests).
+5. [x] A task that runs out is never silent: the hero shows time up or the transition bar, and more time is one tap (checked with Playwright on a wide screen and a phone; how the sounds feel is for the user to judge by ear).
+6. [x] Done, a task ending and a blocked or muted sound are each visible and audible as in 5.4 (Done confirmation, wrap-up state and sound, silence line, checked with Playwright on a wide screen and a phone).
 
 Then delete this file, re-read `ux-plan.md`, `checks-and-tests-plan.md` and `feature-ideas.md` against the code, update them once, and pick the next plan.
