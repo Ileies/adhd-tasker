@@ -1,0 +1,5 @@
+[test]
+preload = ["./src/test/preload.ts"]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = ["src/test/**"]
+# No coverageThreshold: Bun applies it per file. `bun run verify` checks 90 % overall instead
