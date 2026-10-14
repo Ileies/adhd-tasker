@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions } from './$types';
+import { parseAnchoringForm } from '#lib/anchoring.js';
 import { isGoogleServiceId } from '#lib/google.js';
 import { parseSettingsForm } from '#lib/guardrails.js';
 import { db } from '#lib/server/db/index.js';
@@ -46,6 +47,17 @@ export const actions = {
 		const { autonomy, events, quietStart, quietEnd, dailyTokenBudget } = parsed.value;
 		await db.update(users).set({ aiAutonomy: autonomy, aiEvents: events.join(' '), quietStart, quietEnd, dailyTokenBudget }).where(eq(users.email, locals.user.email));
 		return { agentSaved: true };
+	},
+
+	/** Heads-up before a task starts and the tap when one runs over. */
+	saveAnchoring: async ({ locals, request }) => {
+		if (!locals.user) return fail(401, { anchoringMessage: 'Sign in first' });
+
+		const parsed = parseAnchoringForm(await request.formData());
+		if (!parsed.ok) return fail(400, { anchoringMessage: parsed.error });
+
+		await db.update(users).set(parsed.value).where(eq(users.email, locals.user.email));
+		return { anchoringSaved: true };
 	},
 
 	/** Whether the assistant speaks its replies and notes. */

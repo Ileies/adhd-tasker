@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import TimezonePicker from '#lib/components/TimezonePicker.svelte';
+	import AnchoringSettingsForm from '#lib/components/AnchoringSettingsForm.svelte';
 	import OpenAiKeyForm from '#lib/components/OpenAiKeyForm.svelte';
 	import AgentSettingsForm from '#lib/components/AgentSettingsForm.svelte';
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
@@ -32,6 +33,23 @@
 	</Card.Root>
 
 	{#if data.user}
+		<Card.Root class="mt-4">
+			<Card.Header>
+				<Card.Title>Reminders and overruns</Card.Title>
+				<Card.Description>Sounds that pull you back to the plan. They work without an OpenAI key.</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<AnchoringSettingsForm
+					reminders={data.user.enableReminders}
+					advance={data.user.reminderAdvanceTime}
+					hyperfocus={data.user.hyperfocusAlarm}
+					overrun={data.user.overrunMinutes}
+					message={form && 'anchoringMessage' in form ? form.anchoringMessage : undefined}
+					saved={!!form && 'anchoringSaved' in form}
+				/>
+			</Card.Content>
+		</Card.Root>
+
 		<Card.Root class="mt-4">
 			<Card.Header>
 				<Card.Title>Assistant</Card.Title>

@@ -8,7 +8,9 @@ import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core
 export const users = sqliteTable('users', {
 	email: text('email').notNull().primaryKey(),
 	enableReminders: integer('enable_reminders', { mode: 'boolean' }).default(true).notNull(),
-	reminderAdvanceTime: integer('reminder_advance_time').default(15).notNull(), // minutes before
+	reminderAdvanceTime: integer('reminder_advance_time').default(15).notNull(), // minutes before the next task starts
+	hyperfocusAlarm: integer('hyperfocus_alarm', { mode: 'boolean' }).default(true).notNull(), // a tone when a task runs past its end
+	overrunMinutes: integer('overrun_minutes').default(15).notNull(), // how long past its end counts as an overrun, for the alarm and the agent event
 	enableOverdueNotifications: integer('enable_overdue_notifications', { mode: 'boolean' }).default(true).notNull(),
 	enableFocusMode: integer('enable_focus_mode', { mode: 'boolean' }).default(false).notNull(),
 	darkMode: integer('dark_mode', { mode: 'boolean' }).default(false).notNull(),
