@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Deploys the committed state of the current branch to pronix (tasker.rizinos.com).
+ * Deploys the committed state of the current branch to pronix (tasker.ileies.de).
  *
  * The server runs a clone of the GitHub repo at /var/www/adhd-tasker, so a deploy is a `git reset`
  * to this HEAD plus what a checkout cannot carry: the dependency install, the production build, a
@@ -31,7 +31,7 @@ const PM2_NAME = 'adhd-tasker';
 
 /** Must match the nginx proxy target in /etc/nixos/hosts/pronix/nginx.nix. */
 const PORT = value('port', '3002');
-const PUBLIC_URL = value('url', 'https://tasker.rizinos.com/');
+const PUBLIC_URL = value('url', 'https://tasker.ileies.de/');
 
 /** pm2 on pronix runs as root out of a shared home, not out of /root/.pm2. */
 const PM2 = 'PM2_HOME=/etc/.pm2 pm2';
