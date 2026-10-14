@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Button } from '#lib/components/ui/button/index.js';
-	import * as Card from '#lib/components/ui/card/index.js';
+	import ErrorPanel from '#lib/components/ErrorPanel.svelte';
 
 	// Only known reasons are shown, the query string is never rendered as it is
 	const message = $derived(
@@ -11,14 +10,8 @@
 	);
 </script>
 
-<div class="mx-auto max-w-md p-4">
-	<Card.Root>
-		<Card.Header>
-			<Card.Title>Sign-in failed</Card.Title>
-			<Card.Description>{message}</Card.Description>
-		</Card.Header>
-		<Card.Content>
-			<Button href="/">Back to start</Button>
-		</Card.Content>
-	</Card.Root>
-</div>
+<svelte:head>
+	<title>Sign-in failed - ADHD Tasker</title>
+</svelte:head>
+
+<ErrorPanel title="Sign-in failed" {message} action={{ label: 'Back to Now', href: '/' }} />
