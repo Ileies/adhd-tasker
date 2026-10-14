@@ -117,4 +117,16 @@ describe('loadDay', () => {
 		expect(failure).toBeInstanceOf(Error);
 		expect(tasker.tasks).toHaveLength(3);
 	});
+
+	test('says why when the server answers 401', async () => {
+		fakeFetch({ 'http://localhost:5173/edit': rejected(401, 'Not signed in') });
+		const failure = await loadDay('2026-10-14').catch((error: Error) => error);
+		expect((failure as Error).message).toContain('Not signed in');
+	});
+
+	test('says why when the network fails', async () => {
+		fakeFetch({ 'http://localhost:5173/edit': offline });
+		const failure = await loadDay('2026-10-14').catch((error: Error) => error);
+		expect((failure as Error).message).toContain('no connection');
+	});
 });

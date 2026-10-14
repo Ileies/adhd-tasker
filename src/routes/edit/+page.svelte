@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import { Check, ChevronLeft, ChevronRight, Plus, TriangleAlert } from '@lucide/svelte';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
-	import { createTask, deleteTask, loadDay, showToast, updateTask } from '#lib';
+	import { createTask, deleteTask, errorText, loadDay, showToast, updateTask } from '#lib';
 	import { goto } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
 	import { addDays, formatDay, isDateKey, minutesNow, todayIn } from '#lib/time.js';
@@ -36,7 +36,9 @@
 	// Always refresh the selected day, it may have been changed elsewhere (another device, the assistant later)
 	$effect(() => {
 		const date = selected;
-		void untrack(() => loadDay(date).catch(() => showToast('Could not load this day')));
+		void untrack(() =>
+			loadDay(date).catch((error) => showToast(errorText(error, 'Could not load this day')))
+		);
 	});
 
 	const dayTasks = $derived(tasker.tasks.filter((task) => task.date === selected));
@@ -102,7 +104,7 @@
 			email: data.user?.email ?? ''
 		}).then(
 			() => showToast(`Added ${parsed.title} at ${formatClock(startTime)}`),
-			() => showToast('Could not add the task')
+			(error) => showToast(errorText(error, 'Could not add the task'))
 		);
 	}
 

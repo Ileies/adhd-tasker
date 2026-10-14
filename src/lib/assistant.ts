@@ -66,7 +66,12 @@ export async function undoChange(change: Change) {
 		body: JSON.stringify({ id: change.id })
 	});
 	if (!response.ok) {
-		showToast(response.status === 409 ? 'Already undone' : 'Could not undo that change');
+		const reason = (await response.json().catch(() => null))?.message;
+		showToast(
+			response.status === 409
+				? 'Already undone'
+				: `Could not undo that change${typeof reason === 'string' ? `: ${reason}` : ''}`
+		);
 		return;
 	}
 	change.undone = true;

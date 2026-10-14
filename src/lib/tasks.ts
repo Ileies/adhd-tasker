@@ -59,8 +59,8 @@ export async function deleteTask(task: Task) {
 
 /** Fetches every task of one day, replacing what the client holds for that day. */
 export async function loadDay(date: string) {
-	const response = await fetch(`/edit?date=${date}`);
-	if (!response.ok) throw new Error('Failed to load day');
+	const response = await fetch(`/edit?date=${date}`).catch(() => null);
+	if (!response?.ok) throw new Error(`Could not load this day: ${await reasonOf(response)}`);
 	const day: Task[] = await response.json();
 	tasker.tasks = [...tasker.tasks.filter((t) => t.date !== date), ...day];
 }
