@@ -3,8 +3,8 @@
 	import { tasker } from '#lib/app.svelte.js';
 	import { addAlarm, chooseDisplay, loadSchedule, removeEntry } from '#lib/alarms.js';
 	import { playTone } from '#lib';
-	import { REPEATS, REPEAT_TEXT, type Repeat } from '#lib/schedule.js';
-	import { DEFAULT_TONE, TONE_NAMES, TONE_TEXT, type ToneName } from '#lib/tones.js';
+	import { REPEATS, REPEAT_TEXT, SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
+	import { TONE_NAMES, TONE_TEXT, type ToneName } from '#lib/tones.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
@@ -23,8 +23,11 @@
 
 	let at = $state('');
 	let label = $state('');
-	let tone = $state<ToneName>(DEFAULT_TONE);
+	const DURATIONS = [1, 2, 5, 10, 15, SCHEDULE_LIMITS.maxAlarmMinutes];
+
+	let tone = $state<ToneName>('wake');
 	let repeat = $state<Repeat>('none');
+	let duration = $state<number>(SCHEDULE_LIMITS.defaultAlarmMinutes);
 	let message = $state('');
 	let busy = $state(false);
 
@@ -45,7 +48,7 @@
 	async function add(event: SubmitEvent) {
 		event.preventDefault();
 		busy = true;
-		message = (await addAlarm({ at, label, tone, repeat })) ?? '';
+		message = (await addAlarm({ at, label, tone, repeat, duration_minutes: duration })) ?? '';
 		if (!message) {
 			label = '';
 			at = '';
@@ -117,6 +120,11 @@
 						>
 						<select bind:value={repeat} class={select} aria-label="Repeat">
 							{#each REPEATS as option (option)}<option value={option}>{REPEAT_TEXT[option]}</option
+								>{/each}
+						</select>
+						<select bind:value={duration} class={select} aria-label="Rings for">
+							{#each DURATIONS as minutes (minutes)}<option value={minutes}
+									>Rings for {minutes} min</option
 								>{/each}
 						</select>
 					</div>

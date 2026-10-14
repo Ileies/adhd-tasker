@@ -33,6 +33,8 @@ export interface Alarm {
 	label: string;
 	tone: Tone;
 	repeat: Repeat;
+	/** Minutes it rings before it stops by itself. */
+	durationMin: number;
 	createdBy: 'user' | 'agent';
 }
 

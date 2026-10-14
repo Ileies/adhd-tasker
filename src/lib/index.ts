@@ -1,6 +1,6 @@
 import { tasker } from '#lib/app.svelte.js';
 import { browser } from '$app/env';
-import { readTone, toneNotes, type Tone } from '#lib/tones.js';
+import { readTone, ringTimeline, toneLength, toneNotes, type Note, type Tone } from '#lib/tones.js';
 import { duckSpeech } from '#lib/speech.js';
 
 export function playSound(type: 'task-started' | 'reminder' | 'wrap-up') {
@@ -110,7 +110,23 @@ export function playTone(tone: Tone) {
 	master.gain.value = tasker.volume / 100;
 	master.connect(audioContext.destination);
 
-	let at = audioContext.currentTime + 0.02;
+	const at = scheduleNotes(audioContext, master, wave, notes, audioContext.currentTime + 0.02);
+	duckSpeech((at - audioContext.currentTime) * 1000);
+	setTimeout(
+		() => void audioContext.close().catch(() => {}),
+		(at - audioContext.currentTime) * 1000 + 300
+	);
+}
+
+/** Schedules a note sequence from `start` (audio clock seconds) and returns the time it ends. */
+function scheduleNotes(
+	audioContext: AudioContext,
+	destination: AudioNode,
+	wave: OscillatorType,
+	notes: Note[],
+	start: number
+): number {
+	let at = start;
 	for (const note of notes) {
 		const length = note.ms / 1000;
 		const oscillator = audioContext.createOscillator();
@@ -122,16 +138,64 @@ export function playTone(tone: Tone) {
 		gain.gain.setValueAtTime(0.35, at + Math.max(0.01, length - 0.06));
 		gain.gain.exponentialRampToValueAtTime(0.001, at + length);
 		oscillator.connect(gain);
-		gain.connect(master);
+		gain.connect(destination);
 		oscillator.start(at);
 		oscillator.stop(at + length);
 		at += length + (note.rest ?? 0) / 1000;
 	}
-	duckSpeech((at - audioContext.currentTime) * 1000);
-	setTimeout(
-		() => void audioContext.close().catch(() => {}),
-		(at - audioContext.currentTime) * 1000 + 300
-	);
+	return at;
+}
+
+/** How far ahead the next repeats are put on the audio clock, so a throttled background tab keeps ringing without a gap. */
+const RING_LOOKAHEAD_MS = 6000;
+
+/**
+ * Rings a tone back to back for `durationMs`, getting louder over the first seconds (`ringGain`), then stops by
+ * itself. The user's volume stays the ceiling and is read live, so muting or turning it down takes effect at once.
+ * Returns the stop function.
+ */
+export function startRinging(tone: Tone, durationMs: number): () => void {
+	if (!browser) return () => {};
+	const { wave, notes } = toneNotes(readTone(tone));
+	const timeline = ringTimeline({ wave, notes }, durationMs);
+	if (timeline.length === 0) return () => {};
+
+	const audioContext = new AudioContext();
+	void audioContext.resume();
+	const master = audioContext.createGain();
+	master.connect(audioContext.destination);
+	const startedAt = audioContext.currentTime + 0.05;
+	const phraseMs = toneLength({ wave, notes });
+
+	let next = 0;
+	let stopped = false;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+
+	const stop = () => {
+		if (stopped) return;
+		stopped = true;
+		clearTimeout(timer);
+		void audioContext.close().catch(() => {});
+	};
+
+	const tick = () => {
+		if (stopped) return;
+		const elapsedMs = (audioContext.currentTime - startedAt) * 1000;
+		master.gain.value = tasker.isMuted ? 0 : tasker.volume / 100;
+		while (next < timeline.length && timeline[next].atMs < elapsedMs + RING_LOOKAHEAD_MS) {
+			const { atMs, gain } = timeline[next++];
+			const repeat = audioContext.createGain();
+			repeat.gain.value = gain;
+			repeat.connect(master);
+			scheduleNotes(audioContext, repeat, wave, notes, startedAt + atMs / 1000);
+			duckSpeech(atMs - elapsedMs + phraseMs);
+		}
+		if (next >= timeline.length && elapsedMs > timeline[timeline.length - 1].atMs + phraseMs)
+			return stop();
+		timer = setTimeout(tick, 1000);
+	};
+	tick();
+	return stop;
 }
 
 export { showToast, dismissToast, errorText } from '#lib/toast.js';

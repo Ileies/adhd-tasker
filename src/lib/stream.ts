@@ -13,6 +13,7 @@ interface Message {
 	fireAt?: number;
 	label?: string;
 	tone?: Tone;
+	durationMin?: number;
 	device?: string | null;
 }
 
@@ -27,7 +28,8 @@ function handle(message: Message) {
 				id: message.id!,
 				fireAt: message.fireAt!,
 				label: message.label ?? '',
-				tone: message.tone!
+				tone: message.tone!,
+				durationMin: message.durationMin
 			});
 		case 'tone':
 			if (playsSound()) playTone(message.tone!);
