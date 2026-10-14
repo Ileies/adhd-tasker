@@ -14,6 +14,7 @@ Judge every design and implementation decision against this: does it reduce cogn
 - **External anchoring.** The app re-attracts attention with audio and color shifts instead of expecting the user to look.
 - **Immediate feedback.** Completing a task gets audio and visual confirmation.
 - **Calm.** No emoji, no decoration, no flashing, no animation that competes with the current task.
+- **Color is never the only cue.** Priority and urgency also have a non-color signal (label or bar segments) for color-blind users. Color changes crossfade slowly, they never flash or pulse.
 
 ## Tech Stack
 
@@ -171,9 +172,7 @@ Everything is synthesized with the Web Audio API. `playSound('task-started')` wh
 - Agent-made tasks are not marked in the Plan view (the activity page lists them). Every open device shows the agent card, only sound follows the display device
 - The event `day.started` (morning briefing) is not built yet
 
-## Roadmap (`TODO.md`, rationale in `docs/ui-rework-plan.md`)
-
-The UI rework roadmap (phases 0 to 9) is complete and removed from `TODO.md`. What is left is under Planned.
+## Roadmap (`TODO.md`, scope and progress to 1.0 in `docs/roadmap-1.0.md`)
 
 **Current work: `docs/soon-plan.md`.** It is the only plan being worked on. `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` wait until it is done; then it is deleted and they are updated once against the new code.
 
