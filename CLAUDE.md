@@ -31,7 +31,7 @@ Judge every design and implementation decision against this: does it reduce cogn
 bun run dev          # dev server
 bun run build        # production build
 bun run check        # svelte-kit sync + svelte-check
-bun test             # unit tests (bun test, files named *.test.ts next to the code)
+bun run test         # unit tests (*.test.ts next to the code), one line on pass, only failures on fail, -v for full output
 bun run lint         # prettier --check + eslint
 bun run format       # prettier --write
 bun run db:push      # apply schema to SQLite
@@ -39,7 +39,7 @@ bun run db:studio    # Drizzle Studio
 bun run deploy       # see Deployment
 ```
 
-Run `bun run check` and `bun test` before committing.
+Run `bun run check` and `bun run test` before committing. Prefer `bun run test` over plain `bun test`: it keeps the output short (`scripts/test.ts`).
 
 ## Conventions
 
