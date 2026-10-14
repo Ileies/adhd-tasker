@@ -116,6 +116,13 @@ In `scripts/deploy.ts`:
 
 ## 2. Pure module tests
 
+**Done, 2026-10-14.** `bun run verify` passes in about 66 s, with lines 96.0 % and functions 95.9 % covered, the suite takes about 2 s. Where the result differs from the steps below:
+
+- 2.1: `nextRepeat` returning `null` is covered through `'none'`, the only reachable case (the loop always finds a ring within 9 days). `server/events.ts` has a test for `startOfDayMs` only, the database functions in it come with checks plan phase 4.
+- 2.2: the pure functions live in a new `server/session-token.ts`. `server/session.ts` stays as the env wrapper and has its own test (round trip, `verifyIdToken` against a fake tokeninfo answer), so it left the untested list.
+- 2.3: the `plan.ts` property covers `snap`, `moveTo` and `resizeTo` (`extendTask` comes with 3.4), the `task-input.ts` property comes with 3.3. Moving a task is only on the grid when its length is.
+- Found on the way: `decrypt(encrypt(''))` returns nothing (an empty value has no ciphertext part), harmless because only keys are stored, so the property uses non-empty text. `snap` returns `-0` for small negative minutes, also harmless. The existing crypto tamper test failed now and then (it sometimes wrote the characters that were already there) and was fixed.
+
 ### 2.1 Close the existing gaps
 
 - `time.ts`: `minutesNow` with a fixed system time in several zones, including half and three-quarter hour offsets; the invalid timezone fallback; `isValidTimezone`; `zonedToEpoch` inside the spring-forward gap (2026-03-29 02:30 `Europe/Berlin`) and the repeated autumn hour, pinning the current behavior explicitly.
@@ -285,13 +292,13 @@ Done stays the largest control. After a tap the hero shows a short confirmation 
 
 ## 7. Order and done
 
-| Part                    | Effort | Exit criterion                                                                |
-| ----------------------- | ------ | ----------------------------------------------------------------------------- |
-| 1. The gate (done)      | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
-| 2. Pure module tests    | 4 h    | Every pure module tested, property tests in place                             |
-| 3. Defect fixes         | 1 day  | D1 to D8 each have a test that failed before its fix                          |
-| 4. Transitions          | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
-| 5. Feedback and silence | 1 day  | Done feedback, draining bar, silence line and tab title work on a real screen |
+| Part                        | Effort | Exit criterion                                                                |
+| --------------------------- | ------ | ----------------------------------------------------------------------------- |
+| 1. The gate (done)          | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
+| 2. Pure module tests (done) | 4 h    | Every pure module tested, property tests in place                             |
+| 3. Defect fixes             | 1 day  | D1 to D8 each have a test that failed before its fix                          |
+| 4. Transitions              | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
+| 5. Feedback and silence     | 1 day  | Done feedback, draining bar, silence line and tab title work on a real screen |
 
 Parts go in this order: 1 before everything, 3 before 4.
 
