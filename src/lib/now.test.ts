@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
 import { Priority, TaskStatus } from '#lib/types.js';
 import { rank, type RankTask } from '#lib/priority.js';
-import { BAR_MINUTES, endedAgo, heroState, wrapUpWindow } from '#lib/now.js';
+import { BAR_MINUTES, endedAgo, heroState, wrapUpStarted, wrapUpWindow } from '#lib/now.js';
 
 let nextId = 1;
 const task = (
@@ -175,5 +175,20 @@ describe('endedAgo', () => {
 		[14, 'Ended 14 min ago']
 	])('%d minutes over reads "%s"', (over, text) => {
 		expect(endedAgo(over)).toBe(text);
+	});
+});
+
+describe('wrapUpStarted', () => {
+	const a = task('A', h(9), 60);
+
+	test('true in the first two minutes of the wrap-up only', () => {
+		expect(wrapUpStarted(a, h(9, 44))).toBe(false);
+		expect(wrapUpStarted(a, h(9, 45))).toBe(true);
+		expect(wrapUpStarted(a, h(9, 46))).toBe(true);
+		expect(wrapUpStarted(a, h(9, 47))).toBe(false);
+	});
+
+	test('false once the task is over', () => {
+		expect(wrapUpStarted(a, h(10, 5))).toBe(false);
 	});
 });

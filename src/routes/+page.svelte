@@ -17,7 +17,7 @@
 	import { playsSound } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
 	import { OVERRUN_LIMITS, hyperfocusDue, momentKey, reminderDue } from '#lib/anchoring.js';
-	import { heroState } from '#lib/now.js';
+	import { heroState, wrapUpStarted } from '#lib/now.js';
 	import { extendTask, moveLater } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
 	import { formatClock } from '#lib/format.js';
@@ -79,6 +79,7 @@
 		if (!user) return;
 		const quiet = !playsSound();
 
+		let chimed = false;
 		const upcoming = user.enableReminders
 			? reminderDue(ranking.upcoming, now, user.reminderAdvanceTime)
 			: null;
@@ -86,8 +87,20 @@
 			const key = momentKey('reminder', today, upcoming);
 			if (!sounded.has(key)) {
 				sounded.add(key);
+				chimed = true;
 				showToast(`${upcoming.title} starts in ${upcoming.startTime - now} min`);
 				if (!quiet) playSound('reminder');
+			}
+		}
+
+		// One soft cue when the task enters its wrap-up, unless the heads-up chime sounded in the same minute
+		const wrapping =
+			hero.kind === 'wrapping-up' && wrapUpStarted(hero.task, now) ? hero.task : null;
+		if (wrapping) {
+			const key = momentKey('wrap-up', today, wrapping);
+			if (!sounded.has(key)) {
+				sounded.add(key);
+				if (!quiet && !chimed) playSound('wrap-up');
 			}
 		}
 

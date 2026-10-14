@@ -3,7 +3,7 @@ import { browser } from '$app/env';
 import { readTone, toneNotes, type Tone } from '#lib/tones.js';
 import { duckSpeech } from '#lib/speech.js';
 
-export function playSound(type: 'task-started' | 'reminder') {
+export function playSound(type: 'task-started' | 'reminder' | 'wrap-up') {
 	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
 	// Anchor sounds win over speech
 	duckSpeech(type === 'task-started' ? 200 : 1200);
@@ -70,6 +70,27 @@ export function playSound(type: 'task-started' | 'reminder') {
 			oscillator2.start(audioContext.currentTime);
 			oscillator1.stop(audioContext.currentTime + 1.2);
 			oscillator2.stop(audioContext.currentTime + 1.2);
+			break;
+		}
+		case 'wrap-up': {
+			// Two soft notes stepping down, "this is coming to an end": lower and slower than the reminder, never urgent
+			const oscillator = audioContext.createOscillator();
+			const gainNode = audioContext.createGain();
+			oscillator.connect(gainNode);
+			gainNode.connect(master);
+
+			const start = audioContext.currentTime;
+			oscillator.frequency.setValueAtTime(587.33, start); // D5
+			oscillator.frequency.setValueAtTime(440, start + 0.45); // A4
+
+			gainNode.gain.setValueAtTime(0, start);
+			gainNode.gain.linearRampToValueAtTime(0.18, start + 0.08);
+			gainNode.gain.exponentialRampToValueAtTime(0.06, start + 0.44);
+			gainNode.gain.linearRampToValueAtTime(0.16, start + 0.5);
+			gainNode.gain.exponentialRampToValueAtTime(0.001, start + 1.3);
+
+			oscillator.start(start);
+			oscillator.stop(start + 1.3);
 			break;
 		}
 	}

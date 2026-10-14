@@ -59,3 +59,13 @@ export function heroState<T extends RankTask>(
 export function endedAgo(over: number): string {
 	return over < 1 ? 'Ended just now' : `Ended ${over} min ago`;
 }
+
+/** The wrap-up cue sounds for the minutes right after a task enters wrapping up, so a page loaded late stays quiet. */
+const WRAP_UP_FRESH_MINUTES = 2;
+
+/** True when the task entered its wrap-up within the last couple of minutes. */
+export function wrapUpStarted(task: RankTask, now: number): boolean {
+	const left = task.startTime + task.duration - now;
+	const window = wrapUpWindow(task.duration);
+	return left <= window && left > window - WRAP_UP_FRESH_MINUTES;
+}

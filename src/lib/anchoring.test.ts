@@ -65,6 +65,7 @@ describe('momentKey', () => {
 	test('differs per kind, day and task time', () => {
 		const a = task(1, 540, 60);
 		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(momentKey('reminder', '2026-10-14', a));
+		expect(momentKey('wrap-up', '2026-10-14', a)).not.toBe(momentKey('reminder', '2026-10-14', a));
 		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(momentKey('overrun', '2026-10-15', a));
 		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(
 			momentKey('overrun', '2026-10-14', { ...a, duration: 75 })

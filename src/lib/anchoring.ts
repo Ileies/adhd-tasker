@@ -61,7 +61,7 @@ export function reminderDue<T extends RankTask>(
 }
 
 /** Stops one moment from sounding twice. */
-export const momentKey = (kind: 'overrun' | 'reminder', date: string, task: RankTask) =>
+export const momentKey = (kind: 'overrun' | 'reminder' | 'wrap-up', date: string, task: RankTask) =>
 	`${kind}:${date}:${task.id}:${task.startTime}:${task.duration}`;
 
 export interface AnchoringSettings {
