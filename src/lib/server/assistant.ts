@@ -1,20 +1,14 @@
 import { runAssistant as runTurn, type ChatMessage } from '#lib/core/assistant.js';
 import { AssistantError } from '#lib/core/context.js';
+import { rateLimit } from '#lib/core/rate.js';
 import { serverCtx } from '#lib/server/ctx.js';
 import type { Settings } from '#lib/core/repo.js';
 import { dbRepo } from '#lib/server/db-repo.js';
 
-const RATE_LIMIT = { requests: 20, windowMs: 5 * 60_000 };
-
-const recent = new Map<string, number[]>();
-
-function checkRate(email: string) {
-	const now = Date.now();
-	const hits = (recent.get(email) ?? []).filter((at) => now - at < RATE_LIMIT.windowMs);
-	if (hits.length >= RATE_LIMIT.requests)
-		throw new AssistantError('Too many requests, wait a few minutes', 429);
-	recent.set(email, [...hits, now]);
-}
+const checkRate = rateLimit(
+	{ requests: 20, windowMs: 5 * 60_000 },
+	'Too many requests, wait a few minutes'
+);
 
 /** One chat turn for an account. The rate limit lives here because a server shares one process between users. */
 export async function runAssistant(email: string, history: ChatMessage[]) {

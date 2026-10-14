@@ -1,19 +1,13 @@
 import { AssistantError } from '#lib/core/context.js';
+import { rateLimit } from '#lib/core/rate.js';
 import { checkAudio, speak as speakWith, transcribe as transcribeWith } from '#lib/core/voice.js';
 import { readOpenaiKey } from '#lib/server/ctx.js';
 import { dbRepo } from '#lib/server/db-repo.js';
 
-const RATE_LIMIT = { requests: 30, windowMs: 5 * 60_000 };
-
-const recent = new Map<string, number[]>();
-
-function checkRate(email: string) {
-	const now = Date.now();
-	const hits = (recent.get(email) ?? []).filter((at) => now - at < RATE_LIMIT.windowMs);
-	if (hits.length >= RATE_LIMIT.requests)
-		throw new AssistantError('Too many voice requests, wait a few minutes', 429);
-	recent.set(email, [...hits, now]);
-}
+const checkRate = rateLimit(
+	{ requests: 30, windowMs: 5 * 60_000 },
+	'Too many voice requests, wait a few minutes'
+);
 
 async function openaiKey(email: string) {
 	const key = readOpenaiKey((await dbRepo(email).settings.get()).openaiKey);
