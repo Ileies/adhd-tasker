@@ -61,9 +61,9 @@ Run `bun run check` and `bun test` before committing.
 | `/edit` (API) | Task CRUD: GET one day (`?date=`), POST, PUT, DELETE |
 | `/alarms` | User alarms with tone preview, "use this device for sound", the assistant's wakeups |
 | `/activity` | What the assistant changed (reason, Undo), events it saw and their outcome, today's token use |
-| `/settings` | Theme, timezone, OpenAI key (`saveOpenaiKey`/`removeOpenaiKey`), assistant autonomy (`saveAgent`), Google services (`linkGoogle`/`unlinkGoogle`). `/settings/timezone` saves the timezone |
+| `/settings` | Theme, timezone, OpenAI key (`saveOpenaiKey`/`removeOpenaiKey`), assistant autonomy (`saveAgent`), voice replies (`saveVoice`), Google services (`linkGoogle`/`unlinkGoogle`). `/settings/timezone` saves the timezone |
 | `/callback` | Google OAuth callback (GET) and One Tap credential (POST) |
-| `/assistant` (API) | `POST` one chat turn (tool loop against OpenAI with the user's own key). `POST /assistant/undo` reverts one logged change |
+| `/assistant` (API) | `POST` one chat turn (tool loop against OpenAI with the user's own key). `POST /assistant/undo` reverts one logged change. `POST /assistant/transcribe` speech to text, `POST /assistant/speak` text to mp3 (see Voice) |
 | `/agent` (API) | `GET` what the agent did on its own (open card, changes since `?since=<action id>`). `POST /agent/cards/[id]` dismisses or answers a card |
 | `/stream` (API) | Server-Sent Events (`?device=<id>`) with hints `agent`, `schedule`, `alarm`, `tone`, `display`. Hints only: the client fetches the data itself, a missed push costs nothing |
 | `/schedule` (API) | `GET` pending alarms and wakeups, `POST` a user alarm, `DELETE /schedule/[id]`, `POST /schedule/display` chooses the display device |
@@ -78,7 +78,7 @@ There is no stored active task. What is current is derived on every tick by the 
 
 ### Database (`src/lib/server/db/schema.ts`)
 
-- `users`: keyed by Google email. Reminder and focus flags, `darkMode`, `timezone`, encrypted `openaiKey`, `googleServices` (space separated, scopes in `src/lib/google.ts`), agent settings (`aiAutonomy` observe|suggest|act default suggest, `aiEvents`, `quietStart`/`quietEnd`, `dailyTokenBudget`), `lastCurrentTaskId` (what the scheduler last saw as current, 0 = free time, null = never tracked), `displayDevice`
+- `users`: keyed by Google email. Reminder and focus flags, `darkMode`, `timezone`, encrypted `openaiKey`, `googleServices` (space separated, scopes in `src/lib/google.ts`), agent settings (`aiAutonomy` observe|suggest|act default suggest, `aiEvents`, `quietStart`/`quietEnd`, `dailyTokenBudget`), `lastCurrentTaskId` (what the scheduler last saw as current, 0 = free time, null = never tracked), `displayDevice`, `voiceReplies`
 - `tasks`: `title`, `description`, `email`, `date`, `startTime`, `duration`, `priority` (1 to 5), `status`. Only `completed` is meaningful; `active` and `overdue` are no longer written or read and can be removed from the enum in a cleanup
 - `agent_actions`: every plan change by the assistant with `before`/`after` JSON, `eventId`, `reason`, `undoneAt`. Undo restores `before`
 - `events`: everything the agent can observe (`type`, `payload`, `origin` user|agent|system, unique `key` per user for detected events, `handledAt`, `outcome`). Pruned after 30 days
@@ -102,6 +102,10 @@ There is no stored active task. What is current is derived on every tick by the 
 **OpenAI rules, always enforced** (`src/lib/openai.ts`, tested): every request is built by `buildRequest` with a `Use` (`chat`, `reaction`, `replan`). Responses API (`/v1/responses`), model `gpt-6-luna`, `store: false`, `service_tier: 'flex'`. Nothing is stored at OpenAI, so each round resends the whole conversation and previous output items with `reasoning.encrypted_content` included. Reasoning effort is fixed per use in `EFFORT_BY_USE` (chat medium, reaction low, replan high), never a user setting. Calls wait up to 120 s and retry once on 429. New model calls must go through `buildRequest`.
 
 The user's OpenAI key is encrypted at rest (AES-256-GCM, key derived from `GOOGLE_CLIENT_SECRET`, `src/lib/server/crypto.ts`) and never reaches the client (the layout only passes `hasOpenaiKey`). Changing `GOOGLE_CLIENT_SECRET` invalidates saved keys. The app must work fully without AI.
+
+### Voice
+
+Push-to-talk only (no always-listening mic). The mic button in `AssistantDrawer.svelte` records while held (or Space on it), `POST /assistant/transcribe` (multipart `audio`) returns `{ text }` via `gpt-4o-mini-transcribe`, and the text is sent like a typed message. `POST /assistant/speak` (`{ text }`) returns mp3 via `gpt-4o-mini-tts`. Pure rules (models, limits, `speakable()` trimming to 280 chars, recording type, ducking volume) in `src/lib/voice.ts` (tested), server calls in `src/lib/server/voice.ts` (user's key, 30 requests per 5 minutes), browser side in `src/lib/speech.ts`. These two endpoints are the only OpenAI calls that do not go through `buildRequest` (not the Responses API), nothing is stored. Spoken output is the `users.voiceReplies` setting (default off, `saveVoice` on `/settings`, `tasker.voice.replies`): chat replies are spoken on the device where they were asked, new agent cards only on the display device and never on the first fetch after a load. Every chime and tone calls `duckSpeech()`, so speech drops to a whisper while an anchor sound plays. Muting stops speech. Starting to talk or sending a message stops speech.
 
 ### Event-driven agent
 
@@ -145,7 +149,7 @@ Everything is synthesized with the Web Audio API. `playSound('task-started')` wh
 
 ## Roadmap (`TODO.md`, rationale in `docs/ui-rework-plan.md`)
 
-Phases 0 to 7 are done (cleanup, design foundations, priority engine and Now, dated days and Plan, responsive and PWA, assistant, event bus and reactions, scheduler/alarms/tones). Open: phase 8 voice (push-to-talk) and phase 9 ("I'm stuck", configurable hyperfocus alarm, reminders).
+Phases 0 to 7 are done (cleanup, design foundations, priority engine and Now, dated days and Plan, responsive and PWA, assistant, event bus and reactions, scheduler/alarms/tones). Phase 8 (voice) is done too. Open: phase 9 ("I'm stuck", configurable hyperfocus alarm, reminders).
 
 **Planned, do not implement without discussion:** Google Calendar sync (two-way), end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
 
