@@ -42,6 +42,6 @@
 	{/if}
 
 	<p class="text-sm text-muted-foreground">
-		Your messages and the tasks of today and tomorrow are sent to OpenAI with your own key whenever you talk to the assistant. Nothing is sent otherwise.
+		Replies use OpenAI's flex processing and nothing is stored on OpenAI's side, so an answer can take a little longer. Your messages and the tasks of today and tomorrow are sent to OpenAI with your own key whenever you talk to the assistant. Nothing is sent otherwise.
 	</p>
 </div>
