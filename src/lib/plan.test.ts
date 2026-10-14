@@ -7,6 +7,7 @@ import {
 	MIN_DURATION,
 	SNAP,
 	conflictsWith,
+	extendTask,
 	layoutDay,
 	moveTo,
 	resizeTo,
@@ -121,6 +122,46 @@ describe('properties', () => {
 				expect(duration % SNAP).toBe(0);
 				expect(duration).toBeGreaterThanOrEqual(MIN_DURATION);
 			})
+		);
+	});
+});
+
+describe('extendTask', () => {
+	test('a missed task gets the minutes from now', () => {
+		expect(extendTask({ startTime: 600, duration: 30 }, 660, 15)).toBe(75);
+	});
+
+	test('a running task keeps its end and gets the minutes on top', () => {
+		expect(extendTask({ startTime: 600, duration: 60 }, 630, 15)).toBe(75);
+	});
+
+	test('never crosses midnight (D5)', () => {
+		expect(extendTask({ startTime: 1400, duration: 30 }, 1435, 15)).toBe(40);
+	});
+
+	test('a task that already ends at midnight cannot grow', () => {
+		expect(extendTask({ startTime: 1380, duration: 60 }, 1430, 15)).toBe(60);
+	});
+
+	test('after 23:45 the extension is cut, not wrapped (D5)', () => {
+		expect(extendTask({ startTime: 1420, duration: 10 }, 1439, 15)).toBe(20);
+	});
+
+	test('property: the new end is at most midnight and never before the old end', () => {
+		fc.assert(
+			fc.property(
+				fc.integer({ min: 0, max: 1435 }),
+				fc.integer({ min: 5, max: 600 }),
+				fc.integer({ min: 0, max: 1439 }),
+				fc.integer({ min: 1, max: 120 }),
+				(startTime, length, now, minutes) => {
+					const duration = Math.min(length, DAY_MINUTES - startTime);
+					const next = extendTask({ startTime, duration }, now, minutes);
+					expect(startTime + next).toBeLessThanOrEqual(DAY_MINUTES);
+					expect(next).toBeGreaterThanOrEqual(duration);
+					expect(Number.isInteger(next)).toBe(true);
+				}
+			)
 		);
 	});
 });
