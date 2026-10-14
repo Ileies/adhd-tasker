@@ -6,6 +6,7 @@
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
 	import { toggleFullscreen } from '#lib/display.js';
+	import { startAgentPolling } from '#lib/agent.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
@@ -33,6 +34,12 @@
 		cancel();
 		const timer = setTimeout(cancel, 1000);
 		return () => clearTimeout(timer);
+	});
+
+	// Cards and plan changes the agent made on its own
+	$effect(() => {
+		if (!data.user) return;
+		return startAgentPolling();
 	});
 
 	// The saved timezone is the source of truth, the first login saves this device's timezone
@@ -153,6 +160,9 @@
 						<DropdownMenu.Item onSelect={() => loginForm?.requestSubmit()}>Log in</DropdownMenu.Item>
 					{/if}
 					<DropdownMenu.Separator />
+					{#if data.user}
+						<DropdownMenu.Item onSelect={() => goto('/activity')}>Activity</DropdownMenu.Item>
+					{/if}
 					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
 					{#if data.user}
 						<DropdownMenu.Separator />

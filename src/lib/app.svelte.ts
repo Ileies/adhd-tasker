@@ -16,6 +16,14 @@ export interface ChatEntry {
 	error?: boolean;
 }
 
+/** A note or question the agent put on the Now screen. */
+export interface AgentCard {
+	id: number;
+	kind: 'say' | 'ask';
+	text: string;
+	options: string[];
+}
+
 export const tasker: {
 	tasks: Task[];
 	isMuted: boolean;
@@ -26,6 +34,7 @@ export const tasker: {
 	timezone: string | null; // IANA name from the user's settings, null until set
 	toast: Toast | null;
 	assistant: { open: boolean; busy: boolean; messages: ChatEntry[] }; // the chat lives for this page session only
+	agent: { cards: AgentCard[]; cursor: number | null }; // cursor: last agent action id seen, null before the first poll
 } = $state({
 	tasks: [],
 	isMuted: false,
@@ -35,5 +44,6 @@ export const tasker: {
 	dayEnd: 1140,
 	timezone: null,
 	toast: null,
-	assistant: { open: false, busy: false, messages: [] }
+	assistant: { open: false, busy: false, messages: [] },
+	agent: { cards: [], cursor: null }
 });

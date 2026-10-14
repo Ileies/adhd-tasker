@@ -3,6 +3,7 @@
 	import type { Task } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
+	import AgentStrip from '#lib/components/AgentStrip.svelte';
 	import { formatClock, formatDuration } from '#lib/format.js';
 
 	const NEXT_COUNT = 4;
@@ -30,6 +31,8 @@
 
 <aside class="flex flex-col gap-8 border-t bg-background p-6 pt-8 sm:px-10 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:pt-20">
 	<div class="tabular text-5xl font-semibold" aria-label="Current time">{formatClock(now)}</div>
+
+	<AgentStrip />
 
 	<section>
 		<h2 class="mb-4 text-sm font-semibold tracking-wide text-muted-foreground uppercase">Next</h2>
