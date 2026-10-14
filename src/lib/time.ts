@@ -51,6 +51,28 @@ export function addDays(date: DateKey, days: number): DateKey {
 	return moved.toISOString().slice(0, 10);
 }
 
+/** The epoch ms of a wall clock moment (`date` plus minutes since midnight) in a timezone, daylight saving included. */
+export function zonedToEpoch(date: DateKey, minutes: number, timezone: string): number {
+	const wall = Date.parse(date + 'T00:00:00Z') + minutes * 60_000;
+	const offsetAt = (at: number) => {
+		const parts = new Intl.DateTimeFormat('en-US', {
+			timeZone: isValidTimezone(timezone) ? timezone : 'UTC',
+			year: 'numeric',
+			month: 'numeric',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: 'numeric',
+			second: 'numeric',
+			hourCycle: 'h23'
+		}).formatToParts(new Date(at));
+		const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+		return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')) - at;
+	};
+	// Two passes settle the offset when the guess lands on the other side of a daylight saving change
+	const first = wall - offsetAt(wall);
+	return wall - offsetAt(first);
+}
+
 /** `Today`, `Tomorrow`, `Yesterday` or a short weekday and date such as `Fri, Oct 16`. */
 export function formatDay(date: DateKey, today: DateKey): string {
 	if (date === today) return 'Today';
