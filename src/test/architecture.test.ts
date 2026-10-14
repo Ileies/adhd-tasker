@@ -171,11 +171,17 @@ describe('client state', () => {
 
 	test('browser storage is only used for device preferences, never for task data', () => {
 		// app.html reads the theme before the app loads, so the first paint has the right colors
-		expect(appCodeMentioning(/\b(localStorage|sessionStorage|indexedDB)\b/)).toEqual([
+		expect(appCodeMentioning(/\b(localStorage|sessionStorage)\b/)).toEqual([
 			'src/app.html',
 			'src/lib/alarms.ts',
 			'src/lib/theme.ts'
 		]);
+	});
+
+	test('a guest plan lives in IndexedDB, and only the local repo code touches it', () => {
+		const owners = appCodeMentioning(/\b(indexedDB|IDBDatabase|IDBFactory)\b/);
+		expect(owners.length).toBeGreaterThan(0);
+		expect(owners.filter((path) => !path.startsWith('src/lib/local/'))).toEqual([]);
 	});
 });
 

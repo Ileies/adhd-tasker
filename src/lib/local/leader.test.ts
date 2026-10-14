@@ -1,31 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { LEADER_LOCK, electLeader, type LockApi } from '#lib/local/leader.js';
-
-/** The browser's lock manager reduced to what matters: one holder at a time, the next waits until it is gone. */
-function fakeLocks() {
-	const held = new Set<string>();
-	const queue: { name: string; run: () => Promise<void> }[] = [];
-	const api: LockApi = {
-		request(name, callback) {
-			return new Promise((resolve) => {
-				const grant = () => {
-					held.add(name);
-					void callback().then(resolve);
-				};
-				if (held.has(name)) queue.push({ name, run: async () => grant() });
-				else grant();
-			});
-		}
-	};
-	/** The holder's tab closes: the browser hands the lock to the next in line. */
-	const release = (name: string) => {
-		held.delete(name);
-		const next = queue.findIndex((item) => item.name === name);
-		if (next !== -1) void queue.splice(next, 1)[0].run();
-	};
-	return { api, release };
-}
+import { electLeader } from '#lib/local/leader.js';
+import { fakeLocks } from '#test/locks.js';
 
 describe('electLeader', () => {
 	test('without Web Locks the one tab leads at once', () => {
@@ -48,23 +24,23 @@ describe('electLeader', () => {
 		electLeader(api, () => led.push('first'));
 		electLeader(api, () => led.push('second'));
 		electLeader(api, () => led.push('third'));
-		release(LEADER_LOCK);
+		release();
 		expect(led).toEqual(['first', 'second']);
-		release(LEADER_LOCK);
+		release();
 		expect(led).toEqual(['first', 'second', 'third']);
 	});
 
 	test('a leader never gives the lock back by itself', async () => {
 		const { api } = fakeLocks();
-		let done = false;
+		let given = false;
 		const request = api.request;
 		api.request = (name, callback) => {
 			const held = request(name, callback);
-			void held.then(() => (done = true));
+			void held.then(() => (given = true));
 			return held;
 		};
 		electLeader(api, () => {});
 		await Bun.sleep(5);
-		expect(done).toBe(false);
+		expect(given).toBe(false);
 	});
 });
