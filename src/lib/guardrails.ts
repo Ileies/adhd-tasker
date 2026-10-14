@@ -5,8 +5,13 @@ export const AUTONOMY = ['observe', 'suggest', 'act'] as const;
 export type Autonomy = (typeof AUTONOMY)[number];
 export const isAutonomy = (value: unknown): value is Autonomy => AUTONOMY.includes(value as Autonomy);
 
-/** Event types the user can switch on or off. `user.message` is the chat itself and always on. */
-export const REACTION_EVENTS = EVENT_TYPES.filter((type) => type !== 'user.message');
+/**
+ * Types that are never a toggle: `user.message` is the chat itself, an alarm only rings, and a wakeup is the
+ * agent's own appointment (it is still bound by autonomy, quiet hours, rate limit and budget).
+ */
+const NOT_TOGGLES: EventType[] = ['user.message', 'alarm.fired', 'wakeup.fired'];
+/** Event types the user can switch on or off. */
+export const REACTION_EVENTS = EVENT_TYPES.filter((type) => !NOT_TOGGLES.includes(type));
 /** Plan edits and every switch are too frequent to react to by default, the user can opt in. */
 export const DEFAULT_REACTION_EVENTS: EventType[] = ['task.completed', 'task.missed', 'task.overrun'];
 
@@ -57,7 +62,7 @@ export function decideReaction(context: ReactionContext, types: EventType[]): De
 	const { settings } = context;
 	if (settings.autonomy === 'observe') return { run: false, reason: 'autonomy is observe' };
 	if (!context.hasKey) return { run: false, reason: 'no OpenAI key' };
-	if (!types.some((type) => settings.events.includes(type))) return { run: false, reason: 'event type is switched off' };
+	if (!types.some((type) => type === 'wakeup.fired' || settings.events.includes(type))) return { run: false, reason: 'event type is switched off' };
 	if (inQuietHours(context.now, settings.quietStart, settings.quietEnd)) return { run: false, reason: 'quiet hours' };
 	if (settings.dailyTokenBudget !== null && context.tokensToday >= settings.dailyTokenBudget) return { run: false, reason: 'daily token budget used up' };
 	if (context.recentReactions.length >= LIMITS.perHour) return { run: false, reason: 'hourly limit reached' };
@@ -80,7 +85,7 @@ export function parseSettingsForm(form: FormData): { ok: true; value: AgentSetti
 	const quietEnd = parseClock(form.get('quietEnd'));
 	if (quietStart === undefined || quietEnd === undefined) return { ok: false, error: 'Quiet hours need a start and an end time' };
 
-	const events = form.getAll('event').filter((value): value is EventType => isEventType(value) && value !== 'user.message');
+	const events = form.getAll('event').filter((value): value is EventType => isEventType(value) && !NOT_TOGGLES.includes(value));
 
 	const rawBudget = String(form.get('budget') ?? '').trim();
 	let dailyTokenBudget: number | null = null;

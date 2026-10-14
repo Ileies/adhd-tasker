@@ -11,7 +11,9 @@ export const EVENT_TYPES = [
 	'task.switched',
 	'task.missed',
 	'task.overrun',
-	'user.message'
+	'user.message',
+	'alarm.fired',
+	'wakeup.fired'
 ] as const;
 
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -126,5 +128,9 @@ function describeBase(type: EventType, payload: Record<string, unknown>): string
 			return `Task ${title} is still not marked done ${payload.minutesOver} minutes after its planned end`;
 		case 'user.message':
 			return 'The user sent a message';
+		case 'alarm.fired':
+			return `Alarm "${payload.label}" rang (set by ${payload.createdBy})`;
+		case 'wakeup.fired':
+			return `You woke yourself up on purpose. Your own note: "${payload.note}"`;
 	}
 }

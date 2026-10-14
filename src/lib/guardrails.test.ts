@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_REACTION_EVENTS, LIMITS, decideReaction, inQuietHours, parseSettingsForm, type ReactionContext } from './guardrails';
+import { DEFAULT_REACTION_EVENTS, LIMITS, REACTION_EVENTS, decideReaction, inQuietHours, parseSettingsForm, type ReactionContext } from './guardrails';
 
 const context = (patch: Partial<ReactionContext> = {}, settings: Partial<ReactionContext['settings']> = {}): ReactionContext => ({
 	settings: { autonomy: 'suggest', events: [...DEFAULT_REACTION_EVENTS], quietStart: 22 * 60, quietEnd: 7 * 60, dailyTokenBudget: null, ...settings },
@@ -49,6 +49,29 @@ describe('decideReaction', () => {
 
 	test('one enabled type in a batch is enough', () => {
 		expect(decideReaction(context(), ['task.created', 'task.completed']).run).toBe(true);
+	});
+});
+
+describe('wakeups', () => {
+	test('a wakeup needs no toggle but obeys every other guardrail', () => {
+		expect(decideReaction(context(), ['wakeup.fired'])).toEqual({ run: true });
+		expect(decideReaction(context({}, { events: [] }), ['wakeup.fired'])).toEqual({ run: true });
+		expect(decideReaction(context({ now: 23 * 60 }), ['wakeup.fired'])).toEqual({ run: false, reason: 'quiet hours' });
+		expect(decideReaction(context({}, { autonomy: 'observe' }), ['wakeup.fired'])).toEqual({ run: false, reason: 'autonomy is observe' });
+		expect(decideReaction(context({ recentReactions: Array(LIMITS.perHour).fill(1_000_000_000 - 3_600_000) }), ['wakeup.fired']).run).toBe(false);
+	});
+
+	test('alarms and wakeups are not offered as toggles', () => {
+		expect(REACTION_EVENTS).not.toContain('wakeup.fired');
+		expect(REACTION_EVENTS).not.toContain('alarm.fired');
+		const form = new FormData();
+		form.set('autonomy', 'suggest');
+		form.set('quietStart', '22:00');
+		form.set('quietEnd', '07:00');
+		form.append('event', 'alarm.fired');
+		form.append('event', 'task.missed');
+		const result = parseSettingsForm(form);
+		expect(result.ok && result.value.events).toEqual(['task.missed']);
 	});
 });
 
