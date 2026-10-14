@@ -31,10 +31,31 @@ export function extendTask(
 	const end = Math.max(task.startTime + task.duration, now) + minutes;
 	return Math.max(task.duration, Math.min(DAY_MINUTES, end) - task.startTime);
 }
+
 type Span = Pick<Task, 'id' | 'startTime' | 'duration'>;
 
 const overlap = (a: Span, b: Span) =>
 	a.startTime < b.startTime + b.duration && b.startTime < a.startTime + a.duration;
+
+/**
+ * The first start after `now` on the grid where `duration` fits between the open `others`, ending by midnight.
+ * `others` must not contain the task being moved. Null when nothing fits today.
+ */
+export function nextFreeSlot<T extends Span & { status: TaskStatus }>(
+	others: T[],
+	now: number,
+	duration: number
+): number | null {
+	const open = others.filter((task) => task.status !== TaskStatus.Completed);
+	let start = Math.ceil(now / SNAP) * SNAP;
+	while (start + duration <= DAY_MINUTES) {
+		const blocking = open.filter((task) => overlap({ id: 0, startTime: start, duration }, task));
+		if (blocking.length === 0) return start;
+		const end = Math.max(...blocking.map((task) => task.startTime + task.duration));
+		start = Math.ceil(end / SNAP) * SNAP;
+	}
+	return null;
+}
 
 export interface Placement<T extends Span> {
 	task: T;

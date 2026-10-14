@@ -10,6 +10,7 @@ import {
 	extendTask,
 	layoutDay,
 	moveTo,
+	nextFreeSlot,
 	resizeTo,
 	snap
 } from '#lib/plan.js';
@@ -160,6 +161,72 @@ describe('extendTask', () => {
 					expect(startTime + next).toBeLessThanOrEqual(DAY_MINUTES);
 					expect(next).toBeGreaterThanOrEqual(duration);
 					expect(Number.isInteger(next)).toBe(true);
+				}
+			)
+		);
+	});
+});
+
+describe('nextFreeSlot', () => {
+	const h = (hours: number, minutes = 0) => hours * 60 + minutes;
+
+	test('an empty day gives the next grid step after now', () => {
+		expect(nextFreeSlot([], h(10, 3), 30)).toBe(h(10, 15));
+		expect(nextFreeSlot([], h(10, 15), 30)).toBe(h(10, 15));
+	});
+
+	test('skips past a task that is in the way, onto the grid', () => {
+		const others = [span(1, h(10, 15), 40)];
+		expect(nextFreeSlot(others, h(10, 3), 30)).toBe(h(11));
+	});
+
+	test('uses a gap that fits and skips one that is too small', () => {
+		const others = [span(1, h(10), 60), span(2, h(11, 15), 60), span(3, h(12, 30), 60)];
+		expect(nextFreeSlot(others, h(10), 15)).toBe(h(11));
+		expect(nextFreeSlot(others, h(10), 30)).toBe(h(13, 30));
+	});
+
+	test('a gap that fits exactly is used', () => {
+		const others = [span(1, h(10), 60), span(2, h(11, 30), 60)];
+		expect(nextFreeSlot(others, h(10), 30)).toBe(h(11));
+	});
+
+	test('completed tasks do not block', () => {
+		const others = [span(1, h(10), 120, TaskStatus.Completed)];
+		expect(nextFreeSlot(others, h(10), 60)).toBe(h(10));
+	});
+
+	test('null when nothing fits before midnight', () => {
+		expect(nextFreeSlot([span(1, h(9), 900)], h(9), 60)).toBeNull();
+		expect(nextFreeSlot([], h(23, 50), 30)).toBeNull();
+	});
+
+	test('a task may end exactly at midnight', () => {
+		expect(nextFreeSlot([], h(23), 60)).toBe(h(23));
+	});
+
+	test('the slot is on the grid, after now, free and inside the day', () => {
+		fc.assert(
+			fc.property(
+				fc.array(
+					fc.record({
+						start: fc.integer({ min: 0, max: 1400 }),
+						duration: fc.integer({ min: 15, max: 240 })
+					}),
+					{ maxLength: 8 }
+				),
+				fc.integer({ min: 0, max: 1439 }),
+				fc.integer({ min: 15, max: 240 }),
+				(spans, now, duration) => {
+					const others = spans.map((s, i) =>
+						span(i + 1, s.start, Math.min(s.duration, DAY_MINUTES - s.start))
+					);
+					const slot = nextFreeSlot(others, now, duration);
+					if (slot === null) return;
+					expect(slot % SNAP).toBe(0);
+					expect(slot).toBeGreaterThanOrEqual(now);
+					expect(slot + duration).toBeLessThanOrEqual(DAY_MINUTES);
+					expect(conflictsWith(span(0, slot, duration), others)).toEqual([]);
 				}
 			)
 		);
