@@ -11,6 +11,13 @@ const svelteConfig = (await loadConfig('./', { traverse: false }))?.config;
 
 const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
+// Explicit projects instead of projectService: with projectService every parsed
+// .svelte file invalidates the shared program and lint takes minutes, not seconds
+const typed = {
+	project: ['./tsconfig.json', './scripts/tsconfig.json', './src/service-worker/tsconfig.json'],
+	tsconfigRootDir: import.meta.dirname
+};
+
 export default ts.config(
 	includeIgnoreFile(gitignorePath),
 	js.configs.recommended,
@@ -40,11 +47,31 @@ export default ts.config(
 		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
 		languageOptions: {
 			parserOptions: {
-				projectService: true,
+				...typed,
 				extraFileExtensions: ['.svelte'],
 				parser: ts.parser,
 				svelteConfig
 			}
+		}
+	},
+	{
+		// Type-aware rules: every promise is awaited, voided or caught
+		files: ['**/*.ts', '**/*.svelte'],
+		languageOptions: {
+			parserOptions: typed
+		},
+		rules: {
+			'@typescript-eslint/no-floating-promises': 'error',
+			// Svelte event attributes accept async handlers
+			'@typescript-eslint/no-misused-promises': [
+				'error',
+				{ checksVoidReturn: { attributes: false } }
+			],
+			'@typescript-eslint/await-thenable': 'error',
+			'@typescript-eslint/switch-exhaustiveness-check': [
+				'error',
+				{ considerDefaultExhaustiveForUnions: true }
+			]
 		}
 	}
 );
