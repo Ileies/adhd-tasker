@@ -4,7 +4,8 @@
  */
 export const TRANSCRIBE_URL = 'https://api.openai.com/v1/audio/transcriptions';
 export const SPEECH_URL = 'https://api.openai.com/v1/audio/speech';
-export const TRANSCRIBE_MODEL = 'gpt-4o-mini-transcribe';
+export const TRANSCRIBE_MODEL = 'gpt-transcribe';
+/** Deprecated: OpenAI removes it on 2027-01-06, the only named replacement (gpt-realtime-2.1-mini) is Realtime only, see CLAUDE.md. */
 export const SPEECH_MODEL = 'gpt-4o-mini-tts';
 export const SPEECH_VOICE = 'sage';
 export const SPEECH_STYLE = 'Calm, warm and unhurried. Speak briefly, like a quiet colleague.';
