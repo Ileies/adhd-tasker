@@ -8,12 +8,16 @@
  * static env, baked in from the `.env` that lives there.
  *
  * Usage:
- *   bun run deploy                 preflight, pull, build, back up, restart, verify
- *   bun run deploy --push          push the current branch first, instead of refusing
- *   bun run deploy --dry-run       print every step without touching the server
- *   bun run deploy --skip-check    skip `bun run check` / `bun test`
- *   bun run deploy --db-push       run `drizzle-kit push --force` after the backup (schema changes)
- *   bun run deploy --host <alias>  deploy somewhere other than `home`
+ *   bun run deploy                   preflight, pull, build, back up, restart, verify
+ *   bun run deploy --push            push the current branch first, instead of refusing
+ *   bun run deploy --dry-run         print every step without touching the server
+ *   bun run deploy --skip-check      skip `bun run verify` (format, tests, types, lint, build)
+ *   bun run deploy --db-push         run `drizzle-kit push --force` after the backup (schema changes)
+ *   bun run deploy --schema-applied  deploy a schema.ts change that is already applied by hand
+ *   bun run deploy --host <alias>    deploy somewhere other than `home`
+ *
+ * Without --db-push or --schema-applied, a change to schema.ts since the server's commit stops the
+ * deploy before the server is touched.
  */
 import { $ } from 'bun';
 
@@ -137,15 +141,13 @@ if (ahead !== '0') {
 }
 
 if (!flag('skip-check')) {
-	step('bun run check / bun test');
+	step('bun run verify');
 	if (DRY) {
-		console.log('  [dry-run] check, test');
+		console.log('  [dry-run] verify');
 	} else {
 		// Run before anything touches the server so a broken build never replaces a working one.
-		// Lint is not a gate: Prettier currently flags most of the repo, which would block every deploy.
-		await $`bun run check`.quiet().catch(() => fail('`bun run check` failed - not deploying'));
-		await $`bun test`.quiet().catch(() => fail('`bun test` failed - not deploying'));
-		console.log('  check and test pass');
+		// verify prints one line per step, or the output of the step that failed.
+		await $`bun run verify`.catch(() => fail('`bun run verify` failed - not deploying'));
 	}
 }
 
@@ -186,6 +188,25 @@ if (!DRY && !bunPath) fail(`bun is not on PATH for ${HOST}`);
 const previousHead = await remote(`cd ${REMOTE_ROOT} && git rev-parse HEAD`);
 if (!DRY) console.log(`  clean, on ${previousHead.slice(0, 8)}, bun at ${bunPath}`);
 
+// Checked before anything changes on the server: the new build against the old tables breaks as
+// soon as it touches a new column. Exit code 1 is a difference, anything else means this repo does
+// not know the server's commit, so the change cannot be ruled out either.
+if (!DRY && !flag('db-push') && !flag('schema-applied')) {
+	const { exitCode } =
+		await $`git diff --quiet ${previousHead} ${head} -- src/lib/server/db/schema.ts`
+			.nothrow()
+			.quiet();
+	if (exitCode !== 0) {
+		fail(
+			(exitCode === 1
+				? `schema.ts changed since ${previousHead.slice(0, 8)}.`
+				: `could not compare schema.ts with ${previousHead.slice(0, 8)}, which is not in this repo.`) +
+				' Rerun with --db-push, or with --schema-applied once the schema is applied by hand.'
+		);
+	}
+	console.log('  schema unchanged');
+}
+
 // === PULL ===
 
 step(`Checking out ${head.slice(0, 8)} on ${HOST}`);
@@ -195,19 +216,6 @@ await remote(
 const remoteHead = await remote(`cd ${REMOTE_ROOT} && git rev-parse HEAD`);
 if (!DRY && remoteHead !== head)
 	fail(`${HOST} is at ${remoteHead.slice(0, 8)}, expected ${head.slice(0, 8)}`);
-
-const schemaChanged = DRY
-	? ''
-	: (
-			await $`git diff --name-only ${previousHead} ${head} -- src/lib/server/db/schema.ts`
-				.text()
-				.catch(() => '')
-		).trim();
-if (schemaChanged && !flag('db-push')) {
-	console.log(
-		`  \x1b[33m!\x1b[0m schema.ts changed since ${previousHead.slice(0, 8)}. Rerun with --db-push, or apply it yourself`
-	);
-}
 
 // === INSTALL AND BUILD ===
 
