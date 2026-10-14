@@ -4,7 +4,7 @@ import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { decrypt } from '#lib/server/crypto.js';
 import { AssistantError, OPENAI_KEY_PURPOSE } from '#lib/server/assistant.js';
-import { MAX_AUDIO_BYTES, SPEECH_URL, TRANSCRIBE_MODEL, TRANSCRIBE_URL, audioExtension, buildSpeechRequest, isAudioMime } from '#lib/voice.js';
+import { MAX_AUDIO_BYTES, REALTIME_URL, TRANSCRIBE_MODEL, TRANSCRIBE_URL, audioExtension, buildSpeechEvents, isAudioMime, pcm16ToWav, readSpeechEvent } from '#lib/voice.js';
 
 const RATE_LIMIT = { requests: 30, windowMs: 5 * 60_000 };
 const TIMEOUT_MS = 30_000;
@@ -57,9 +57,45 @@ export async function transcribe(email: string, audio: Blob): Promise<string> {
 	return (body.text ?? '').trim();
 }
 
-/** Text to speech, returns the OpenAI audio stream (mp3) untouched. The text is already limited by `parseSpeakBody`. */
-export async function speak(email: string, text: string): Promise<Response> {
+/**
+ * Text to speech through one short Realtime session: the text goes in, PCM audio chunks come back and are returned as a WAV.
+ * A session lives for one line only. The text is already limited by `parseSpeakBody`.
+ */
+export async function speak(email: string, text: string): Promise<Uint8Array> {
 	checkRate(email);
 	const key = await openaiKey(email);
-	return call(SPEECH_URL, key, { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildSpeechRequest(text)) });
+
+	return new Promise<Uint8Array>((resolve, reject) => {
+		const chunks: Uint8Array[] = [];
+		let settled = false;
+		// Bun's WebSocket takes request headers, the browser typing does not know the option
+		const socket = new (WebSocket as unknown as new (url: string, options: { headers: Record<string, string> }) => WebSocket)(REALTIME_URL, {
+			headers: { Authorization: `Bearer ${key}` }
+		});
+
+		const finish = (error?: AssistantError) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			if (socket.readyState <= WebSocket.OPEN) socket.close();
+			if (error) reject(error);
+			else if (chunks.length === 0) reject(new AssistantError('OpenAI sent no audio, try again', 502));
+			else resolve(pcm16ToWav(chunks));
+		};
+		const timer = setTimeout(() => finish(new AssistantError('OpenAI took too long to speak', 502)), TIMEOUT_MS);
+
+		socket.onopen = () => buildSpeechEvents(text).forEach((event) => socket.send(JSON.stringify(event)));
+		socket.onmessage = (message) => {
+			const event = readSpeechEvent(String(message.data));
+			if (event.kind === 'audio') chunks.push(event.pcm);
+			else if (event.kind === 'done') finish();
+			else if (event.kind === 'error') {
+				console.error('Realtime speech error:', event.message);
+				finish(new AssistantError('OpenAI could not speak that, try again', 502));
+			}
+		};
+		// A rejected key fails the handshake, which shows up as an error or close without any message
+		socket.onerror = () => finish(new AssistantError('Could not reach OpenAI, or it rejected the saved key', 502));
+		socket.onclose = () => finish(new AssistantError('The speech connection closed early', 502));
+	});
 }

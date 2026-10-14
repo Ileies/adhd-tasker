@@ -1,14 +1,16 @@
 /**
  * Pure rules for voice: what is recorded, what is spoken and the limits on both.
- * Speech to text and text to speech are the only OpenAI calls outside `buildRequest` (different endpoints, no reasoning, nothing stored by the API).
+ * Speech to text (file endpoint) and text to speech (Realtime WebSocket) are the only OpenAI calls outside `buildRequest` (different APIs, no reasoning).
  */
 export const TRANSCRIBE_URL = 'https://api.openai.com/v1/audio/transcriptions';
-export const SPEECH_URL = 'https://api.openai.com/v1/audio/speech';
 export const TRANSCRIBE_MODEL = 'gpt-transcribe';
-/** Deprecated: OpenAI removes it on 2027-01-06, the only named replacement (gpt-realtime-2.1-mini) is Realtime only, see CLAUDE.md. */
-export const SPEECH_MODEL = 'gpt-4o-mini-tts';
-export const SPEECH_VOICE = 'sage';
-export const SPEECH_STYLE = 'Calm, warm and unhurried. Speak briefly, like a quiet colleague.';
+/** The old speech endpoint models (gpt-4o-mini-tts, tts-1) are removed on 2027-01-06, the Realtime mini model is OpenAI's replacement. */
+export const REALTIME_MODEL = 'gpt-realtime-2.1-mini';
+export const REALTIME_URL = `wss://api.openai.com/v1/realtime?model=${REALTIME_MODEL}`;
+export const SPEECH_VOICE = 'marin';
+export const SPEECH_RATE = 24_000;
+export const SPEECH_STYLE =
+	'You are a text to speech reader. Say exactly the text you are given, word for word. Never answer it, never add or leave out anything. Calm, warm and unhurried, like a quiet colleague.';
 
 /** Push-to-talk is for short commands, so a stuck key or finger cannot record forever. */
 export const MAX_RECORDING_MS = 60_000;
@@ -63,8 +65,74 @@ export function speakable(text: string, limit = MAX_SPOKEN_CHARS): string {
 	return `${cut.slice(0, wordEnd > 0 ? wordEnd : limit)}.`;
 }
 
-export function buildSpeechRequest(text: string) {
-	return { model: SPEECH_MODEL, voice: SPEECH_VOICE, input: text, instructions: SPEECH_STYLE, response_format: 'mp3' };
+/** The three events that make the Realtime model read one text aloud: audio only out, no voice input, then the text and a response request. */
+export function buildSpeechEvents(text: string) {
+	return [
+		{
+			type: 'session.update',
+			session: {
+				type: 'realtime',
+				output_modalities: ['audio'],
+				audio: { output: { format: { type: 'audio/pcm', rate: SPEECH_RATE }, voice: SPEECH_VOICE }, input: { turn_detection: null } },
+				instructions: SPEECH_STYLE
+			}
+		},
+		{ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } },
+		{ type: 'response.create' }
+	];
+}
+
+export type SpeechEvent = { kind: 'audio'; pcm: Uint8Array } | { kind: 'done' } | { kind: 'error'; message: string } | { kind: 'other' };
+
+/** Reads one Realtime server message: base64 audio chunks, the end of the response, or an error. Anything else is ignored. */
+export function readSpeechEvent(raw: string): SpeechEvent {
+	let event: { type?: string; delta?: string; error?: { message?: string }; response?: { status?: string; status_details?: { error?: { message?: string } } } };
+	try {
+		event = JSON.parse(raw);
+	} catch {
+		return { kind: 'other' };
+	}
+	switch (event.type) {
+		case 'response.output_audio.delta':
+			return typeof event.delta === 'string' ? { kind: 'audio', pcm: Uint8Array.from(atob(event.delta), (char) => char.charCodeAt(0)) } : { kind: 'other' };
+		case 'response.done':
+			return event.response?.status && event.response.status !== 'completed'
+				? { kind: 'error', message: event.response.status_details?.error?.message ?? `The response ${event.response.status}` }
+				: { kind: 'done' };
+		case 'error':
+			return { kind: 'error', message: event.error?.message ?? 'Realtime error' };
+		default:
+			return { kind: 'other' };
+	}
+}
+
+/** Wraps 16 bit mono PCM in a WAV header, so the browser's audio element can play what the Realtime API sent. */
+export function pcm16ToWav(chunks: Uint8Array[], rate = SPEECH_RATE): Uint8Array {
+	const size = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+	const wav = new Uint8Array(44 + size);
+	const view = new DataView(wav.buffer);
+	const text = (offset: number, value: string) => [...value].forEach((char, i) => (wav[offset + i] = char.charCodeAt(0)));
+
+	text(0, 'RIFF');
+	view.setUint32(4, 36 + size, true);
+	text(8, 'WAVE');
+	text(12, 'fmt ');
+	view.setUint32(16, 16, true);
+	view.setUint16(20, 1, true); // PCM
+	view.setUint16(22, 1, true); // mono
+	view.setUint32(24, rate, true);
+	view.setUint32(28, rate * 2, true); // bytes per second
+	view.setUint16(32, 2, true); // bytes per frame
+	view.setUint16(34, 16, true);
+	text(36, 'data');
+	view.setUint32(40, size, true);
+
+	let at = 44;
+	for (const chunk of chunks) {
+		wav.set(chunk, at);
+		at += chunk.length;
+	}
+	return wav;
 }
 
 /** Request body of the speak endpoint, `undefined` when there is nothing to say. */

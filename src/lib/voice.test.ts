@@ -1,6 +1,18 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { MAX_SPOKEN_CHARS, audioExtension, buildSpeechRequest, isAudioMime, parseSpeakBody, pickRecordingType, speakable, speechVolume } from './voice';
+import {
+	MAX_SPOKEN_CHARS,
+	REALTIME_URL,
+	audioExtension,
+	buildSpeechEvents,
+	isAudioMime,
+	parseSpeakBody,
+	pcm16ToWav,
+	pickRecordingType,
+	readSpeechEvent,
+	speakable,
+	speechVolume
+} from './voice';
 
 describe('pickRecordingType', () => {
 	test('takes the first supported container', () => {
@@ -66,11 +78,51 @@ describe('parseSpeakBody', () => {
 	});
 });
 
-describe('buildSpeechRequest', () => {
-	test('asks for mp3 with the fixed voice', () => {
-		const request = buildSpeechRequest('Hello');
-		expect(request.input).toBe('Hello');
-		expect(request.response_format).toBe('mp3');
+describe('buildSpeechEvents', () => {
+	test('configures audio only output, then sends the text and asks for a response', () => {
+		const [session, item, response] = buildSpeechEvents('Hello') as any[];
+		expect(session.type).toBe('session.update');
+		expect(session.session.output_modalities).toEqual(['audio']);
+		expect(session.session.audio.output.format).toEqual({ type: 'audio/pcm', rate: 24000 });
+		expect(session.session.audio.input.turn_detection).toBeNull();
+		expect(item.item.content).toEqual([{ type: 'input_text', text: 'Hello' }]);
+		expect(response.type).toBe('response.create');
+	});
+	test('targets the realtime mini model', () => {
+		expect(REALTIME_URL).toContain('model=gpt-realtime-2.1-mini');
+	});
+});
+
+describe('readSpeechEvent', () => {
+	test('decodes audio chunks', () => {
+		const event = readSpeechEvent(JSON.stringify({ type: 'response.output_audio.delta', delta: btoa('\x01\x02\x03') }));
+		expect(event).toEqual({ kind: 'audio', pcm: new Uint8Array([1, 2, 3]) });
+	});
+	test('knows when the response is done', () => {
+		expect(readSpeechEvent('{"type":"response.done","response":{"status":"completed"}}')).toEqual({ kind: 'done' });
+	});
+	test('a failed response is an error', () => {
+		expect(readSpeechEvent('{"type":"response.done","response":{"status":"failed"}}').kind).toBe('error');
+	});
+	test('reports server errors', () => {
+		expect(readSpeechEvent('{"type":"error","error":{"message":"nope"}}')).toEqual({ kind: 'error', message: 'nope' });
+	});
+	test('ignores everything else', () => {
+		expect(readSpeechEvent('{"type":"session.created"}').kind).toBe('other');
+		expect(readSpeechEvent('not json').kind).toBe('other');
+	});
+});
+
+describe('pcm16ToWav', () => {
+	test('writes a valid header around the samples', () => {
+		const wav = pcm16ToWav([new Uint8Array([1, 2]), new Uint8Array([3, 4])]);
+		const view = new DataView(wav.buffer);
+		expect(String.fromCharCode(...wav.slice(0, 4))).toBe('RIFF');
+		expect(String.fromCharCode(...wav.slice(8, 12))).toBe('WAVE');
+		expect(view.getUint32(4, true)).toBe(40);
+		expect(view.getUint32(24, true)).toBe(24000);
+		expect(view.getUint32(40, true)).toBe(4);
+		expect([...wav.slice(44)]).toEqual([1, 2, 3, 4]);
 	});
 });
 
