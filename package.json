@@ -11,7 +11,7 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"test": "bun run scripts/test.ts",
 		"deploy": "bun run scripts/deploy.ts",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && tsc -p src/service-worker/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
