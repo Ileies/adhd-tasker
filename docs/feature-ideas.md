@@ -68,7 +68,7 @@ The ideas that look like the strongest return on a small investment. Details are
 - **Verb-first placeholder** `4/10`
   Quick add placeholder nudges toward action phrasing ("Call dentist", not "Dentist"). A task that starts with a verb is easier to start.
 
-- **Dyslexia-friendly / larger font option** `4/10`
+- ! **Dyslexia-friendly / larger font option** `4/10`
   Comorbidity is common. A font and size toggle in settings.
 
 ---
@@ -307,9 +307,6 @@ The ideas that look like the strongest return on a small investment. Details are
 
 - **Cross-user estimate model** `6/10`
   Privacy-preserving (federated) learning of how long tasks really take across many users, used as the starting point before personal data exists.
-
-- **ADHD-first launcher / phone OS mode** `6/10`
-  A phone home screen that is the current task, with apps behind a deliberate gesture during focus tasks.
 
 ---
 
