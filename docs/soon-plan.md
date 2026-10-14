@@ -22,9 +22,17 @@ What is deliberately not in here:
 - **Checks phases 4 to 8** (server integration, route matrices, client wiring, e2e, CI): server integration does not go stale because nothing here touches the agent or scheduler code; client wiring tests and e2e specs would be rewritten by the UX phases. They stay in `checks-and-tests-plan.md`.
 - **Undecided ideas** from `feature-ideas.md`. Only the two ideas that the decided hero design already covers moved here (Part 4).
 
-Each numbered item is one commit unless noted, small and thematic as `CLAUDE.md` asks. Pure logic first with tests, then components. Every part ends with `bun run verify --quick` (once it exists), and Parts 4 and 5 with a look at the real screen on a wide display and a phone.
+Each numbered item is one commit unless noted, small and thematic as `CLAUDE.md` asks. Pure logic first with tests, then components. Every part ends with `bun run verify --quick`, and Parts 4 and 5 with a look at the real screen on a wide display and a phone.
 
 ## 1. The gate
+
+**Done, 2026-10-14** (`9748202` to `cbcd1f0`). `bun run verify` passes in about 60 s (`--quick` about 22 s), with lines 97.1 % and functions 97.6 % covered. Where the result differs from the steps below:
+
+- 1.4: ESLint gets an explicit `project` list (root, `scripts/`, service worker) instead of `projectService`. With the project service every `.svelte` file rebuilt the program and lint took about 190 s; now about 25 s.
+- 1.5: `scripts/` may import its own siblings with `./`, only `../` is refused there. `scripts/add-task-date.ts` and `crypto.test.ts` were fixed too.
+- 1.6: The untested allowlist has more temporary entries than listed: `format.ts` (until 5.2), `google.ts`, `server/events.ts`, `server/stream.ts` (until 2.1), `server/session.ts` (2.2), `index.ts` (3.5). A second test fails on a stale entry. The storage rule also allows `src/app.html` (the pre-paint theme script).
+- 1.7: No `coverageThreshold` in `bunfig.toml`: Bun applies it to every file on its own. `verify` instead requires 90 % of all lines and functions over the whole lcov report (`scripts/coverage.ts`, tested). `#test/*` resolves to `src/test/`, and the fetch guard fails a test even when the code swallowed the refused request.
+- 1.9: A dry run runs `verify` as well, only the server steps are skipped. If the server's commit is unknown locally, the schema check also stops the deploy.
 
 ### 1.0 Already done
 
@@ -71,7 +79,7 @@ For `**/*.ts` and `**/*.svelte`: `no-floating-promises`, `no-misused-promises` (
 
 Spiked successfully on 2026-10-14 (checks plan section 11).
 
-- **`bunfig.toml`:** `preload = ["./src/test/preload.ts"]`, `coverageSkipTestFiles = true`, `coverageThreshold = { lines = 0.9, functions = 0.9 }`. A run below the threshold exits with code 1. The threshold applies when `--coverage` is passed, which `verify` does.
+- **`bunfig.toml`:** `preload = ["./src/test/preload.ts"]`, `coverageSkipTestFiles = true`. The 90 % lines and functions minimum is checked overall by `verify` (see the status above), not with Bun's per file `coverageThreshold`.
 - **`src/test/preload.ts`,** one Bun plugin:
   - Virtual modules for `$app/env` (`building: true` so importing `hooks.server.ts` never starts the 15 s scheduler, `dev: false` so cookie flags are tested as in production, `browser: false`), `$app/env/private` (`GOOGLE_CLIENT_SECRET: 'test-secret'`, `DATABASE_URL: ':memory:'`) and `$app/env/public`. No `.ts` module in `src/lib` imports any other `$app/*` module.
   - An `onLoad` hook for `*.svelte.ts` that strips types with `Bun.Transpiler` and compiles the runes with `svelte/compiler`'s `compileModule`, so `tasker` and the client wiring modules are importable in tests.
@@ -279,7 +287,7 @@ Done stays the largest control. After a tap the hero shows a short confirmation 
 
 | Part                    | Effort | Exit criterion                                                                |
 | ----------------------- | ------ | ----------------------------------------------------------------------------- |
-| 1. The gate             | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
+| 1. The gate (done)      | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
 | 2. Pure module tests    | 4 h    | Every pure module tested, property tests in place                             |
 | 3. Defect fixes         | 1 day  | D1 to D8 each have a test that failed before its fix                          |
 | 4. Transitions          | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
@@ -289,8 +297,8 @@ Parts go in this order: 1 before everything, 3 before 4.
 
 **Done when:**
 
-1. `bun run verify` is green and deploy refuses to ship without it.
-2. Every rule in 1.6 fails the gate when broken.
+1. [x] `bun run verify` is green and deploy refuses to ship without it.
+2. [x] Every rule in 1.6 fails the gate when broken.
 3. D1 to D8 each have a test that failed before its fix.
 4. The suite passes in three timezones, isolated and in random order, in under 3 s.
 5. A task that runs out is never silent: the hero shows time up or the transition bar, and more time is one tap.
