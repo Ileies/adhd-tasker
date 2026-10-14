@@ -154,6 +154,14 @@ With `fast-check` (the one new test library). Each property runs 100 cases; a fa
 
 ## 3. Defect fixes
 
+**Done, 2026-10-14.** D1 to D8 each have a test commit that failed, then the fix. `bun run verify` passes in about 64 s. Where the result differs from the steps below:
+
+- 3.1: the production database (copy) has no task rows and `PRAGMA foreign_key_check` reports nothing, so D8 is safe to deploy.
+- 3.2: the hook test stubs `server/agent.js`, because importing the real one pulls the untested server modules into the coverage report. `fetch` in `fakeFetch` resolves relative urls like a browser.
+- 3.3: `task-input.ts` exports `parseTaskInput`, `fitsInDay` and `parseTaskId`; the primitives in `assistant-tools.ts` are now exported. A body without a readable id is 400, an unknown or foreign id 404. Route tests may import their route with `./` (ESLint override).
+- 3.4: `extendTask` extends from the later of the task's end and now, so Part 4's "15 more min" on a running task is the same helper.
+- 3.5: `createTask`, `updateTask`, `deleteTask` and `loadDay` moved to `tasks.ts` and the toast to `toast.ts` (re-exported from `index.ts`), so tests do not load the audio code. `updateTask` and `deleteTask` return whether the server accepted; `TaskForm` stays open on a refusal.
+
 Each defect was confirmed by running code against the real modules (checks plan section 11). Each gets a failing test first, then the fix, as two commits.
 
 | ID  | Severity | Defect                                                                                                                                                                                                                                                                                                            |
@@ -296,7 +304,7 @@ Done stays the largest control. After a tap the hero shows a short confirmation 
 | --------------------------- | ------ | ----------------------------------------------------------------------------- |
 | 1. The gate (done)          | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
 | 2. Pure module tests (done) | 4 h    | Every pure module tested, property tests in place                             |
-| 3. Defect fixes             | 1 day  | D1 to D8 each have a test that failed before its fix                          |
+| 3. Defect fixes (done)      | 1 day  | D1 to D8 each have a test that failed before its fix                          |
 | 4. Transitions              | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
 | 5. Feedback and silence     | 1 day  | Done feedback, draining bar, silence line and tab title work on a real screen |
 
@@ -306,7 +314,7 @@ Parts go in this order: 1 before everything, 3 before 4.
 
 1. [x] `bun run verify` is green and deploy refuses to ship without it.
 2. [x] Every rule in 1.6 fails the gate when broken.
-3. D1 to D8 each have a test that failed before its fix.
+3. [x] D1 to D8 each have a test that failed before its fix.
 4. The suite passes in three timezones, isolated and in random order, in under 3 s.
 5. A task that runs out is never silent: the hero shows time up or the transition bar, and more time is one tap.
 6. Done, a task ending and a blocked or muted sound are each visible and audible as in 5.4.
