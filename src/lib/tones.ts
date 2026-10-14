@@ -36,7 +36,8 @@ export const TONE_LIMITS = {
 /** Names the agent and the user can pick. */
 export const TONE_NAMES = ['chime', 'soft', 'nudge', 'rising', 'urgent'] as const;
 export type ToneName = (typeof TONE_NAMES)[number];
-export const isToneName = (value: unknown): value is ToneName => TONE_NAMES.includes(value as ToneName);
+export const isToneName = (value: unknown): value is ToneName =>
+	TONE_NAMES.includes(value as ToneName);
 
 /** What is stored: a library name or a custom sequence. */
 export type Tone = ToneName | CustomTone;
@@ -50,13 +51,37 @@ export const TONE_TEXT: Record<ToneName, string> = {
 };
 
 const LIBRARY: Record<ToneName, CustomTone> = {
-	chime: { wave: 'sine', notes: [{ hz: 880, ms: 180, rest: 40 }, { hz: 1320, ms: 420 }] },
+	chime: {
+		wave: 'sine',
+		notes: [
+			{ hz: 880, ms: 180, rest: 40 },
+			{ hz: 1320, ms: 420 }
+		]
+	},
 	soft: { wave: 'sine', notes: [{ hz: 523, ms: 900 }] },
-	nudge: { wave: 'triangle', notes: [{ hz: 660, ms: 110, rest: 110 }, { hz: 660, ms: 110 }] },
-	rising: { wave: 'sine', notes: [{ hz: 440, ms: 200 }, { hz: 554, ms: 200 }, { hz: 659, ms: 200 }, { hz: 880, ms: 500 }] },
+	nudge: {
+		wave: 'triangle',
+		notes: [
+			{ hz: 660, ms: 110, rest: 110 },
+			{ hz: 660, ms: 110 }
+		]
+	},
+	rising: {
+		wave: 'sine',
+		notes: [
+			{ hz: 440, ms: 200 },
+			{ hz: 554, ms: 200 },
+			{ hz: 659, ms: 200 },
+			{ hz: 880, ms: 500 }
+		]
+	},
 	urgent: {
 		wave: 'square',
-		notes: [{ hz: 988, ms: 160, rest: 120 }, { hz: 988, ms: 160, rest: 120 }, { hz: 988, ms: 160 }]
+		notes: [
+			{ hz: 988, ms: 160, rest: 120 },
+			{ hz: 988, ms: 160, rest: 120 },
+			{ hz: 988, ms: 160 }
+		]
 	}
 };
 
@@ -73,24 +98,52 @@ export function toneNotes(tone: Tone): CustomTone {
 }
 
 /** Validates a custom sequence, the caps apply to anything the model defines. */
-export function parseCustomTone(value: unknown): { ok: true; value: CustomTone } | { ok: false; error: string } {
+export function parseCustomTone(
+	value: unknown
+): { ok: true; value: CustomTone } | { ok: false; error: string } {
 	const fail = (error: string) => ({ ok: false as const, error });
-	if (typeof value !== 'object' || value === null) return fail('a custom tone is an object with wave and notes');
+	if (typeof value !== 'object' || value === null)
+		return fail('a custom tone is an object with wave and notes');
 	const { wave, notes } = value as { wave?: unknown; notes?: unknown };
 	if (!WAVES.includes(wave as Wave)) return fail(`wave must be one of ${WAVES.join(', ')}`);
-	if (!Array.isArray(notes) || notes.length === 0 || notes.length > TONE_LIMITS.maxNotes) return fail(`notes is a list of 1 to ${TONE_LIMITS.maxNotes} notes`);
+	if (!Array.isArray(notes) || notes.length === 0 || notes.length > TONE_LIMITS.maxNotes)
+		return fail(`notes is a list of 1 to ${TONE_LIMITS.maxNotes} notes`);
 
 	const parsed: Note[] = [];
 	for (const note of notes) {
 		const { hz, ms, rest } = (note ?? {}) as Record<string, unknown>;
-		if (typeof hz !== 'number' || !Number.isFinite(hz) || hz < TONE_LIMITS.minHz || hz > TONE_LIMITS.maxHz) return fail(`hz must be ${TONE_LIMITS.minHz} to ${TONE_LIMITS.maxHz}`);
-		if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < TONE_LIMITS.minNoteMs || ms > TONE_LIMITS.maxNoteMs) return fail(`ms must be ${TONE_LIMITS.minNoteMs} to ${TONE_LIMITS.maxNoteMs}`);
-		if (rest !== undefined && (typeof rest !== 'number' || !Number.isFinite(rest) || rest < 0 || rest > TONE_LIMITS.maxRestMs)) return fail(`rest must be 0 to ${TONE_LIMITS.maxRestMs}`);
-		parsed.push({ hz: Math.round(hz), ms: Math.round(ms), ...(rest ? { rest: Math.round(rest) } : {}) });
+		if (
+			typeof hz !== 'number' ||
+			!Number.isFinite(hz) ||
+			hz < TONE_LIMITS.minHz ||
+			hz > TONE_LIMITS.maxHz
+		)
+			return fail(`hz must be ${TONE_LIMITS.minHz} to ${TONE_LIMITS.maxHz}`);
+		if (
+			typeof ms !== 'number' ||
+			!Number.isFinite(ms) ||
+			ms < TONE_LIMITS.minNoteMs ||
+			ms > TONE_LIMITS.maxNoteMs
+		)
+			return fail(`ms must be ${TONE_LIMITS.minNoteMs} to ${TONE_LIMITS.maxNoteMs}`);
+		if (
+			rest !== undefined &&
+			(typeof rest !== 'number' ||
+				!Number.isFinite(rest) ||
+				rest < 0 ||
+				rest > TONE_LIMITS.maxRestMs)
+		)
+			return fail(`rest must be 0 to ${TONE_LIMITS.maxRestMs}`);
+		parsed.push({
+			hz: Math.round(hz),
+			ms: Math.round(ms),
+			...(rest ? { rest: Math.round(rest) } : {})
+		});
 	}
 
 	const tone: CustomTone = { wave: wave as Wave, notes: parsed };
-	if (toneLength(tone) > TONE_LIMITS.maxMs) return fail(`a tone may last at most ${TONE_LIMITS.maxMs / 1000} seconds in total`);
+	if (toneLength(tone) > TONE_LIMITS.maxMs)
+		return fail(`a tone may last at most ${TONE_LIMITS.maxMs / 1000} seconds in total`);
 	return { ok: true, value: tone };
 }
 
@@ -98,10 +151,17 @@ export function parseCustomTone(value: unknown): { ok: true; value: CustomTone }
  * Reads a stored or requested tone: a library name, or a custom sequence. Returns the tone and whether it is custom
  * (custom ones are counted against the daily cap by the caller).
  */
-export function parseTone(value: unknown): { ok: true; value: Tone; custom: boolean } | { ok: false; error: string } {
-	if (value === undefined || value === null) return { ok: true, value: DEFAULT_TONE, custom: false };
+export function parseTone(
+	value: unknown
+): { ok: true; value: Tone; custom: boolean } | { ok: false; error: string } {
+	if (value === undefined || value === null)
+		return { ok: true, value: DEFAULT_TONE, custom: false };
 	if (isToneName(value)) return { ok: true, value, custom: false };
-	if (typeof value === 'string') return { ok: false, error: `unknown tone, use one of ${TONE_NAMES.join(', ')} or define a custom one` };
+	if (typeof value === 'string')
+		return {
+			ok: false,
+			error: `unknown tone, use one of ${TONE_NAMES.join(', ')} or define a custom one`
+		};
 	const custom = parseCustomTone(value);
 	return custom.ok ? { ok: true, value: custom.value, custom: true } : custom;
 }

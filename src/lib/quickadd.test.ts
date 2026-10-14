@@ -4,11 +4,19 @@ import { parseQuickTask } from '#lib/quickadd.js';
 
 describe('parseQuickTask', () => {
 	test('title only', () => {
-		expect(parseQuickTask('Buy milk')).toEqual({ title: 'Buy milk', startTime: null, duration: null });
+		expect(parseQuickTask('Buy milk')).toEqual({
+			title: 'Buy milk',
+			startTime: null,
+			duration: null
+		});
 	});
 
 	test('24 hour time and minutes', () => {
-		expect(parseQuickTask('Call dentist 14:30 45m')).toEqual({ title: 'Call dentist', startTime: 870, duration: 45 });
+		expect(parseQuickTask('Call dentist 14:30 45m')).toEqual({
+			title: 'Call dentist',
+			startTime: 870,
+			duration: 45
+		});
 	});
 
 	test('meridiem times', () => {
@@ -18,7 +26,11 @@ describe('parseQuickTask', () => {
 	});
 
 	test('at hour and for duration wording', () => {
-		expect(parseQuickTask('Study at 18 for 1.5h')).toEqual({ title: 'Study', startTime: 1080, duration: 90 });
+		expect(parseQuickTask('Study at 18 for 1.5h')).toEqual({
+			title: 'Study',
+			startTime: 1080,
+			duration: 90
+		});
 	});
 
 	test('combined hours and minutes are one duration, not a time', () => {

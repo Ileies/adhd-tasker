@@ -66,28 +66,40 @@
 	<Sheet.Content side="right" class="data-[side=right]:w-full data-[side=right]:sm:max-w-md">
 		<Sheet.Header>
 			<Sheet.Title>Assistant</Sheet.Title>
-			<Sheet.Description>Ask it to add, move or clear tasks. Every change can be undone.</Sheet.Description>
+			<Sheet.Description
+				>Ask it to add, move or clear tasks. Every change can be undone.</Sheet.Description
+			>
 		</Sheet.Header>
 
 		<div bind:this={list} class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4" aria-live="polite">
 			{#if !hasKey}
 				<p class="text-muted-foreground">
-					Add your OpenAI key in <a class="underline" href="/settings" onclick={() => (chat.open = false)}>Settings</a> to use the assistant.
+					Add your OpenAI key in <a
+						class="underline"
+						href="/settings"
+						onclick={() => (chat.open = false)}>Settings</a
+					> to use the assistant.
 				</p>
 			{:else if chat.messages.length === 0}
-				<p class="text-muted-foreground">Try: "Dinner with friends tonight at 19:30 for two hours".</p>
+				<p class="text-muted-foreground">
+					Try: "Dinner with friends tonight at 19:30 for two hours".
+				</p>
 			{/if}
 
 			{#each chat.messages as message, index (index)}
 				<div class="flex flex-col gap-1 {message.role === 'user' ? 'items-end' : 'items-start'}">
 					<div
 						class="max-w-[90%] rounded-2xl px-3 py-2 whitespace-pre-wrap
-							{message.role === 'user' ? 'bg-primary text-primary-foreground' : message.error ? 'bg-destructive/15 text-destructive' : 'bg-muted'}"
+							{message.role === 'user'
+							? 'bg-primary text-primary-foreground'
+							: message.error
+								? 'bg-destructive/15 text-destructive'
+								: 'bg-muted'}"
 					>
 						{message.content}
 					</div>
 					{#each message.changes ?? [] as change (change.id)}
-						<div class="flex max-w-[90%] items-center gap-2 text-xs text-muted-foreground">
+						<div class="text-muted-foreground flex max-w-[90%] items-center gap-2 text-xs">
 							<span class={change.undone ? 'line-through' : ''}>{change.summary}</span>
 							{#if change.undone}
 								<span>undone</span>
@@ -140,11 +152,16 @@
 					<Mic />
 				</Button>
 			{/if}
-			<Button type="submit" size="icon" aria-label="Send" disabled={!hasKey || chat.busy || !draft.trim()}>
+			<Button
+				type="submit"
+				size="icon"
+				aria-label="Send"
+				disabled={!hasKey || chat.busy || !draft.trim()}
+			>
 				<Send />
 			</Button>
 		</form>
-		<p class="px-3 pb-3 text-sm text-muted-foreground" role="status" aria-live="polite">
+		<p class="text-muted-foreground px-3 pb-3 text-sm" role="status" aria-live="polite">
 			{#if voice.recording}Listening, release to send{:else if voice.transcribing}Understanding...{:else if micMessage}{micMessage}{/if}
 		</p>
 	</Sheet.Content>

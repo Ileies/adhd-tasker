@@ -24,7 +24,11 @@ const state = globalThis as { __taskerStreams?: Map<string, Set<Connection>> };
 const connections: Map<string, Set<Connection>> = (state.__taskerStreams ??= new Map());
 
 /** Registers one open tab, returns what to call when it closes. */
-export function subscribe(email: string, device: string | null, send: Connection['send']): () => void {
+export function subscribe(
+	email: string,
+	device: string | null,
+	send: Connection['send']
+): () => void {
 	const connection: Connection = { device, send };
 	const own = connections.get(email) ?? new Set();
 	own.add(connection);
@@ -44,5 +48,7 @@ export function publish(email: string, message: StreamMessage): number {
 /** The chosen display device while it is connected. When it is not, every device plays, so an alarm is never silent. */
 export function effectiveDisplay(email: string, configured: string | null): string | null {
 	if (!configured) return null;
-	return [...(connections.get(email) ?? [])].some((connection) => connection.device === configured) ? configured : null;
+	return [...(connections.get(email) ?? [])].some((connection) => connection.device === configured)
+		? configured
+		: null;
 }

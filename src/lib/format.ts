@@ -1,6 +1,12 @@
 /** Minutes since midnight as `HH:MM`, same unit as `task.startTime`. */
 export function formatClock(minutes: number): string {
-	return Math.floor(minutes / 60).toString().padStart(2, '0') + ':' + (minutes % 60).toString().padStart(2, '0');
+	return (
+		Math.floor(minutes / 60)
+			.toString()
+			.padStart(2, '0') +
+		':' +
+		(minutes % 60).toString().padStart(2, '0')
+	);
 }
 
 /** A span of minutes as `1h 30m`, `2h` or `45m`. */

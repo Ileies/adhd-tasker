@@ -11,7 +11,8 @@
 <span class="inline-flex items-center gap-2">
 	<span class="flex gap-0.5" aria-hidden="true">
 		{#each [1, 2, 3, 4, 5] as segment (segment)}
-			<span class="h-3 w-1.5 rounded-sm bg-current {segment <= style.bars ? '' : 'opacity-25'}"></span>
+			<span class="h-3 w-1.5 rounded-sm bg-current {segment <= style.bars ? '' : 'opacity-25'}"
+			></span>
 		{/each}
 	</span>
 	{#if showLabel}

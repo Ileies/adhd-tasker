@@ -12,9 +12,12 @@ export function summarizeAction(tool: string, before: Snapshot, after: Snapshot)
 			return before ? `Deleted ${before.title}` : 'Deleted a task';
 		case 'update_task': {
 			if (!before || !after) return 'Changed a task';
-			if (before.date !== after.date) return `Moved ${after.title} to ${after.date} ${formatClock(after.startTime)}`;
-			if (before.startTime !== after.startTime) return `Moved ${after.title} to ${formatClock(after.startTime)}`;
-			if (before.duration !== after.duration) return `Resized ${after.title} to ${after.duration} min`;
+			if (before.date !== after.date)
+				return `Moved ${after.title} to ${after.date} ${formatClock(after.startTime)}`;
+			if (before.startTime !== after.startTime)
+				return `Moved ${after.title} to ${formatClock(after.startTime)}`;
+			if (before.duration !== after.duration)
+				return `Resized ${after.title} to ${after.duration} min`;
 			return `Updated ${after.title}`;
 		}
 		default:

@@ -40,7 +40,12 @@ export interface ResponseBody {
 }
 
 /** The tool set varies by use (chat edits the plan, a reaction mostly talks), the rules above never do. */
-export function buildRequest(input: unknown[], instructions: string, use: Use, tools: Tool[] = TOOLS) {
+export function buildRequest(
+	input: unknown[],
+	instructions: string,
+	use: Use,
+	tools: Tool[] = TOOLS
+) {
 	return {
 		model: MODEL,
 		service_tier: SERVICE_TIER,

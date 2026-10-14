@@ -71,7 +71,8 @@
 		if (!drag) return;
 		const dy = event.clientY - drag.originY;
 		const delta = (dy / HOUR_PX) * 60;
-		if (drag.mode === 'move') drag.startTime = moveTo(drag.originStart + delta, drag.originDuration);
+		if (drag.mode === 'move')
+			drag.startTime = moveTo(drag.originStart + delta, drag.originDuration);
 		else drag.duration = resizeTo(drag.originStart, drag.originDuration + delta);
 		if (Math.abs(dy) > MOVE_THRESHOLD_PX) drag.moved = true;
 	}
@@ -85,8 +86,10 @@
 			if (current.mode === 'move') onEdit(task);
 			return;
 		}
-		if (current.mode === 'move' && current.startTime !== task.startTime) onMove(task, current.startTime);
-		if (current.mode === 'resize' && current.duration !== task.duration) onResize(task, current.duration);
+		if (current.mode === 'move' && current.startTime !== task.startTime)
+			onMove(task, current.startTime);
+		if (current.mode === 'resize' && current.duration !== task.duration)
+			onResize(task, current.duration);
 	}
 
 	function createAt(event: MouseEvent) {
@@ -100,7 +103,9 @@
 	$effect(() => {
 		if (!scroller || positionedFor === date) return;
 		positionedFor = date;
-		const focus = showNow ? now : (tasks.reduce((min, t) => Math.min(min, t.startTime), 480) ?? 480);
+		const focus = showNow
+			? now
+			: (tasks.reduce((min, t) => Math.min(min, t.startTime), 480) ?? 480);
 		scroller.scrollTop = Math.max(0, px(focus) - HOUR_PX * 1.5);
 	});
 </script>
@@ -110,7 +115,9 @@
 		<div class="relative border-r">
 			{#each { length: 24 } as _, hour (hour)}
 				<span
-					class="tabular absolute right-2 -translate-y-1/2 text-xs text-muted-foreground {hour === 0 ? 'hidden' : ''}"
+					class="tabular text-muted-foreground absolute right-2 -translate-y-1/2 text-xs {hour === 0
+						? 'hidden'
+						: ''}"
 					style="top: {px(hour * 60)}px"
 				>
 					{formatClock(hour * 60)}
@@ -119,10 +126,20 @@
 		</div>
 
 		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-		<div class="relative cursor-copy" onclick={createAt} aria-label="Empty time, click to add a task">
+		<div
+			class="relative cursor-copy"
+			onclick={createAt}
+			aria-label="Empty time, click to add a task"
+		>
 			{#each { length: 24 } as _, hour (hour)}
-				<div class="absolute inset-x-0 border-t border-border/60" style="top: {px(hour * 60)}px"></div>
-				<div class="absolute inset-x-0 border-t border-dashed border-border/30" style="top: {px(hour * 60 + 30)}px"></div>
+				<div
+					class="border-border/60 absolute inset-x-0 border-t"
+					style="top: {px(hour * 60)}px"
+				></div>
+				<div
+					class="border-border/30 absolute inset-x-0 border-t border-dashed"
+					style="top: {px(hour * 60 + 30)}px"
+				></div>
 			{/each}
 
 			{#each placements as { task, lane, lanes, overlaps } (task.id)}
@@ -135,9 +152,12 @@
 					class="group absolute touch-none overflow-hidden rounded-lg border-l-4 px-2 py-1 shadow-sm select-none
 						{priorityStyle[task.priority].block}
 						{done ? 'opacity-55' : ''}
-						{overlaps ? 'ring-2 ring-warning' : ''}
+						{overlaps ? 'ring-warning ring-2' : ''}
 						{dragging ? 'z-10 cursor-grabbing shadow-lg' : 'cursor-grab'}"
-					style="top: {px(start)}px; height: {Math.max(px(duration), MIN_BLOCK_PX)}px; left: calc({(lane / lanes) * 100}% + 2px); width: calc({100 / lanes}% - 4px)"
+					style="top: {px(start)}px; height: {Math.max(
+						px(duration),
+						MIN_BLOCK_PX
+					)}px; left: calc({(lane / lanes) * 100}% + 2px); width: calc({100 / lanes}% - 4px)"
 					onclick={(e) => e.stopPropagation()}
 					onpointerdown={(e) => begin(e, task, 'move')}
 					onpointermove={track}
@@ -146,10 +166,14 @@
 				>
 					<div class="flex items-start gap-1">
 						<div class="min-w-0 flex-1">
-							<div class="truncate text-sm font-medium {done ? 'line-through' : ''}">{task.title}</div>
+							<div class="truncate text-sm font-medium {done ? 'line-through' : ''}">
+								{task.title}
+							</div>
 							{#if px(duration) >= 44}
 								<div class="tabular truncate text-xs opacity-80">
-									{formatClock(start)} - {formatClock(start + duration)} · {formatDuration(duration)}
+									{formatClock(start)} - {formatClock(start + duration)} · {formatDuration(
+										duration
+									)}
 								</div>
 							{/if}
 						</div>
@@ -184,9 +208,12 @@
 			{/each}
 
 			{#if showNow}
-				<div class="pointer-events-none absolute inset-x-0 z-20 flex items-center" style="top: {px(now)}px">
-					<div class="-ml-1 size-2 rounded-full bg-destructive"></div>
-					<div class="h-0.5 flex-1 bg-destructive"></div>
+				<div
+					class="pointer-events-none absolute inset-x-0 z-20 flex items-center"
+					style="top: {px(now)}px"
+				>
+					<div class="bg-destructive -ml-1 size-2 rounded-full"></div>
+					<div class="bg-destructive h-0.5 flex-1"></div>
 				</div>
 			{/if}
 		</div>

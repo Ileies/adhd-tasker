@@ -7,7 +7,7 @@
 {#if tasker.toast}
 	{@const toast = tasker.toast}
 	<div
-		class="fixed inset-x-4 bottom-6 z-50 mx-auto flex max-w-md items-center gap-3 rounded-xl border bg-popover py-2 pr-2 pl-4 text-popover-foreground shadow-lg"
+		class="bg-popover text-popover-foreground fixed inset-x-4 bottom-6 z-50 mx-auto flex max-w-md items-center gap-3 rounded-xl border py-2 pr-2 pl-4 shadow-lg"
 		role="status"
 	>
 		<span class="min-w-0 flex-1 truncate">{toast.message}</span>

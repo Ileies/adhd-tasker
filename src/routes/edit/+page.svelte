@@ -110,7 +110,10 @@
 		const before = task.status;
 		const status = before === TaskStatus.Completed ? TaskStatus.Pending : TaskStatus.Completed;
 		updateTask({ ...task, status });
-		showToast(status === TaskStatus.Completed ? `Done: ${task.title}` : `Reopened: ${task.title}`, () => updateTask({ ...task, status: before }));
+		showToast(
+			status === TaskStatus.Completed ? `Done: ${task.title}` : `Reopened: ${task.title}`,
+			() => updateTask({ ...task, status: before })
+		);
 	}
 
 	function move(task: Task, startTime: number) {
@@ -134,14 +137,18 @@
 	}
 </script>
 
-<div class="flex h-full flex-col bg-background">
+<div class="bg-background flex h-full flex-col">
 	<div class="z-30 flex flex-wrap items-center gap-x-4 gap-y-2 border-b p-3 sm:px-6">
 		<Button variant="outline" onclick={() => goto('/')}>Back to Now</Button>
 
 		<div class="flex items-center gap-1">
-			<Button variant="ghost" size="icon" aria-label="Previous day" onclick={() => shift(-1)}><ChevronLeft /></Button>
+			<Button variant="ghost" size="icon" aria-label="Previous day" onclick={() => shift(-1)}
+				><ChevronLeft /></Button
+			>
 			<h1 class="min-w-32 text-center text-xl font-bold">{formatDay(selected, today)}</h1>
-			<Button variant="ghost" size="icon" aria-label="Next day" onclick={() => shift(1)}><ChevronRight /></Button>
+			<Button variant="ghost" size="icon" aria-label="Next day" onclick={() => shift(1)}
+				><ChevronRight /></Button
+			>
 			<Input
 				type="date"
 				class="w-40"
@@ -155,7 +162,11 @@
 		</div>
 
 		<form class="flex min-w-60 flex-1 gap-2" onsubmit={addQuick}>
-			<Input bind:value={quick} placeholder="Quick add: Call dentist 14:30 45m" aria-label="Quick add a task" />
+			<Input
+				bind:value={quick}
+				placeholder="Quick add: Call dentist 14:30 45m"
+				aria-label="Quick add a task"
+			/>
 			<Button type="submit" disabled={!quick.trim()}>Add</Button>
 		</form>
 
@@ -166,7 +177,7 @@
 	</div>
 
 	{#if overlapCount > 0}
-		<div class="flex items-center gap-2 border-b bg-warning/15 px-6 py-2 text-sm" role="status">
+		<div class="bg-warning/15 flex items-center gap-2 border-b px-6 py-2 text-sm" role="status">
 			<TriangleAlert class="size-4 shrink-0" />
 			Some tasks overlap. Now shows the one with the higher priority.
 		</div>
@@ -191,19 +202,30 @@
 		<!-- Phones: the same day as a plain list -->
 		<div class="h-full overflow-y-auto md:hidden">
 			{#if sorted.length === 0}
-				<p class="p-6 text-muted-foreground">Nothing planned. Add something above.</p>
+				<p class="text-muted-foreground p-6">Nothing planned. Add something above.</p>
 			{:else}
 				<ul class="divide-y">
 					{#each sorted as task (task.id)}
 						{@const done = task.status === TaskStatus.Completed}
 						<li class="flex items-center gap-3 px-4 py-3 {done ? 'opacity-55' : ''}">
-							<button type="button" class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left" onclick={() => openEditForm(task)}>
-								<span class="tabular w-12 shrink-0 text-sm text-muted-foreground">{formatClock(task.startTime)}</span>
+							<button
+								type="button"
+								class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+								onclick={() => openEditForm(task)}
+							>
+								<span class="tabular text-muted-foreground w-12 shrink-0 text-sm"
+									>{formatClock(task.startTime)}</span
+								>
 								<span class="min-w-0 flex-1">
-									<span class="block truncate font-medium {done ? 'line-through' : ''}">{task.title}</span>
-									<span class="text-xs text-muted-foreground">{formatDuration(task.duration)}</span>
+									<span class="block truncate font-medium {done ? 'line-through' : ''}"
+										>{task.title}</span
+									>
+									<span class="text-muted-foreground text-xs">{formatDuration(task.duration)}</span>
 								</span>
-								<span class="shrink-0 rounded-full px-2 py-0.5 text-xs {priorityStyle[task.priority].chip}">
+								<span
+									class="shrink-0 rounded-full px-2 py-0.5 text-xs {priorityStyle[task.priority]
+										.chip}"
+								>
 									{priorityStyle[task.priority].label}
 								</span>
 							</button>

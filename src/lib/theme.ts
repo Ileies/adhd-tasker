@@ -13,7 +13,10 @@ function resolveDark(): boolean {
 
 	const minutes = minutesNow(tasker.timezone);
 	const { dayStart, dayEnd } = tasker;
-	const isDay = dayStart <= dayEnd ? minutes >= dayStart && minutes < dayEnd : minutes >= dayStart || minutes < dayEnd;
+	const isDay =
+		dayStart <= dayEnd
+			? minutes >= dayStart && minutes < dayEnd
+			: minutes >= dayStart || minutes < dayEnd;
 	return !isDay;
 }
 
@@ -88,7 +91,8 @@ export function initPreferences() {
 		if (theme === 'light' || theme === 'dark' || theme === 'auto') tasker.themeMode = theme;
 
 		const volume = localStorage.getItem('volume');
-		if (volume !== null && Number(volume) >= 0 && Number(volume) <= 100) tasker.volume = Number(volume);
+		if (volume !== null && Number(volume) >= 0 && Number(volume) <= 100)
+			tasker.volume = Number(volume);
 
 		tasker.isMuted = localStorage.getItem('muted') === 'true';
 

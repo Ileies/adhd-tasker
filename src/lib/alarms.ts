@@ -26,7 +26,8 @@ export function deviceId(): string {
 }
 
 /** Only the display device makes sound, the others show the alarm silently. With no display device chosen every device plays. */
-export const playsSound = () => tasker.device.display === null || tasker.device.display === tasker.device.id;
+export const playsSound = () =>
+	tasker.device.display === null || tasker.device.display === tasker.device.id;
 
 const rung = new Set<string>();
 let timers: ReturnType<typeof setTimeout>[] = [];
@@ -78,9 +79,19 @@ export async function loadSchedule() {
 	arm();
 }
 
-export async function addAlarm(fields: { at: string; label: string; tone: ToneName; repeat: Repeat }): Promise<string | null> {
-	const response = await fetch('/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) });
-	if (!response.ok) return (await response.json().catch(() => null))?.message ?? 'Could not save the alarm';
+export async function addAlarm(fields: {
+	at: string;
+	label: string;
+	tone: ToneName;
+	repeat: Repeat;
+}): Promise<string | null> {
+	const response = await fetch('/schedule', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(fields)
+	});
+	if (!response.ok)
+		return (await response.json().catch(() => null))?.message ?? 'Could not save the alarm';
 	await loadSchedule();
 	return null;
 }
@@ -92,5 +103,9 @@ export async function removeEntry(id: number) {
 
 /** `null` lets every device play again. */
 export async function chooseDisplay(device: string | null) {
-	await fetch('/schedule/display', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ device }) });
+	await fetch('/schedule/display', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ device })
+	});
 }

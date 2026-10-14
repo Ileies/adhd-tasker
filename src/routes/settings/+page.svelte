@@ -15,7 +15,9 @@
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Theme</Card.Title>
-			<Card.Description>Choose one theme, or switch automatically based on your local time.</Card.Description>
+			<Card.Description
+				>Choose one theme, or switch automatically based on your local time.</Card.Description
+			>
 		</Card.Header>
 		<Card.Content>
 			<ThemePicker />
@@ -36,7 +38,9 @@
 		<Card.Root class="mt-4">
 			<Card.Header>
 				<Card.Title>Reminders and overruns</Card.Title>
-				<Card.Description>Sounds that pull you back to the plan. They work without an OpenAI key.</Card.Description>
+				<Card.Description
+					>Sounds that pull you back to the plan. They work without an OpenAI key.</Card.Description
+				>
 			</Card.Header>
 			<Card.Content>
 				<AnchoringSettingsForm
@@ -53,20 +57,30 @@
 		<Card.Root class="mt-4">
 			<Card.Header>
 				<Card.Title>Assistant</Card.Title>
-				<Card.Description>Bring your own OpenAI key to chat with the assistant about your plan.</Card.Description>
+				<Card.Description
+					>Bring your own OpenAI key to chat with the assistant about your plan.</Card.Description
+				>
 			</Card.Header>
 			<Card.Content>
-				<OpenAiKeyForm hasKey={data.user.hasOpenaiKey} message={form && 'openaiMessage' in form ? form.openaiMessage : undefined} />
+				<OpenAiKeyForm
+					hasKey={data.user.hasOpenaiKey}
+					message={form && 'openaiMessage' in form ? form.openaiMessage : undefined}
+				/>
 			</Card.Content>
 		</Card.Root>
 
 		<Card.Root class="mt-4">
 			<Card.Header>
 				<Card.Title>Voice</Card.Title>
-				<Card.Description>Talk to the assistant and let it talk back. Off by default.</Card.Description>
+				<Card.Description
+					>Talk to the assistant and let it talk back. Off by default.</Card.Description
+				>
 			</Card.Header>
 			<Card.Content>
-				<VoiceSettingsForm replies={data.user.voiceReplies} saved={!!form && 'voiceSaved' in form} />
+				<VoiceSettingsForm
+					replies={data.user.voiceReplies}
+					saved={!!form && 'voiceSaved' in form}
+				/>
 			</Card.Content>
 		</Card.Root>
 
@@ -74,8 +88,10 @@
 			<Card.Header>
 				<Card.Title>Assistant on its own</Card.Title>
 				<Card.Description>
-					The assistant can notice what happens in your plan. By default it stays quiet and only offers a note or a question.
-					See what it did on the <a class="underline" href="/activity">Activity</a> page.
+					The assistant can notice what happens in your plan. By default it stays quiet and only
+					offers a note or a question. See what it did on the <a class="underline" href="/activity"
+						>Activity</a
+					> page.
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -94,10 +110,16 @@
 		<Card.Root class="mt-4">
 			<Card.Header>
 				<Card.Title>Google Workspace</Card.Title>
-				<Card.Description>Ask your Google account for more permissions. Nothing is read or changed until a feature uses them.</Card.Description>
+				<Card.Description
+					>Ask your Google account for more permissions. Nothing is read or changed until a feature
+					uses them.</Card.Description
+				>
 			</Card.Header>
 			<Card.Content>
-				<GoogleLinkPicker linked={data.user.googleServices} message={form && 'message' in form ? form.message : undefined} />
+				<GoogleLinkPicker
+					linked={data.user.googleServices}
+					message={form && 'message' in form ? form.message : undefined}
+				/>
 			</Card.Content>
 		</Card.Root>
 	{/if}

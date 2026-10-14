@@ -1,5 +1,11 @@
 import { tasker } from '#lib/app.svelte.js';
-import { MAX_RECORDING_MS, MIN_RECORDING_MS, pickRecordingType, speakable, speechVolume } from '#lib/voice.js';
+import {
+	MAX_RECORDING_MS,
+	MIN_RECORDING_MS,
+	pickRecordingType,
+	speakable,
+	speechVolume
+} from '#lib/voice.js';
 
 /** Browser side of voice: push-to-talk recording, transcription and spoken replies. Server side is `src/lib/server/voice.ts`. */
 
@@ -18,7 +24,8 @@ let duckTimer: ReturnType<typeof setTimeout> | undefined;
 /** Bumped on every speak and stop, so a slow fetch of older speech never plays over newer speech. */
 let speechRun = 0;
 
-export const canRecord = () => typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+export const canRecord = () =>
+	typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
 /**
  * Starts recording while the key or button is held. Resolves false when the microphone is not available.
@@ -49,7 +56,10 @@ export async function startRecording(onLimit: (text: string | null) => void): Pr
 	recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data);
 	recorder.start();
 	startedAt = Date.now();
-	limitTimer = setTimeout(() => void finishRecording().then(onLimit, () => onLimit(null)), MAX_RECORDING_MS);
+	limitTimer = setTimeout(
+		() => void finishRecording().then(onLimit, () => onLimit(null)),
+		MAX_RECORDING_MS
+	);
 	return true;
 }
 
@@ -82,7 +92,10 @@ export async function finishRecording(): Promise<string | null> {
 		const form = new FormData();
 		form.set('audio', blob);
 		const response = await fetch('/assistant/transcribe', { method: 'POST', body: form });
-		if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? 'Could not understand the recording');
+		if (!response.ok)
+			throw new Error(
+				(await response.json().catch(() => null))?.message ?? 'Could not understand the recording'
+			);
 		const { text }: { text: string } = await response.json();
 		return text.trim() || null;
 	} finally {
@@ -135,7 +148,11 @@ export async function speak(text: string) {
 	stopSpeaking();
 	const run = speechRun;
 	try {
-		const response = await fetch('/assistant/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: input }) });
+		const response = await fetch('/assistant/speak', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ text: input })
+		});
 		if (!response.ok || run !== speechRun) return;
 		const blob = await response.blob();
 		if (run !== speechRun) return;

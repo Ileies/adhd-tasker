@@ -8,14 +8,15 @@ Basis: a review of every route and component (`+layout.svelte`, Now, Plan, TaskF
 
 The app has one job: keep the user anchored to the present task with the least possible thinking. So each control gets a tier, and its size and place follow from the tier, never from how much work it was to build.
 
-| Tier | Rule | Members |
-|---|---|---|
-| **1. Always visible, large** | Needed many times a day, at the moment of acting | Done |
-| **2. Visible, secondary** | Needed often, or exactly in a specific moment (shown only in that moment) | I'm stuck, 15 more minutes (only near and after the end), mute, Now/Plan switch, quick add on Plan |
-| **3. One tap away** | Needed sometimes | Edit, move to later, drop, assistant, alarms, missed triage |
-| **4. In a menu or another page** | Configured once or rarely | Fullscreen, settings, activity, account, legal |
+| Tier                             | Rule                                                                      | Members                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **1. Always visible, large**     | Needed many times a day, at the moment of acting                          | Done                                                                                               |
+| **2. Visible, secondary**        | Needed often, or exactly in a specific moment (shown only in that moment) | I'm stuck, 15 more minutes (only near and after the end), mute, Now/Plan switch, quick add on Plan |
+| **3. One tap away**              | Needed sometimes                                                          | Edit, move to later, drop, assistant, alarms, missed triage                                        |
+| **4. In a menu or another page** | Configured once or rarely                                                 | Fullscreen, settings, activity, account, legal                                                     |
 
 Three more rules:
+
 - **In context beats transient.** The screen is always on, so a cue that stays where the eye goes (a line in the hero) beats a toast that disappears after 8 s.
 - **The moment of transition is the hardest moment** for ADHD (ending one thing, starting the next). It deserves the most design care, and today it gets the least.
 - **Silence must be visible.** Muted sound or a browser that blocks audio removes the anchor without the user knowing. That state is always shown.
@@ -40,6 +41,7 @@ Smaller findings are listed per page below.
 ### Model
 
 Two primary places and one tool, everything else is secondary:
+
 - **Now** and **Plan**: a two-segment switch at the left of the bar, always visible (tier 2). Keys `1` and `2`.
 - **Assistant**: an icon in the bar, only when a key is saved (tier 3). Without a key the button is a dead end, so it is hidden and Settings explains how to turn it on.
 - **Menu** (icon changes from a user to a plain menu icon): Alarms, Assistant activity, Settings, then Fullscreen, Keyboard shortcuts, then the email and Log out, then Privacy and Terms as one small line.
@@ -65,16 +67,16 @@ Two primary places and one tool, everything else is secondary:
 
 ### Keyboard (desktop, shown under Menu > Keyboard shortcuts)
 
-| Key | Action |
-|---|---|
-| `1` / `2` | Now / Plan |
-| `D` | Done (Now) |
-| `N` or `/` | Focus quick add (Plan, and Now on an empty day) |
-| `Left` / `Right`, `T` | Previous / next day, today (Plan) |
-| `A` | Open the assistant |
-| `M` | Mute or unmute |
-| `F` | Fullscreen |
-| `Esc` | Close whatever is open |
+| Key                   | Action                                          |
+| --------------------- | ----------------------------------------------- |
+| `1` / `2`             | Now / Plan                                      |
+| `D`                   | Done (Now)                                      |
+| `N` or `/`            | Focus quick add (Plan, and Now on an empty day) |
+| `Left` / `Right`, `T` | Previous / next day, today (Plan)               |
+| `A`                   | Open the assistant                              |
+| `M`                   | Mute or unmute                                  |
+| `F`                   | Fullscreen                                      |
+| `Esc`                 | Close whatever is open                          |
 
 Shortcuts are ignored while typing in a field. Pure key map in `src/lib/shortcuts.ts` (tested), wired once in the layout.
 
@@ -84,13 +86,13 @@ Shortcuts are ignored while typing in a field. Pure key map in `src/lib/shortcut
 
 The hero becomes a small state machine. A pure `heroState(ranking, now, settings)` in `src/lib/now.ts` (tested) returns one of the states below, the component only renders it. `rank()` stays as it is, so client and server still agree.
 
-| State | When | What the hero shows |
-|---|---|---|
-| **active** | A task is current, more than the wrap-up threshold left | Time window, title, note, time left, Done, I'm stuck, `...` |
-| **wrapping up** | Last 10 min or last 25% of the current task | Same, plus "15 more min" as a ghost button, and the heads-up line for the next task |
-| **time up** | No task is current (or the new current started at the same minute) and the latest unfinished task ended less than its overrun window ago | "Time is up" over the ended task's title, "ended 3 min ago", Done, 15 more min, Move to later. The next task is one line below |
-| **free** | Nothing current, something later today | "Free time", next task and "starts in" |
-| **empty** | Nothing left today | "Nothing left today" plus a quick add line and "Open Plan" (see 11) |
+| State           | When                                                                                                                                     | What the hero shows                                                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **active**      | A task is current, more than the wrap-up threshold left                                                                                  | Time window, title, note, time left, Done, I'm stuck, `...`                                                                    |
+| **wrapping up** | Last 10 min or last 25% of the current task                                                                                              | Same, plus "15 more min" as a ghost button, and the heads-up line for the next task                                            |
+| **time up**     | No task is current (or the new current started at the same minute) and the latest unfinished task ended less than its overrun window ago | "Time is up" over the ended task's title, "ended 3 min ago", Done, 15 more min, Move to later. The next task is one line below |
+| **free**        | Nothing current, something later today                                                                                                   | "Free time", next task and "starts in"                                                                                         |
+| **empty**       | Nothing left today                                                                                                                       | "Nothing left today" plus a quick add line and "Open Plan" (see 11)                                                            |
 
 The time-up state replaces both the silent switch to "Free time" and the overrun toast, and it is the screen the hyperfocus tap sounds for. When the next task has already started, the hero shows the new task and a slim **transition bar** across its top: "Time for Write intro is up. [Done] [15 more min] [Later]". It stays until answered or until the new task is 15 min old.
 
@@ -208,7 +210,7 @@ The 5 minute check-in chime is hardcoded today. It moves into the Reminders sett
 ```
 
 - Centered dialog on wide screens, bottom sheet on phones.
-- Title field first, large, focused on open. No "Title *" labels with asterisks: only the title is required and the field says so.
+- Title field first, large, focused on open. No "Title \*" labels with asterisks: only the title is required and the field says so.
 - Date as chips (Today, Tomorrow) plus a picker. Duration chips sit next to the start time (today they are split by the priority select), a free value behind `..`. "Ends 14:30" is shown, so nobody does the math.
 - Priority as a five-segment control in the shared priority colors, one tap instead of opening a select.
 - Note collapsed behind "Add a note" so the form looks short.
@@ -253,6 +255,7 @@ Sections ordered by how much they shape the daily experience. Wide screens get a
 - **Math**: sunrise and sunset come from a pure `sunTimes(lat, lon, date, timezone)` in `src/lib/sun.ts` (tested, including polar day and night, which fall back to fixed 07:00 to 19:00). Recomputed daily on the client.
 - **Data**: `users` gets `locationLat`, `locationLon`, `locationName`, `locationSource` (`ip | device | city`), `myDayStart`, `myDayEnd`. Applied with `bun run db:push`, production with `bun run deploy --db-push`. The old local `dayStart`/`dayEnd` theme hours in `tasker` go away.
 - Without any location (lookup failed, offline), the theme falls back to the timezone's main city, and Settings says so.
+
 4. **Assistant**: without a key, only the key field and two lines on what it does and what is sent. With a key: autonomy as three option cards, voice replies, then an "Advanced" disclosure with event toggles, quiet hours and the token budget.
 5. **Account**: email, Log out, Privacy, Terms.
 
@@ -274,15 +277,15 @@ The **Google Workspace** card is hidden until Calendar sync uses the grant. Exis
 
 ## 12. Feedback system
 
-| Signal | Today | Planned |
-|---|---|---|
-| Task done | Toast, sound only if another task starts | Hero confirmation, `done` sound, toast with Undo |
-| Next task soon | Toast plus chime | Hero line plus chime, first rail item emphasized |
-| Overrun | Toast plus nudge tone | Time-up state or transition bar plus nudge tone |
-| Task switch | Chime, reason line | Same, reason line fades after 60 s |
-| Muted | Icon in a hidden bar | Silence line with the unmute time |
-| Audio blocked by the browser | Nothing, sounds fail silently | Silence line "Tap anywhere to turn sound on", cleared by the first gesture |
-| Undoable action | Toast, 8 s, newest replaces older | Same. Toasts are now only for Undo, so a reminder can no longer push an Undo away |
+| Signal                       | Today                                    | Planned                                                                           |
+| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------- |
+| Task done                    | Toast, sound only if another task starts | Hero confirmation, `done` sound, toast with Undo                                  |
+| Next task soon               | Toast plus chime                         | Hero line plus chime, first rail item emphasized                                  |
+| Overrun                      | Toast plus nudge tone                    | Time-up state or transition bar plus nudge tone                                   |
+| Task switch                  | Chime, reason line                       | Same, reason line fades after 60 s                                                |
+| Muted                        | Icon in a hidden bar                     | Silence line with the unmute time                                                 |
+| Audio blocked by the browser | Nothing, sounds fail silently            | Silence line "Tap anywhere to turn sound on", cleared by the first gesture        |
+| Undoable action              | Toast, 8 s, newest replaces older        | Same. Toasts are now only for Undo, so a reminder can no longer push an Undo away |
 
 Audio unlock: create one shared `AudioContext` on load, read its `state`, and set `tasker.device.audioBlocked` until `resume()` succeeds on the first pointer or key event. Today every sound creates its own context.
 
@@ -301,19 +304,19 @@ Audio unlock: create one shared `AudioContext` on load, read its `state`, and se
 
 Each phase is shippable on its own and ends with `bun run check`, `bun test`, a look on a wide screen and a phone, and small separate commits. Pure logic first with tests, then components.
 
-| Phase | Content | Main files |
-|---|---|---|
-| **1. Transitions** | `heroState`, time-up state, transition bar, 15 more min, `...` menu with move to later or tomorrow, `nextFreeSlot`, heads-up line in the hero | `src/lib/now.ts` (new), `plan.ts`, `NowHero.svelte`, `+page.svelte` |
-| **2. Feedback and silence** | Done confirmation and sound, `formatLeft`, draining bar, reason fade, shared AudioContext and blocked state, silence line, tab title | `index.ts`, `format.ts`, `NowHero.svelte`, `UpcomingRail.svelte`, `+layout.svelte` |
-| **3. Navigation** | Now/Plan switch, context slot, menu, sound popover with timed mute, fullscreen to menu, assistant icon only with key, logged-out redirects, keyboard shortcuts | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts` |
-| **4. Rail and phone Now** | Done today line (plus the CLAUDE.md exception), next list clarity, tappable items, next alarm line, missed triage sheet, phone sticky actions, phone assistant link | `UpcomingRail.svelte`, `AgentStrip.svelte`, new `MissedTriage.svelte` |
-| **5. Colors and system** | One priority ramp, page frame, type scale, touch targets, sentence case | `app.css`, `urgency.ts`, `PriorityMeter.svelte`, all pages |
-| **6. Plan** | Day switcher in the bar, quick add with preview, 30 min default, past dimming, collapsed hours outside My day (07:00 to 23:00 until phase 8 adds the setting), drag to create, keyboard blocks, named overlaps, grouped phone list | `edit/+page.svelte`, `DayTimeline.svelte`, `quickadd.ts`, `plan.ts` |
-| **7. Task sheet** | New layout, chips, priority control, failure toast | `TaskForm.svelte` |
-| **8. Settings** | Sections, auto-save, presets, check-in interval, My day, Google card hidden, assistant disclosure | `settings/+page.svelte`, `+page.server.ts`, settings forms, `users` schema (then `bun run db:push`) |
-| **8b. Daylight theme** | `sunTimes`, IP lookup on login, device location and city search override, theme without hour fields, Privacy page update | `src/lib/sun.ts` (new), `src/lib/server/location.ts` (new), `theme.ts`, `ThemePicker.svelte`, `hooks.server.ts`, `privacy/+page.svelte` |
-| **9. Secondary pages** | Alarms cleanup, quick timers, one snooze, Assistant activity with check-ins, assistant drawer suggestions and composer | `alarms/+page.svelte`, `AlarmBanner.svelte`, `activity/+page.svelte`, `AssistantDrawer.svelte` |
-| **10. First run** | Remove SetupDialog, empty day state, one-time second screen hint | `SetupDialog.svelte` (delete), `NowHero.svelte`, `theme.ts` |
+| Phase                       | Content                                                                                                                                                                                                                            | Main files                                                                                                                              |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Transitions**          | `heroState`, time-up state, transition bar, 15 more min, `...` menu with move to later or tomorrow, `nextFreeSlot`, heads-up line in the hero                                                                                      | `src/lib/now.ts` (new), `plan.ts`, `NowHero.svelte`, `+page.svelte`                                                                     |
+| **2. Feedback and silence** | Done confirmation and sound, `formatLeft`, draining bar, reason fade, shared AudioContext and blocked state, silence line, tab title                                                                                               | `index.ts`, `format.ts`, `NowHero.svelte`, `UpcomingRail.svelte`, `+layout.svelte`                                                      |
+| **3. Navigation**           | Now/Plan switch, context slot, menu, sound popover with timed mute, fullscreen to menu, assistant icon only with key, logged-out redirects, keyboard shortcuts                                                                     | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts`                                                    |
+| **4. Rail and phone Now**   | Done today line (plus the CLAUDE.md exception), next list clarity, tappable items, next alarm line, missed triage sheet, phone sticky actions, phone assistant link                                                                | `UpcomingRail.svelte`, `AgentStrip.svelte`, new `MissedTriage.svelte`                                                                   |
+| **5. Colors and system**    | One priority ramp, page frame, type scale, touch targets, sentence case                                                                                                                                                            | `app.css`, `urgency.ts`, `PriorityMeter.svelte`, all pages                                                                              |
+| **6. Plan**                 | Day switcher in the bar, quick add with preview, 30 min default, past dimming, collapsed hours outside My day (07:00 to 23:00 until phase 8 adds the setting), drag to create, keyboard blocks, named overlaps, grouped phone list | `edit/+page.svelte`, `DayTimeline.svelte`, `quickadd.ts`, `plan.ts`                                                                     |
+| **7. Task sheet**           | New layout, chips, priority control, failure toast                                                                                                                                                                                 | `TaskForm.svelte`                                                                                                                       |
+| **8. Settings**             | Sections, auto-save, presets, check-in interval, My day, Google card hidden, assistant disclosure                                                                                                                                  | `settings/+page.svelte`, `+page.server.ts`, settings forms, `users` schema (then `bun run db:push`)                                     |
+| **8b. Daylight theme**      | `sunTimes`, IP lookup on login, device location and city search override, theme without hour fields, Privacy page update                                                                                                           | `src/lib/sun.ts` (new), `src/lib/server/location.ts` (new), `theme.ts`, `ThemePicker.svelte`, `hooks.server.ts`, `privacy/+page.svelte` |
+| **9. Secondary pages**      | Alarms cleanup, quick timers, one snooze, Assistant activity with check-ins, assistant drawer suggestions and composer                                                                                                             | `alarms/+page.svelte`, `AlarmBanner.svelte`, `activity/+page.svelte`, `AssistantDrawer.svelte`                                          |
+| **10. First run**           | Remove SetupDialog, empty day state, one-time second screen hint                                                                                                                                                                   | `SetupDialog.svelte` (delete), `NowHero.svelte`, `theme.ts`                                                                             |
 
 Phases 1 and 2 carry most of the ADHD value and touch the fewest files, so they come first. CLAUDE.md and the Privacy page get updated in the phases that change what they describe.
 

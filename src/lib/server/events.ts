@@ -17,14 +17,36 @@ export function setReactor(next: Reactor) {
  * Never throws: the plan edit that raised the event must succeed even when logging fails.
  * `key` makes detected events idempotent, returns null when that fact is already logged.
  */
-export async function emit(email: string, type: EventType, payload: Record<string, unknown>, origin: EventOrigin, key?: string): Promise<number | null> {
+export async function emit(
+	email: string,
+	type: EventType,
+	payload: Record<string, unknown>,
+	origin: EventOrigin,
+	key?: string
+): Promise<number | null> {
 	try {
 		const now = Date.now();
 		// The agent's own doing and the chat itself need no reaction, they are only logged
-		const outcome = origin === 'agent' ? 'caused by the agent' : type === 'user.message' ? 'answered in the chat' : type === 'alarm.fired' ? 'rang on the open screens' : null;
+		const outcome =
+			origin === 'agent'
+				? 'caused by the agent'
+				: type === 'user.message'
+					? 'answered in the chat'
+					: type === 'alarm.fired'
+						? 'rang on the open screens'
+						: null;
 		const [row] = await db
 			.insert(events)
-			.values({ email, type, payload, origin, key: key ?? null, createdAt: now, handledAt: outcome ? now : null, outcome })
+			.values({
+				email,
+				type,
+				payload,
+				origin,
+				key: key ?? null,
+				createdAt: now,
+				handledAt: outcome ? now : null,
+				outcome
+			})
 			.onConflictDoNothing()
 			.returning({ id: events.id });
 		if (!row) return null;
@@ -37,7 +59,13 @@ export async function emit(email: string, type: EventType, payload: Record<strin
 }
 
 /** Emits the event a task edit amounts to, nothing when the edit changed nothing visible. */
-export async function emitChange(email: string, before: Task | null, after: Task | null, origin: EventOrigin, extra: Record<string, unknown> = {}) {
+export async function emitChange(
+	email: string,
+	before: Task | null,
+	after: Task | null,
+	origin: EventOrigin,
+	extra: Record<string, unknown> = {}
+) {
 	const change = describeChange(before, after);
 	if (change) await emit(email, change.type, { ...change.payload, ...extra }, origin);
 }
@@ -67,7 +95,9 @@ export async function reactionTimes(email: string, since: number) {
 	const rows = await db
 		.select({ at: aiUsage.createdAt })
 		.from(aiUsage)
-		.where(and(eq(aiUsage.email, email), eq(aiUsage.use, 'reaction'), gte(aiUsage.createdAt, since)));
+		.where(
+			and(eq(aiUsage.email, email), eq(aiUsage.use, 'reaction'), gte(aiUsage.createdAt, since))
+		);
 	return rows.map((row) => row.at);
 }
 

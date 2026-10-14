@@ -9,7 +9,11 @@
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import * as Select from '#lib/components/ui/select/index.js';
 
-	const { email, form = $bindable(), onDelete }: { email: string; form: TaskForm; onDelete?: (task: Task) => void } = $props();
+	const {
+		email,
+		form = $bindable(),
+		onDelete
+	}: { email: string; form: TaskForm; onDelete?: (task: Task) => void } = $props();
 
 	const priorityOptions = [
 		{ value: Priority.Low, label: 'Low' },
@@ -27,7 +31,9 @@
 		{ label: '4h', minutes: 240 }
 	];
 
-	const priorityLabel = $derived(priorityOptions.find((o) => o.value === form.priority)?.label ?? 'Select priority');
+	const priorityLabel = $derived(
+		priorityOptions.find((o) => o.value === form.priority)?.label ?? 'Select priority'
+	);
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -66,7 +72,13 @@
 		<form onsubmit={handleSubmit} class="space-y-5">
 			<div class="grid gap-2">
 				<Label for="title">Title *</Label>
-				<Input id="title" type="text" bind:value={form.title} placeholder="Enter task title..." required />
+				<Input
+					id="title"
+					type="text"
+					bind:value={form.title}
+					placeholder="Enter task title..."
+					required
+				/>
 			</div>
 
 			<div class="grid gap-2">
@@ -91,8 +103,15 @@
 					<Input
 						id="startTime"
 						type="time"
-						value={Math.floor(form.startTime / 60).toString().padStart(2, '0') + ':' + (form.startTime % 60).toString().padStart(2, '0')}
-						onchange={(e) => form.startTime = parseInt(e.currentTarget.value.split(':')[0], 10) * 60 + parseInt(e.currentTarget.value.split(':')[1], 10)}
+						value={Math.floor(form.startTime / 60)
+							.toString()
+							.padStart(2, '0') +
+							':' +
+							(form.startTime % 60).toString().padStart(2, '0')}
+						onchange={(e) =>
+							(form.startTime =
+								parseInt(e.currentTarget.value.split(':')[0], 10) * 60 +
+								parseInt(e.currentTarget.value.split(':')[1], 10))}
 						required
 					/>
 				</div>
@@ -110,7 +129,9 @@
 							placeholder="60"
 							required
 						/>
-						<span class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
+						<span
+							class="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm"
+						>
 							min
 						</span>
 					</div>
@@ -127,7 +148,9 @@
 					<Select.Trigger id="priority" class="w-full">{priorityLabel}</Select.Trigger>
 					<Select.Content>
 						{#each priorityOptions as option (option.value)}
-							<Select.Item value={String(option.value)} label={option.label}>{option.label}</Select.Item>
+							<Select.Item value={String(option.value)} label={option.label}
+								>{option.label}</Select.Item
+							>
 						{/each}
 					</Select.Content>
 				</Select.Root>

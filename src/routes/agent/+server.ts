@@ -23,7 +23,12 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		.orderBy(desc(agentCards.id))
 		.limit(1);
 
-	const [latest] = await db.select({ id: agentActions.id }).from(agentActions).where(eq(agentActions.email, email)).orderBy(desc(agentActions.id)).limit(1);
+	const [latest] = await db
+		.select({ id: agentActions.id })
+		.from(agentActions)
+		.where(eq(agentActions.email, email))
+		.orderBy(desc(agentActions.id))
+		.limit(1);
 	const cursor = latest?.id ?? 0;
 
 	const fresh =
@@ -31,7 +36,14 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			? await db
 					.select()
 					.from(agentActions)
-					.where(and(eq(agentActions.email, email), gt(agentActions.id, since), isNotNull(agentActions.eventId), isNull(agentActions.undoneAt)))
+					.where(
+						and(
+							eq(agentActions.email, email),
+							gt(agentActions.id, since),
+							isNotNull(agentActions.eventId),
+							isNull(agentActions.undoneAt)
+						)
+					)
 					.orderBy(agentActions.id)
 			: [];
 
@@ -41,7 +53,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		changes: fresh.map((row) => {
 			const before = row.before as Task | null;
 			const after = row.after as Task | null;
-			return { id: row.id, summary: summarizeAction(row.tool, before, after), dates: datesOfAction(before, after) };
+			return {
+				id: row.id,
+				summary: summarizeAction(row.tool, before, after),
+				dates: datesOfAction(before, after)
+			};
 		})
 	});
 };

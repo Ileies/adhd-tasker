@@ -15,7 +15,9 @@ export const google = new arctic.Google(
 export function login(event: RequestEvent, services: GoogleServiceId[] = []) {
 	const state = arctic.generateState();
 	const codeVerifier = arctic.generateCodeVerifier();
-	const extra = GOOGLE_SERVICES.filter((service) => services.includes(service.id)).map((service) => service.scope);
+	const extra = GOOGLE_SERVICES.filter((service) => services.includes(service.id)).map(
+		(service) => service.scope
+	);
 	const url = google.createAuthorizationURL(state, codeVerifier, ['email', ...extra]);
 	if (extra.length) url.searchParams.set('include_granted_scopes', 'true');
 	const cookie = { path: '/', secure: !dev, httpOnly: true, maxAge: 60 * 10 }; // 10 minutes

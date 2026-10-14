@@ -27,7 +27,9 @@
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>Welcome to ADHD Tasker</Dialog.Title>
-			<Dialog.Description>How should the app look? You can change this later in Settings.</Dialog.Description>
+			<Dialog.Description
+				>How should the app look? You can change this later in Settings.</Dialog.Description
+			>
 		</Dialog.Header>
 		<ThemePicker />
 		<Dialog.Footer>

@@ -18,9 +18,14 @@ if (columns.some((column) => column.name === 'date')) {
 
 db.transaction(() => {
 	db.run("ALTER TABLE tasks ADD COLUMN date text NOT NULL DEFAULT ''");
-	const users = db.query<{ email: string; timezone: string | null }, []>('SELECT email, timezone FROM users').all();
+	const users = db
+		.query<{ email: string; timezone: string | null }, []>('SELECT email, timezone FROM users')
+		.all();
 	for (const user of users) {
-		db.run('UPDATE tasks SET date = ? WHERE email = ?', [todayIn(user.timezone ?? 'UTC'), user.email]);
+		db.run('UPDATE tasks SET date = ? WHERE email = ?', [
+			todayIn(user.timezone ?? 'UTC'),
+			user.email
+		]);
 	}
 })();
 console.log('tasks.date added, existing tasks moved to today');

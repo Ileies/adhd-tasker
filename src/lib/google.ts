@@ -28,7 +28,9 @@ export function isGoogleServiceId(value: string): value is GoogleServiceId {
 
 /** The services whose scope Google reports as granted. */
 export function servicesFromScopes(scopes: string[]): GoogleServiceId[] {
-	return GOOGLE_SERVICES.filter((service) => scopes.includes(service.scope)).map((service) => service.id);
+	return GOOGLE_SERVICES.filter((service) => scopes.includes(service.scope)).map(
+		(service) => service.id
+	);
 }
 
 /** Services are stored space separated in `users.googleServices`. */

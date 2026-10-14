@@ -28,7 +28,9 @@ export const GET: RequestHandler = async ({ locals, url, request }) => {
 				}
 			};
 
-			const unsubscribe = subscribe(email, device, (message: StreamMessage) => write(`data: ${JSON.stringify(message)}\n\n`));
+			const unsubscribe = subscribe(email, device, (message: StreamMessage) =>
+				write(`data: ${JSON.stringify(message)}\n\n`)
+			);
 			// A comment line keeps proxies from closing a quiet connection
 			const beat = setInterval(() => write(': ping\n\n'), HEARTBEAT_MS);
 
@@ -57,6 +59,10 @@ export const GET: RequestHandler = async ({ locals, url, request }) => {
 	});
 
 	return new Response(body, {
-		headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' }
+		headers: {
+			'Content-Type': 'text/event-stream',
+			'Cache-Control': 'no-cache, no-transform',
+			'X-Accel-Buffering': 'no'
+		}
 	});
 };

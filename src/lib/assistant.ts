@@ -20,20 +20,35 @@ export async function sendMessage(text: string) {
 		const response = await fetch('/assistant', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ messages: chat.messages.filter((m) => !m.error).map(({ role, content }) => ({ role, content })) })
+			body: JSON.stringify({
+				messages: chat.messages
+					.filter((m) => !m.error)
+					.map(({ role, content }) => ({ role, content }))
+			})
 		});
 		if (!response.ok) {
 			const detail = await response.json().catch(() => null);
-			chat.messages.push({ role: 'assistant', content: detail?.message ?? 'The assistant is not available right now.', error: true });
+			chat.messages.push({
+				role: 'assistant',
+				content: detail?.message ?? 'The assistant is not available right now.',
+				error: true
+			});
 			return;
 		}
 
 		const { reply, changes }: { reply: string; changes: Change[] } = await response.json();
-		chat.messages.push({ role: 'assistant', content: reply, changes: changes.length ? changes : undefined });
+		chat.messages.push({
+			role: 'assistant',
+			content: reply,
+			changes: changes.length ? changes : undefined
+		});
 		if (tasker.voice.replies) void speak(reply);
 		if (changes.length) {
 			await refresh(changes.flatMap((c) => c.dates));
-			showToast(changes.length === 1 ? changes[0].summary : `Assistant made ${changes.length} changes`, () => undoAll(changes));
+			showToast(
+				changes.length === 1 ? changes[0].summary : `Assistant made ${changes.length} changes`,
+				() => undoAll(changes)
+			);
 		}
 	} catch {
 		chat.messages.push({ role: 'assistant', content: 'Could not reach the server.', error: true });

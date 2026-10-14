@@ -17,7 +17,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const { email, timezone, dailyTokenBudget } = locals.user;
 
 	const [actions, seen, tokensToday] = await Promise.all([
-		db.select().from(agentActions).where(eq(agentActions.email, email)).orderBy(desc(agentActions.id)).limit(LIMIT),
+		db
+			.select()
+			.from(agentActions)
+			.where(eq(agentActions.email, email))
+			.orderBy(desc(agentActions.id))
+			.limit(LIMIT),
 		db.select().from(events).where(eq(events.email, email)).orderBy(desc(events.id)).limit(LIMIT),
 		tokensSince(email, startOfDayMs(minutesNow(timezone ?? 'UTC')))
 	]);
@@ -38,6 +43,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 				undone: row.undoneAt !== null
 			};
 		}),
-		events: seen.map((row) => ({ id: row.id, line: describeEvent(row.type, row.payload), origin: row.origin, outcome: row.outcome, at: row.createdAt }))
+		events: seen.map((row) => ({
+			id: row.id,
+			line: describeEvent(row.type, row.payload),
+			origin: row.origin,
+			outcome: row.outcome,
+			at: row.createdAt
+		}))
 	};
 };

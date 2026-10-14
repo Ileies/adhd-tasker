@@ -30,7 +30,11 @@ export type DateKey = string;
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isDateKey(value: unknown): value is DateKey {
-	return typeof value === 'string' && DATE_KEY.test(value) && !Number.isNaN(Date.parse(value + 'T00:00:00Z'));
+	return (
+		typeof value === 'string' &&
+		DATE_KEY.test(value) &&
+		!Number.isNaN(Date.parse(value + 'T00:00:00Z'))
+	);
 }
 
 /** Today's date in the given timezone (device timezone if omitted). */
@@ -66,7 +70,16 @@ export function zonedToEpoch(date: DateKey, minutes: number, timezone: string): 
 			hourCycle: 'h23'
 		}).formatToParts(new Date(at));
 		const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
-		return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')) - at;
+		return (
+			Date.UTC(
+				get('year'),
+				get('month') - 1,
+				get('day'),
+				get('hour'),
+				get('minute'),
+				get('second')
+			) - at
+		);
 	};
 	// Two passes settle the offset when the guess lands on the other side of a daylight saving change
 	const first = wall - offsetAt(wall);
@@ -78,5 +91,10 @@ export function formatDay(date: DateKey, today: DateKey): string {
 	if (date === today) return 'Today';
 	if (date === addDays(today, 1)) return 'Tomorrow';
 	if (date === addDays(today, -1)) return 'Yesterday';
-	return new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+	return new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+		timeZone: 'UTC'
+	});
 }

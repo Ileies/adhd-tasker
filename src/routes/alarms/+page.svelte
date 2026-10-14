@@ -11,7 +11,8 @@
 
 	const { data } = $props();
 
-	const select = 'h-8 rounded-lg border border-input bg-transparent px-2 text-base md:text-sm dark:bg-input/30';
+	const select =
+		'h-8 rounded-lg border border-input bg-transparent px-2 text-base md:text-sm dark:bg-input/30';
 
 	let at = $state('');
 	let label = $state('');
@@ -22,7 +23,17 @@
 
 	onMount(() => void loadSchedule().catch(() => {}));
 
-	const clock = $derived(new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: tasker.timezone ?? undefined }));
+	const clock = $derived(
+		new Intl.DateTimeFormat(undefined, {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			hour: '2-digit',
+			minute: '2-digit',
+			hourCycle: 'h23',
+			timeZone: tasker.timezone ?? undefined
+		})
+	);
 
 	async function add(event: SubmitEvent) {
 		event.preventDefault();
@@ -43,7 +54,10 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Alarms</Card.Title>
-				<Card.Description>They ring on the Now screen while the app is open. The assistant can set alarms too, you can cancel any of them here.</Card.Description>
+				<Card.Description
+					>They ring on the Now screen while the app is open. The assistant can set alarms too, you
+					can cancel any of them here.</Card.Description
+				>
 			</Card.Header>
 			<Card.Content class="space-y-5">
 				{#if tasker.schedule.alarms.length === 0}
@@ -54,11 +68,17 @@
 							<li class="flex items-start justify-between gap-3">
 								<div class="min-w-0">
 									<div class="break-words">{alarm.label}</div>
-									<div class="text-sm text-muted-foreground">
-										{clock.format(alarm.fireAt)}{alarm.repeat === 'none' ? '' : `, ${REPEAT_TEXT[alarm.repeat]}`}, set by {alarm.createdBy === 'agent' ? 'the assistant' : 'you'}
+									<div class="text-muted-foreground text-sm">
+										{clock.format(alarm.fireAt)}{alarm.repeat === 'none'
+											? ''
+											: `, ${REPEAT_TEXT[alarm.repeat]}`}, set by {alarm.createdBy === 'agent'
+											? 'the assistant'
+											: 'you'}
 									</div>
 								</div>
-								<Button variant="ghost" size="sm" onclick={() => removeEntry(alarm.id)}>Cancel</Button>
+								<Button variant="ghost" size="sm" onclick={() => removeEntry(alarm.id)}
+									>Cancel</Button
+								>
 							</li>
 						{/each}
 					</ul>
@@ -67,18 +87,29 @@
 				<form class="space-y-3" onsubmit={add}>
 					<div class="flex flex-wrap items-center gap-2">
 						<Input type="time" bind:value={at} required class="w-32" aria-label="Time" />
-						<Input bind:value={label} required maxlength={60} placeholder="What is it for" class="min-w-40 flex-1" aria-label="Label" />
+						<Input
+							bind:value={label}
+							required
+							maxlength={60}
+							placeholder="What is it for"
+							class="min-w-40 flex-1"
+							aria-label="Label"
+						/>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
 						<select bind:value={tone} class={select} aria-label="Tone">
-							{#each TONE_NAMES as name (name)}<option value={name}>{TONE_TEXT[name]}</option>{/each}
+							{#each TONE_NAMES as name (name)}<option value={name}>{TONE_TEXT[name]}</option
+								>{/each}
 						</select>
-						<Button type="button" variant="secondary" size="sm" onclick={() => playTone(tone)}>Preview</Button>
+						<Button type="button" variant="secondary" size="sm" onclick={() => playTone(tone)}
+							>Preview</Button
+						>
 						<select bind:value={repeat} class={select} aria-label="Repeat">
-							{#each REPEATS as option (option)}<option value={option}>{REPEAT_TEXT[option]}</option>{/each}
+							{#each REPEATS as option (option)}<option value={option}>{REPEAT_TEXT[option]}</option
+								>{/each}
 						</select>
 					</div>
-					{#if message}<p class="text-sm text-destructive" role="alert">{message}</p>{/if}
+					{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 					<Button type="submit" disabled={busy}>Add alarm</Button>
 				</form>
 			</Card.Content>
@@ -87,7 +118,10 @@
 		<Card.Root class="mt-4">
 			<Card.Header>
 				<Card.Title>Sound</Card.Title>
-				<Card.Description>With several screens open, only one should make sound. The others show the alarm silently.</Card.Description>
+				<Card.Description
+					>With several screens open, only one should make sound. The others show the alarm
+					silently.</Card.Description
+				>
 			</Card.Header>
 			<Card.Content class="space-y-3">
 				<p class="text-sm">
@@ -100,9 +134,13 @@
 					{/if}
 				</p>
 				{#if isDisplay}
-					<Button variant="secondary" onclick={() => chooseDisplay(null)}>Let every device play</Button>
+					<Button variant="secondary" onclick={() => chooseDisplay(null)}
+						>Let every device play</Button
+					>
 				{:else}
-					<Button variant="secondary" onclick={() => chooseDisplay(tasker.device.id)}>Use this device for sound</Button>
+					<Button variant="secondary" onclick={() => chooseDisplay(tasker.device.id)}
+						>Use this device for sound</Button
+					>
 				{/if}
 			</Card.Content>
 		</Card.Root>
@@ -111,7 +149,10 @@
 			<Card.Root class="mt-4">
 				<Card.Header>
 					<Card.Title>Assistant wakeups</Card.Title>
-					<Card.Description>Times the assistant chose to look at your plan again. Nothing rings, it only reacts within its usual limits.</Card.Description>
+					<Card.Description
+						>Times the assistant chose to look at your plan again. Nothing rings, it only reacts
+						within its usual limits.</Card.Description
+					>
 				</Card.Header>
 				<Card.Content>
 					<ul class="flex flex-col gap-3">
@@ -119,9 +160,11 @@
 							<li class="flex items-start justify-between gap-3">
 								<div class="min-w-0">
 									<div class="break-words">{wakeup.note}</div>
-									<div class="text-sm text-muted-foreground">{clock.format(wakeup.fireAt)}</div>
+									<div class="text-muted-foreground text-sm">{clock.format(wakeup.fireAt)}</div>
 								</div>
-								<Button variant="ghost" size="sm" onclick={() => removeEntry(wakeup.id)}>Cancel</Button>
+								<Button variant="ghost" size="sm" onclick={() => removeEntry(wakeup.id)}
+									>Cancel</Button
+								>
 							</li>
 						{/each}
 					</ul>

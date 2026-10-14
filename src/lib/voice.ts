@@ -22,7 +22,12 @@ export const MAX_SPOKEN_CHARS = 280;
 /** Chime volume the speech drops to while a tone plays. */
 export const DUCK_VOLUME = 0.15;
 
-const RECORDING_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+const RECORDING_TYPES = [
+	'audio/webm;codecs=opus',
+	'audio/webm',
+	'audio/mp4',
+	'audio/ogg;codecs=opus'
+];
 
 /** First container the browser can record, Firefox and Chrome take webm, Safari mp4. */
 export function pickRecordingType(isSupported: (type: string) => boolean): string | undefined {
@@ -40,7 +45,9 @@ export function audioExtension(mime: string): string {
 }
 
 export function isAudioMime(mime: string): boolean {
-	return mime.split(';')[0].trim().toLowerCase().startsWith('audio/') || mime.startsWith('video/webm');
+	return (
+		mime.split(';')[0].trim().toLowerCase().startsWith('audio/') || mime.startsWith('video/webm')
+	);
 }
 
 /**
@@ -73,20 +80,35 @@ export function buildSpeechEvents(text: string) {
 			session: {
 				type: 'realtime',
 				output_modalities: ['audio'],
-				audio: { output: { format: { type: 'audio/pcm', rate: SPEECH_RATE }, voice: SPEECH_VOICE }, input: { turn_detection: null } },
+				audio: {
+					output: { format: { type: 'audio/pcm', rate: SPEECH_RATE }, voice: SPEECH_VOICE },
+					input: { turn_detection: null }
+				},
 				instructions: SPEECH_STYLE
 			}
 		},
-		{ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } },
+		{
+			type: 'conversation.item.create',
+			item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] }
+		},
 		{ type: 'response.create' }
 	];
 }
 
-export type SpeechEvent = { kind: 'audio'; pcm: Uint8Array } | { kind: 'done' } | { kind: 'error'; message: string } | { kind: 'other' };
+export type SpeechEvent =
+	| { kind: 'audio'; pcm: Uint8Array }
+	| { kind: 'done' }
+	| { kind: 'error'; message: string }
+	| { kind: 'other' };
 
 /** Reads one Realtime server message: base64 audio chunks, the end of the response, or an error. Anything else is ignored. */
 export function readSpeechEvent(raw: string): SpeechEvent {
-	let event: { type?: string; delta?: string; error?: { message?: string }; response?: { status?: string; status_details?: { error?: { message?: string } } } };
+	let event: {
+		type?: string;
+		delta?: string;
+		error?: { message?: string };
+		response?: { status?: string; status_details?: { error?: { message?: string } } };
+	};
 	try {
 		event = JSON.parse(raw);
 	} catch {
@@ -94,10 +116,17 @@ export function readSpeechEvent(raw: string): SpeechEvent {
 	}
 	switch (event.type) {
 		case 'response.output_audio.delta':
-			return typeof event.delta === 'string' ? { kind: 'audio', pcm: Uint8Array.from(atob(event.delta), (char) => char.charCodeAt(0)) } : { kind: 'other' };
+			return typeof event.delta === 'string'
+				? { kind: 'audio', pcm: Uint8Array.from(atob(event.delta), (char) => char.charCodeAt(0)) }
+				: { kind: 'other' };
 		case 'response.done':
 			return event.response?.status && event.response.status !== 'completed'
-				? { kind: 'error', message: event.response.status_details?.error?.message ?? `The response ${event.response.status}` }
+				? {
+						kind: 'error',
+						message:
+							event.response.status_details?.error?.message ??
+							`The response ${event.response.status}`
+					}
 				: { kind: 'done' };
 		case 'error':
 			return { kind: 'error', message: event.error?.message ?? 'Realtime error' };
@@ -111,7 +140,8 @@ export function pcm16ToWav(chunks: Uint8Array[], rate = SPEECH_RATE): Uint8Array
 	const size = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
 	const wav = new Uint8Array(44 + size);
 	const view = new DataView(wav.buffer);
-	const text = (offset: number, value: string) => [...value].forEach((char, i) => (wav[offset + i] = char.charCodeAt(0)));
+	const text = (offset: number, value: string) =>
+		[...value].forEach((char, i) => (wav[offset + i] = char.charCodeAt(0)));
 
 	text(0, 'RIFF');
 	view.setUint32(4, 36 + size, true);

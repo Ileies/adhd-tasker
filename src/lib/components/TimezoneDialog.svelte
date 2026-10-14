@@ -11,7 +11,9 @@
 	let dismissed = $state(false);
 
 	// Only ask when a timezone was saved earlier and this device differs from it
-	const open = $derived(loggedIn && !dismissed && tasker.timezone !== null && tasker.timezone !== device);
+	const open = $derived(
+		loggedIn && !dismissed && tasker.timezone !== null && tasker.timezone !== device
+	);
 
 	function useDevice() {
 		setTimezone(device);
@@ -29,12 +31,16 @@
 		<Dialog.Header>
 			<Dialog.Title>Different timezone detected</Dialog.Title>
 			<Dialog.Description>
-				Your settings use {tasker.timezone?.replaceAll('_', ' ')}, but this device is in {device.replaceAll('_', ' ')}. Task
-				times follow the timezone in your settings.
+				Your settings use {tasker.timezone?.replaceAll('_', ' ')}, but this device is in {device.replaceAll(
+					'_',
+					' '
+				)}. Task times follow the timezone in your settings.
 			</Dialog.Description>
 		</Dialog.Header>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (dismissed = true)}>Keep {tasker.timezone?.replaceAll('_', ' ')}</Button>
+			<Button variant="outline" onclick={() => (dismissed = true)}
+				>Keep {tasker.timezone?.replaceAll('_', ' ')}</Button
+			>
 			<Button onclick={useDevice}>Switch to {device.replaceAll('_', ' ')}</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

@@ -43,7 +43,9 @@ describe('isAudioMime', () => {
 
 describe('speakable', () => {
 	test('strips markdown and links', () => {
-		expect(speakable('**Done.** See [the plan](https://x.test/a) or https://x.test')).toBe('Done. See the plan or');
+		expect(speakable('**Done.** See [the plan](https://x.test/a) or https://x.test')).toBe(
+			'Done. See the plan or'
+		);
 	});
 	test('drops code blocks and list marks', () => {
 		expect(speakable('Added:\n- study\n- gym\n```js\nx\n```')).toBe('Added: study gym');
@@ -95,17 +97,26 @@ describe('buildSpeechEvents', () => {
 
 describe('readSpeechEvent', () => {
 	test('decodes audio chunks', () => {
-		const event = readSpeechEvent(JSON.stringify({ type: 'response.output_audio.delta', delta: btoa('\x01\x02\x03') }));
+		const event = readSpeechEvent(
+			JSON.stringify({ type: 'response.output_audio.delta', delta: btoa('\x01\x02\x03') })
+		);
 		expect(event).toEqual({ kind: 'audio', pcm: new Uint8Array([1, 2, 3]) });
 	});
 	test('knows when the response is done', () => {
-		expect(readSpeechEvent('{"type":"response.done","response":{"status":"completed"}}')).toEqual({ kind: 'done' });
+		expect(readSpeechEvent('{"type":"response.done","response":{"status":"completed"}}')).toEqual({
+			kind: 'done'
+		});
 	});
 	test('a failed response is an error', () => {
-		expect(readSpeechEvent('{"type":"response.done","response":{"status":"failed"}}').kind).toBe('error');
+		expect(readSpeechEvent('{"type":"response.done","response":{"status":"failed"}}').kind).toBe(
+			'error'
+		);
 	});
 	test('reports server errors', () => {
-		expect(readSpeechEvent('{"type":"error","error":{"message":"nope"}}')).toEqual({ kind: 'error', message: 'nope' });
+		expect(readSpeechEvent('{"type":"error","error":{"message":"nope"}}')).toEqual({
+			kind: 'error',
+			message: 'nope'
+		});
 	});
 	test('ignores everything else', () => {
 		expect(readSpeechEvent('{"type":"session.created"}').kind).toBe('other');

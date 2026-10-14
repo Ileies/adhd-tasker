@@ -7,14 +7,21 @@ const ASSETS: string[] = [...immutable, ...assets].map((entry) => '/' + entry.pa
 
 // Only the static app files are cached. Pages and task data always come from the server, so the plan is never stale.
 sw.addEventListener('install', (event) => {
-	event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => sw.skipWaiting()));
+	event.waitUntil(
+		caches
+			.open(CACHE)
+			.then((cache) => cache.addAll(ASSETS))
+			.then(() => sw.skipWaiting())
+	);
 });
 
 sw.addEventListener('activate', (event) => {
 	event.waitUntil(
 		caches
 			.keys()
-			.then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+			.then((keys) =>
+				Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
+			)
 			.then(() => sw.clients.claim())
 	);
 });

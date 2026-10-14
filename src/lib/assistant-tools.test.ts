@@ -1,9 +1,27 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { MAX_SAY, TOOLS, parseAddTask, parseAsk, parseDeleteTask, parseListTasks, parseReason, parseSay, parseToolArguments, parseUpdateTask } from './assistant-tools';
+import {
+	MAX_SAY,
+	TOOLS,
+	parseAddTask,
+	parseAsk,
+	parseDeleteTask,
+	parseListTasks,
+	parseReason,
+	parseSay,
+	parseToolArguments,
+	parseUpdateTask
+} from './assistant-tools';
 
 describe('strict tool schemas', () => {
-	type Schema = { type?: unknown; properties?: Record<string, Schema>; required?: string[]; additionalProperties?: boolean; anyOf?: Schema[]; items?: Schema };
+	type Schema = {
+		type?: unknown;
+		properties?: Record<string, Schema>;
+		required?: string[];
+		additionalProperties?: boolean;
+		anyOf?: Schema[];
+		items?: Schema;
+	};
 
 	function expectStrict(schema: Schema) {
 		if (schema.type === 'object') {
@@ -26,7 +44,11 @@ describe('strict tool schemas', () => {
 	});
 
 	test('null means not sent, also inside a custom tone', () => {
-		expect(parseToolArguments('{"id":3,"title":null,"tone":{"wave":"sine","notes":[{"hz":440,"ms":100,"rest":null}]}}')).toEqual({
+		expect(
+			parseToolArguments(
+				'{"id":3,"title":null,"tone":{"wave":"sine","notes":[{"hz":440,"ms":100,"rest":null}]}}'
+			)
+		).toEqual({
 			id: 3,
 			tone: { wave: 'sine', notes: [{ hz: 440, ms: 100 }] }
 		});
@@ -44,8 +66,14 @@ describe('say, ask and reason', () => {
 	});
 
 	test('ask accepts up to three short options', () => {
-		expect(parseAsk({ text: 'Move study?', options: ['Yes', ' Not now '] })).toEqual({ ok: true, value: { text: 'Move study?', options: ['Yes', 'Not now'] } });
-		expect(parseAsk({ text: 'Move study?' })).toEqual({ ok: true, value: { text: 'Move study?', options: [] } });
+		expect(parseAsk({ text: 'Move study?', options: ['Yes', ' Not now '] })).toEqual({
+			ok: true,
+			value: { text: 'Move study?', options: ['Yes', 'Not now'] }
+		});
+		expect(parseAsk({ text: 'Move study?' })).toEqual({
+			ok: true,
+			value: { text: 'Move study?', options: [] }
+		});
 		expect(parseAsk({ text: 'q', options: ['a', 'b', 'c', 'd'] }).ok).toBe(false);
 		expect(parseAsk({ text: 'q', options: [''] }).ok).toBe(false);
 		expect(parseAsk({ text: 'q', options: 'yes' }).ok).toBe(false);
@@ -63,7 +91,14 @@ describe('parseAddTask', () => {
 		const result = parseAddTask({ title: ' Dinner ', date: '2026-10-14', start: '19:30' });
 		expect(result).toEqual({
 			ok: true,
-			value: { title: 'Dinner', description: '', date: '2026-10-14', startTime: 1170, duration: 30, priority: 2 }
+			value: {
+				title: 'Dinner',
+				description: '',
+				date: '2026-10-14',
+				startTime: 1170,
+				duration: 30,
+				priority: 2
+			}
 		});
 	});
 
@@ -71,13 +106,21 @@ describe('parseAddTask', () => {
 		expect(parseAddTask({ title: '', date: '2026-10-14', start: '19:30' }).ok).toBe(false);
 		expect(parseAddTask({ title: 'x', date: 'tomorrow', start: '19:30' }).ok).toBe(false);
 		expect(parseAddTask({ title: 'x', date: '2026-10-14', start: '25:00' }).ok).toBe(false);
-		expect(parseAddTask({ title: 'x', date: '2026-10-14', start: '19:30', priority: 9 }).ok).toBe(false);
-		expect(parseAddTask({ title: 'x', date: '2026-10-14', start: '19:30', duration_minutes: 2 }).ok).toBe(false);
+		expect(parseAddTask({ title: 'x', date: '2026-10-14', start: '19:30', priority: 9 }).ok).toBe(
+			false
+		);
+		expect(
+			parseAddTask({ title: 'x', date: '2026-10-14', start: '19:30', duration_minutes: 2 }).ok
+		).toBe(false);
 	});
 
 	test('rejects tasks that cross midnight', () => {
-		expect(parseAddTask({ title: 'x', date: '2026-10-14', start: '23:30', duration_minutes: 60 }).ok).toBe(false);
-		expect(parseAddTask({ title: 'x', date: '2026-10-14', start: '23:30', duration_minutes: 30 }).ok).toBe(true);
+		expect(
+			parseAddTask({ title: 'x', date: '2026-10-14', start: '23:30', duration_minutes: 60 }).ok
+		).toBe(false);
+		expect(
+			parseAddTask({ title: 'x', date: '2026-10-14', start: '23:30', duration_minutes: 30 }).ok
+		).toBe(true);
 	});
 });
 
@@ -98,7 +141,10 @@ describe('parseUpdateTask', () => {
 
 describe('parseListTasks and parseDeleteTask', () => {
 	test('range defaults to one day and is capped', () => {
-		expect(parseListTasks({ from: '2026-10-14' })).toEqual({ ok: true, value: { from: '2026-10-14', to: '2026-10-14' } });
+		expect(parseListTasks({ from: '2026-10-14' })).toEqual({
+			ok: true,
+			value: { from: '2026-10-14', to: '2026-10-14' }
+		});
 		expect(parseListTasks({ from: '2026-10-14', to: '2026-10-27' }).ok).toBe(true);
 		expect(parseListTasks({ from: '2026-10-14', to: '2026-10-28' }).ok).toBe(false);
 		expect(parseListTasks({ from: '2026-10-14', to: '2026-10-13' }).ok).toBe(false);

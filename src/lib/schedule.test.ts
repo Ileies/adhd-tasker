@@ -1,6 +1,14 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { SCHEDULE_LIMITS, describeEntry, minutesOf, nextRepeat, parseAlarm, parseWakeup, resolveWhen } from '#lib/schedule.js';
+import {
+	SCHEDULE_LIMITS,
+	describeEntry,
+	minutesOf,
+	nextRepeat,
+	parseAlarm,
+	parseWakeup,
+	resolveWhen
+} from '#lib/schedule.js';
 import { zonedToEpoch } from '#lib/time.js';
 
 const BERLIN = 'Europe/Berlin';
@@ -29,14 +37,23 @@ describe('minutesOf', () => {
 
 describe('resolveWhen', () => {
 	test('in_minutes', () => {
-		expect(resolveWhen({ in_minutes: 30 }, NOW, BERLIN)).toEqual({ ok: true, value: { fireAt: NOW + 30 * 60_000, minutes: null } });
+		expect(resolveWhen({ in_minutes: 30 }, NOW, BERLIN)).toEqual({
+			ok: true,
+			value: { fireAt: NOW + 30 * 60_000, minutes: null }
+		});
 		expect(resolveWhen({ in_minutes: 0 }, NOW, BERLIN).ok).toBe(false);
 		expect(resolveWhen({ in_minutes: 1.5 }, NOW, BERLIN).ok).toBe(false);
 	});
 
 	test('a clock time is today when still ahead, else tomorrow', () => {
-		expect(resolveWhen({ at: '15:40' }, NOW, BERLIN)).toEqual({ ok: true, value: { fireAt: zonedToEpoch('2026-10-14', 940, BERLIN), minutes: 940 } });
-		expect(resolveWhen({ at: '09:00' }, NOW, BERLIN)).toEqual({ ok: true, value: { fireAt: zonedToEpoch('2026-10-15', 540, BERLIN), minutes: 540 } });
+		expect(resolveWhen({ at: '15:40' }, NOW, BERLIN)).toEqual({
+			ok: true,
+			value: { fireAt: zonedToEpoch('2026-10-14', 940, BERLIN), minutes: 940 }
+		});
+		expect(resolveWhen({ at: '09:00' }, NOW, BERLIN)).toEqual({
+			ok: true,
+			value: { fireAt: zonedToEpoch('2026-10-15', 540, BERLIN), minutes: 540 }
+		});
 	});
 
 	test('an explicit date', () => {
@@ -49,7 +66,9 @@ describe('resolveWhen', () => {
 		expect(resolveWhen({}, NOW, BERLIN).ok).toBe(false);
 		expect(resolveWhen({ at: '25:00' }, NOW, BERLIN).ok).toBe(false);
 		expect(resolveWhen({ at: '08:00', date: 'tomorrow' }, NOW, BERLIN).ok).toBe(false);
-		expect(resolveWhen({ in_minutes: SCHEDULE_LIMITS.maxAheadDays * 1440 + 1 }, NOW, BERLIN).ok).toBe(false);
+		expect(
+			resolveWhen({ in_minutes: SCHEDULE_LIMITS.maxAheadDays * 1440 + 1 }, NOW, BERLIN).ok
+		).toBe(false);
 	});
 });
 
@@ -57,13 +76,17 @@ describe('nextRepeat', () => {
 	test('daily rings at the same local time across daylight saving', () => {
 		const first = zonedToEpoch('2026-10-24', 480, BERLIN);
 		expect(nextRepeat('daily', 480, first, BERLIN)).toBe(zonedToEpoch('2026-10-25', 480, BERLIN));
-		expect(nextRepeat('daily', 480, zonedToEpoch('2026-10-25', 480, BERLIN), BERLIN)).toBe(Date.parse('2026-10-26T07:00:00Z'));
+		expect(nextRepeat('daily', 480, zonedToEpoch('2026-10-25', 480, BERLIN), BERLIN)).toBe(
+			Date.parse('2026-10-26T07:00:00Z')
+		);
 	});
 
 	test('weekdays skip the weekend', () => {
 		// 2026-10-16 is a Friday
 		const friday = zonedToEpoch('2026-10-16', 480, BERLIN);
-		expect(nextRepeat('weekdays', 480, friday, BERLIN)).toBe(zonedToEpoch('2026-10-19', 480, BERLIN));
+		expect(nextRepeat('weekdays', 480, friday, BERLIN)).toBe(
+			zonedToEpoch('2026-10-19', 480, BERLIN)
+		);
 	});
 
 	test('a one-off does not repeat, and the result is always in the future', () => {
@@ -75,7 +98,13 @@ describe('nextRepeat', () => {
 describe('parseAlarm', () => {
 	test('a minimal alarm gets the default tone and no repeat', () => {
 		const result = parseAlarm({ at: '15:00', label: 'Leave now' }, NOW, BERLIN);
-		expect(result.ok && result.value).toMatchObject({ label: 'Leave now', tone: 'chime', custom: false, repeat: 'none', minutes: 900 });
+		expect(result.ok && result.value).toMatchObject({
+			label: 'Leave now',
+			tone: 'chime',
+			custom: false,
+			repeat: 'none',
+			minutes: 900
+		});
 	});
 
 	test('needs a label, a valid tone and a clock time for repeats', () => {
@@ -86,7 +115,11 @@ describe('parseAlarm', () => {
 	});
 
 	test('flags custom tones so the caller can count them', () => {
-		const result = parseAlarm({ at: '15:00', label: 'x', tone: { wave: 'sine', notes: [{ hz: 440, ms: 200 }] } }, NOW, BERLIN);
+		const result = parseAlarm(
+			{ at: '15:00', label: 'x', tone: { wave: 'sine', notes: [{ hz: 440, ms: 200 }] } },
+			NOW,
+			BERLIN
+		);
 		expect(result.ok && result.value.custom).toBe(true);
 	});
 
@@ -98,7 +131,9 @@ describe('parseAlarm', () => {
 
 describe('parseWakeup', () => {
 	test('needs a note and at least five minutes', () => {
-		expect(parseWakeup({ in_minutes: 30, note: 'Check the dentist call' }, NOW, BERLIN).ok).toBe(true);
+		expect(parseWakeup({ in_minutes: 30, note: 'Check the dentist call' }, NOW, BERLIN).ok).toBe(
+			true
+		);
 		expect(parseWakeup({ in_minutes: 3, note: 'soon' }, NOW, BERLIN).ok).toBe(false);
 		expect(parseWakeup({ in_minutes: 30 }, NOW, BERLIN).ok).toBe(false);
 	});
@@ -106,7 +141,18 @@ describe('parseWakeup', () => {
 
 describe('describeEntry', () => {
 	test('one line with the local time', () => {
-		const line = describeEntry({ id: 4, kind: 'alarm', fireAt: NOW, label: 'Leave now', note: null, repeat: 'daily', createdBy: 'user' }, BERLIN);
+		const line = describeEntry(
+			{
+				id: 4,
+				kind: 'alarm',
+				fireAt: NOW,
+				label: 'Leave now',
+				note: null,
+				repeat: 'daily',
+				createdBy: 'user'
+			},
+			BERLIN
+		);
 		expect(line).toBe('#4 2026-10-14 10:00 alarm "Leave now", Every day (by user)');
 	});
 });

@@ -6,11 +6,7 @@ import { servicesFromScopes } from '#lib/google.js';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { google } from '#lib/server/index.js';
-import {
-	createSession,
-	SESSION_MAX_AGE,
-	verifyIdToken
-} from '#lib/server/session.js';
+import { createSession, SESSION_MAX_AGE, verifyIdToken } from '#lib/server/session.js';
 
 export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 	const code = url.searchParams.get('code');
@@ -40,12 +36,19 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 
 		if (linking) {
 			// Only for the signed-in user, and only when it is the same Google account
-			const info = await (await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } })).json();
+			const info = await (
+				await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+					headers: { Authorization: `Bearer ${accessToken}` }
+				})
+			).json();
 			if (!locals.user || info?.email !== locals.user.email) {
 				linkMismatch = true;
 			} else {
 				const granted = servicesFromScopes(tokens.hasScopes() ? tokens.scopes() : []);
-				await db.update(users).set({ googleServices: granted.join(' ') }).where(eq(users.email, locals.user.email));
+				await db
+					.update(users)
+					.set({ googleServices: granted.join(' ') })
+					.where(eq(users.email, locals.user.email));
 			}
 		} else {
 			cookies.set('token', accessToken, {

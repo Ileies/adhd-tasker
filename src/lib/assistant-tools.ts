@@ -24,17 +24,23 @@ function fail(error: string): { ok: false; error: string } {
 
 /** Accepts `HH:MM` (what the model is told to send) or minutes since midnight. */
 function parseTime(value: unknown): number | undefined {
-	if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < DAY) return value;
-	const match = typeof value === 'string' ? /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim()) : null;
+	if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < DAY)
+		return value;
+	const match =
+		typeof value === 'string' ? /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim()) : null;
 	return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
 }
 
 function parseDuration(value: unknown): number | undefined {
-	return typeof value === 'number' && Number.isInteger(value) && value >= 5 && value <= DAY ? value : undefined;
+	return typeof value === 'number' && Number.isInteger(value) && value >= 5 && value <= DAY
+		? value
+		: undefined;
 }
 
 function parsePriority(value: unknown): Priority | undefined {
-	return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5 ? (value as Priority) : undefined;
+	return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5
+		? (value as Priority)
+		: undefined;
 }
 
 function parseTitle(value: unknown): string | undefined {
@@ -48,7 +54,11 @@ type Args = Record<string, unknown>;
 function withoutNulls(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(withoutNulls);
 	if (value && typeof value === 'object') {
-		return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== null).map(([k, v]) => [k, withoutNulls(v)]));
+		return Object.fromEntries(
+			Object.entries(value)
+				.filter(([, v]) => v !== null)
+				.map(([k, v]) => [k, withoutNulls(v)])
+		);
 	}
 	return value;
 }
@@ -83,13 +93,17 @@ export function parseAddTask(args: Args): Parsed<TaskFields> {
 	if (priority === undefined) return fail('priority must be 1 to 5');
 	if (startTime + duration > DAY) return fail('tasks cannot cross midnight, split the task');
 	const description = typeof args.description === 'string' ? args.description.slice(0, 1000) : '';
-	return { ok: true, value: { title, description, date: args.date, startTime, duration, priority } };
+	return {
+		ok: true,
+		value: { title, description, date: args.date, startTime, duration, priority }
+	};
 }
 
 export type TaskPatch = Partial<TaskFields> & { status?: 'pending' | 'completed' };
 
 export function parseUpdateTask(args: Args): Parsed<{ id: number; patch: TaskPatch }> {
-	if (typeof args.id !== 'number' || !Number.isInteger(args.id)) return fail('id must be a task id from list_tasks');
+	if (typeof args.id !== 'number' || !Number.isInteger(args.id))
+		return fail('id must be a task id from list_tasks');
 	const patch: TaskPatch = {};
 
 	if (args.title !== undefined) {
@@ -112,7 +126,8 @@ export function parseUpdateTask(args: Args): Parsed<{ id: number; patch: TaskPat
 	}
 	if (args.duration_minutes !== undefined) {
 		const duration = parseDuration(args.duration_minutes);
-		if (duration === undefined) return fail('duration_minutes must be a whole number from 5 to 1440');
+		if (duration === undefined)
+			return fail('duration_minutes must be a whole number from 5 to 1440');
 		patch.duration = duration;
 	}
 	if (args.priority !== undefined) {
@@ -121,7 +136,8 @@ export function parseUpdateTask(args: Args): Parsed<{ id: number; patch: TaskPat
 		patch.priority = priority;
 	}
 	if (args.status !== undefined) {
-		if (args.status !== 'pending' && args.status !== 'completed') return fail('status must be pending or completed');
+		if (args.status !== 'pending' && args.status !== 'completed')
+			return fail('status must be pending or completed');
 		patch.status = args.status;
 	}
 	if (Object.keys(patch).length === 0) return fail('nothing to change');
@@ -129,7 +145,8 @@ export function parseUpdateTask(args: Args): Parsed<{ id: number; patch: TaskPat
 }
 
 export function parseDeleteTask(args: Args): Parsed<{ id: number }> {
-	if (typeof args.id !== 'number' || !Number.isInteger(args.id)) return fail('id must be a task id from list_tasks');
+	if (typeof args.id !== 'number' || !Number.isInteger(args.id))
+		return fail('id must be a task id from list_tasks');
 	return { ok: true, value: { id: args.id } };
 }
 
@@ -154,13 +171,21 @@ export function parseAsk(args: Args): Parsed<{ text: string; options: string[] }
 	const said = parseSay(args);
 	if (!said.ok) return said;
 	const raw = args.options === undefined ? [] : args.options;
-	if (!Array.isArray(raw) || raw.length > MAX_OPTIONS) return fail(`options is a list of at most ${MAX_OPTIONS} short answers`);
+	if (!Array.isArray(raw) || raw.length > MAX_OPTIONS)
+		return fail(`options is a list of at most ${MAX_OPTIONS} short answers`);
 	const options = raw.map((option) => (typeof option === 'string' ? option.trim() : ''));
-	if (options.some((option) => !option || option.length > MAX_OPTION)) return fail(`each option must be 1 to ${MAX_OPTION} characters`);
+	if (options.some((option) => !option || option.length > MAX_OPTION))
+		return fail(`each option must be 1 to ${MAX_OPTION} characters`);
 	return { ok: true, value: { text: said.value.text, options } };
 }
 
-const reasonProp = { reason: { type: 'string', description: 'Why you are making this change, one short sentence. The user reads it in the activity log.' } };
+const reasonProp = {
+	reason: {
+		type: 'string',
+		description:
+			'Why you are making this change, one short sentence. The user reads it in the activity log.'
+	}
+};
 
 const taskProps = {
 	title: { type: 'string' },
@@ -189,7 +214,11 @@ const toneProp = {
 					type: 'array',
 					items: {
 						type: 'object',
-						properties: { hz: { type: 'number' }, ms: { type: 'number' }, rest: { type: ['number', 'null'] } },
+						properties: {
+							hz: { type: 'number' },
+							ms: { type: 'number' },
+							rest: { type: ['number', 'null'] }
+						},
 						required: ['hz', 'ms', 'rest'],
 						additionalProperties: false
 					}
@@ -206,10 +235,17 @@ const DEFINITIONS = [
 		type: 'function',
 		function: {
 			name: 'list_tasks',
-			description: 'List the tasks of a date range, with their ids. Today and tomorrow are already in your context.',
+			description:
+				'List the tasks of a date range, with their ids. Today and tomorrow are already in your context.',
 			parameters: {
 				type: 'object',
-				properties: { from: { type: 'string', description: 'YYYY-MM-DD' }, to: { type: 'string', description: `YYYY-MM-DD, at most ${MAX_LIST_DAYS} days after from` } },
+				properties: {
+					from: { type: 'string', description: 'YYYY-MM-DD' },
+					to: {
+						type: 'string',
+						description: `YYYY-MM-DD, at most ${MAX_LIST_DAYS} days after from`
+					}
+				},
 				required: ['from']
 			}
 		}
@@ -219,17 +255,27 @@ const DEFINITIONS = [
 		function: {
 			name: 'add_task',
 			description: 'Add a task to the plan.',
-			parameters: { type: 'object', properties: { ...taskProps, ...reasonProp }, required: ['title', 'date', 'start'] }
+			parameters: {
+				type: 'object',
+				properties: { ...taskProps, ...reasonProp },
+				required: ['title', 'date', 'start']
+			}
 		}
 	},
 	{
 		type: 'function',
 		function: {
 			name: 'update_task',
-			description: 'Change a task: move, rename, resize, reprioritise, or mark done or pending. Only send the fields that change.',
+			description:
+				'Change a task: move, rename, resize, reprioritise, or mark done or pending. Only send the fields that change.',
 			parameters: {
 				type: 'object',
-				properties: { id: { type: 'integer' }, ...taskProps, status: { type: 'string', enum: ['pending', 'completed'] }, ...reasonProp },
+				properties: {
+					id: { type: 'integer' },
+					...taskProps,
+					status: { type: 'string', enum: ['pending', 'completed'] },
+					...reasonProp
+				},
 				required: ['id']
 			}
 		}
@@ -239,7 +285,11 @@ const DEFINITIONS = [
 		function: {
 			name: 'delete_task',
 			description: 'Delete a task. Only when the user clearly wants it gone.',
-			parameters: { type: 'object', properties: { id: { type: 'integer' }, ...reasonProp }, required: ['id'] }
+			parameters: {
+				type: 'object',
+				properties: { id: { type: 'integer' }, ...reasonProp },
+				required: ['id']
+			}
 		}
 	},
 	{
@@ -257,7 +307,14 @@ const DEFINITIONS = [
 			description: `Show the user one short question with up to ${MAX_OPTIONS} short answers (each at most ${MAX_OPTION} characters). The chosen answer comes back to you as a chat message.`,
 			parameters: {
 				type: 'object',
-				properties: { text: { type: 'string' }, options: { type: 'array', items: { type: 'string' }, description: 'Short answers, for example Yes, Not now' } },
+				properties: {
+					text: { type: 'string' },
+					options: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Short answers, for example Yes, Not now'
+					}
+				},
 				required: ['text']
 			}
 		}
@@ -267,22 +324,50 @@ const DEFINITIONS = [
 		function: {
 			name: 'schedule_wakeup',
 			description: `Wake yourself up later with a note to yourself, for example to check whether the user finished something. The note is handed back to you when it fires. At least ${SCHEDULE_LIMITS.minWakeupMinutes} minutes ahead, at most ${SCHEDULE_LIMITS.maxWakeups} pending, not in quiet hours. Give in_minutes, or at (HH:MM).`,
-			parameters: { type: 'object', properties: { ...whenProps, note: { type: 'string', description: `What to check or do when you wake up, at most ${SCHEDULE_LIMITS.maxNote} characters` } }, required: ['note'] }
+			parameters: {
+				type: 'object',
+				properties: {
+					...whenProps,
+					note: {
+						type: 'string',
+						description: `What to check or do when you wake up, at most ${SCHEDULE_LIMITS.maxNote} characters`
+					}
+				},
+				required: ['note']
+			}
 		}
 	},
 	{
 		type: 'function',
 		function: {
 			name: 'set_alarm',
-			description: 'Set an alarm the user sees and hears on the Now screen, listed in their alarm list where they can cancel it. Give in_minutes, or at (HH:MM, optionally date). Only when it clearly helps, such as a leave now alarm.',
-			parameters: { type: 'object', properties: { ...whenProps, label: { type: 'string', description: `Shown while it rings, at most ${SCHEDULE_LIMITS.maxLabel} characters` }, tone: toneProp, repeat: { type: 'string', enum: ['none', 'daily', 'weekdays'], description: 'Repeating needs at, not in_minutes' } }, required: ['label'] }
+			description:
+				'Set an alarm the user sees and hears on the Now screen, listed in their alarm list where they can cancel it. Give in_minutes, or at (HH:MM, optionally date). Only when it clearly helps, such as a leave now alarm.',
+			parameters: {
+				type: 'object',
+				properties: {
+					...whenProps,
+					label: {
+						type: 'string',
+						description: `Shown while it rings, at most ${SCHEDULE_LIMITS.maxLabel} characters`
+					},
+					tone: toneProp,
+					repeat: {
+						type: 'string',
+						enum: ['none', 'daily', 'weekdays'],
+						description: 'Repeating needs at, not in_minutes'
+					}
+				},
+				required: ['label']
+			}
 		}
 	},
 	{
 		type: 'function',
 		function: {
 			name: 'play_tone',
-			description: 'Play a tone on the screen the user uses for sound, right now. Use rarely, a tone interrupts.',
+			description:
+				'Play a tone on the screen the user uses for sound, right now. Use rarely, a tone interrupts.',
 			parameters: { type: 'object', properties: { tone: toneProp }, required: ['tone'] }
 		}
 	},
@@ -310,15 +395,25 @@ type Schema = Record<string, unknown>;
 function nullable(schema: Schema): Schema {
 	if (Array.isArray(schema.anyOf)) return { ...schema, anyOf: [...schema.anyOf, { type: 'null' }] };
 	const type = [schema.type, 'null'].flat();
-	return Array.isArray(schema.enum) ? { ...schema, type, enum: [...schema.enum, null] } : { ...schema, type };
+	return Array.isArray(schema.enum)
+		? { ...schema, type, enum: [...schema.enum, null] }
+		: { ...schema, type };
 }
 
 /** Strict mode rules: every property is required, optional ones are nullable, no extra properties. */
 function strictParameters(parameters: { properties: Schema; required: readonly string[] }) {
 	const properties = Object.fromEntries(
-		Object.entries(parameters.properties).map(([key, schema]) => [key, parameters.required.includes(key) ? schema : nullable(schema as Schema)])
+		Object.entries(parameters.properties).map(([key, schema]) => [
+			key,
+			parameters.required.includes(key) ? schema : nullable(schema as Schema)
+		])
 	);
-	return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
+	return {
+		type: 'object',
+		properties,
+		required: Object.keys(properties),
+		additionalProperties: false
+	};
 }
 
 /** Tool definitions in the Responses API format (flat, not nested under `function`) with strict mode on, as OpenAI recommends. */
@@ -340,4 +435,13 @@ export const ACT_ONLY_TOOLS = [...WRITE_TOOLS, 'set_alarm'];
 export const TOOLS = pick('list_tasks', ...WRITE_TOOLS, ...SCHEDULE_TOOLS);
 
 /** An unprompted reaction may talk and plan its own wakeups, and may edit or set alarms only when the user allowed it (autonomy act). */
-export const reactionTools = (mayEdit: boolean) => pick('list_tasks', 'say', 'ask', 'schedule_wakeup', 'play_tone', 'cancel_schedule', ...(mayEdit ? ACT_ONLY_TOOLS : []));
+export const reactionTools = (mayEdit: boolean) =>
+	pick(
+		'list_tasks',
+		'say',
+		'ask',
+		'schedule_wakeup',
+		'play_tone',
+		'cancel_schedule',
+		...(mayEdit ? ACT_ONLY_TOOLS : [])
+	);

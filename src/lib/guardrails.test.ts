@@ -1,9 +1,27 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_REACTION_EVENTS, LIMITS, REACTION_EVENTS, decideReaction, inQuietHours, parseSettingsForm, type ReactionContext } from './guardrails';
+import {
+	DEFAULT_REACTION_EVENTS,
+	LIMITS,
+	REACTION_EVENTS,
+	decideReaction,
+	inQuietHours,
+	parseSettingsForm,
+	type ReactionContext
+} from './guardrails';
 
-const context = (patch: Partial<ReactionContext> = {}, settings: Partial<ReactionContext['settings']> = {}): ReactionContext => ({
-	settings: { autonomy: 'suggest', events: [...DEFAULT_REACTION_EVENTS], quietStart: 22 * 60, quietEnd: 7 * 60, dailyTokenBudget: null, ...settings },
+const context = (
+	patch: Partial<ReactionContext> = {},
+	settings: Partial<ReactionContext['settings']> = {}
+): ReactionContext => ({
+	settings: {
+		autonomy: 'suggest',
+		events: [...DEFAULT_REACTION_EVENTS],
+		quietStart: 22 * 60,
+		quietEnd: 7 * 60,
+		dailyTokenBudget: null,
+		...settings
+	},
 	hasKey: true,
 	now: 12 * 60,
 	nowMs: 1_000_000_000,
@@ -34,11 +52,20 @@ describe('decideReaction', () => {
 
 	test('"I\'m stuck" ignores toggles, quiet hours, budget and the gap, but not autonomy, key or the hourly limit', () => {
 		const stuck = ['stuck.pressed'] as const;
-		const busy = context({ now: 23 * 60, tokensToday: 9000, recentReactions: [1_000_000_000 - 1000] }, { dailyTokenBudget: 5000, events: [] });
+		const busy = context(
+			{ now: 23 * 60, tokensToday: 9000, recentReactions: [1_000_000_000 - 1000] },
+			{ dailyTokenBudget: 5000, events: [] }
+		);
 		expect(decideReaction(busy, [...stuck])).toEqual({ run: true });
 		expect(decideReaction({ ...busy, hasKey: false }, [...stuck]).run).toBe(false);
-		expect(decideReaction({ ...busy, settings: { ...busy.settings, autonomy: 'observe' } }, [...stuck]).run).toBe(false);
-		const many = Array.from({ length: LIMITS.perHour }, (_, i) => 1_000_000_000 - (i + 10) * 60_000);
+		expect(
+			decideReaction({ ...busy, settings: { ...busy.settings, autonomy: 'observe' } }, [...stuck])
+				.run
+		).toBe(false);
+		const many = Array.from(
+			{ length: LIMITS.perHour },
+			(_, i) => 1_000_000_000 - (i + 10) * 60_000
+		);
 		expect(decideReaction({ ...busy, recentReactions: many }, [...stuck]).run).toBe(false);
 	});
 
@@ -51,10 +78,17 @@ describe('decideReaction', () => {
 		expect(reason(context({ hasKey: false }))).toBe('no OpenAI key');
 		expect(reason(context(), ['task.created'] as never)).toBe('event type is switched off');
 		expect(reason(context({ now: 23 * 60 }))).toBe('quiet hours');
-		expect(reason(context({ tokensToday: 5000 }, { dailyTokenBudget: 5000 }))).toBe('daily token budget used up');
-		const many = Array.from({ length: LIMITS.perHour }, (_, i) => 1_000_000_000 - (i + 10) * 60_000);
+		expect(reason(context({ tokensToday: 5000 }, { dailyTokenBudget: 5000 }))).toBe(
+			'daily token budget used up'
+		);
+		const many = Array.from(
+			{ length: LIMITS.perHour },
+			(_, i) => 1_000_000_000 - (i + 10) * 60_000
+		);
 		expect(reason(context({ recentReactions: many }))).toBe('hourly limit reached');
-		expect(reason(context({ recentReactions: [1_000_000_000 - 60_000] }))).toBe('too soon after the last reaction');
+		expect(reason(context({ recentReactions: [1_000_000_000 - 60_000] }))).toBe(
+			'too soon after the last reaction'
+		);
 	});
 
 	test('one enabled type in a batch is enough', () => {
@@ -66,9 +100,20 @@ describe('wakeups', () => {
 	test('a wakeup needs no toggle but obeys every other guardrail', () => {
 		expect(decideReaction(context(), ['wakeup.fired'])).toEqual({ run: true });
 		expect(decideReaction(context({}, { events: [] }), ['wakeup.fired'])).toEqual({ run: true });
-		expect(decideReaction(context({ now: 23 * 60 }), ['wakeup.fired'])).toEqual({ run: false, reason: 'quiet hours' });
-		expect(decideReaction(context({}, { autonomy: 'observe' }), ['wakeup.fired'])).toEqual({ run: false, reason: 'autonomy is observe' });
-		expect(decideReaction(context({ recentReactions: Array(LIMITS.perHour).fill(1_000_000_000 - 3_600_000) }), ['wakeup.fired']).run).toBe(false);
+		expect(decideReaction(context({ now: 23 * 60 }), ['wakeup.fired'])).toEqual({
+			run: false,
+			reason: 'quiet hours'
+		});
+		expect(decideReaction(context({}, { autonomy: 'observe' }), ['wakeup.fired'])).toEqual({
+			run: false,
+			reason: 'autonomy is observe'
+		});
+		expect(
+			decideReaction(
+				context({ recentReactions: Array(LIMITS.perHour).fill(1_000_000_000 - 3_600_000) }),
+				['wakeup.fired']
+			).run
+		).toBe(false);
 	});
 
 	test('alarms and wakeups are not offered as toggles', () => {
@@ -91,11 +136,32 @@ describe('parseSettingsForm', () => {
 		for (const [key, value] of entries) data.append(key, value);
 		return data;
 	};
-	const base: [string, string][] = [['autonomy', 'act'], ['quietStart', '22:30'], ['quietEnd', '06:45']];
+	const base: [string, string][] = [
+		['autonomy', 'act'],
+		['quietStart', '22:30'],
+		['quietEnd', '06:45']
+	];
 
 	test('reads a valid form', () => {
-		const result = parseSettingsForm(form([...base, ['event', 'task.missed'], ['event', 'bogus'], ['event', 'user.message'], ['budget', '50']]));
-		expect(result).toEqual({ ok: true, value: { autonomy: 'act', events: ['task.missed'], quietStart: 1350, quietEnd: 405, dailyTokenBudget: 50_000 } });
+		const result = parseSettingsForm(
+			form([
+				...base,
+				['event', 'task.missed'],
+				['event', 'bogus'],
+				['event', 'user.message'],
+				['budget', '50']
+			])
+		);
+		expect(result).toEqual({
+			ok: true,
+			value: {
+				autonomy: 'act',
+				events: ['task.missed'],
+				quietStart: 1350,
+				quietEnd: 405,
+				dailyTokenBudget: 50_000
+			}
+		});
 	});
 
 	test('an empty budget means no limit', () => {

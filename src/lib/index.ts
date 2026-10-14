@@ -109,7 +109,10 @@ export function playTone(tone: Tone) {
 		at += length + (note.rest ?? 0) / 1000;
 	}
 	duckSpeech((at - audioContext.currentTime) * 1000);
-	setTimeout(() => void audioContext.close().catch(() => {}), (at - audioContext.currentTime) * 1000 + 300);
+	setTimeout(
+		() => void audioContext.close().catch(() => {}),
+		(at - audioContext.currentTime) * 1000 + 300
+	);
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;

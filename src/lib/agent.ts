@@ -27,15 +27,23 @@ export async function pollAgent() {
 	// (the guardrails already decided server side that this card may exist, quiet hours included)
 	const fresh = feed.cards.filter((card) => !announced.has(card.id));
 	feed.cards.forEach((card) => announced.add(card.id));
-	if (since !== null && tasker.voice.replies && playsSound() && fresh.length) void speak(fresh.at(-1)!.text);
+	if (since !== null && tasker.voice.replies && playsSound() && fresh.length)
+		void speak(fresh.at(-1)!.text);
 
 	if (feed.changes.length) {
-		await Promise.all([...new Set(feed.changes.flatMap((change) => change.dates))].map((date) => loadDay(date).catch(() => {})));
+		await Promise.all(
+			[...new Set(feed.changes.flatMap((change) => change.dates))].map((date) =>
+				loadDay(date).catch(() => {})
+			)
+		);
 		const changes = feed.changes.map((change) => ({ ...change, undone: false }));
-		showToast(changes.length === 1 ? changes[0].summary : `Assistant made ${changes.length} changes`, async () => {
-			// Newest first, so later changes to the same task are reverted before earlier ones
-			for (const change of [...changes].reverse()) await undoChange(change);
-		});
+		showToast(
+			changes.length === 1 ? changes[0].summary : `Assistant made ${changes.length} changes`,
+			async () => {
+				// Newest first, so later changes to the same task are reverted before earlier ones
+				for (const change of [...changes].reverse()) await undoChange(change);
+			}
+		);
 	}
 }
 
@@ -56,5 +64,9 @@ export async function resolveCard(card: AgentCard, answer?: string) {
 
 /** Tells the server the user is stuck on a task. The on-screen hint does not wait for it, a failure costs only the assistant's answer. */
 export async function reportStuck(taskId: number, reason: string) {
-	await fetch('/agent/stuck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ taskId, reason }) }).catch(() => {});
+	await fetch('/agent/stuck', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ taskId, reason })
+	}).catch(() => {});
 }

@@ -5,7 +5,15 @@
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { keepAwake } from '#lib/display.js';
-	import { createTask, deleteTask, loadDay, playSound, playTone, showToast, updateTask } from '#lib';
+	import {
+		createTask,
+		deleteTask,
+		loadDay,
+		playSound,
+		playTone,
+		showToast,
+		updateTask
+	} from '#lib';
 	import { playsSound } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
 	import { hyperfocusDue, momentKey, reminderDue } from '#lib/anchoring.js';
@@ -62,7 +70,9 @@
 		if (!user) return;
 		const quiet = !playsSound();
 
-		const upcoming = user.enableReminders ? reminderDue(ranking.upcoming, now, user.reminderAdvanceTime) : null;
+		const upcoming = user.enableReminders
+			? reminderDue(ranking.upcoming, now, user.reminderAdvanceTime)
+			: null;
 		if (upcoming) {
 			const key = momentKey('reminder', today, upcoming);
 			if (!sounded.has(key)) {
@@ -72,7 +82,9 @@
 			}
 		}
 
-		const over = user.hyperfocusAlarm ? hyperfocusDue(ranking.missed, now, user.overrunMinutes) : null;
+		const over = user.hyperfocusAlarm
+			? hyperfocusDue(ranking.missed, now, user.overrunMinutes)
+			: null;
 		if (over) {
 			const key = momentKey('overrun', today, over);
 			if (!sounded.has(key)) {
@@ -125,14 +137,32 @@
 {#if !data.user}
 	<div class="flex min-h-full flex-col items-center justify-center gap-6 px-6 py-12 text-center">
 		<h1 class="text-display font-bold">ADHD Tasker</h1>
-		<p class="max-w-md text-xl text-muted-foreground">One task at a time, always on screen. Sign in to see your plan.</p>
+		<p class="text-muted-foreground max-w-md text-xl">
+			One task at a time, always on screen. Sign in to see your plan.
+		</p>
 		<form method="POST" action="?/login" use:enhance>
 			<Button type="submit" size="lg" class="h-14 px-8 text-lg">Sign in with Google</Button>
 		</form>
 	</div>
 {:else}
-	<div class="grid min-h-svh md:min-h-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
-		<NowHero task={ranking.current} next={ranking.upcoming[0] ?? null} {now} {reason} onDone={complete} onStuck={(task, why) => reportStuck(task.id, why.id)} />
-		<UpcomingRail upcoming={ranking.upcoming} missed={ranking.missed} {now} onDone={complete} onExtend={extend} onDrop={drop} />
+	<div
+		class="grid min-h-svh md:min-h-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"
+	>
+		<NowHero
+			task={ranking.current}
+			next={ranking.upcoming[0] ?? null}
+			{now}
+			{reason}
+			onDone={complete}
+			onStuck={(task, why) => reportStuck(task.id, why.id)}
+		/>
+		<UpcomingRail
+			upcoming={ranking.upcoming}
+			missed={ranking.missed}
+			{now}
+			onDone={complete}
+			onExtend={extend}
+			onDrop={drop}
+		/>
 	</div>
 {/if}

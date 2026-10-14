@@ -23,7 +23,12 @@ function handle(message: Message) {
 		case 'schedule':
 			return void loadSchedule().catch(() => {});
 		case 'alarm':
-			return ring({ id: message.id!, fireAt: message.fireAt!, label: message.label ?? '', tone: message.tone! });
+			return ring({
+				id: message.id!,
+				fireAt: message.fireAt!,
+				label: message.label ?? '',
+				tone: message.tone!
+			});
 		case 'tone':
 			if (playsSound()) playTone(message.tone!);
 			return;

@@ -13,7 +13,13 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	const done = await db
 		.update(agentCards)
 		.set({ resolvedAt: Date.now() })
-		.where(and(eq(agentCards.id, id), eq(agentCards.email, locals.user.email), isNull(agentCards.resolvedAt)))
+		.where(
+			and(
+				eq(agentCards.id, id),
+				eq(agentCards.email, locals.user.email),
+				isNull(agentCards.resolvedAt)
+			)
+		)
 		.returning({ id: agentCards.id });
 	if (done.length === 0) error(404, 'No such open card');
 	return Response.json({ ok: true });

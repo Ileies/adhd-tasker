@@ -8,7 +8,10 @@
 		<meta name="theme-color" content="#111827" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>ADHD Tasker - Stay Focused</title>
-		<meta name="description" content="A simple 24-hour task management application designed to help individuals with ADHD manage their tasks and stay focused." />
+		<meta
+			name="description"
+			content="A simple 24-hour task management application designed to help individuals with ADHD manage their tasks and stay focused."
+		/>
 		<script src="https://accounts.google.com/gsi/client" async></script>
 		<script>
 			try {
@@ -17,7 +20,8 @@
 				const minutes = now.getHours() * 60 + now.getMinutes();
 				const start = Number(localStorage.getItem('dayStart') ?? 420);
 				const end = Number(localStorage.getItem('dayEnd') ?? 1140);
-				const isDay = start <= end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
+				const isDay =
+					start <= end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
 				const dark = saved === 'dark' || ((saved === 'auto' || !saved) && !isDay);
 				document.documentElement.classList.toggle('dark', dark);
 			} catch {}

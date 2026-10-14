@@ -1,7 +1,14 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import { reactionTools } from './assistant-tools';
-import { EFFORT_BY_USE, OPENAI_URL, buildRequest, functionCalls, outputText, type Use } from './openai';
+import {
+	EFFORT_BY_USE,
+	OPENAI_URL,
+	buildRequest,
+	functionCalls,
+	outputText,
+	type Use
+} from './openai';
 
 describe('buildRequest', () => {
 	for (const use of Object.keys(EFFORT_BY_USE) as Use[]) {
@@ -12,7 +19,9 @@ describe('buildRequest', () => {
 			expect(request.service_tier).toBe('flex');
 			expect(request.reasoning).toEqual({ effort: EFFORT_BY_USE[use] });
 			expect(request.max_output_tokens).toBeGreaterThanOrEqual(25_000);
-			expect(request.tools.every((tool) => tool.type === 'function' && typeof tool.name === 'string')).toBe(true);
+			expect(
+				request.tools.every((tool) => tool.type === 'function' && typeof tool.name === 'string')
+			).toBe(true);
 		});
 	}
 
@@ -22,10 +31,19 @@ describe('buildRequest', () => {
 		expect(request.store).toBe(false);
 		expect(request.service_tier).toBe('flex');
 		const names = request.tools.map((tool) => tool.name);
-		expect(names).toEqual(['list_tasks', 'say', 'ask', 'schedule_wakeup', 'play_tone', 'cancel_schedule']);
+		expect(names).toEqual([
+			'list_tasks',
+			'say',
+			'ask',
+			'schedule_wakeup',
+			'play_tone',
+			'cancel_schedule'
+		]);
 		expect(names).not.toContain('update_task');
 		expect(names).not.toContain('set_alarm');
-		const acting = buildRequest([], '', 'reaction', reactionTools(true)).tools.map((tool) => tool.name);
+		const acting = buildRequest([], '', 'reaction', reactionTools(true)).tools.map(
+			(tool) => tool.name
+		);
 		expect(acting).toContain('update_task');
 		expect(acting).toContain('set_alarm');
 		expect(buildRequest([], '', 'chat').tools.map((tool) => tool.name)).not.toContain('say');

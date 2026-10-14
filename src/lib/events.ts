@@ -20,7 +20,8 @@ export const EVENT_TYPES = [
 export type EventType = (typeof EVENT_TYPES)[number];
 export type EventOrigin = 'user' | 'agent' | 'system';
 
-export const isEventType = (value: unknown): value is EventType => EVENT_TYPES.includes(value as EventType);
+export const isEventType = (value: unknown): value is EventType =>
+	EVENT_TYPES.includes(value as EventType);
 
 /** Minutes after a window ended until a task counts as missed, so finishing a little late is not an event. */
 export const MISSED_GRACE_MINUTES = 5;
@@ -49,7 +50,12 @@ type DetectTask = RankTask & { date: string };
  * `previousId` is the task that was current at the last tick, undefined when it was never tracked
  * (then nothing is reported as a switch). `tasks` are today's tasks only.
  */
-export function detectEvents<T extends DetectTask>(tasks: T[], now: number, previousId: number | null | undefined, overrunMinutes = OVERRUN_MINUTES): Detection {
+export function detectEvents<T extends DetectTask>(
+	tasks: T[],
+	now: number,
+	previousId: number | null | undefined,
+	overrunMinutes = OVERRUN_MINUTES
+): Detection {
 	const ranking = rank(tasks, now);
 	const currentId = ranking.current?.id ?? null;
 	const events: DetectedEvent[] = [];
@@ -57,12 +63,29 @@ export function detectEvents<T extends DetectTask>(tasks: T[], now: number, prev
 	if (previousId !== undefined && previousId !== currentId) {
 		const previous = tasks.find((task) => task.id === previousId) ?? null;
 		// A task that is gone from today's list (deleted, moved to another day) is reported as removed
-		const stub = previous ?? ({ id: previousId, title: '', startTime: 0, duration: 0, priority: Priority.Medium, status: TaskStatus.Pending } as T);
-		const reason = switchReason(previousId === null ? null : stub, ranking, tasks, now) ?? 'Current task changed';
+		const stub =
+			previous ??
+			({
+				id: previousId,
+				title: '',
+				startTime: 0,
+				duration: 0,
+				priority: Priority.Medium,
+				status: TaskStatus.Pending
+			} as T);
+		const reason =
+			switchReason(previousId === null ? null : stub, ranking, tasks, now) ??
+			'Current task changed';
 		events.push({
 			type: 'task.switched',
 			key: `switched:${previousId}:${currentId}:${tasks[0]?.date ?? ''}:${now}`,
-			payload: { from: previous?.title ?? null, fromId: previousId, to: ranking.current?.title ?? null, toId: currentId, reason }
+			payload: {
+				from: previous?.title ?? null,
+				fromId: previousId,
+				to: ranking.current?.title ?? null,
+				toId: currentId,
+				reason
+			}
 		});
 	}
 
@@ -72,21 +95,29 @@ export function detectEvents<T extends DetectTask>(tasks: T[], now: number, prev
 		if (overBy > STALE_MINUTES) return;
 		const base = { taskId: task.id, title: task.title, minutesOver: overBy };
 		const stamp = `${task.id}:${task.date}:${task.startTime + task.duration}`;
-		if (overBy >= MISSED_GRACE_MINUTES) events.push({ type: 'task.missed', key: `missed:${stamp}`, payload: base });
-		if (index === 0 && overBy >= overrunMinutes) events.push({ type: 'task.overrun', key: `overrun:${stamp}`, payload: base });
+		if (overBy >= MISSED_GRACE_MINUTES)
+			events.push({ type: 'task.missed', key: `missed:${stamp}`, payload: base });
+		if (index === 0 && overBy >= overrunMinutes)
+			events.push({ type: 'task.overrun', key: `overrun:${stamp}`, payload: base });
 	});
 
 	return { events, currentId };
 }
 
-type ChangeTask = Pick<Task, 'id' | 'title' | 'description' | 'date' | 'startTime' | 'duration' | 'priority' | 'status'>;
+type ChangeTask = Pick<
+	Task,
+	'id' | 'title' | 'description' | 'date' | 'startTime' | 'duration' | 'priority' | 'status'
+>;
 const WATCHED = ['title', 'description', 'date', 'startTime', 'duration', 'priority'] as const;
 
 /**
  * Turns a before/after pair of one task into the event it is. Returns null when nothing a person would notice changed.
  * Completing or reopening is its own event type, everything else is created, updated or deleted.
  */
-export function describeChange(before: ChangeTask | null, after: ChangeTask | null): { type: EventType; payload: Record<string, unknown> } | null {
+export function describeChange(
+	before: ChangeTask | null,
+	after: ChangeTask | null
+): { type: EventType; payload: Record<string, unknown> } | null {
 	const task = after ?? before;
 	if (!task) return null;
 	const base = { taskId: task.id, title: task.title, date: task.date, startTime: task.startTime };
@@ -96,11 +127,19 @@ export function describeChange(before: ChangeTask | null, after: ChangeTask | nu
 
 	const wasDone = before.status === TaskStatus.Completed;
 	const isDone = after.status === TaskStatus.Completed;
-	if (wasDone !== isDone) return { type: 'task.completed', payload: { ...base, completed: isDone } };
+	if (wasDone !== isDone)
+		return { type: 'task.completed', payload: { ...base, completed: isDone } };
 
 	const changed = WATCHED.filter((field) => before[field] !== after[field]);
 	if (changed.length === 0) return null;
-	return { type: 'task.updated', payload: { ...base, changed, from: { date: before.date, startTime: before.startTime, duration: before.duration } } };
+	return {
+		type: 'task.updated',
+		payload: {
+			...base,
+			changed,
+			from: { date: before.date, startTime: before.startTime, duration: before.duration }
+		}
+	};
 }
 
 /** One line per event for the model and for the activity log. Titles are the user's data, so they are quoted. */
@@ -111,14 +150,17 @@ export function describeEvent(type: EventType, payload: Record<string, unknown>)
 
 function describeBase(type: EventType, payload: Record<string, unknown>): string {
 	const title = typeof payload.title === 'string' ? `"${payload.title}"` : 'a task';
-	const clock = typeof payload.startTime === 'number' ? ` at ${formatClock(payload.startTime)}` : '';
+	const clock =
+		typeof payload.startTime === 'number' ? ` at ${formatClock(payload.startTime)}` : '';
 	switch (type) {
 		case 'task.created':
 			return `Task ${title} was added${clock}`;
 		case 'task.updated':
 			return `Task ${title} was changed (${Array.isArray(payload.changed) ? payload.changed.join(', ') : 'details'})`;
 		case 'task.completed':
-			return payload.completed === false ? `Task ${title} was reopened` : `Task ${title} was marked done`;
+			return payload.completed === false
+				? `Task ${title} was reopened`
+				: `Task ${title} was marked done`;
 		case 'task.deleted':
 			return `Task ${title} was deleted`;
 		case 'task.switched':

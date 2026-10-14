@@ -4,7 +4,17 @@ import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { decrypt } from '#lib/server/crypto.js';
 import { AssistantError, OPENAI_KEY_PURPOSE } from '#lib/server/assistant.js';
-import { MAX_AUDIO_BYTES, REALTIME_URL, TRANSCRIBE_MODEL, TRANSCRIBE_URL, audioExtension, buildSpeechEvents, isAudioMime, pcm16ToWav, readSpeechEvent } from '#lib/voice.js';
+import {
+	MAX_AUDIO_BYTES,
+	REALTIME_URL,
+	TRANSCRIBE_MODEL,
+	TRANSCRIBE_URL,
+	audioExtension,
+	buildSpeechEvents,
+	isAudioMime,
+	pcm16ToWav,
+	readSpeechEvent
+} from '#lib/voice.js';
 
 const RATE_LIMIT = { requests: 30, windowMs: 5 * 60_000 };
 const TIMEOUT_MS = 30_000;
@@ -14,7 +24,8 @@ const recent = new Map<string, number[]>();
 function checkRate(email: string) {
 	const now = Date.now();
 	const hits = (recent.get(email) ?? []).filter((at) => now - at < RATE_LIMIT.windowMs);
-	if (hits.length >= RATE_LIMIT.requests) throw new AssistantError('Too many voice requests, wait a few minutes', 429);
+	if (hits.length >= RATE_LIMIT.requests)
+		throw new AssistantError('Too many voice requests, wait a few minutes', 429);
 	recent.set(email, [...hits, now]);
 }
 
@@ -28,12 +39,22 @@ async function openaiKey(email: string) {
 async function call(url: string, key: string, init: RequestInit) {
 	let response: Response;
 	try {
-		response = await fetch(url, { ...init, method: 'POST', headers: { ...init.headers, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+		response = await fetch(url, {
+			...init,
+			method: 'POST',
+			headers: { ...init.headers, Authorization: `Bearer ${key}` },
+			signal: AbortSignal.timeout(TIMEOUT_MS)
+		});
 	} catch {
 		throw new AssistantError('Could not reach OpenAI or it took too long', 502);
 	}
-	if (response.status === 401) throw new AssistantError('OpenAI rejected the saved key, check it in Settings', 400);
-	if (response.status === 429) throw new AssistantError('OpenAI is out of capacity or your quota is used up, try again later', 429);
+	if (response.status === 401)
+		throw new AssistantError('OpenAI rejected the saved key, check it in Settings', 400);
+	if (response.status === 429)
+		throw new AssistantError(
+			'OpenAI is out of capacity or your quota is used up, try again later',
+			429
+		);
 	if (!response.ok) throw new AssistantError('OpenAI could not handle the audio, try again', 502);
 	return response;
 }
@@ -69,7 +90,10 @@ export async function speak(email: string, text: string): Promise<Uint8Array> {
 		const chunks: Uint8Array[] = [];
 		let settled = false;
 		// Bun's WebSocket takes request headers, the browser typing does not know the option
-		const socket = new (WebSocket as unknown as new (url: string, options: { headers: Record<string, string> }) => WebSocket)(REALTIME_URL, {
+		const socket = new (WebSocket as unknown as new (
+			url: string,
+			options: { headers: Record<string, string> }
+		) => WebSocket)(REALTIME_URL, {
 			headers: { Authorization: `Bearer ${key}` }
 		});
 
@@ -79,12 +103,17 @@ export async function speak(email: string, text: string): Promise<Uint8Array> {
 			clearTimeout(timer);
 			if (socket.readyState <= WebSocket.OPEN) socket.close();
 			if (error) reject(error);
-			else if (chunks.length === 0) reject(new AssistantError('OpenAI sent no audio, try again', 502));
+			else if (chunks.length === 0)
+				reject(new AssistantError('OpenAI sent no audio, try again', 502));
 			else resolve(pcm16ToWav(chunks));
 		};
-		const timer = setTimeout(() => finish(new AssistantError('OpenAI took too long to speak', 502)), TIMEOUT_MS);
+		const timer = setTimeout(
+			() => finish(new AssistantError('OpenAI took too long to speak', 502)),
+			TIMEOUT_MS
+		);
 
-		socket.onopen = () => buildSpeechEvents(text).forEach((event) => socket.send(JSON.stringify(event)));
+		socket.onopen = () =>
+			buildSpeechEvents(text).forEach((event) => socket.send(JSON.stringify(event)));
 		socket.onmessage = (message) => {
 			const event = readSpeechEvent(String(message.data));
 			if (event.kind === 'audio') chunks.push(event.pcm);
@@ -95,7 +124,8 @@ export async function speak(email: string, text: string): Promise<Uint8Array> {
 			}
 		};
 		// A rejected key fails the handshake, which shows up as an error or close without any message
-		socket.onerror = () => finish(new AssistantError('Could not reach OpenAI, or it rejected the saved key', 502));
+		socket.onerror = () =>
+			finish(new AssistantError('Could not reach OpenAI, or it rejected the saved key', 502));
 		socket.onclose = () => finish(new AssistantError('The speech connection closed early', 502));
 	});
 }

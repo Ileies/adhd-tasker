@@ -1,7 +1,10 @@
 import { Priority, TaskStatus, type Task } from '#lib/types.js';
 import { priorityStyle } from '#lib/urgency.js';
 
-export type RankTask = Pick<Task, 'id' | 'title' | 'startTime' | 'duration' | 'priority' | 'status'>;
+export type RankTask = Pick<
+	Task,
+	'id' | 'title' | 'startTime' | 'duration' | 'priority' | 'status'
+>;
 
 export interface Ranking<T extends RankTask = Task> {
 	/** What to do right now, null in free time. */
@@ -19,7 +22,12 @@ const priorityOf = (task: RankTask) => task.priority || Priority.Medium;
 
 /** Highest priority first, then earlier start, then shorter, then lower id so the order never flickers. */
 function compareCurrent(a: RankTask, b: RankTask): number {
-	return priorityOf(b) - priorityOf(a) || a.startTime - b.startTime || a.duration - b.duration || a.id - b.id;
+	return (
+		priorityOf(b) - priorityOf(a) ||
+		a.startTime - b.startTime ||
+		a.duration - b.duration ||
+		a.id - b.id
+	);
 }
 
 /**
@@ -30,11 +38,15 @@ function compareCurrent(a: RankTask, b: RankTask): number {
 export function rank<T extends RankTask>(tasks: T[], now: number): Ranking<T> {
 	const open = tasks.filter((task) => task.status !== TaskStatus.Completed);
 
-	const running = open.filter((task) => task.startTime <= now && now < endOf(task)).sort(compareCurrent);
+	const running = open
+		.filter((task) => task.startTime <= now && now < endOf(task))
+		.sort(compareCurrent);
 	const upcoming = open
 		.filter((task) => task.startTime > now)
 		.sort((a, b) => a.startTime - b.startTime || compareCurrent(a, b));
-	const missed = open.filter((task) => endOf(task) <= now).sort((a, b) => endOf(b) - endOf(a) || a.id - b.id);
+	const missed = open
+		.filter((task) => endOf(task) <= now)
+		.sort((a, b) => endOf(b) - endOf(a) || a.id - b.id);
 
 	return { current: running[0] ?? null, upcoming, missed, concurrent: running.length };
 }
@@ -49,12 +61,19 @@ export function minutesLeft(task: RankTask, now: number): number {
  * `prev` is the task that was current before, null when the page just loaded.
  * Returns null when the current task did not change.
  */
-export function switchReason<T extends RankTask>(prev: T | null, ranking: Ranking<T>, tasks: T[], now: number): string | null {
+export function switchReason<T extends RankTask>(
+	prev: T | null,
+	ranking: Ranking<T>,
+	tasks: T[],
+	now: number
+): string | null {
 	const next = ranking.current;
 	if (next?.id === prev?.id) return null;
 
 	if (!prev) {
-		return ranking.concurrent > 1 ? `Highest priority of ${ranking.concurrent} tasks right now` : 'Scheduled for now';
+		return ranking.concurrent > 1
+			? `Highest priority of ${ranking.concurrent} tasks right now`
+			: 'Scheduled for now';
 	}
 
 	const latest = tasks.find((task) => task.id === prev.id);
@@ -62,7 +81,8 @@ export function switchReason<T extends RankTask>(prev: T | null, ranking: Rankin
 	if (!latest) why = 'Previous task removed';
 	else if (latest.status === TaskStatus.Completed) why = 'Previous task done';
 	else if (now >= endOf(latest)) why = 'Time for the previous task ended';
-	else if (next && priorityOf(next) > priorityOf(latest)) why = `${priorityStyle[priorityOf(next)].label} priority task started`;
+	else if (next && priorityOf(next) > priorityOf(latest))
+		why = `${priorityStyle[priorityOf(next)].label} priority task started`;
 	else why = 'Next task started';
 
 	return next ? why : `${why}. Nothing else is due right now`;

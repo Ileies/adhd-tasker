@@ -4,22 +4,22 @@ Status: draft for review. Decisions taken so far are marked **[decided]**, defau
 
 ## 1. Product definition
 
-ADHD Tasker is an **ambient priority display**. It runs fullscreen on an always-on second screen and answers one question at a glance: *what should I be doing right now, and what is coming next?* The user trusts it instead of re-deciding, scrolling, or sinking time into an unnecessary task.
+ADHD Tasker is an **ambient priority display**. It runs fullscreen on an always-on second screen and answers one question at a glance: _what should I be doing right now, and what is coming next?_ The user trusts it instead of re-deciding, scrolling, or sinking time into an unnecessary task.
 
 Usage **[decided]**: desktop-first (permanent second screen), fully responsive down to phone. Focus view is the primary idea, not an optional mode.
 
 ### In scope (final)
 
-| Area | What it is |
-|---|---|
-| **Now** (home) | Current top-priority task in an urgency color, countdown, Done + undo, and a rail of the following tasks so the user can prepare mentally |
-| **Plan** | Dated days, timeline and list view, quick add, touch-friendly drag and resize |
-| **Assistant** | Text + voice conversation that reads and edits the plan, challenges conflicts, and talks back |
-| **Agent events** | Every plan change and task switch becomes an event the AI can react to (comment, ask, edit the plan, set an alarm) or ignore |
+| Area                     | What it is                                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Now** (home)           | Current top-priority task in an urgency color, countdown, Done + undo, and a rail of the following tasks so the user can prepare mentally         |
+| **Plan**                 | Dated days, timeline and list view, quick add, touch-friendly drag and resize                                                                     |
+| **Assistant**            | Text + voice conversation that reads and edits the plan, challenges conflicts, and talks back                                                     |
+| **Agent events**         | Every plan change and task switch becomes an event the AI can react to (comment, ask, edit the plan, set an alarm) or ignore                      |
 | **Scheduler and alarms** | The AI can wake itself at chosen times (e.g. "check if the user is done at 15:40") and set timed alarms with its own tones, plus user-made alarms |
-| **Anchoring** | Chime on switch and every 5 min, overdue handling, hyperfocus alarm, "I'm stuck" |
-| **Settings** | Timezone, sound, theme, reminders, OpenAI key |
-| **Platform** | Fullscreen API, Screen Wake Lock, PWA install |
+| **Anchoring**            | Chime on switch and every 5 min, overdue handling, hyperfocus alarm, "I'm stuck"                                                                  |
+| **Settings**             | Timezone, sound, theme, reminders, OpenAI key                                                                                                     |
+| **Platform**             | Fullscreen API, Screen Wake Lock, PWA install                                                                                                     |
 
 ### Out of scope for now
 
@@ -30,6 +30,7 @@ Adaptive behavior model, Crisis Mode, Anti-context-switch scheduler, full analyt
 The screen is only trustworthy if the ranking is predictable and explainable. Extract it into one pure, unit-tested function `rank(tasks, now) -> { current, upcoming[], missed[] }` in `src/lib/priority.ts`. The page only renders its output.
 
 **[default] Rules**
+
 1. Candidates are today's tasks that are not completed.
 2. **Current** = among tasks whose time window contains `now`, the highest priority; ties go to the earlier start, then the shorter task.
 3. A higher-priority task that starts preempts the current one. The preempted task is not lost: it moves to `upcoming` with its remaining time.
@@ -43,14 +44,15 @@ The screen is only trustworthy if the ranking is predictable and explainable. Ex
 ## 3. Visual design
 
 ### Urgency scale
+
 Replace the current time-left-only traffic light with a single urgency level (0 to 3) derived from **priority and time pressure**:
 
-| Level | Meaning | Color feel |
-|---|---|---|
-| 0 | Calm: low priority, plenty of time | Cool blue-green |
-| 1 | Normal | Soft amber-neutral |
-| 2 | Pressing: high priority or under 25% time left | Warm orange |
-| 3 | Critical or overrunning | Red |
+| Level | Meaning                                        | Color feel         |
+| ----- | ---------------------------------------------- | ------------------ |
+| 0     | Calm: low priority, plenty of time             | Cool blue-green    |
+| 1     | Normal                                         | Soft amber-neutral |
+| 2     | Pressing: high priority or under 25% time left | Warm orange        |
+| 3     | Critical or overrunning                        | Red                |
 
 - Tokens `--urgency-0..3` plus foreground tokens in `src/app.css`, tuned for WCAG AA text contrast in light and dark.
 - Color changes crossfade slowly (1 to 2 s). No flashing, no pulsing, no decorative elements.
@@ -59,6 +61,7 @@ Replace the current time-left-only traffic light with a single urgency level (0 
 ### Layout (Now)
 
 Wide screen:
+
 ```
 +--------------------------------------+-------------------+
 | 14:32                       [mic][..]| NEXT              |
@@ -71,12 +74,14 @@ Wide screen:
 |   [ Done ]   [ I'm stuck ]           |                   |
 +--------------------------------------+-------------------+
 ```
+
 - Hero takes roughly 2/3, rail 1/3. Everything legible from across a room (title at least 6vw clamp, tabular-nums clock).
 - The first upcoming item gets slightly more weight and shows its description as a "prepare" hint.
 - Phone: hero on top, rail below, single column, sticky Done button.
 - Chrome: one thin auto-hiding top bar (clock, mic, Plan, menu). No sidebar, no stat tiles, no footer, no emoji.
 
 ### Typography and system
+
 - One display style for the title and countdown, one body style. Large tabular numerals for time.
 - Keep shadcn-svelte primitives (button, dialog, sheet, dropdown, slider). Remove hand-rolled badge-color maps from `+layout.svelte`, `TaskList` and `edit` and replace them with one shared `priority`/`urgency` module.
 - Night behavior: optional dimmed palette after a configured hour, to suit a bedroom screen.
@@ -94,12 +99,14 @@ Wide screen:
 Persistent drawer on desktop, full sheet on phone. Text field plus mic button.
 
 **Behavior** (example from the brief)
+
 1. User: "I just got a call, tonight I'm invited to eat Chinese with friends."
 2. Assistant sees today and tomorrow in the plan, notices tomorrow's exam and tonight's study block, and asks whether they are sure.
 3. User: "Yes, I already studied enough." Assistant: "All right, what time?"
 4. User gives a time, assistant creates the task, confirms, and the change appears with an Undo toast.
 
 **Design**
+
 - Server endpoint `POST /assistant` streams the reply. Tools: `list_tasks(range)`, `add_task`, `update_task`, `delete_task`. The model gets today and tomorrow as context on every turn. Tool calls run server-side with the logged-in user's id only.
 - Writes go through the same code path as the UI so the optimistic `tasker` state, undo and the Now screen all update live.
 - Voice is phased: push-to-talk first (an always-listening mic on a wall display is a privacy and false-trigger problem). Speech to text, then spoken replies. Spoken replies are short; long details stay on screen.
@@ -116,24 +123,25 @@ The assistant is not only a chat box. It is an agent that observes the plan and 
 
 One server-side `emit(event)` is called from every mutation path and from the scheduler. Events are persisted in an `events` log.
 
-| Event | Trigger |
-|---|---|
-| `task.completed` | User marks a task done (or undoes it) |
-| `task.created`, `task.updated`, `task.deleted` | Any plan edit, from UI or assistant |
-| `task.switched` | The ranking's current task changed, payload has the reason (higher priority started, previous done, window ended) |
-| `task.missed` | A task's window ended without completion ("not done for too long") |
-| `task.overrun` | A task is past its planned time by the hyperfocus threshold |
-| `stuck.pressed` | User pressed "I'm stuck" and chose an option |
-| `alarm.fired` | A timed alarm went off |
-| `wakeup.fired` | A wakeup the agent scheduled for itself arrived, carrying its own note |
-| `day.started` | First load of the day or configured wake time (morning briefing) |
-| `user.message` | Text or voice input |
+| Event                                          | Trigger                                                                                                           |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `task.completed`                               | User marks a task done (or undoes it)                                                                             |
+| `task.created`, `task.updated`, `task.deleted` | Any plan edit, from UI or assistant                                                                               |
+| `task.switched`                                | The ranking's current task changed, payload has the reason (higher priority started, previous done, window ended) |
+| `task.missed`                                  | A task's window ended without completion ("not done for too long")                                                |
+| `task.overrun`                                 | A task is past its planned time by the hyperfocus threshold                                                       |
+| `stuck.pressed`                                | User pressed "I'm stuck" and chose an option                                                                      |
+| `alarm.fired`                                  | A timed alarm went off                                                                                            |
+| `wakeup.fired`                                 | A wakeup the agent scheduled for itself arrived, carrying its own note                                            |
+| `day.started`                                  | First load of the day or configured wake time (morning briefing)                                                  |
+| `user.message`                                 | Text or voice input                                                                                               |
 
 Every event carries `origin: user | agent | system`. **Events caused by the agent never trigger the agent again**, which prevents loops. A reaction may use at most 4 tool calls.
 
 ### 6.2 What a reaction can be
 
 The model answers each event with zero or more of these, and **doing nothing is the default**:
+
 - `say(text)`: a short line shown in a bounded assistant strip on Now, optionally spoken
 - `ask(text, options?)`: a question card (e.g. "Done with the call? Move study to 17:00?")
 - plan tools: `add_task`, `update_task`, `delete_task`

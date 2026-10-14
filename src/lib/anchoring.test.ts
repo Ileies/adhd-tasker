@@ -1,9 +1,22 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { findStuckReason, hyperfocusDue, momentKey, parseAnchoringForm, reminderDue } from './anchoring';
+import {
+	findStuckReason,
+	hyperfocusDue,
+	momentKey,
+	parseAnchoringForm,
+	reminderDue
+} from './anchoring';
 import { Priority, TaskStatus } from './types';
 
-const task = (id: number, startTime: number, duration: number) => ({ id, title: `Task ${id}`, startTime, duration, priority: Priority.Medium, status: TaskStatus.Pending });
+const task = (id: number, startTime: number, duration: number) => ({
+	id,
+	title: `Task ${id}`,
+	startTime,
+	duration,
+	priority: Priority.Medium,
+	status: TaskStatus.Pending
+});
 
 describe('findStuckReason', () => {
 	test('knows the options and nothing else', () => {
@@ -53,7 +66,9 @@ describe('momentKey', () => {
 		const a = task(1, 540, 60);
 		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(momentKey('reminder', '2026-10-14', a));
 		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(momentKey('overrun', '2026-10-15', a));
-		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(momentKey('overrun', '2026-10-14', { ...a, duration: 75 }));
+		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(
+			momentKey('overrun', '2026-10-14', { ...a, duration: 75 })
+		);
 	});
 });
 
@@ -66,7 +81,12 @@ describe('parseAnchoringForm', () => {
 	test('reads switches and minutes', () => {
 		expect(parseAnchoringForm(form({ reminders: 'on', advance: '10', overrun: '20' }))).toEqual({
 			ok: true,
-			value: { enableReminders: true, reminderAdvanceTime: 10, hyperfocusAlarm: false, overrunMinutes: 20 }
+			value: {
+				enableReminders: true,
+				reminderAdvanceTime: 10,
+				hyperfocusAlarm: false,
+				overrunMinutes: 20
+			}
 		});
 	});
 	test('rejects minutes out of range', () => {

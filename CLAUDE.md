@@ -2,7 +2,7 @@
 
 ## What This App Is
 
-A planner for people with ADHD that is always open and always shows what to do *right now*. It is an external anchor: it holds the plan so the user's working memory does not have to. It runs fullscreen on an always-on second screen (desktop first, responsive down to phone, installable as a PWA).
+A planner for people with ADHD that is always open and always shows what to do _right now_. It is an external anchor: it holds the plan so the user's working memory does not have to. It runs fullscreen on an always-on second screen (desktop first, responsive down to phone, installable as a PWA).
 
 Judge every design and implementation decision against this: does it reduce cognitive load, minimize decisions, and keep the user anchored to the present task? When in doubt, do less and do it better.
 
@@ -54,20 +54,20 @@ Run `bun run check` and `bun test` before committing.
 
 ### Routes
 
-| Route | Purpose |
-|---|---|
-| `/` | Now: current task hero in an urgency color, rail with the next tasks, missed strip, agent card strip. Top bar auto-hides, fullscreen and wake lock |
-| `/edit` | Plan: day switcher, 24 hour timeline (drag to move, handle to resize, 15 min snap), quick add line, phone list |
-| `/edit` (API) | Task CRUD: GET one day (`?date=`), POST, PUT, DELETE |
-| `/alarms` | User alarms with tone preview, "use this device for sound", the assistant's wakeups |
-| `/activity` | What the assistant changed (reason, Undo), events it saw and their outcome, today's token use |
-| `/settings` | Theme, timezone, OpenAI key (`saveOpenaiKey`/`removeOpenaiKey`), assistant autonomy (`saveAgent`), voice replies (`saveVoice`), reminders and overrun tap (`saveAnchoring`), Google services (`linkGoogle`/`unlinkGoogle`). `/settings/timezone` saves the timezone |
-| `/privacy`, `/terms` | Privacy policy and terms of use, public, linked from the profile menu. Keep them in sync when data handling changes (new fields, retention, third parties, cookies) |
-| `/callback` | Google OAuth callback (GET) and One Tap credential (POST) |
-| `/assistant` (API) | `POST` one chat turn (tool loop against OpenAI with the user's own key). `POST /assistant/undo` reverts one logged change. `POST /assistant/transcribe` speech to text, `POST /assistant/speak` text to wav (see Voice) |
-| `/agent` (API) | `GET` what the agent did on its own (open card, changes since `?since=<action id>`). `POST /agent/cards/[id]` dismisses or answers a card. `POST /agent/stuck` (`{ taskId, reason }`) logs `stuck.pressed` |
-| `/stream` (API) | Server-Sent Events (`?device=<id>`) with hints `agent`, `schedule`, `alarm`, `tone`, `display`. Hints only: the client fetches the data itself, a missed push costs nothing |
-| `/schedule` (API) | `GET` pending alarms and wakeups, `POST` a user alarm, `DELETE /schedule/[id]`, `POST /schedule/display` chooses the display device |
+| Route                | Purpose                                                                                                                                                                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                  | Now: current task hero in an urgency color, rail with the next tasks, missed strip, agent card strip. Top bar auto-hides, fullscreen and wake lock                                                                                                                  |
+| `/edit`              | Plan: day switcher, 24 hour timeline (drag to move, handle to resize, 15 min snap), quick add line, phone list                                                                                                                                                      |
+| `/edit` (API)        | Task CRUD: GET one day (`?date=`), POST, PUT, DELETE                                                                                                                                                                                                                |
+| `/alarms`            | User alarms with tone preview, "use this device for sound", the assistant's wakeups                                                                                                                                                                                 |
+| `/activity`          | What the assistant changed (reason, Undo), events it saw and their outcome, today's token use                                                                                                                                                                       |
+| `/settings`          | Theme, timezone, OpenAI key (`saveOpenaiKey`/`removeOpenaiKey`), assistant autonomy (`saveAgent`), voice replies (`saveVoice`), reminders and overrun tap (`saveAnchoring`), Google services (`linkGoogle`/`unlinkGoogle`). `/settings/timezone` saves the timezone |
+| `/privacy`, `/terms` | Privacy policy and terms of use, public, linked from the profile menu. Keep them in sync when data handling changes (new fields, retention, third parties, cookies)                                                                                                 |
+| `/callback`          | Google OAuth callback (GET) and One Tap credential (POST)                                                                                                                                                                                                           |
+| `/assistant` (API)   | `POST` one chat turn (tool loop against OpenAI with the user's own key). `POST /assistant/undo` reverts one logged change. `POST /assistant/transcribe` speech to text, `POST /assistant/speak` text to wav (see Voice)                                             |
+| `/agent` (API)       | `GET` what the agent did on its own (open card, changes since `?since=<action id>`). `POST /agent/cards/[id]` dismisses or answers a card. `POST /agent/stuck` (`{ taskId, reason }`) logs `stuck.pressed`                                                          |
+| `/stream` (API)      | Server-Sent Events (`?device=<id>`) with hints `agent`, `schedule`, `alarm`, `tone`, `display`. Hints only: the client fetches the data itself, a missed push costs nothing                                                                                         |
+| `/schedule` (API)    | `GET` pending alarms and wakeups, `POST` a user alarm, `DELETE /schedule/[id]`, `POST /schedule/display` chooses the display device                                                                                                                                 |
 
 ### Core principle: nothing stored for "current"
 

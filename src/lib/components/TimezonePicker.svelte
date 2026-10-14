@@ -8,13 +8,15 @@
 	const current = $derived(tasker.timezone ?? device);
 	// Keep the saved value selectable even if this browser does not list it
 	const zones = $derived(
-		[...new Set([...Intl.supportedValuesOf('timeZone'), current])].sort((a, b) => a.localeCompare(b))
+		[...new Set([...Intl.supportedValuesOf('timeZone'), current])].sort((a, b) =>
+			a.localeCompare(b)
+		)
 	);
 </script>
 
 <div class="space-y-3">
 	<select
-		class="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+		class="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
 		value={current}
 		onchange={(e) => setTimezone(e.currentTarget.value)}
 		aria-label="Timezone"

@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { CalendarDays, Maximize, Minimize, MessageSquare, User } from '@lucide/svelte';
 	import AssistantDrawer from '#lib/components/AssistantDrawer.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
 	import { toggleFullscreen } from '#lib/display.js';
@@ -24,7 +24,8 @@
 
 	let { children, data } = $props();
 
-	if (browser) tasker.tasks = data.tasks;
+	// Hydrate once: later invalidations must not overwrite optimistic edits or days loaded since
+	if (browser) tasker.tasks = untrack(() => data.tasks);
 
 	onMount(initPreferences);
 
@@ -32,7 +33,9 @@
 	$effect(() => {
 		if (!data.user) return;
 		const cancel = () =>
-			(window as { google?: { accounts?: { id?: { cancel?: () => void } } } }).google?.accounts?.id?.cancel?.();
+			(
+				window as { google?: { accounts?: { id?: { cancel?: () => void } } } }
+			).google?.accounts?.id?.cancel?.();
 		cancel();
 		const timer = setTimeout(cancel, 1000);
 		return () => clearTimeout(timer);
@@ -67,7 +70,9 @@
 
 	function logout() {
 		// Otherwise One Tap auto select would sign the user straight back in
-		(window as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google?.accounts?.id?.disableAutoSelect?.();
+		(
+			window as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }
+		).google?.accounts?.id?.disableAutoSelect?.();
 		logoutForm?.requestSubmit();
 	}
 
@@ -123,7 +128,7 @@
 	<header
 		bind:this={headerEl}
 		class="z-40 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2 py-1 transition-opacity duration-500
-			{overlay ? 'absolute inset-x-0 top-0 bg-background/70 backdrop-blur-md' : 'border-b bg-background'}
+			{overlay ? 'bg-background/70 absolute inset-x-0 top-0 backdrop-blur-md' : 'bg-background border-b'}
 			{barHidden ? 'pointer-events-none opacity-0' : ''}"
 	>
 		<div class="flex">
@@ -134,12 +139,20 @@
 		</div>
 
 		<button class="flex cursor-pointer items-center" onclick={() => goto('/')}>
-			<img src="/logo.svg" alt="Logo" class="mr-1 h-9" /><span class="hidden text-xl font-bold sm:inline">ADHD Tasker</span>
+			<img src="/logo.svg" alt="Logo" class="mr-1 h-9" /><span
+				class="hidden text-xl font-bold sm:inline">ADHD Tasker</span
+			>
 		</button>
 
 		<div class="flex items-center justify-end gap-1">
 			{#if data.user}
-				<Button variant="ghost" size="icon-lg" onclick={() => (tasker.assistant.open = true)} aria-label="Assistant" title="Assistant">
+				<Button
+					variant="ghost"
+					size="icon-lg"
+					onclick={() => (tasker.assistant.open = true)}
+					aria-label="Assistant"
+					title="Assistant"
+				>
 					<MessageSquare class="size-5" />
 				</Button>
 			{/if}
@@ -171,7 +184,8 @@
 					{#if data.user}
 						<DropdownMenu.Label class="truncate">{data.user.email}</DropdownMenu.Label>
 					{:else}
-						<DropdownMenu.Item onSelect={() => loginForm?.requestSubmit()}>Log in</DropdownMenu.Item>
+						<DropdownMenu.Item onSelect={() => loginForm?.requestSubmit()}>Log in</DropdownMenu.Item
+						>
 					{/if}
 					<DropdownMenu.Separator />
 					{#if data.user}

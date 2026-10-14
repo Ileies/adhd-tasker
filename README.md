@@ -1,12 +1,12 @@
 # ADHD Tasker
 
-A planner for people with ADHD. The app stays open on a second screen and always shows exactly what you should be doing *right now*: one task, in a color that tells you how urgent it is, with the next few tasks lined up beside it. Your working memory gets to rest.
+A planner for people with ADHD. The app stays open on a second screen and always shows exactly what you should be doing _right now_: one task, in a color that tells you how urgent it is, with the next few tasks lined up beside it. Your working memory gets to rest.
 
 **Live:** [tasker.ileies.de](https://tasker.ileies.de)
 
 ## The Problem
 
-People with ADHD struggle less with *doing* things than with *knowing what comes next* and *staying anchored* to a plan. Classic to-do apps need constant self-directed attention, which is the thing ADHD impairs. ADHD Tasker holds the plan for you, works out what is current from the clock and priorities, and pulls your attention back when you drift.
+People with ADHD struggle less with _doing_ things than with _knowing what comes next_ and _staying anchored_ to a plan. Classic to-do apps need constant self-directed attention, which is the thing ADHD impairs. ADHD Tasker holds the plan for you, works out what is current from the clock and priorities, and pulls your attention back when you drift.
 
 ## Features
 
@@ -25,15 +25,15 @@ The app works fully without AI. Without a key the agent stays silent.
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | SvelteKit 3 + Svelte 5 (Runes) |
-| Styling | Tailwind CSS 4 + shadcn-svelte |
-| Database | SQLite + Drizzle ORM |
-| Auth | Google OAuth 2.0 (PKCE) and One Tap via Arctic |
-| AI | OpenAI Responses API with the user's own key, stored encrypted |
-| Runtime | Bun |
-| Deployment | `adapter-node` + PM2 |
+| Layer      | Technology                                                     |
+| ---------- | -------------------------------------------------------------- |
+| Framework  | SvelteKit 3 + Svelte 5 (Runes)                                 |
+| Styling    | Tailwind CSS 4 + shadcn-svelte                                 |
+| Database   | SQLite + Drizzle ORM                                           |
+| Auth       | Google OAuth 2.0 (PKCE) and One Tap via Arctic                 |
+| AI         | OpenAI Responses API with the user's own key, stored encrypted |
+| Runtime    | Bun                                                            |
+| Deployment | `adapter-node` + PM2                                           |
 
 ## Getting Started
 
@@ -46,26 +46,26 @@ bun run dev
 
 Environment variables (all read at build time):
 
-| Variable | Meaning |
-|---|---|
-| `PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client id |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. Also signs sessions and derives the key that encrypts saved OpenAI keys, so changing it logs everyone out and requires pasting keys again |
-| `PUBLIC_REDIRECT_URI` | OAuth callback, e.g. `http://localhost:5173/callback` for local dev. Must be registered in your Google client |
-| `DATABASE_URL` | SQLite file, `local.db` by default |
+| Variable                  | Meaning                                                                                                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client id                                                                                                                                                |
+| `GOOGLE_CLIENT_SECRET`    | Google OAuth client secret. Also signs sessions and derives the key that encrypts saved OpenAI keys, so changing it logs everyone out and requires pasting keys again |
+| `PUBLIC_REDIRECT_URI`     | OAuth callback, e.g. `http://localhost:5173/callback` for local dev. Must be registered in your Google client                                                         |
+| `DATABASE_URL`            | SQLite file, `local.db` by default                                                                                                                                    |
 
 ## Commands
 
-| Command | Description |
-|---|---|
-| `bun run dev` | Dev server |
-| `bun run build` | Production build |
-| `bun run check` | Type check (svelte-check) |
-| `bun test` | Unit tests |
-| `bun run lint` | Prettier and ESLint |
-| `bun run format` | Auto-format |
-| `bun run db:push` | Apply the schema to the database |
-| `bun run db:studio` | Drizzle Studio |
-| `bun run deploy` | Deploy the committed HEAD to the server (see below) |
+| Command             | Description                                         |
+| ------------------- | --------------------------------------------------- |
+| `bun run dev`       | Dev server                                          |
+| `bun run build`     | Production build                                    |
+| `bun run check`     | Type check (svelte-check)                           |
+| `bun test`          | Unit tests                                          |
+| `bun run lint`      | Prettier and ESLint                                 |
+| `bun run format`    | Auto-format                                         |
+| `bun run db:push`   | Apply the schema to the database                    |
+| `bun run db:studio` | Drizzle Studio                                      |
+| `bun run deploy`    | Deploy the committed HEAD to the server (see below) |
 
 ## Project Layout
 

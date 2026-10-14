@@ -4,7 +4,13 @@ import { Priority, TaskStatus } from '#lib/types.js';
 import { minutesLeft, rank, switchReason, type RankTask } from '#lib/priority.js';
 
 let nextId = 1;
-const task = (title: string, startTime: number, duration: number, priority = Priority.Medium, status = TaskStatus.Pending): RankTask => ({
+const task = (
+	title: string,
+	startTime: number,
+	duration: number,
+	priority = Priority.Medium,
+	status = TaskStatus.Pending
+): RankTask => ({
 	id: nextId++,
 	title,
 	startTime,
@@ -107,31 +113,41 @@ describe('switchReason', () => {
 		const a = task('A', h(9), 60);
 		expect(switchReason(null, rank([a], h(9, 10)), [a], h(9, 10))).toBe('Scheduled for now');
 		const b = task('B', h(9), 60, Priority.High);
-		expect(switchReason(null, rank([a, b], h(9, 10)), [a, b], h(9, 10))).toBe('Highest priority of 2 tasks right now');
+		expect(switchReason(null, rank([a, b], h(9, 10)), [a, b], h(9, 10))).toBe(
+			'Highest priority of 2 tasks right now'
+		);
 	});
 
 	test('previous task done', () => {
 		const a = task('A', h(9), 60);
 		const b = task('B', h(9), 60, Priority.Low);
 		a.status = TaskStatus.Completed;
-		expect(switchReason({ ...a, status: TaskStatus.Pending }, rank([a, b], h(9, 10)), [a, b], h(9, 10))).toBe('Previous task done');
+		expect(
+			switchReason({ ...a, status: TaskStatus.Pending }, rank([a, b], h(9, 10)), [a, b], h(9, 10))
+		).toBe('Previous task done');
 	});
 
 	test('higher priority task started', () => {
 		const a = task('A', h(9), 120, Priority.Low);
 		const b = task('B', h(10), 30, Priority.Critical);
-		expect(switchReason(a, rank([a, b], h(10)), [a, b], h(10))).toBe('Critical priority task started');
+		expect(switchReason(a, rank([a, b], h(10)), [a, b], h(10))).toBe(
+			'Critical priority task started'
+		);
 	});
 
 	test('time ran out', () => {
 		const a = task('A', h(9), 30);
 		const b = task('B', h(9, 30), 30);
-		expect(switchReason(a, rank([a, b], h(9, 30)), [a, b], h(9, 30))).toBe('Time for the previous task ended');
+		expect(switchReason(a, rank([a, b], h(9, 30)), [a, b], h(9, 30))).toBe(
+			'Time for the previous task ended'
+		);
 	});
 
 	test('nothing else is due', () => {
 		const a = task('A', h(9), 30);
-		expect(switchReason(a, rank([a], h(10)), [a], h(10))).toBe('Time for the previous task ended. Nothing else is due right now');
+		expect(switchReason(a, rank([a], h(10)), [a], h(10))).toBe(
+			'Time for the previous task ended. Nothing else is due right now'
+		);
 	});
 
 	test('previous task deleted', () => {

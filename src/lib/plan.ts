@@ -21,7 +21,8 @@ export function resizeTo(start: number, duration: number): number {
 
 type Span = Pick<Task, 'id' | 'startTime' | 'duration'>;
 
-const overlap = (a: Span, b: Span) => a.startTime < b.startTime + b.duration && b.startTime < a.startTime + a.duration;
+const overlap = (a: Span, b: Span) =>
+	a.startTime < b.startTime + b.duration && b.startTime < a.startTime + a.duration;
 
 export interface Placement<T extends Span> {
 	task: T;
@@ -38,7 +39,9 @@ export interface Placement<T extends Span> {
  * A group is a chain of tasks that overlap each other, every task in a group gets the same column count.
  */
 export function layoutDay<T extends Span>(tasks: T[]): Placement<T>[] {
-	const sorted = [...tasks].sort((a, b) => a.startTime - b.startTime || b.duration - a.duration || a.id - b.id);
+	const sorted = [...tasks].sort(
+		(a, b) => a.startTime - b.startTime || b.duration - a.duration || a.id - b.id
+	);
 	const placements: Placement<T>[] = [];
 	let group: Placement<T>[] = [];
 	let groupEnd = -1;
@@ -65,6 +68,11 @@ export function layoutDay<T extends Span>(tasks: T[]): Placement<T>[] {
 }
 
 /** Open tasks that overlap `task`, used for the warning when scheduling. */
-export function conflictsWith<T extends Span & { status: TaskStatus }>(task: Span, others: T[]): T[] {
-	return others.filter((other) => other.id !== task.id && other.status !== TaskStatus.Completed && overlap(task, other));
+export function conflictsWith<T extends Span & { status: TaskStatus }>(
+	task: Span,
+	others: T[]
+): T[] {
+	return others.filter(
+		(other) => other.id !== task.id && other.status !== TaskStatus.Completed && overlap(task, other)
+	);
 }

@@ -1,6 +1,14 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_TONE, TONE_LIMITS, TONE_NAMES, parseTone, readTone, toneLength, toneNotes } from '#lib/tones.js';
+import {
+	DEFAULT_TONE,
+	TONE_LIMITS,
+	TONE_NAMES,
+	parseTone,
+	readTone,
+	toneLength,
+	toneNotes
+} from '#lib/tones.js';
 
 describe('the library', () => {
 	test('every named tone is valid and within the caps', () => {
@@ -22,7 +30,11 @@ describe('parseTone', () => {
 
 	test('a custom tone is counted as custom and rounded', () => {
 		const result = parseTone({ wave: 'sine', notes: [{ hz: 440.4, ms: 200.2, rest: 50 }] });
-		expect(result).toEqual({ ok: true, value: { wave: 'sine', notes: [{ hz: 440, ms: 200, rest: 50 }] }, custom: true });
+		expect(result).toEqual({
+			ok: true,
+			value: { wave: 'sine', notes: [{ hz: 440, ms: 200, rest: 50 }] },
+			custom: true
+		});
 	});
 
 	test('rejects anything over the safety caps', () => {

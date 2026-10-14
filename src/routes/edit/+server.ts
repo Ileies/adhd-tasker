@@ -14,7 +14,10 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user) error(401, 'Login required');
 	const date = url.searchParams.get('date');
 	if (!isDateKey(date)) error(400, 'date must be YYYY-MM-DD');
-	const rows = await db.select().from(tasks).where(and(eq(tasks.email, locals.user.email), eq(tasks.date, date)));
+	const rows = await db
+		.select()
+		.from(tasks)
+		.where(and(eq(tasks.email, locals.user.email), eq(tasks.date, date)));
 	return Response.json(rows);
 };
 
@@ -43,7 +46,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 export const PUT: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) error(401, 'Login required');
-	const { id, title, description, date, duration, startTime, priority, status } = await request.json();
+	const { id, title, description, date, duration, startTime, priority, status } =
+		await request.json();
 	const taskId = parseInt(id as string);
 
 	if (isNaN(taskId)) {

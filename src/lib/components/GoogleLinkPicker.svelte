@@ -2,7 +2,8 @@
 	import { GOOGLE_SERVICES, parseServices } from '#lib/google.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 
-	const { linked: stored, message }: { linked: string | null | undefined; message?: string } = $props();
+	const { linked: stored, message }: { linked: string | null | undefined; message?: string } =
+		$props();
 
 	const linked = $derived(parseServices(stored));
 	// Ticks start from what is already linked, so adding one service keeps the others
@@ -24,29 +25,42 @@
 					type="checkbox"
 					name="service"
 					value={service.id}
-					class="mt-1 size-4 accent-primary"
+					class="accent-primary mt-1 size-4"
 					checked={ticked.includes(service.id)}
-					onchange={(e) => (ticked = e.currentTarget.checked ? [...ticked, service.id] : ticked.filter((id) => id !== service.id))}
+					onchange={(e) =>
+						(ticked = e.currentTarget.checked
+							? [...ticked, service.id]
+							: ticked.filter((id) => id !== service.id))}
 				/>
 				<span>
 					<span class="font-medium">{service.label}</span>
-					{#if linked.includes(service.id)}<span class="text-sm text-success"> - linked</span>{/if}
-					<span class="block text-sm text-muted-foreground">{service.description}</span>
+					{#if linked.includes(service.id)}<span class="text-success text-sm"> - linked</span>{/if}
+					<span class="text-muted-foreground block text-sm">{service.description}</span>
 				</span>
 			</label>
 		{/each}
 	</fieldset>
 
-	{#if message}<p class="text-sm text-destructive" role="alert">{message}</p>{/if}
+	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 
 	<div class="flex flex-wrap items-center gap-2">
-		<Button type="submit" disabled={ticked.length === 0}>{linked.length ? 'Update Google link' : 'Link Google Workspace'}</Button>
+		<Button type="submit" disabled={ticked.length === 0}
+			>{linked.length ? 'Update Google link' : 'Link Google Workspace'}</Button
+		>
 		{#if linked.length}
-			<Button type="submit" variant="ghost" formaction="?/unlinkGoogle" formnovalidate>Unlink</Button>
+			<Button type="submit" variant="ghost" formaction="?/unlinkGoogle" formnovalidate
+				>Unlink</Button
+			>
 		{/if}
 	</div>
-	<p class="text-sm text-muted-foreground">
-		Google asks you to confirm each permission. To take access away completely, remove the app in your
-		<a class="underline" href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">Google account permissions</a>.
+	<p class="text-muted-foreground text-sm">
+		Google asks you to confirm each permission. To take access away completely, remove the app in
+		your
+		<a
+			class="underline"
+			href="https://myaccount.google.com/permissions"
+			target="_blank"
+			rel="noreferrer">Google account permissions</a
+		>.
 	</p>
 </form>

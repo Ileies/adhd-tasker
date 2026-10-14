@@ -3,7 +3,12 @@ import { describe, expect, test } from 'bun:test';
 import { TaskStatus } from '#lib/types.js';
 import { conflictsWith, layoutDay, moveTo, resizeTo, snap } from '#lib/plan.js';
 
-const span = (id: number, startTime: number, duration: number, status = TaskStatus.Pending) => ({ id, startTime, duration, status });
+const span = (id: number, startTime: number, duration: number, status = TaskStatus.Pending) => ({
+	id,
+	startTime,
+	duration,
+	status
+});
 
 describe('grid', () => {
 	test('snaps to 15 minutes', () => {

@@ -40,7 +40,7 @@
 	</div>
 
 	{#if tasker.themeMode === 'auto'}
-		<div class="flex items-center gap-2 text-sm text-muted-foreground">
+		<div class="text-muted-foreground flex items-center gap-2 text-sm">
 			<span>Light from</span>
 			<Input
 				type="time"
@@ -58,6 +58,6 @@
 				aria-label="Daytime ends"
 			/>
 		</div>
-		<p class="text-xs text-muted-foreground">Dark outside these hours.</p>
+		<p class="text-muted-foreground text-xs">Dark outside these hours.</p>
 	{/if}
 </div>
