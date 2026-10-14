@@ -72,7 +72,7 @@ Run `bun run verify --quick` before committing. While working, prefer `bun run t
 
 | Route                | Purpose                                                                                                                                                                                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                  | Now: current task hero in an urgency color, rail with the next tasks, missed strip, agent card strip. Top bar auto-hides, fullscreen and wake lock                                                                                                                  |
+| `/`                  | Now: hero in an urgency color (active, wrapping up, time up with a transition bar, free, empty: `heroState` in `now.ts`), rail with the next tasks, missed strip, agent card strip. Top bar auto-hides, fullscreen and wake lock                                    |
 | `/edit`              | Plan: day switcher, 24 hour timeline (drag to move, handle to resize, 15 min snap), quick add line, phone list                                                                                                                                                      |
 | `/edit` (API)        | Task CRUD: GET one day (`?date=`), POST, PUT, DELETE                                                                                                                                                                                                                |
 | `/alarms`            | User alarms with tone preview, "use this device for sound", the assistant's wakeups                                                                                                                                                                                 |
@@ -137,9 +137,9 @@ Every plan edit calls `emit()` (`src/lib/server/events.ts`): the `/edit` routes,
 
 Pure rules in `src/lib/anchoring.ts` (tested). All three work without an OpenAI key.
 
-- **"I'm stuck"** is a button next to Done in `NowHero.svelte`. The user picks what is in the way (`STUCK_REASONS`), a fixed hint with one small first step shows at once, and `POST /agent/stuck` logs `stuck.pressed` (origin user). The agent answers with one `say`/`ask` card when it can. The event is not a toggle: it ignores per-event toggles, quiet hours, the budget and the 3 minute gap (the user is here and asking), but `observe`, a missing key and the hourly limit still apply.
-- **Reminders:** a toast and the soft `reminder` chime when the next task starts within `users.reminderAdvanceTime` minutes (`reminderDue`), if `enableReminders`.
-- **Hyperfocus alarm:** a toast and the `nudge` tone when the latest unfinished task passed its end by `users.overrunMinutes` (`hyperfocusDue`), if `hyperfocusAlarm`. The same minutes drive the `task.overrun` event. A page loaded long after the moment stays quiet.
+- **"I'm stuck"** is a button next to Done in `NowHero.svelte`. The user picks what is in the way (`STUCK_REASONS`), a fixed hint with one small first step shows at once with a button that sets a short timer alarm (`POST /schedule` with `in_minutes`), and `POST /agent/stuck` logs `stuck.pressed` (origin user). The agent answers with one `say`/`ask` card when it can. The event is not a toggle: it ignores per-event toggles, quiet hours, the budget and the 3 minute gap (the user is here and asking), but `observe`, a missing key and the hourly limit still apply.
+- **Reminders:** the heads-up line for the next task in the hero ("Call dentist starts in 5 min. Start wrapping up.") and the soft `reminder` chime when it starts within `users.reminderAdvanceTime` minutes (`reminderDue`), if `enableReminders`.
+- **Hyperfocus alarm:** the hero shows time up (`heroState`: the latest unfinished task ended, stays until answered or for two overrun windows) and the `nudge` tone sounds when it passed its end by `users.overrunMinutes` (`hyperfocusDue`), if `hyperfocusAlarm`. Time up offers Done, 15 more min and Move to later (`extendTask`, `moveLater` in `plan.ts`), every change with an Undo toast. The same minutes drive the `task.overrun` event. A page loaded long after the moment stays quiet. Entering the wrap-up of a task plays one soft `wrap-up` sound (`wrapUpStarted`).
 - Both run in `src/routes/+page.svelte`, sound only on the display device (`playsSound()`), once per moment (`momentKey`), muted when muted. Both settings are on `/settings` (`saveAnchoring`).
 
 ### Schedule, alarms, wakeups, tones
@@ -154,11 +154,11 @@ Tones (`src/lib/tones.ts`, no audio files): library `chime soft nudge rising urg
 
 ### Audio and platform (`src/lib/index.ts`, `src/lib/display.ts`)
 
-Everything is synthesized with the Web Audio API. `playSound('task-started')` when the current task switches while the page is open, `playSound('reminder')` every 5 minutes while a task is current and unmuted, `playTone(tone)` for alarms and agent tones. Fullscreen and Screen Wake Lock (`keepAwake`). PWA: `static/manifest.webmanifest`, icons, and `src/service-worker/` which caches only built assets and static files (pages and task data always come from the server). The service worker has its own tsconfig and is excluded from the root one.
+Everything is synthesized with the Web Audio API. `playSound('task-started')` when the current task switches while the page is open, `playSound('wrap-up')` when a task enters its last minutes, `playSound('reminder')` every 5 minutes while a task is current and unmuted, `playTone(tone)` for alarms and agent tones. Fullscreen and Screen Wake Lock (`keepAwake`). PWA: `static/manifest.webmanifest`, icons, and `src/service-worker/` which caches only built assets and static files (pages and task data always come from the server). The service worker has its own tsconfig and is excluded from the root one.
 
 ### Other pure modules
 
-`plan.ts` (snap and drag math, 15 min grid), `quickadd.ts` (parses the quick add line), `format.ts`, `activity.ts` (one line summaries of agent changes), `types.ts` (`Task`, `Priority`, `TaskStatus`).
+`now.ts` (hero states, wrap-up window, heads-up line), `plan.ts` (snap and drag math, 15 min grid, `extendTask`, `nextFreeSlot`, `moveLater`), `quickadd.ts` (parses the quick add line), `format.ts`, `activity.ts` (one line summaries of agent changes), `types.ts` (`Task`, `Priority`, `TaskStatus`).
 
 ## Deployment
 

@@ -198,6 +198,15 @@ A valid session loads the user; the first login creates the user row; an expired
 
 ## 4. Transitions
 
+**Done in code, 2026-10-14. Not yet seen on a real screen** (no browser here): the exit criterion in section 7 needs a look at Now with a task running out. `bun run verify` passes. Where the result differs from the steps below:
+
+- 4.1: decided as proposed. Time up stays until answered (Done, 15 more min and Move to later all take the task out of `missed`), at most two overrun windows (`TIME_UP_WINDOWS`), and the tap sounds at the overrun minute while it is on screen. The overrun toast is gone. The wrap-up window is the larger of 10 minutes and 25 %, but never more than half of the task (a 15 min task would otherwise be wrapping up from its first minute). The hero is the `hero` prop of `NowHero` (a prop called `state` clashes with the `$state` rune).
+- 4.2: `wrapUpStarted` limits the cue to the first two minutes of the wrap-up, so a page loaded late stays quiet. `momentKey` has a `wrap-up` kind. Extending a task gives it a new key, so the next wrap-up cues again.
+- 4.3: Move to later is `moveLater` in `plan.ts` on top of `nextFreeSlot`. When nothing fits today it moves the task to tomorrow at the same time and says so in the Undo toast, instead of asking. The `...` menu is `HeroMenu.svelte`: Edit (the existing `TaskForm` over Now), 15 more min, Move to later today, Move to tomorrow, Drop. All with Undo.
+- 4.4: the heads-up line shows in the active and wrapping-up hero (only wrapping up adds "Start wrapping up."). The free hero already counts down to the next task, so it has no extra line. The chime stays, the toast is gone.
+- 4.5: the meta line keeps the priority bars without the label (color is never the only cue) and adds "Highest of N right now". I'm stuck is smaller than Done. Each stuck hint has a timer button (`action` in `STUCK_REASONS`) that creates an alarm through `POST /schedule` with `in_minutes`.
+- The "Missed" cards in the rail were not touched, they already use `extendTask`. The rail redesign stays in UX phase 4.
+
 Problems this solves (UX plan review):
 
 1. **A task that runs out silently vanishes from the hero.** `rank()` moves it to `missed` the minute its window ends, the hero switches to the next task or "Free time", and the only trace is a small entry in the rail. A hyperfocused user looks up and sees "Free time" while still on the task. The overrun signal is a toast. There is no "time is up, what now" moment. (`urgencyLevel` even has a level for time below zero, but the hero can never reach it.)
@@ -305,7 +314,7 @@ Done stays the largest control. After a tap the hero shows a short confirmation 
 | 1. The gate (done)          | 1 day  | `bun run verify` exists and is green, deploy uses it                          |
 | 2. Pure module tests (done) | 4 h    | Every pure module tested, property tests in place                             |
 | 3. Defect fixes (done)      | 1 day  | D1 to D8 each have a test that failed before its fix                          |
-| 4. Transitions              | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
+| 4. Transitions (in code)    | 2 days | Time up, wrapping up, 15 more min and the `...` menu work on a real screen    |
 | 5. Feedback and silence     | 1 day  | Done feedback, draining bar, silence line and tab title work on a real screen |
 
 Parts go in this order: 1 before everything, 3 before 4.
