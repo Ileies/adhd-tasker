@@ -44,6 +44,12 @@ bun run db:push           # create the SQLite schema
 bun run dev
 ```
 
+`.git-blame-ignore-revs` lists formatting-only commits. To keep them out of `git blame`, run once:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 Environment variables (all read at build time):
 
 | Variable                  | Meaning                                                                                                                                                               |

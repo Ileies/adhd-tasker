@@ -2,6 +2,7 @@ node_modules
 .*
 !.gitignore
 !.prettierrc
+!.git-blame-ignore-revs
 /build
 local.db
 !.env.example
