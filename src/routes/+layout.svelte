@@ -7,6 +7,7 @@
 	import { deviceTimezone } from '#lib/time.js';
 	import { toggleFullscreen } from '#lib/display.js';
 	import { startStream } from '#lib/stream.js';
+	import { showOneTap } from '#lib/onetap.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { enhance } from '$app/forms';
@@ -34,7 +35,7 @@
 
 	// The GSI script can scan the DOM before hydration, so close a prompt that is already showing
 	$effect(() => {
-		if (!data.user && !legal) return;
+		if (!data.user) return;
 		const cancel = () =>
 			(
 				window as { google?: { accounts?: { id?: { cancel?: () => void } } } }
@@ -42,6 +43,13 @@
 		cancel();
 		const timer = setTimeout(cancel, 1000);
 		return () => clearTimeout(timer);
+	});
+
+	// One Tap for logged out visitors, started from code so it also shows after a client side
+	// navigation (for example from /privacy to /). The cleanup closes it again on legal pages.
+	$effect(() => {
+		if (data.user || legal) return;
+		return showOneTap({ clientId: PUBLIC_GOOGLE_CLIENT_ID, loginUri: PUBLIC_REDIRECT_URI });
 	});
 
 	// Alarms, cards and plan changes the agent made on its own arrive over one pushed stream
@@ -213,12 +221,3 @@
 		{@render children()}
 	</main>
 </div>
-
-{#if !data.user && !legal}
-	<div
-		id="g_id_onload"
-		data-client_id={PUBLIC_GOOGLE_CLIENT_ID}
-		data-login_uri={PUBLIC_REDIRECT_URI}
-		data-auto_select="true"
-	></div>
-{/if}
