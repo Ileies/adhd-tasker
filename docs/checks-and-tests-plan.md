@@ -2,7 +2,7 @@
 
 Status: proposed, 2026-10-14. Measured on `ffec608` with Bun 1.4.2, SvelteKit 3.0.1, Svelte 5.57, drizzle-kit 0.31.10, TypeScript 6.0.3. Every technical claim below that the plan depends on was run on this machine, not assumed (see section 11).
 
-**Waits for `docs/soon-plan.md`.** The green baseline, static checks, `bun run verify`, the test infrastructure, the pure module tests and the fixes for D1 to D8 moved there (former phases 0 to 3, 4.1, 4.6, the `/edit` part of 5.3 and 6.5). So did the target gate (section 4) and the test writing rules (section 7, they go into `CLAUDE.md`). What is left here starts once that plan is done. Section and phase numbers are kept so references stay valid.
+**Waits for `docs/local-first-plan.md`.** The green baseline, static checks, `bun run verify`, the test infrastructure, the pure module tests and the fixes for D1 to D8 were built by the soon plan (former phases 0 to 3, 4.1, 4.6, the `/edit` part of 5.3 and 6.5), which was finished and deleted on 2026-10-14 (git history, `docs/soon-plan.md` at `3802a8e`). So were the target gate (section 4) and the test writing rules (section 7, now in `CLAUDE.md`). The local first plan moved the assistant, agent, schedule and voice rules into `src/lib/core/` behind a `Repo`, a `Model` and a context (with a repo contract suite and `db-repo.ts`), and put the client behind a `Backend`. Phases 4 and 6 below name the old module paths: re-read them against `core/` and `backend.ts` before starting, the seams and fakes are probably simpler now. Section and phase numbers are kept so references stay valid.
 
 ## 1. What the checks are for
 
@@ -31,22 +31,22 @@ Principles:
 
 ## 2. Starting point
 
-After the soon plan: `bun run verify` is green and gates deploy, the test infrastructure from soon plan 1.7 exists, every pure module is tested, and D1 to D8 are fixed.
+Now (2026-10-14): `bun run verify` is green and gates deploy, the test infrastructure exists, every pure module is tested (572 tests, about 2.9 s in three time zones, 99 % of lines), and D1 to D8 are fixed.
 
-Still untested then:
+Still untested, as the allowlist in `src/test/architecture.test.ts` says:
 
-- Server: `agent.ts`, `assistant.ts`, `schedule.ts`, `voice.ts`, and `events.ts` beyond `startOfDayMs`
+- Server and core: `core/agent.ts`, `core/assistant.ts`, `core/schedule.ts`, `core/usage.ts`, `core/voice.ts` and their server wrappers `server/agent.ts`, `server/assistant.ts`, `server/schedule.ts`, `server/voice.ts`
 - Route modules other than `/edit`
-- Client wiring: `speech.ts`, `theme.ts`, `alarms.ts`, `stream.ts`, `assistant.ts`, `agent.ts`, `display.ts` (`index.ts` only for the D4 mutations)
+- Client wiring: `alarms.ts`, `agent.ts`, `assistant.ts`, `stream.ts`, `theme.ts`. `speech.ts`, `display.ts`, `audio.ts` and `index.ts` stay permanent entries (browser API wiring, their rules live in tested pure modules such as `silence.ts` and `tones.ts`)
 
-Re-measure before starting: the UX work in the soon plan changes `index.ts` and the Now components.
+Re-measure before starting: the local first plan rewrote the layer under the server logic, and the soon plan changed `index.ts` (one shared audio context) and the Now components.
 
 ## 3. Open gaps
 
-| ID  | Gap                                                                                                                                                        | Fixed in |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| G8  | No CI                                                                                                                                                      | Phase 8  |
-| G10 | `.gitignore` ignores every dotfile (`.*`), so `.github/` and `.envrc` would silently stay untracked (`.git-blame-ignore-revs` is handled in the soon plan) | 7, 8     |
+| ID  | Gap                                                                                                                                       | Fixed in |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| G8  | No CI                                                                                                                                     | Phase 8  |
+| G10 | `.gitignore` ignores every dotfile (`.*`), so `.github/` and `.envrc` would silently stay untracked (`.git-blame-ignore-revs` is handled) | 7, 8     |
 
 ## 5. Phases
 

@@ -1,6 +1,6 @@
 # Local First Plan
 
-Status: written 2026-10-14, decisions in section 1 open for veto. This plan comes before every other plan. `soon-plan.md` is paused after Part 4 (done in code, not yet seen on a screen); its Part 5 continues when this plan is done.
+Status: written 2026-10-14, decisions in section 1 open for veto. This plan comes before every other plan. The soon plan (gate, tests, D1 to D8, transitions, feedback and silence) was finished and deleted on 2026-10-14, so this is the only plan being worked on.
 
 ## Why
 
@@ -74,7 +74,7 @@ A layer scale in `app.css` (`--z-bar`, `--z-overlay`, `--z-toast`, `--z-alarm`) 
 
 ### 1.5 Head
 
-A `<title>` on every page ("Plan - ADHD Tasker"; soon plan 5.2 makes the Now title live later). The meta description in `app.html` ("24-hour task management application") becomes the manifest's line. Open Graph title, description and image for link previews.
+A `<title>` on every page ("Plan - ADHD Tasker"; the Now title is live, built with the soon plan). The meta description in `app.html` ("24-hour task management application") becomes the manifest's line. Open Graph title, description and image for link previews.
 
 ### 1.6 Page frame (moved from UX plan section 13)
 
@@ -261,7 +261,7 @@ The menu entry says what happens: "Log out. Your plan stays in your account, thi
 
 ### 5.5 Export and delete for accounts (roadmap G1)
 
-`GET /account/export` in the same format as the guest export. "Delete my account" in Settings: an Undo toast for 10 s, then the user row goes and foreign keys (soon plan D8) take every other row with it; Google tokens are revoked (Part 6). Test: no row of the user is left in any table. The guest gets the device delete from 3.6.
+`GET /account/export` in the same format as the guest export. "Delete my account" in Settings: an Undo toast for 10 s, then the user row goes and foreign keys (foreign keys on, built with the soon plan) take every other row with it; Google tokens are revoked (Part 6). Test: no row of the user is left in any table. The guest gets the device delete from 3.6.
 
 ## 8. Part 6: Google Calendar
 
@@ -303,4 +303,4 @@ Each statement names the code that makes it true, in the commit message, as road
 - `docs/ux-plan.md`: remove what moved here (section 3 logged out redirects and "sign-in page stays as it is" in section 11, both now wrong; section 10 Behavior; section 13 page frame; phase 10) and point to this plan.
 - `docs/checks-and-tests-plan.md`: route matrices gain the guest column (every API still answers 401 to a guest, the guest never calls it).
 
-Then delete this file and continue with `soon-plan.md` Part 5.
+Then delete this file, re-read `ux-plan.md`, `checks-and-tests-plan.md` and `feature-ideas.md` against the new code, update them once, and pick the next plan.

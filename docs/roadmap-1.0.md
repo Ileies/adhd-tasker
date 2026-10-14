@@ -1,8 +1,8 @@
 # Roadmap to 1.0
 
-Status: decided scope, 2026-10-14. Progress: **32 of 118 points, 27 %**.
+Status: decided scope, 2026-10-14. Progress: **47 of 118 points, 40 %**.
 
-This file owns the definition of 1.0, how progress is measured and the order of the work. It does not replace the detailed plans. Each criterion points to the plan that describes how it is built (`soon-plan.md`, `checks-and-tests-plan.md`, `ux-plan.md`, `feature-ideas.md`). When a plan and this file disagree about scope, this file wins. When they disagree about how, the plan wins.
+This file owns the definition of 1.0, how progress is measured and the order of the work. It does not replace the detailed plans. Each criterion points to the plan that describes how it is built (`checks-and-tests-plan.md`, `ux-plan.md`, `feature-ideas.md`). When a plan and this file disagree about scope, this file wins. When they disagree about how, the plan wins.
 
 ## 1. What 1.0 is
 
@@ -46,13 +46,13 @@ These cuts are my call and open to veto. The two I would argue hardest to keep o
 - Every criterion has **points** (1 is about half a dev day, 2 about a day, 3 about two days, 5 about a week) and a **proof**: a command, a test or a thing to look at. A criterion counts only when its proof passes, never when "most of it is done".
 - Shipped work counts too, scored on the same scale, so the percentage is a share of the whole of 1.0 and not of what is left.
 - Progress = points done / 118. Update the checkboxes and the number at the top in the same commit that lands a criterion.
-- Remaining estimate: 86 points, about 43 dev days, 8 to 9 weeks full time. Re-estimate at each milestone, not in between.
+- Remaining estimate: 71 points, about 35 dev days, 7 weeks full time. Re-estimate at each milestone, not in between.
 
 ## 4. Scorecard
 
 `[x]` done, `[ ]` open. Source column points to the detailed plan.
 
-### A. Core loop (13 of 29)
+### A. Core loop (23 of 29)
 
 | ID  | Criterion                                                                                              | Pts | Proof                                                                     | Source        |     |
 | --- | ------------------------------------------------------------------------------------------------------ | --- | ------------------------------------------------------------------------- | ------------- | --- |
@@ -60,9 +60,9 @@ These cuts are my call and open to veto. The two I would argue hardest to keep o
 | A2  | Now screen: urgency hero, rail, missed strip, wake lock, fullscreen                                    | 3   | Looks right on a wide screen and a phone                                  | shipped       | x   |
 | A3  | Plan: dated days, timeline drag and resize, quick add                                                  | 3   | `plan.test.ts`, `quickadd.test.ts` green                                  | shipped       | x   |
 | A4  | Synthesized audio cues                                                                                 | 2   | `tones.test.ts` green, heard                                              | shipped       | x   |
-| A5  | Transitions: wrapping up, time up, transition bar, 15 more min, `...` menu, "I'm stuck" action buttons | 5   | `now.test.ts`, `plan.test.ts` green; a task that runs out is never silent | soon plan 4   |     |
-| A6  | Feedback: Done confirmation and sound, draining bar, time in words, tab title                          | 3   | `format.test.ts` green; seen on a real screen                             | soon plan 5   |     |
-| A7  | Silence is visible: muted and audio-blocked line                                                       | 2   | Reload with a blocked context shows "Tap anywhere to turn sound on"       | soon plan 5.3 |     |
+| A5  | Transitions: wrapping up, time up, transition bar, 15 more min, `...` menu, "I'm stuck" action buttons | 5   | `now.test.ts`, `plan.test.ts` green; a task that runs out is never silent | soon plan 4   | x   |
+| A6  | Feedback: Done confirmation and sound, draining bar, time in words, tab title                          | 3   | `format.test.ts` green; seen on a real screen                             | soon plan 5   | x   |
+| A7  | Silence is visible: muted and audio-blocked line                                                       | 2   | Reload with a blocked context shows "Tap anywhere to turn sound on"       | soon plan 5.3 | x   |
 | A8  | Missed triage: one task at a time, Done, Later today, Tomorrow, Drop                                   | 3   | Triage sheet works, each answer has Undo                                  | ux plan 4     |     |
 | A9  | Push the rest of the day by 15, 30 or 60 min, with a "did not fit" list                                | 2   | Pure `pushDay()` test incl. midnight edge; Undo restores all              | feature ideas |     |
 | A10 | Overbooked day warning on Plan                                                                         | 1   | Pure test; line shows when unfinished minutes exceed time left            | feature ideas |     |
@@ -108,14 +108,14 @@ These cuts are my call and open to veto. The two I would argue hardest to keep o
 | E6  | First run: no theme question, essentials intro (sleep, meals, water, shower, nails: pick a time for each, needs planning first, see section 6), one-time second screen hint | 1   | A new account reaches a useful screen after only choosing times for the essentials | ux plan 10 |     |
 | E7  | Accessibility: axe has no serious or critical violation on Now in light and dark, everything reachable by keyboard                                                          | 2   | `bun run test:e2e` axe spec green                                                  | ux plan 13 |     |
 
-### F. Trust (3 of 21)
+### F. Trust (8 of 21)
 
 | ID  | Criterion                                                                                                                                               | Pts | Proof                                                                          | Source               |     |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------------------------------------------ | -------------------- | --- |
 | F1a | Static gate and test infrastructure: type aware lint, architecture rules, preload, fixtures                                                             | 2   | `bun run lint`, `check`, `test` green                                          | soon plan 1.1 to 1.7 | x   |
 | F1b | `bun run verify` and a deploy that refuses to ship without it, fatal schema check                                                                       | 1   | `bun run deploy --dry-run` fails on a red tree                                 | soon plan 1.8, 1.9   | x   |
-| F2  | Every pure module tested, property tests in place                                                                                                       | 2   | Pairing rule in the architecture test passes with the temporary allowlist only | soon plan 2          |     |
-| F3  | D1 to D8 fixed, each with a test that failed first                                                                                                      | 3   | Test names in the plan resolve; foreign keys on in production                  | soon plan 3          |     |
+| F2  | Every pure module tested, property tests in place                                                                                                       | 2   | Pairing rule in the architecture test passes with the temporary allowlist only | soon plan 2          | x   |
+| F3  | D1 to D8 fixed, each with a test that failed first                                                                                                      | 3   | Test names in the plan resolve; foreign keys on in production                  | soon plan 3          | x   |
 | F4  | Server integration: every guardrail proven silent without a model call, schedule never rings twice                                                      | 4   | `server/*.test.ts` green, fake OpenAI fails on any unexpected request          | checks plan 4        |     |
 | F5  | Route contracts: login matrix and ownership matrix cover every route                                                                                    | 3   | Route coverage rule in the architecture test passes                            | checks plan 5        |     |
 | F6  | Client wiring tests, coverage threshold raised to the measured floor                                                                                    | 1   | `verify` green at the new threshold                                            | checks plan 6        |     |
@@ -134,7 +134,7 @@ These cuts are my call and open to veto. The two I would argue hardest to keep o
 | G5  | Dogfood: the author uses it as the only planner for 14 days, then three outside users for 7 days                          | 3   | At most one incident in the 14 days where the screen was wrong or silent, no blocking issue from the three | new    |     |
 | G6  | Docs match the code: `CLAUDE.md`, `README.md` rewritten, finished plans deleted, `TODO.md` empty of 1.0 items             | 1   | `grep` for removed concepts finds nothing                                                                  | new    |     |
 
-Totals: A 29, B 11, C 13, D 14, E 20, F 21, G 10 = 118. Done: A 13, B 4, D 12, F 3 = 32.
+Totals: A 29, B 11, C 13, D 14, E 20, F 21, G 10 = 118. Done: A 23, B 4, D 12, F 8 = 47.
 
 ## 5. Milestones
 
@@ -142,8 +142,8 @@ Order follows the dependencies: the gate before anything that mutates data (D1 b
 
 | #   | Milestone  | Contains                                                | Points | Cumulative  | Exit                                                                                             |
 | --- | ---------- | ------------------------------------------------------- | ------ | ----------- | ------------------------------------------------------------------------------------------------ |
-| 0   | Baseline   | What exists today                                       | 32     | 32 (27 %)   | Now                                                                                              |
-| 1   | **Solid**  | F2, F3, A5, A6, A7, C4, F4, F5 (F1b is done)            | 23     | 55 (47 %)   | `verify` gates deploy. A task that runs out is never silent. Every guardrail and route is tested |
+| 0   | Baseline   | What exists today                                       | 47     | 47 (40 %)   | Now                                                                                              |
+| 1   | **Solid**  | C4, F4, F5 (the rest is done)                           | 8      | 55 (47 %)   | `verify` gates deploy. A task that runs out is never silent. Every guardrail and route is tested |
 | 2   | **Calm**   | E1, A8, E2, E3, E4, E5, B4, D4, E6, E7, then F6, F7, F8 | 31     | 86 (73 %)   | Every screen reworked, CI and e2e green. Nothing below this line changes the existing screens    |
 | 3   | **Rhythm** | C1, C2, C3, A9, A10                                     | 15     | 101 (86 %)  | A real week can be planned once. Day has a defined end                                           |
 | 4   | **Reach**  | B2                                                      | 5      | 106 (90 %)  | The anchor works with the tab closed                                                             |
@@ -151,7 +151,7 @@ Order follows the dependencies: the gate before anything that mutates data (D1 b
 
 Notes on the order:
 
-- **Solid first** because the soon plan is already decided and everything after it relies on its gate. F4 and F5 do not depend on the UX work, so they go here, while F6 and F7 touch screens the UX phases rewrite and go at the end of Calm.
+- **Solid first** because everything after it relies on its gate, which is built (`soon-plan.md` was finished and deleted on 2026-10-14, see git history). F4 and F5 do not depend on the UX work, so they go here, while F6 and F7 touch screens the UX phases rewrite and go at the end of Calm.
 - **C4 in Solid** because the data only exists from the day it starts being recorded, and it costs one column. Estimate learning in 1.1 will thank it.
 - **Calm before Rhythm** because recurring tasks and the inbox change Plan and Now, and doing them on top of a rework avoids doing them twice.
 - **Web Push late** because it needs the alarm page cleaned up (B4) and a settled Privacy page, and because the always-on second screen, the main use case, already works without it. It is still in 1.0 because "an alarm is never silent" is a promise.
@@ -165,7 +165,6 @@ Notes on the order:
 | Recurring tasks conflict with "a task belongs to one `task.date`". Materialize or compute?                                            | Decide at the start of C1. Leaning to materialize rows ahead (14 days) so `rank()` and every other module stay untouched               |
 | Essentials usually beat other tasks but not always (one less hour of sleep for the only exam hour)                                    | Decide at the start of C1: each essential has a floor, numbers decide small trades, the user is asked for anything below the floor     |
 | First run asks for the essentials and their times (E6). Not planned yet: which items, defaults, skippable or required, how it fits C1 | Plan it before E6 and C1 start, together, since the intro creates the recurring tasks. E6 points will grow                             |
-| The soon plan open question: how long time up stays on screen relative to the hyperfocus tap                                          | Decide at the start of soon plan 4.1, as written there                                                                                 |
 | `CLAUDE.md` says no stat tiles. The "3 done today" line is an exception already agreed in the UX plan                                 | Write the exception into `CLAUDE.md` in UX phase 4                                                                                     |
 | Scope creep from `feature-ideas.md`. Many ideas rate 9 out of 10                                                                      | Nothing joins 1.0 without a new row in section 4 with points and a proof, and without removing points of equal size or moving the date |
 | The estimate is mine, not measured. UX phases have no estimate in their own plan                                                      | Re-estimate at each milestone. A phase that took twice the points is recorded here so the next estimate is honest                      |
@@ -173,8 +172,7 @@ Notes on the order:
 
 ## 7. Next actions
 
-1. Part 2 and Part 3 of the soon plan (pure tests, D1 to D8). D8 needs `PRAGMA foreign_key_check` on a copy of the production DB first. (Part 1, the gate, is done.)
-2. Part 4 (transitions), then Part 5 (feedback and silence), then add C4.
-3. Server integration and route contracts (checks plan 4 and 5). That closes Solid.
+1. `local-first-plan.md` (the current work, not scored here yet: login optional, guest mode, first run, account move). It rewrites the storage seam under the server logic, so checks plan phase 4 waits for it. Add its points to this scorecard when it is done.
+2. C4 (`startedAt` and `completedAt`, one column), then server integration and route contracts (checks plan 4 and 5). That closes Solid.
 
-When Solid is done: delete `docs/soon-plan.md`, re-read `ux-plan.md`, `checks-and-tests-plan.md` and `feature-ideas.md` against the code, and update the scorecard.
+The soon plan (gate, pure tests, D1 to D8, transitions, feedback and silence) is finished and deleted. The other plans were re-read against the code on 2026-10-14, and each says at its top what changed.

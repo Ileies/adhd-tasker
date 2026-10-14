@@ -1,6 +1,6 @@
 # Feature Ideas (Brainstorm)
 
-Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts. "Wrap-up cue before a task ends" and "Hyperfocus exit ramp" moved to `docs/soon-plan.md` (Part 4).
+Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts. "Wrap-up cue before a task ends" and "Hyperfocus exit ramp" are built (time up, wrapping up, the `wrap-up` sound, 15 more min).
 
 **Rating (1 to 10)** = how much this would improve the day of a person with ADHD if done well. It measures impact only, not effort. Effort is the scope section.
 

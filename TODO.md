@@ -4,13 +4,11 @@ Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
 - `local-first-plan.md`: current work
-- `soon-plan.md`: paused after Part 4, Part 5 follows the local first plan
-- `ux-plan.md`, `checks-and-tests-plan.md`, `feature-ideas.md`: waiting for both
+- `ux-plan.md`, `checks-and-tests-plan.md`, `feature-ideas.md`: waiting for the local first plan
 
 ## Now
 
-- `docs/local-first-plan.md`: first impression fixes, login optional with guest mode on the device, first run, moving into an account without losing data, Google Calendar, privacy and terms
-- Then `docs/soon-plan.md` Part 5: feedback and silence. The other plans in `docs/` wait until both are done, then get updated once against the new code
+- `docs/local-first-plan.md`: first impression fixes, login optional with guest mode on the device, first run, moving into an account without losing data, Google Calendar, privacy and terms. The soon plan (gate, tests, D1 to D8, transitions, feedback and silence) is done and deleted, the other plans wait until this one is done and then get updated against the new code
 
 ## Later
 

@@ -2,7 +2,7 @@
 
 Status: decided, ready to implement. No code changes yet. The answers to the open questions are in section 15.
 
-**Waits for `docs/soon-plan.md`.** Phases 1 (Transitions) and 2 (Feedback and silence) moved there, with the hero states, the hero details, the tab title, the silence line, the feedback table (former section 12), problems 1 to 3 and the decisions on stuck timers and when "15 more min" appears. What is left here starts once that plan is done. Section and phase numbers are kept so references stay valid.
+**Waits for `docs/local-first-plan.md`.** Phases 1 (Transitions) and 2 (Feedback and silence) were built by the soon plan, which was finished and deleted on 2026-10-14 (git history, `docs/soon-plan.md` at `3802a8e`): hero states, time up, transition bar, `...` menu, Done confirmation and sound, draining bar, time in words, tab title, silence line, problems 1 to 3 and the blocked audio part of 4. The local first plan then built parts of this one (a shared page frame, a title on every page, failure toasts above dialogs, an error page) and makes login optional, which changes sections 3, 11 and the logged-out parts of phase 3: there is no sign-in wall and no redirect, a guest sees the same app. Section and phase numbers are kept so references stay valid. What is left here starts once the local first plan is done, and is re-read against the code then.
 
 Basis: a review of every route and component (`+layout.svelte`, Now, Plan, TaskForm, AssistantDrawer, Alarms, Activity, Settings and all settings forms, dialogs, toast, banner). It was read from code, not from screenshots, so every phase ends with a look at the real screen on a wide display and a phone.
 
@@ -25,15 +25,15 @@ Three more rules:
 
 ## 2. The biggest problems, ranked by impact
 
-Problems 1 to 3 and the blocked audio part of 4 are solved by the soon plan.
+Problems 1 to 3 and the blocked audio part of 4 are solved (hero states, Done feedback, silence line).
 
-4. **Mute has no timer**, so "muted for a meeting" easily becomes "muted all day". (The visible silence line comes with the soon plan.)
+4. **Mute has no timer**, so "muted for a meeting" easily becomes "muted all day". (The visible silence line is built: "Sound off" or "Tap anywhere to turn sound on".)
 5. **Navigation has no clear model.** Plan is a button on the left, Now is the logo, `/edit` adds its own "Back to Now", and Alarms, Activity and Settings sit under a user icon that reads as "account".
 6. **Priority colors disagree across the app.** High is orange on Now, a blue block on the Plan timeline and an amber chip in the phone list. Urgent is a yellow block but a red chip. Colors only help if they mean one thing.
 7. **Settings mixes instant and Save-button saving.** Theme and timezone apply at once, three other cards need their own Save. Forgetting to press Save is a typical ADHD failure. Free number inputs ask for decisions that presets could answer.
 8. **Missed tasks pile up as a wall of buttons.** Up to three cards with Done, +15 min and Drop each sit in the peripheral rail. It is noisy and invites guilt, and there is no "move to later" or "tomorrow", only extend from now or delete.
 9. **Plan has two rows of chrome and a dialog-heavy create flow.** Global bar plus a wrapping toolbar (Back, day switcher, date input, Today, quick add, Details). Clicking the timeline opens a full dialog with a 60 min default, while quick add uses 30 min.
-10. **The first visit asks a question before showing anything** (theme dialog), and an empty day shows "Free time / Nothing else is planned" with no way forward.
+10. **The first visit asks a question before showing anything** (theme dialog), and an empty day shows "Free time / Nothing else is planned" with no way forward. (The first run part is in the local first plan, part 4.)
 
 Smaller findings are listed per page below.
 
@@ -60,11 +60,11 @@ Two primary places and one tool, everything else is secondary:
   - Plan: the day switcher `< Today, Wed 14 Oct >`. This removes the second toolbar row on Plan.
   - Other pages: the page title.
 - **Sound button** opens a small popover instead of the hover slider (which is hidden on touch and mutes on the same tap):
-  - Mute for 1 hour (first), 30 min, or until I unmute. Stored as `mutedUntil` in `tasker`, sound returns on its own. The silence line from the soon plan then says "Sound off until 15:30"
+  - Mute for 1 hour (first), 30 min, or until I unmute. Stored as `mutedUntil` in `tasker`, sound returns on its own. The silence line (built) then says "Sound off until 15:30"
   - Volume slider
   - "This screen plays sound" switch (moved from the Alarms page, this is where the user thinks about sound)
 - **Fullscreen** leaves the bar (tier 4: once per session). Menu item plus the `F` key.
-- The bar keeps auto-hiding on Now after 5 s. Logged out, the bar shows nothing but the logo: no Plan button, no menu with Settings, since none of it works without an account. `/edit`, `/alarms`, `/activity` and `/settings` redirect to the sign-in page when logged out.
+- The bar keeps auto-hiding on Now after 5 s. Logged out is guest mode (local first plan): the bar is the same, nothing redirects. Only what needs an account (Activity, the account part of the menu) is hidden or says so.
 
 ### Keyboard (desktop, shown under Menu > Keyboard shortcuts)
 
@@ -83,7 +83,7 @@ Shortcuts are ignored while typing in a field. Pure key map in `src/lib/shortcut
 
 ## 4. Now screen
 
-The hero (states, time up, transition bar, `...` menu, Done feedback, time bar, tab title) is built by the soon plan. What is left here is the rail and the phone layout around it.
+The hero (states, time up, transition bar, `...` menu, Done feedback, time bar, tab title) is built. What is left here is the rail and the phone layout around it.
 
 ### Layout, wide screen
 
@@ -129,7 +129,7 @@ The hero (states, time up, transition bar, `...` menu, Done feedback, time bar, 
 - Clock stays at the top on wide screens, with one quiet line under it: "3 done today". Done count only, never "of 7", so it only grows and cannot turn into a guilt meter. Hidden at 0. This is one plain line, not a stat tile, CLAUDE.md gets that exception written down. A productivity rating is tracked in `TODO.md` for later.
 - **Next list**: "in 28 min, 15 min" is ambiguous. Show "15:00 - 15:15" under the title and "in 28 min" only on the first item. Items are tappable and open the task sheet. "+3 later today" links to Plan. While the hero shows the heads-up line, the first item is emphasized.
 - **Next alarm** line when an alarm is set for today ("Alarm 15:40 Leave"). Knowing the app will ring removes the urge to watch the clock.
-- **Missed**: the card stack becomes one quiet line, "2 tasks need a decision", that opens a **triage sheet** showing one task at a time: "Did you do Write intro?" [Done] [Later today] [Tomorrow] [Drop], with "1 of 2". One decision at a time instead of a wall of nine buttons. "Later today" uses `nextFreeSlot` from the soon plan. Tasks from earlier days stay out of scope here, as today.
+- **Missed**: the card stack becomes one quiet line, "2 tasks need a decision", that opens a **triage sheet** showing one task at a time: "Did you do Write intro?" [Done] [Later today] [Tomorrow] [Drop], with "1 of 2". One decision at a time instead of a wall of nine buttons. "Later today" uses `nextFreeSlot` in `plan.ts` (built). Tasks from earlier days stay out of scope here, as today.
 - **Assistant card** stays above Next (it is rare and time-sensitive). On phones the hero gets a one-line "1 assistant note" link, because the rail is below the fold and a question there is never seen.
 
 ### Sounds on Now
@@ -188,7 +188,7 @@ The 5 minute check-in chime is hardcoded today. It moves into the Reminders sett
 - Priority as a five-segment control in the shared priority colors, one tap instead of opening a select.
 - Note collapsed behind "Add a note" so the form looks short.
 - Edit mode: "Done" / "Reopen" toggle, Delete on the left as a quiet text button (Undo exists, no confirm). Buttons say "Save" and "Add", not "Update Task" / "Create Task".
-- A failed save shows a toast. Today it only logs to the console and the dialog stays open without explanation.
+- A failed save shows why, inline in the dialog and as a toast above it (built in the local first plan, keep it in the new sheet).
 
 ## 7. Assistant drawer
 
@@ -245,14 +245,14 @@ The **Google Workspace** card is hidden until Calendar sync uses the grant. Exis
 - **Remove the theme SetupDialog.** Default stays "by daylight" (now automatic, see 10), which suits a wall screen, and Settings has the choice. The first screen after sign-in should be the plan, not a question.
 - **Empty day on Now**: "Nothing planned today" with a quick add line right in the hero ("What is the first thing?") and "Open Plan". This is the same quick add as Plan, not the capture inbox from the roadmap.
 - **One-time desktop hint** on Now, dismissible, never shown again: "Running this on a second screen? Press F for fullscreen and make it the sound screen." Two setup steps that matter for the main use case and are otherwise hidden.
-- Sign-in page stays as it is (it is already calm and clear), minus the header controls (see 3).
+- There is no sign-in page wall any more: the first visit is the app (local first plan part 4 builds the first run and the sample day).
 - The timezone dialog stays, it only appears on a real mismatch.
 
 ## 13. Visual system
 
 - **One priority color ramp** used by the hero, timeline blocks, phone list chips, the priority control and the meter, derived from the urgency tokens (Low calm teal, Medium amber, High and Urgent orange, Critical red). `priorityStyle` in `urgency.ts` gets rebuilt on these tokens and its `chip` and `block` maps agree. Done items stay muted with a line through.
 - **Primary color** (the purple) is used only for primary buttons and focus, never for meaning, so it does not compete with urgency colors.
-- **Page frame**: one shared layout for secondary pages (title in the bar, `max-w-2xl`, sections with the same spacing) instead of each page choosing its own width and stacking cards.
+- **Page frame**: built (`PageFrame.svelte`, a sticky section list on wide screens). What is left is the title in the bar and the same section spacing everywhere.
 - **Type scale**: display (title), clock (time left), body large (hero note, rail first item), body, small. Remove one-off sizes.
 - **Touch targets**: at least 44 px on phones (the rail buttons at `size="sm"` and the timeline done circle are below that).
 - **Focus**: every interactive element reachable by keyboard with a visible ring, including timeline blocks and rail items.
@@ -263,11 +263,11 @@ The **Google Workspace** card is hidden until Calendar sync uses the grant. Exis
 
 Each phase is shippable on its own and ends with `bun run verify --quick`, a look on a wide screen and a phone, and small separate commits. Pure logic first with tests, then components.
 
-Phases 1 (Transitions) and 2 (Feedback and silence) are in `docs/soon-plan.md`.
+Phases 1 (Transitions) and 2 (Feedback and silence) are built and shipped.
 
 | Phase                     | Content                                                                                                                                                                                                                            | Main files                                                                                                                              |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **3. Navigation**         | Now/Plan switch, context slot, menu, sound popover with timed mute, fullscreen to menu, assistant icon only with key, logged-out redirects, keyboard shortcuts                                                                     | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts`                                                    |
+| **3. Navigation**         | Now/Plan switch, context slot, menu, sound popover with timed mute, fullscreen to menu, assistant icon only with key, keyboard shortcuts (the logged-out redirects are gone, guest mode replaced them)                             | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts`                                                    |
 | **4. Rail and phone Now** | Done today line (plus the CLAUDE.md exception), next list clarity, tappable items, next alarm line, missed triage sheet, phone sticky actions, phone assistant link                                                                | `UpcomingRail.svelte`, `AgentStrip.svelte`, new `MissedTriage.svelte`                                                                   |
 | **5. Colors and system**  | One priority ramp, page frame, type scale, touch targets, sentence case                                                                                                                                                            | `app.css`, `urgency.ts`, `PriorityMeter.svelte`, all pages                                                                              |
 | **6. Plan**               | Day switcher in the bar, quick add with preview, 30 min default, past dimming, collapsed hours outside My day (07:00 to 23:00 until phase 8 adds the setting), drag to create, keyboard blocks, named overlaps, grouped phone list | `edit/+page.svelte`, `DayTimeline.svelte`, `quickadd.ts`, `plan.ts`                                                                     |
@@ -277,7 +277,7 @@ Phases 1 (Transitions) and 2 (Feedback and silence) are in `docs/soon-plan.md`.
 | **9. Secondary pages**    | Alarms cleanup, quick timers, one snooze, Assistant activity with check-ins, assistant drawer suggestions and composer                                                                                                             | `alarms/+page.svelte`, `AlarmBanner.svelte`, `activity/+page.svelte`, `AssistantDrawer.svelte`                                          |
 | **10. First run**         | Remove SetupDialog, empty day state, one-time second screen hint                                                                                                                                                                   | `SetupDialog.svelte` (delete), `NowHero.svelte`, `theme.ts`                                                                             |
 
-Phase 3 comes first after the soon plan, because the silence line and the sound settings meet in its sound popover. CLAUDE.md and the Privacy page get updated in the phases that change what they describe.
+Phase 3 comes first after the local first plan, because the silence line and the sound settings meet in its sound popover. CLAUDE.md and the Privacy page get updated in the phases that change what they describe.
 
 ## 15. Decisions (2026-10-14)
 
