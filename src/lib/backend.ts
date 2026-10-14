@@ -7,6 +7,7 @@
 import type { NewTask, Task } from '#lib/core/repo.js';
 import type { Alarm, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
+import type { ActivityView } from '#lib/core/activity.js';
 import type { AgentFeed } from '#lib/core/feed.js';
 import type { Repeat } from '#lib/schedule.js';
 import type { ClientSettings, SettingsPatch } from '#lib/settings.js';
@@ -61,6 +62,10 @@ export interface Backend {
 		feed(since: number | null): Promise<AgentFeed | null>;
 		resolveCard(id: number): Promise<void>;
 		stuck(taskId: number, reason: string): Promise<void>;
+	};
+	activity: {
+		/** What the assistant changed, the events it saw and today's token use. */
+		load(): Promise<ActivityView>;
 	};
 	settings: {
 		/** What the screens show and the forms start from. */

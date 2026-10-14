@@ -142,6 +142,11 @@ describe('remoteBackend requests', () => {
 		});
 	});
 
+	test('activity: the view is a GET of /activity', async () => {
+		fakeFetch({ 'GET http://localhost:5173/activity': json({ tokensToday: 3 }) });
+		expect(await remoteBackend.activity.load()).toMatchObject({ tokensToday: 3 });
+	});
+
 	test('tasks: everything from one day on is a GET with from', async () => {
 		const { requests } = fakeFetch({ 'GET http://localhost:5173/edit': json([{ id: 1 }]) });
 		expect(await remoteBackend.tasks.since('2026-10-13')).toMatchObject([{ id: 1 }]);

@@ -4,6 +4,7 @@
  * like the remote ones, so the screens cannot tell the two apart.
  */
 import { BackendError, type Backend } from '#lib/backend.js';
+import { activityView } from '#lib/core/activity.js';
 import { parseMessages, runAssistant, undoAction } from '#lib/core/assistant.js';
 import { AssistantError, type Ctx, type Hint, type Model } from '#lib/core/context.js';
 import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
@@ -126,6 +127,8 @@ export function localBackend(deps: LocalDeps): Backend {
 			resolveCard: (id) => guarded(() => dismissCard(ctx(), id)),
 			stuck: (taskId, reason) => guarded(() => reportStuck(ctx(), { taskId, reason }))
 		},
+
+		activity: { load: () => activityView(ctx()) },
 
 		settings: {
 			load: async () => clientSettings(await repo.settings.get()),

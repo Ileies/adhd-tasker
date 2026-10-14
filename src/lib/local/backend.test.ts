@@ -192,6 +192,14 @@ describe('agent', () => {
 	});
 });
 
+describe('activity', () => {
+	test('shows what an edit logged', async () => {
+		const { backend } = await setup();
+		await backend.tasks.create(task);
+		expect((await backend.activity.load()).events).toMatchObject([{ origin: 'user' }]);
+	});
+});
+
 describe('settings', () => {
 	test('loading hides the key and says whether one is saved', async () => {
 		const { backend, repo } = await setup();

@@ -106,6 +106,12 @@ export const remoteBackend: Backend = {
 		}
 	},
 
+	activity: {
+		async load() {
+			return (await request('/activity')).json();
+		}
+	},
+
 	settings: {
 		async load() {
 			return (await request('/settings')).json();

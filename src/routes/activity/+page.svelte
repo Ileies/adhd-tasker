@@ -1,12 +1,30 @@
 <script lang="ts">
-	import { refreshAll } from '$app/navigation';
+	import { onMount, untrack } from 'svelte';
 	import { tasker } from '#lib/app.svelte.js';
 	import { undoChange } from '#lib/assistant.js';
+	import type { ActivityView } from '#lib/core/activity.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import PageFrame from '#lib/components/PageFrame.svelte';
 
 	const { data } = $props();
+
+	// An account's server sends the first view, a guest's device is asked once the page is open
+	const EMPTY: ActivityView = { tokensToday: 0, dailyTokenBudget: null, actions: [], events: [] };
+	let view = $state<ActivityView | null>(untrack(() => data.activity));
+	const shown = $derived(view ?? EMPTY);
+
+	async function refresh() {
+		try {
+			view = await tasker.backend.activity.load();
+		} catch {
+			// the list stays as it was
+		}
+	}
+
+	onMount(() => {
+		if (!view) void refresh();
+	});
 
 	const sections = [
 		{ id: 'changes', label: 'Changes' },
@@ -24,9 +42,9 @@
 	);
 	const when = (at: number) => clock.format(at);
 
-	async function undo(action: (typeof data.actions)[number]) {
+	async function undo(action: ActivityView['actions'][number]) {
 		await undoChange({ id: action.id, summary: action.summary, dates: action.dates });
-		await refreshAll();
+		await refresh();
 	}
 </script>
 
@@ -39,18 +57,18 @@
 		<Card.Header>
 			<Card.Title>Changes by the assistant</Card.Title>
 			<Card.Description>
-				Every edit it made, with its reason. Undo puts the task back. Used today: {data.tokensToday.toLocaleString()}
-				tokens{data.dailyTokenBudget
-					? ` of ${data.dailyTokenBudget.toLocaleString()} for unprompted reactions`
+				Every edit it made, with its reason. Undo puts the task back. Used today: {shown.tokensToday.toLocaleString()}
+				tokens{shown.dailyTokenBudget
+					? ` of ${shown.dailyTokenBudget.toLocaleString()} for unprompted reactions`
 					: ''}.
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			{#if data.actions.length === 0}
+			{#if shown.actions.length === 0}
 				<p class="text-muted-foreground">Nothing yet.</p>
 			{:else}
 				<ul class="flex flex-col gap-3">
-					{#each data.actions as action (action.id)}
+					{#each shown.actions as action (action.id)}
 						<li class="flex items-start justify-between gap-3">
 							<div class="min-w-0">
 								<div
@@ -85,11 +103,11 @@
 			>
 		</Card.Header>
 		<Card.Content>
-			{#if data.events.length === 0}
+			{#if shown.events.length === 0}
 				<p class="text-muted-foreground">Nothing yet.</p>
 			{:else}
 				<ul class="flex flex-col gap-3">
-					{#each data.events as event (event.id)}
+					{#each shown.events as event (event.id)}
 						<li>
 							<div class="break-words">{event.line}</div>
 							<div class="text-muted-foreground text-xs">
