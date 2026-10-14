@@ -8,7 +8,12 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		sveltekit({ preprocess: vitePreprocess(), adapter: adapter() }),
+		sveltekit({
+			preprocess: vitePreprocess(),
+			adapter: adapter(),
+			// Google One Tap posts the credential to /callback from accounts.google.com
+			csrf: { trustedOrigins: ['https://accounts.google.com'] }
+		}),
 		devtoolsJson()
 	]
 });

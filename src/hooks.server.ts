@@ -1,23 +1,25 @@
 import type { Handle } from '@sveltejs/kit/hooks';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
+import { readSession } from '#lib/server/session.js';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	console.log(`[${new Date().toISOString()}]:`, event.url.pathname + event.url.search);
 
 	const token = event.cookies.get('token');
+	let email = readSession(event.cookies.get('session'));
 
-	if (token) {
-		const email: string | undefined = (await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${token}` } })).json())?.email;
-		if (email) {
-			event.locals.user = await db.query.users.findFirst({
-				where: (users, { eq }) => eq(users.email, email),
-			});
-			if (!event.locals.user) {
-				event.locals.user = await db.insert(users).values({ email }).returning();
-			}
-		} else {
-			event.cookies.set('token', '', { path: '/', maxAge: -1 });
+	if (!email && token) {
+		email = (await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${token}` } })).json())?.email;
+		if (!email) event.cookies.set('token', '', { path: '/', maxAge: -1 });
+	}
+
+	if (email) {
+		event.locals.user = await db.query.users.findFirst({
+			where: (users, { eq }) => eq(users.email, email),
+		});
+		if (!event.locals.user) {
+			event.locals.user = await db.insert(users).values({ email }).returning();
 		}
 	}
 
