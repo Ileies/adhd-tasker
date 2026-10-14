@@ -10,7 +10,6 @@ const task = (id: number, patch: Partial<Task> = {}): Task => ({
 	id,
 	title: `Task ${id}`,
 	description: '',
-	email: 'ada@example.com',
 	date: '2026-10-14',
 	startTime: 540 + id * 60,
 	duration: 30,

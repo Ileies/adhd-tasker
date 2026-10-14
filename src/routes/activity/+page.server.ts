@@ -1,13 +1,9 @@
 import { redirect } from '@sveltejs/kit';
-import { desc, eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
-import { db } from '#lib/server/db/index.js';
-import { agentActions, events } from '#lib/server/db/schema.js';
-import { tokensSince, startOfDayMs } from '#lib/server/events.js';
+import { tokensToday } from '#lib/core/usage.js';
 import { datesOfAction, summarizeAction } from '#lib/activity.js';
 import { describeEvent } from '#lib/events.js';
-import { minutesNow } from '#lib/time.js';
-import type { Task } from '#lib/types.js';
+import { serverCtx } from '#lib/server/ctx.js';
 
 const LIMIT = 40;
 
@@ -15,34 +11,26 @@ const LIMIT = 40;
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) redirect(303, '/');
 	const { email, timezone, dailyTokenBudget } = locals.user;
+	const ctx = serverCtx(email);
 
-	const [actions, seen, tokensToday] = await Promise.all([
-		db
-			.select()
-			.from(agentActions)
-			.where(eq(agentActions.email, email))
-			.orderBy(desc(agentActions.id))
-			.limit(LIMIT),
-		db.select().from(events).where(eq(events.email, email)).orderBy(desc(events.id)).limit(LIMIT),
-		tokensSince(email, startOfDayMs(minutesNow(timezone ?? 'UTC')))
+	const [actions, seen, tokens] = await Promise.all([
+		ctx.repo.actions.recent(LIMIT),
+		ctx.repo.events.recent(LIMIT),
+		tokensToday(ctx, timezone ?? 'UTC')
 	]);
 
 	return {
-		tokensToday,
+		tokensToday: tokens,
 		dailyTokenBudget,
-		actions: actions.map((row) => {
-			const before = row.before as Task | null;
-			const after = row.after as Task | null;
-			return {
-				id: row.id,
-				summary: summarizeAction(row.tool, before, after),
-				dates: datesOfAction(before, after),
-				reason: row.reason,
-				onItsOwn: row.eventId !== null,
-				at: row.createdAt,
-				undone: row.undoneAt !== null
-			};
-		}),
+		actions: actions.map((row) => ({
+			id: row.id,
+			summary: summarizeAction(row.tool, row.before, row.after),
+			dates: datesOfAction(row.before, row.after),
+			reason: row.reason,
+			onItsOwn: row.eventId !== null,
+			at: row.createdAt,
+			undone: row.undoneAt !== null
+		})),
 		events: seen.map((row) => ({
 			id: row.id,
 			line: describeEvent(row.type, row.payload),

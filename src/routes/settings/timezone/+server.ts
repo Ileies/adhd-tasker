@@ -1,7 +1,5 @@
-import { db } from '#lib/server/db/index.js';
-import { users } from '#lib/server/db/schema.js';
 import { isValidTimezone } from '#lib/time.js';
-import { eq } from 'drizzle-orm';
+import { dbRepo } from '#lib/server/db-repo.js';
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async ({ locals, request }) => {
@@ -12,6 +10,6 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 		return new Response('Invalid timezone', { status: 400 });
 	}
 
-	await db.update(users).set({ timezone }).where(eq(users.email, locals.user.email));
+	await dbRepo(locals.user.email).settings.update({ timezone });
 	return Response.json(true);
 };

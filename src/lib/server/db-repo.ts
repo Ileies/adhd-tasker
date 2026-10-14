@@ -9,10 +9,9 @@ import {
 	tasks,
 	users
 } from '#lib/server/db/schema.js';
-import type { Repo, Settings } from '#lib/core/repo.js';
-import type { Task } from '#lib/types.js';
+import type { Repo, Settings, Task } from '#lib/core/repo.js';
 
-/** Every setting of the users row, so the email and nothing else stays out of `Settings`. */
+/** Every setting of the users row: the email and nothing else stays out of `Settings`. */
 const settingsOf = ({ email: _email, ...settings }: typeof users.$inferSelect): Settings =>
 	settings;
 

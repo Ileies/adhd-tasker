@@ -1,5 +1,4 @@
-import type { tasks } from '#lib/server/db/schema.js';
-import type { Task } from '#lib/types.js';
+import type { NewTask, Task } from '#lib/core/repo.js';
 import { tasker } from '#lib/app.svelte.js';
 import { showToast } from '#lib/toast.js';
 
@@ -23,7 +22,7 @@ async function send(method: 'POST' | 'PUT' | 'DELETE', body: unknown) {
 	}
 }
 
-export async function createTask(taskData: typeof tasks.$inferInsert) {
+export async function createTask(taskData: NewTask) {
 	const response = await send('POST', taskData);
 	if (!response?.ok) throw new Error(`Could not add the task: ${await reasonOf(response)}`);
 	tasker.tasks = [...tasker.tasks, await response.json()];

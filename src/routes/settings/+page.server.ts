@@ -1,12 +1,10 @@
 import { fail } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 import type { Actions } from './$types';
 import { parseAnchoringForm } from '#lib/anchoring.js';
 import { parseSettingsForm } from '#lib/guardrails.js';
-import { db } from '#lib/server/db/index.js';
-import { users } from '#lib/server/db/schema.js';
 import { encrypt } from '#lib/server/crypto.js';
-import { OPENAI_KEY_PURPOSE } from '#lib/server/assistant.js';
+import { OPENAI_KEY_PURPOSE } from '#lib/server/ctx.js';
+import { dbRepo } from '#lib/server/db-repo.js';
 import { GOOGLE_CLIENT_SECRET } from '$app/env/private';
 
 export const actions = {
@@ -24,10 +22,9 @@ export const actions = {
 		if (!check) return fail(502, { openaiMessage: 'Could not reach OpenAI to check the key' });
 		if (!check.ok) return fail(400, { openaiMessage: 'OpenAI did not accept this key' });
 
-		await db
-			.update(users)
-			.set({ openaiKey: encrypt(key, GOOGLE_CLIENT_SECRET, OPENAI_KEY_PURPOSE) })
-			.where(eq(users.email, locals.user.email));
+		await dbRepo(locals.user.email).settings.update({
+			openaiKey: encrypt(key, GOOGLE_CLIENT_SECRET, OPENAI_KEY_PURPOSE)
+		});
 		return { openaiSaved: true };
 	},
 
@@ -39,16 +36,13 @@ export const actions = {
 		if (!parsed.ok) return fail(400, { agentMessage: parsed.error });
 
 		const { autonomy, events, quietStart, quietEnd, dailyTokenBudget } = parsed.value;
-		await db
-			.update(users)
-			.set({
-				aiAutonomy: autonomy,
-				aiEvents: events.join(' '),
-				quietStart,
-				quietEnd,
-				dailyTokenBudget
-			})
-			.where(eq(users.email, locals.user.email));
+		await dbRepo(locals.user.email).settings.update({
+			aiAutonomy: autonomy,
+			aiEvents: events.join(' '),
+			quietStart,
+			quietEnd,
+			dailyTokenBudget
+		});
 		return { agentSaved: true };
 	},
 
@@ -59,7 +53,7 @@ export const actions = {
 		const parsed = parseAnchoringForm(await request.formData());
 		if (!parsed.ok) return fail(400, { anchoringMessage: parsed.error });
 
-		await db.update(users).set(parsed.value).where(eq(users.email, locals.user.email));
+		await dbRepo(locals.user.email).settings.update(parsed.value);
 		return { anchoringSaved: true };
 	},
 
@@ -67,7 +61,7 @@ export const actions = {
 	saveVoice: async ({ locals, request }) => {
 		if (!locals.user) return fail(401, { voiceMessage: 'Sign in first' });
 		const replies = (await request.formData()).has('replies');
-		await db.update(users).set({ voiceReplies: replies }).where(eq(users.email, locals.user.email));
+		await dbRepo(locals.user.email).settings.update({ voiceReplies: replies });
 		return { voiceSaved: true };
 	},
 
@@ -75,20 +69,20 @@ export const actions = {
 	saveClock: async ({ locals, request }) => {
 		if (!locals.user) return fail(401, { clockMessage: 'Sign in first' });
 		const show = (await request.formData()).has('show');
-		await db.update(users).set({ showClock: show }).where(eq(users.email, locals.user.email));
+		await dbRepo(locals.user.email).settings.update({ showClock: show });
 		return { clockSaved: true };
 	},
 
 	removeOpenaiKey: async ({ locals }) => {
 		if (!locals.user) return fail(401, { openaiMessage: 'Sign in first' });
-		await db.update(users).set({ openaiKey: null }).where(eq(users.email, locals.user.email));
+		await dbRepo(locals.user.email).settings.update({ openaiKey: null });
 		return { openaiRemoved: true };
 	},
 
 	/** Forgets the link here. Access is removed for good in the Google account permissions. */
 	unlinkGoogle: async ({ locals }) => {
 		if (!locals.user) return fail(401, { message: 'Sign in first' });
-		await db.update(users).set({ googleServices: '' }).where(eq(users.email, locals.user.email));
+		await dbRepo(locals.user.email).settings.update({ googleServices: '' });
 		return { unlinked: true };
 	}
 } satisfies Actions;

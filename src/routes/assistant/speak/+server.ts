@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AssistantError } from '#lib/server/assistant.js';
+import { AssistantError } from '#lib/core/context.js';
 import { speak } from '#lib/server/voice.js';
 import { parseSpeakBody } from '#lib/voice.js';
 

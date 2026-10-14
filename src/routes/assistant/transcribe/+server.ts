@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AssistantError } from '#lib/server/assistant.js';
+import { AssistantError } from '#lib/core/context.js';
 import { transcribe } from '#lib/server/voice.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {

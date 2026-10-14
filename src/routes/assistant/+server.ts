@@ -1,6 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { AssistantError, parseMessages, runAssistant } from '#lib/server/assistant.js';
+import { parseMessages } from '#lib/core/assistant.js';
+import { AssistantError } from '#lib/core/context.js';
+import { runAssistant } from '#lib/server/assistant.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) error(401, 'Login required');

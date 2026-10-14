@@ -100,8 +100,7 @@
 			date: selected,
 			startTime,
 			duration,
-			priority: Priority.Medium,
-			email: data.user?.email ?? ''
+			priority: Priority.Medium
 		}).then(
 			() => showToast(`Added ${parsed.title} at ${formatClock(startTime)}`),
 			(error) => showToast(errorText(error, 'Could not add the task'))

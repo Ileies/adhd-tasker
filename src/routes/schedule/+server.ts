@@ -1,12 +1,13 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { SCHEDULE_LIMITS, parseAlarm } from '#lib/schedule.js';
-import { alarmsOf, createAlarm, pendingFor } from '#lib/server/schedule.js';
+import { alarmsOf, createAlarm } from '#lib/core/schedule.js';
+import { serverCtx } from '#lib/server/ctx.js';
 
 /** The pending alarms (the client rings them itself) and the agent's wakeups (shown, never played). */
 export const GET: RequestHandler = async ({ locals }) => {
 	if (!locals.user) error(401, 'Login required');
-	const rows = await pendingFor(locals.user.email);
+	const rows = await serverCtx(locals.user.email).repo.schedule.pending();
 	return Response.json({
 		alarms: alarmsOf(rows),
 		wakeups: rows
@@ -25,13 +26,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	const parsed = parseAlarm(body, Date.now(), locals.user.timezone ?? 'UTC');
 	if (!parsed.ok) error(400, parsed.error);
-	const email = locals.user.email;
+	const ctx = serverCtx(locals.user.email);
 	if (
-		(await pendingFor(email)).filter((row) => row.kind === 'alarm').length >=
+		(await ctx.repo.schedule.pending()).filter((row) => row.kind === 'alarm').length >=
 		SCHEDULE_LIMITS.maxAlarms
 	)
 		error(400, `At most ${SCHEDULE_LIMITS.maxAlarms} alarms`);
 
-	const row = await createAlarm(email, parsed.value, 'user');
+	const row = await createAlarm(ctx, parsed.value, 'user');
 	return Response.json({ id: row.id }, { status: 201 });
 };

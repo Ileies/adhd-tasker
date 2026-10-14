@@ -13,13 +13,13 @@ export function isValidTimezone(timezone: string): boolean {
 }
 
 /** Current time as minutes since midnight in the given timezone (device timezone if omitted), same unit as `task.startTime`. */
-export function minutesNow(timezone?: string | null): number {
+export function minutesNow(timezone?: string | null, at = new Date()): number {
 	const parts = new Intl.DateTimeFormat('en-US', {
 		timeZone: timezone && isValidTimezone(timezone) ? timezone : undefined,
 		hour: 'numeric',
 		minute: 'numeric',
 		hourCycle: 'h23'
-	}).formatToParts(new Date());
+	}).formatToParts(at);
 	const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
 	return get('hour') * 60 + get('minute');
 }

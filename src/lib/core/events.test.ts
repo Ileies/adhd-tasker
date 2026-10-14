@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { startOfDayMs } from '#lib/server/events.js';
+import { startOfDayMs } from '#lib/core/events.js';
 
 describe('startOfDayMs', () => {
 	test('goes back by the minutes into the day', () => {

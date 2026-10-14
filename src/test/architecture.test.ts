@@ -87,6 +87,13 @@ describe('pairing rule', () => {
 		'index.ts': 'audio synthesis, browser API wiring (the task mutations live in tasks.ts)',
 		'format.ts': 'until soon plan 5.2 (formatLeft)',
 		'theme.ts': 'until UX phase 8b replaces its day window with sun.ts',
+		'core/agent.ts': 'until checks plan phase 4',
+		'core/assistant.ts': 'until checks plan phase 4',
+		'core/schedule.ts': 'until checks plan phase 4',
+		'core/usage.ts': 'until checks plan phase 4',
+		'core/voice.ts': 'until checks plan phase 4',
+		'core/context.ts': 'types and one error class, covered by the model and route tests',
+		'server/ctx.ts': 'wiring of the server context, used by the route tests',
 		'server/agent.ts': 'until checks plan phase 4',
 		'server/assistant.ts': 'until checks plan phase 4',
 		'server/schedule.ts': 'until checks plan phase 4',
@@ -124,16 +131,13 @@ describe('OpenAI call sites', () => {
 		]);
 	});
 
-	test('only the chat server calls the Responses API, through buildRequest', () => {
-		expect(appCodeMentioning(/\bOPENAI_URL\b/)).toEqual([
-			'src/lib/openai.ts',
-			'src/lib/server/assistant.ts'
-		]);
+	test('only the model adapter calls the Responses API, through buildRequest', () => {
+		expect(appCodeMentioning(/\bOPENAI_URL\b/)).toEqual(['src/lib/openai.ts']);
 	});
 
-	test('only the voice server calls transcription and Realtime', () => {
+	test('only the core voice module calls transcription and Realtime', () => {
 		expect(appCodeMentioning(/\b(TRANSCRIBE_URL|REALTIME_URL)\b/)).toEqual([
-			'src/lib/server/voice.ts',
+			'src/lib/core/voice.ts',
 			'src/lib/voice.ts'
 		]);
 	});

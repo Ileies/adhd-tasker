@@ -1,4 +1,5 @@
 import { TOOLS, type Tool } from '#lib/assistant-tools.js';
+import { AssistantError, type Model } from '#lib/core/context.js';
 
 /**
  * Every OpenAI call of the app is built here, so the rules cannot be bypassed from a call site:
@@ -70,4 +71,47 @@ export function outputText(body: ResponseBody) {
 		.map((part) => part.text ?? '')
 		.join('')
 		.trim();
+}
+
+/** Flex processing is cheaper but can be slow and is sometimes out of capacity (429), so wait longer and retry once. */
+const FLEX_TIMEOUT_MS = 120_000;
+const FLEX_RETRY_DELAY_MS = 3000;
+
+/**
+ * The model port on top of the Responses API, always through `buildRequest`. Runs on the server for
+ * an account and in the browser for a guest, with the user's own key either way.
+ */
+export function openaiModel(key: string, retryDelayMs = FLEX_RETRY_DELAY_MS): Model {
+	return {
+		async complete(input, instructions, use, tools = TOOLS) {
+			const body = JSON.stringify(buildRequest(input, instructions, use, tools));
+
+			for (let attempt = 0; ; attempt++) {
+				let response: Response;
+				try {
+					response = await fetch(OPENAI_URL, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+						body,
+						signal: AbortSignal.timeout(FLEX_TIMEOUT_MS)
+					});
+				} catch {
+					throw new AssistantError('Could not reach OpenAI or it took too long', 502);
+				}
+				if (response.status === 401)
+					throw new AssistantError('OpenAI rejected the saved key, check it in Settings', 400);
+				if (response.status === 429 && attempt === 0) {
+					await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+					continue;
+				}
+				if (response.status === 429)
+					throw new AssistantError(
+						'OpenAI is out of flex capacity or your quota is used up, try again later',
+						429
+					);
+				if (!response.ok) throw new AssistantError('OpenAI could not answer, try again', 502);
+				return response.json();
+			}
+		}
+	};
 }
