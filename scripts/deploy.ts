@@ -256,7 +256,9 @@ if (!DRY)
 
 if (flag('db-push')) {
 	step('Applying the schema (drizzle-kit push --force)');
-	await remote(`cd ${REMOTE_ROOT} && bun x drizzle-kit push --force`);
+	// drizzle-kit runs under node and connects through @libsql/client, which wants a `file:` URL
+	// where the app itself takes a bare path. Overridden for this one command, `.env` is untouched.
+	await remote(`cd ${REMOTE_ROOT} && DATABASE_URL=file:${dbPath} bun x drizzle-kit push --force`);
 }
 
 // === START ===
