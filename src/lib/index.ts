@@ -1,6 +1,6 @@
 import { browser } from '$app/env';
 import type { tasks } from '#lib/server/db/schema.js';
-import { type Task, TaskStatus } from '#lib/types.js';
+import type { Task } from '#lib/types.js';
 import { tasker } from '#lib/app.svelte.js';
 
 export function playSound(type: 'task-started' | 'reminder') {
@@ -74,32 +74,17 @@ export function playSound(type: 'task-started' | 'reminder') {
 }
 
 export async function createTask(taskData: typeof tasks.$inferInsert) {
-	if (taskData.email) {
-		const response = await fetch('/edit', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(taskData)
-		});
+	const response = await fetch('/edit', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(taskData)
+	});
 
-		if (!response.ok) {
-			throw new Error('Failed to create task');
-		}
-
-		tasker.tasks = [...tasker.tasks, await response.json()];
-	} else {
-		// If no email is provided, add to localStorage
-		tasker.tasks = [
-			...tasker.tasks,
-			{
-				...taskData,
-				status: TaskStatus.Pending,
-				id: Date.now()
-			} as Task
-		];
-		saveTasksLocally();
+	if (!response.ok) {
+		throw new Error('Failed to create task');
 	}
+
+	tasker.tasks = [...tasker.tasks, await response.json()];
 }
 
 export async function updateTask(taskData: Task) {
@@ -107,30 +92,18 @@ export async function updateTask(taskData: Task) {
 	if (taskIndex === -1) return;
 	tasker.tasks[taskIndex] = { ...taskData };
 
-	if (taskData.email) {
-		await fetch('/edit', {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(taskData)
-		});
-	} else saveTasksLocally();
+	await fetch('/edit', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(taskData)
+	});
 }
 
 export async function deleteTask(task: Task) {
 	tasker.tasks = tasker.tasks.filter((t) => t.id !== task.id);
-	if (task.email) {
-		await fetch('/edit', {
-			method: 'DELETE',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ id: task.id })
-		});
-	} else saveTasksLocally();
-}
-
-function saveTasksLocally() {
-	localStorage.setItem('tasks', JSON.stringify(tasker.tasks));
+	await fetch('/edit', {
+		method: 'DELETE',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ id: task.id })
+	});
 }

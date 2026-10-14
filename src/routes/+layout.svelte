@@ -8,7 +8,6 @@
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
 	import VolumeMenu from '#lib/components/VolumeMenu.svelte';
 	import SetupDialog from '#lib/components/SetupDialog.svelte';
@@ -22,7 +21,7 @@
 
 	let { children, data } = $props();
 
-	if (browser) tasker.tasks = data.user ? data.tasks : JSON.parse(localStorage.getItem('tasks') || '[]');
+	if (browser) tasker.tasks = data.tasks;
 
 	onMount(initPreferences);
 
@@ -137,13 +136,6 @@
 			{@render children()}
 		</div>
 
-		<!-- No footer in focus mode, and the edit timeline fills the viewport -->
-		{#if !tasker.isFullScreen && page.url.pathname !== '/edit'}
-			<footer class="mt-16 shrink-0 border-t py-8 text-center">
-				<p class="text-sm text-muted-foreground">ADHD Tasker - Helping you stay focused, one task at a time 🎯</p>
-				<p class="mt-2 text-xs text-muted-foreground/60">Built with SvelteKit and shadcn-svelte</p>
-			</footer>
-		{/if}
 	</main>
 </div>
 

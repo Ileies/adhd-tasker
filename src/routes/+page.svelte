@@ -9,10 +9,6 @@
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Clock, Focus } from '@lucide/svelte';
 
-	// neuer chat button, builder wirft error -> feld kann nicht bearbeitet werden "feld existiert bereits", bitte füll alle Pflichtfelder aus?!
-	// nicht alle chats immer anzeigen, fehler beim löschen der Kategorie, history sieht schlecht aus,
-	// chat löschen button funktionieren machen und verschieben
-
 	let now = $state(minutesNow(tasker.timezone));
 
 	const activeTasks = $derived(tasker.tasks.filter((task) => {
