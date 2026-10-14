@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createTask, updateTask } from '#lib';
-	import { Priority, type TaskForm } from '#lib/types.js';
-	import { Edit, Plus } from '@lucide/svelte';
+	import { Priority, type Task, type TaskForm } from '#lib/types.js';
+	import { Edit, Plus, Trash2 } from '@lucide/svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
@@ -9,14 +9,14 @@
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import * as Select from '#lib/components/ui/select/index.js';
 
-	const { email, form = $bindable() }: {email: string, form: TaskForm} = $props();
+	const { email, form = $bindable(), onDelete }: { email: string; form: TaskForm; onDelete?: (task: Task) => void } = $props();
 
 	const priorityOptions = [
-		{ value: Priority.Low, label: '🟢 Low' },
-		{ value: Priority.Medium, label: '🔵 Medium' },
-		{ value: Priority.High, label: '🟡 High' },
-		{ value: Priority.Urgent, label: '🟠 Urgent' },
-		{ value: Priority.Critical, label: '🔴 Critical' }
+		{ value: Priority.Low, label: 'Low' },
+		{ value: Priority.Medium, label: 'Medium' },
+		{ value: Priority.High, label: 'High' },
+		{ value: Priority.Urgent, label: 'Urgent' },
+		{ value: Priority.Critical, label: 'Critical' }
 	];
 
 	const quickDurations = [
@@ -35,6 +35,7 @@
 		const taskData = {
 			title: form.title,
 			description: form.description,
+			date: form.date,
 			duration: form.duration,
 			startTime: form.startTime,
 			priority: form.priority,
@@ -79,7 +80,12 @@
 				/>
 			</div>
 
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+				<div class="grid gap-2">
+					<Label for="date">Date *</Label>
+					<Input id="date" type="date" bind:value={form.date} required />
+				</div>
+
 				<div class="grid gap-2">
 					<Label for="startTime">Start Time *</Label>
 					<Input
@@ -143,6 +149,20 @@
 			</div>
 
 			<Dialog.Footer>
+				{#if form.isEditing && form.selectedTask && onDelete}
+					{@const task = form.selectedTask}
+					<Button
+						variant="ghost"
+						class="text-destructive sm:mr-auto"
+						onclick={() => {
+							form.showTaskForm = false;
+							onDelete(task);
+						}}
+					>
+						<Trash2 />
+						Delete
+					</Button>
+				{/if}
 				<Button variant="ghost" onclick={() => (form.showTaskForm = false)}>Cancel</Button>
 				<Button type="submit">
 					{#if form.isEditing}

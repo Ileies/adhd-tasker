@@ -5,20 +5,41 @@
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { keepAwake } from '#lib/display.js';
-	import { createTask, deleteTask, playSound, showToast, updateTask } from '#lib';
+	import { createTask, deleteTask, loadDay, playSound, showToast, updateTask } from '#lib';
 	import { rank, switchReason } from '#lib/priority.js';
-	import { minutesNow } from '#lib/time.js';
+	import { minutesNow, todayIn } from '#lib/time.js';
+	import { untrack } from 'svelte';
 	import { TaskStatus, type Task } from '#lib/types.js';
 
 	const { data } = $props();
 
 	let now = $state(minutesNow(tasker.timezone));
-	const ranking = $derived(rank(tasker.tasks, now));
+	let today = $state(todayIn(tasker.timezone));
+	// Only today's tasks compete for the screen, other days live on the Plan screen
+	const ranking = $derived(
+		rank(
+			tasker.tasks.filter((task) => task.date === today),
+			now
+		)
+	);
 	const hasCurrent = $derived(ranking.current !== null);
 
 	$effect(() => {
-		const timer = setInterval(() => (now = minutesNow(tasker.timezone)), 1000);
+		const tick = () => {
+			now = minutesNow(tasker.timezone);
+			today = todayIn(tasker.timezone);
+		};
+		tick();
+		const timer = setInterval(tick, 1000);
 		return () => clearInterval(timer);
+	});
+
+	// The layout preloads from yesterday on, so only a day change after a long uptime needs a fetch
+	let checkedDay = untrack(() => today);
+	$effect(() => {
+		if (today === checkedDay) return;
+		checkedDay = today;
+		if (data.user) loadDay(today).catch(() => {});
 	});
 
 	$effect(keepAwake);

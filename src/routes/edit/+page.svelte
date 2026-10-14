@@ -1,21 +1,47 @@
 <script lang="ts">
-	import { Clock, Edit, Plus, Trash2, Maximize2, Minimize2 } from '@lucide/svelte';
-	import { Priority, type Task } from '#lib/types.js';
-	import { deleteTask, updateTask } from '#lib';
+	import { untrack } from 'svelte';
+	import { Check, ChevronLeft, ChevronRight, Plus, TriangleAlert } from '@lucide/svelte';
+	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
+	import { createTask, deleteTask, loadDay, showToast, updateTask } from '#lib';
 	import { goto } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
-	import { minutesNow } from '#lib/time.js';
+	import { addDays, formatDay, isDateKey, minutesNow, todayIn } from '#lib/time.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
+	import { DAY_MINUTES, SNAP, layoutDay } from '#lib/plan.js';
+	import { parseQuickTask } from '#lib/quickadd.js';
 	import { priorityStyle } from '#lib/urgency.js';
+	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
-	import type { TaskForm as TaskFormType } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import * as AlertDialog from '#lib/components/ui/dialog/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
 
 	const { data } = $props();
 
-	let draggedTask: Task | null = $state(null);
-	let isCompactView = $state(false);
+	const DEFAULT_DURATION = 30;
+	const DEFAULT_START = 9 * 60;
+
+	let now = $state(minutesNow(tasker.timezone));
+	let today = $state(todayIn(tasker.timezone));
+	let selected = $state(untrack(() => today));
+	let quick = $state('');
+
+	$effect(() => {
+		const timer = setInterval(() => {
+			now = minutesNow(tasker.timezone);
+			today = todayIn(tasker.timezone);
+		}, 15_000);
+		return () => clearInterval(timer);
+	});
+
+	// Always refresh the selected day, it may have been changed elsewhere (another device, the assistant later)
+	$effect(() => {
+		const date = selected;
+		untrack(() => loadDay(date).catch(() => showToast('Could not load this day')));
+	});
+
+	const dayTasks = $derived(tasker.tasks.filter((task) => task.date === selected));
+	const sorted = $derived([...dayTasks].sort((a, b) => a.startTime - b.startTime || a.id - b.id));
+	const overlapCount = $derived(layoutDay(dayTasks).filter((p) => p.overlaps).length);
 
 	let form: TaskFormType = $state({
 		selectedTask: undefined,
@@ -23,16 +49,17 @@
 		showTaskForm: false,
 		title: '',
 		description: '',
-		duration: 60, // Default to 1 hour
-		startTime: minutesNow(tasker.timezone),
+		date: untrack(() => today),
+		duration: 60,
+		startTime: DEFAULT_START,
 		priority: Priority.Medium
 	});
 
-	function openEditForm(e: Event, task: Task) {
-		e.stopPropagation();
+	function openEditForm(task: Task) {
 		form.selectedTask = task;
 		form.title = task.title;
 		form.description = task.description;
+		form.date = task.date;
 		form.duration = task.duration;
 		form.startTime = task.startTime;
 		form.priority = task.priority;
@@ -40,182 +67,160 @@
 		form.showTaskForm = true;
 	}
 
-	function openTaskForm() {
+	function openTaskForm(startTime = defaultStart()) {
 		form.selectedTask = undefined;
 		form.isEditing = false;
 		form.title = '';
 		form.description = '';
+		form.date = selected;
 		form.duration = 60;
-		form.startTime = minutesNow(tasker.timezone);
+		form.startTime = startTime;
 		form.priority = Priority.Medium;
 		form.showTaskForm = true;
 	}
 
-	let taskToDelete: Task | null = $state(null);
-
-	function handleDelete(event: Event, task: Task) {
-		event.stopPropagation();
-		taskToDelete = task;
+	/** The next free quarter hour when planning today, the morning otherwise. */
+	function defaultStart() {
+		if (selected !== today) return DEFAULT_START;
+		return Math.min(DAY_MINUTES - DEFAULT_DURATION, Math.ceil(now / SNAP) * SNAP);
 	}
 
-	async function confirmDelete() {
-		if (taskToDelete) await deleteTask(taskToDelete);
-		taskToDelete = null;
-	}
-
-	function handleDrop(event: DragEvent, hour: number) {
+	function addQuick(event: Event) {
 		event.preventDefault();
-		if (draggedTask) updateTask({ ...draggedTask, startTime: hour * 60 });
+		const parsed = parseQuickTask(quick);
+		if (!parsed.title) return;
+		const duration = Math.min(parsed.duration ?? DEFAULT_DURATION, DAY_MINUTES);
+		const startTime = Math.min(parsed.startTime ?? defaultStart(), DAY_MINUTES - duration);
+		quick = '';
+		createTask({
+			title: parsed.title,
+			description: '',
+			date: selected,
+			startTime,
+			duration,
+			priority: Priority.Medium,
+			email: data.user?.email ?? ''
+		}).then(
+			() => showToast(`Added ${parsed.title} at ${formatClock(startTime)}`),
+			() => showToast('Could not add the task')
+		);
+	}
+
+	function toggle(task: Task) {
+		const before = task.status;
+		const status = before === TaskStatus.Completed ? TaskStatus.Pending : TaskStatus.Completed;
+		updateTask({ ...task, status });
+		showToast(status === TaskStatus.Completed ? `Done: ${task.title}` : `Reopened: ${task.title}`, () => updateTask({ ...task, status: before }));
+	}
+
+	function move(task: Task, startTime: number) {
+		updateTask({ ...task, startTime });
+		showToast(`${task.title} moved to ${formatClock(startTime)}`, () => updateTask(task));
+	}
+
+	function resize(task: Task, duration: number) {
+		updateTask({ ...task, duration });
+		showToast(`${task.title} now ${formatDuration(duration)}`, () => updateTask(task));
+	}
+
+	function remove(task: Task) {
+		const { id: _id, ...rest } = task;
+		deleteTask(task);
+		showToast(`Deleted: ${task.title}`, () => createTask(rest));
+	}
+
+	function shift(days: number) {
+		selected = addDays(selected, days);
 	}
 </script>
 
-<div class="h-full flex flex-col bg-background">
-	<!-- Header -->
-	<div class="sticky top-0 p-4 border-b bg-background z-30">
-		<div class="flex items-center justify-between">
-			<Button onclick={() => goto('/')}>Back to Now</Button>
-			<h1 class="text-2xl font-bold">Edit Tasks</h1>
-			<div class="flex items-center gap-2">
-				<Button
-					variant="ghost"
-					size="icon"
-					onclick={() => isCompactView = !isCompactView}
-					title={isCompactView ? 'Switch to Expanded View' : 'Switch to Compact View'}
-					aria-label={isCompactView ? 'Switch to Expanded View' : 'Switch to Compact View'}
-				>
-					{#if isCompactView}
-						<Maximize2 class="h-5 w-5" />
-					{:else}
-						<Minimize2 class="h-5 w-5" />
-					{/if}
-				</Button>
-				<Button onclick={openTaskForm}>
-					<Plus />
-					New Task
-				</Button>
-			</div>
+<div class="flex h-full flex-col bg-background">
+	<div class="z-30 flex flex-wrap items-center gap-x-4 gap-y-2 border-b p-3 sm:px-6">
+		<Button variant="outline" onclick={() => goto('/')}>Back to Now</Button>
+
+		<div class="flex items-center gap-1">
+			<Button variant="ghost" size="icon" aria-label="Previous day" onclick={() => shift(-1)}><ChevronLeft /></Button>
+			<h1 class="min-w-32 text-center text-xl font-bold">{formatDay(selected, today)}</h1>
+			<Button variant="ghost" size="icon" aria-label="Next day" onclick={() => shift(1)}><ChevronRight /></Button>
+			<Input
+				type="date"
+				class="w-40"
+				aria-label="Pick a date"
+				value={selected}
+				onchange={(e) => isDateKey(e.currentTarget.value) && (selected = e.currentTarget.value)}
+			/>
+			{#if selected !== today}
+				<Button variant="ghost" onclick={() => (selected = today)}>Today</Button>
+			{/if}
 		</div>
+
+		<form class="flex min-w-60 flex-1 gap-2" onsubmit={addQuick}>
+			<Input bind:value={quick} placeholder="Quick add: Call dentist 14:30 45m" aria-label="Quick add a task" />
+			<Button type="submit" disabled={!quick.trim()}>Add</Button>
+		</form>
+
+		<Button variant="outline" onclick={() => openTaskForm()}>
+			<Plus />
+			Details
+		</Button>
 	</div>
 
-	<!-- Calendar Grid -->
-	<div class="{isCompactView ? 'flex-1 overflow-hidden' : 'flex-1 overflow-auto'}">
-		<div class="grid grid-cols-[80px_1fr] h-full">
-			<!-- Time labels -->
-			<div class="bg-background border-r sticky left-0 z-20 {isCompactView ? 'flex flex-col' : ''}">
-				{#each [...Array(24).keys()] as hour (hour)}
-					<div class="{isCompactView ? 'flex-1 min-h-0' : 'h-14'} border-b border-border/50 flex items-start justify-end pr-2 pt-1">
-						<span class="text-xs text-muted-foreground font-mono">
-							{hour.toString().padStart(2, '0')}:00
-						</span>
-					</div>
-				{/each}
-			</div>
+	{#if overlapCount > 0}
+		<div class="flex items-center gap-2 border-b bg-warning/15 px-6 py-2 text-sm" role="status">
+			<TriangleAlert class="size-4 shrink-0" />
+			Some tasks overlap. Now shows the one with the higher priority.
+		</div>
+	{/if}
 
-			<!-- Calendar body -->
-			<div class="relative {isCompactView ? 'flex flex-col' : ''}">
-				{#if isCompactView}
-					<!-- Compact view: Tasks in flexbox layout -->
-					{#each tasker.tasks as task (task.id)}
-						<div
-							class="pointer-events-auto cursor-move rounded-lg border-l-4 p-1 shadow-sm hover:shadow-md transition-shadow group {priorityStyle[task.priority].block} text-xs m-1"
-							style="flex: {task.duration};"
-							draggable="true"
-							ondragstart={() => draggedTask = task}
-							ondragend={() => draggedTask = null}
-							role="document"
-						>
-							<div class="flex items-start justify-between gap-1 h-full">
-								<div class="flex-1 min-w-0">
-									<h3 class="font-medium text-xs truncate">
-										{task.title}
-									</h3>
-								</div>
-								<div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-									<Button variant="ghost" size="icon-xs" aria-label="Edit task" onclick={(e) => openEditForm(e, task)}>
-										<Edit />
-									</Button>
-									<Button variant="ghost" size="icon-xs" class="text-destructive" aria-label="Delete task" onclick={(e) => handleDelete(e, task)}>
-										<Trash2 />
-									</Button>
-								</div>
-							</div>
-						</div>
-					{/each}
-				{:else}
-					<!-- Expanded view: Traditional time slots -->
-					{#each [...Array(24).keys()] as hour (hour)}
-						<button
-							class="w-full h-14 border-b border-border/50 hover:bg-muted/50 cursor-pointer relative block"
-							aria-label="Create task at {hour.toString().padStart(2, '0')}:00"
-							onclick={() => {openTaskForm();form.startTime = hour * 60;}}
-							ondrop={(e) => handleDrop(e, hour)}
-							ondragover={(e) => e.preventDefault()}
-						>
-							<!-- Time slot content -->
-						</button>
-					{/each}
+	<div class="min-h-0 flex-1">
+		<!-- Wide screens: timeline with drag and resize -->
+		<div class="hidden h-full md:block">
+			<DayTimeline
+				date={selected}
+				tasks={dayTasks}
+				{now}
+				showNow={selected === today}
+				onEdit={openEditForm}
+				onCreate={openTaskForm}
+				onMove={move}
+				onResize={resize}
+				onToggle={toggle}
+			/>
+		</div>
 
-					<!-- Tasks overlay for expanded view -->
-					<div class="absolute inset-0 pointer-events-none">
-						{#each tasker.tasks as task (task.id)}
-							{@const topPixels = (task.startTime / 60) * 56}
-							{@const heightPixels = (task.duration / 60) * 56}
-							<div
-								class="absolute pointer-events-auto cursor-move rounded-lg border-l-4 p-2 shadow-sm hover:shadow-md transition-shadow group {priorityStyle[task.priority].block}"
-								style="top: {topPixels}px; height: {heightPixels}px; left: 0%; width: 100%;"
-								draggable="true"
-								ondragstart={() => draggedTask = task}
-								ondragend={() => draggedTask = null}
-								role="document"
+		<!-- Phones: the same day as a plain list -->
+		<div class="h-full overflow-y-auto md:hidden">
+			{#if sorted.length === 0}
+				<p class="p-6 text-muted-foreground">Nothing planned. Add something above.</p>
+			{:else}
+				<ul class="divide-y">
+					{#each sorted as task (task.id)}
+						{@const done = task.status === TaskStatus.Completed}
+						<li class="flex items-center gap-3 px-4 py-3 {done ? 'opacity-55' : ''}">
+							<button type="button" class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left" onclick={() => openEditForm(task)}>
+								<span class="tabular w-12 shrink-0 text-sm text-muted-foreground">{formatClock(task.startTime)}</span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate font-medium {done ? 'line-through' : ''}">{task.title}</span>
+									<span class="text-xs text-muted-foreground">{formatDuration(task.duration)}</span>
+								</span>
+								<span class="shrink-0 rounded-full px-2 py-0.5 text-xs {priorityStyle[task.priority].chip}">
+									{priorityStyle[task.priority].label}
+								</span>
+							</button>
+							<Button
+								variant={done ? 'default' : 'outline'}
+								size="icon"
+								aria-label={done ? 'Mark as not done' : 'Mark as done'}
+								onclick={() => toggle(task)}
 							>
-								<div class="flex items-start justify-between gap-1 h-full">
-									<div class="flex-1 min-w-0">
-										<h3 class="font-medium text-sm truncate">
-											{task.title}
-										</h3>
-										<p class="text-xs opacity-70 flex items-center gap-1 mt-1">
-											<Clock class="h-3 w-3" />
-											{formatClock(task.startTime)} • {formatDuration(task.duration)}
-										</p>
-										<!--{#if task.description}
-											<p class="text-xs text-base-content/60 mt-1 line-clamp-2">
-												{task.description}
-											</p>
-										{/if}-->
-									</div>
-									<div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-										<Button variant="ghost" size="icon-xs" aria-label="Edit task" onclick={(e) => openEditForm(e, task)}>
-											<Edit />
-										</Button>
-										<Button variant="ghost" size="icon-xs" class="text-destructive" aria-label="Delete task" onclick={(e) => handleDelete(e, task)}>
-											<Trash2 />
-										</Button>
-									</div>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
-			</div>
+								<Check />
+							</Button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
 		</div>
 	</div>
 </div>
 
-<!-- Delete confirmation -->
-<AlertDialog.Root open={taskToDelete !== null} onOpenChange={(open) => { if (!open) taskToDelete = null; }}>
-	<AlertDialog.Content>
-		<AlertDialog.Header>
-			<AlertDialog.Title>Delete this task?</AlertDialog.Title>
-			<AlertDialog.Description>
-				"{taskToDelete?.title}" will be removed from your schedule.
-			</AlertDialog.Description>
-		</AlertDialog.Header>
-		<AlertDialog.Footer>
-			<Button variant="ghost" onclick={() => (taskToDelete = null)}>Cancel</Button>
-			<Button variant="destructive" onclick={confirmDelete}>Delete</Button>
-		</AlertDialog.Footer>
-	</AlertDialog.Content>
-</AlertDialog.Root>
-
-<!-- Task Form Modal -->
-<TaskForm email={data.user?.email || ''} bind:form={form} />
+<TaskForm email={data.user?.email || ''} bind:form onDelete={remove} />
