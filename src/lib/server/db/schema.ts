@@ -1,6 +1,8 @@
 import { Priority, TaskStatus } from '../../types';
 import type { EventOrigin, EventType } from '../../events';
 import type { Autonomy } from '../../guardrails';
+import type { Repeat, ScheduleKind } from '../../schedule';
+import type { Tone } from '../../tones';
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
@@ -18,7 +20,8 @@ export const users = sqliteTable('users', {
 	quietStart: integer('quiet_start').default(1320).notNull(), // minutes since midnight, no unprompted reactions from here
 	quietEnd: integer('quiet_end').default(420).notNull(), // until here
 	dailyTokenBudget: integer('daily_token_budget'), // null: no limit for unprompted reactions
-	lastCurrentTaskId: integer('last_current_task_id') // what the scheduler saw as current at its last tick, to detect task.switched
+	lastCurrentTaskId: integer('last_current_task_id'), // what the scheduler saw as current at its last tick, to detect task.switched
+	displayDevice: text('display_device') // id of the device that plays alarms and agent tones, null: every device does
 });
 
 export const tasks = sqliteTable('tasks', {
@@ -81,6 +84,24 @@ export const agentCards = sqliteTable('agent_cards', {
 	eventId: integer('event_id'),
 	createdAt: integer('created_at').notNull(),
 	resolvedAt: integer('resolved_at')
+});
+
+/** Alarms (ring on the client) and the agent's own wakeups. Repeating alarms stay pending and move `fireAt` on. */
+export const schedule = sqliteTable('schedule', {
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+	email: text('email')
+		.references(() => users.email, { onDelete: 'cascade' })
+		.notNull(),
+	kind: text('kind').$type<ScheduleKind>().notNull(),
+	fireAt: integer('fire_at').notNull(), // epoch ms
+	minutes: integer('minutes'), // local clock time of a repeating alarm
+	repeat: text('repeat').$type<Repeat>().default('none').notNull(),
+	label: text('label'), // alarm
+	note: text('note'), // wakeup: the agent's note to itself
+	tone: text('tone', { mode: 'json' }).$type<Tone>(), // alarm, stored so it replays identically
+	createdBy: text('created_by').$type<'user' | 'agent'>().notNull(),
+	status: text('status').$type<'pending' | 'done' | 'cancelled'>().default('pending').notNull(),
+	createdAt: integer('created_at').notNull()
 });
 
 /** Tokens of every model call, for the daily meter and the budget. */
