@@ -15,14 +15,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 	let email = readSession(event.cookies.get('session'));
 
 	if (!email && token) {
-		email = (
-			await (
-				await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
-					headers: { Authorization: `Bearer ${token}` }
-				})
-			).json()
-		)?.email;
-		if (!email) event.cookies.set('token', '', { path: '/', maxAge: -1 });
+		try {
+			const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+				headers: { Authorization: `Bearer ${token}` }
+			});
+			email = (await response.json())?.email;
+			if (!email) event.cookies.set('token', '', { path: '/', maxAge: -1 });
+		} catch (error) {
+			// Google not reachable: this visit is logged out, the token stays for the next one
+			console.error('[auth] userinfo failed', error);
+		}
 	}
 
 	if (email) {

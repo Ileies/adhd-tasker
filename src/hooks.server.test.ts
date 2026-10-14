@@ -1,5 +1,5 @@
 /// <reference types="bun" />
-import { beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { handle } from './hooks.server.js';
 import { db } from '#lib/server/db/index.js';
@@ -12,9 +12,12 @@ import { TEST_EMAIL, makeUser, requestEvent } from '#test/fixtures.js';
 const USERINFO = 'https://openidconnect.googleapis.com/v1/userinfo';
 const SECRET = 'test-secret';
 
+afterEach(() => mock.restore());
+
 beforeEach(async () => {
 	await resetDb();
 	spyOn(console, 'log').mockImplementation(() => {});
+	spyOn(console, 'error').mockImplementation(() => {});
 });
 
 /** Runs the hook for a request with these cookies and returns what the page would see. */
