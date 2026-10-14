@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createTask, updateTask } from '#lib';
+	import { createTask, showToast, updateTask } from '#lib';
 	import { Priority, type Task, type TaskForm } from '#lib/types.js';
 	import { Edit, Plus, Trash2 } from '@lucide/svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -50,14 +50,15 @@
 
 		try {
 			if (form.isEditing && form.selectedTask) {
-				await updateTask({ ...form.selectedTask, ...taskData });
+				// A refused change shows its toast and leaves the dialog open
+				if (!(await updateTask({ ...form.selectedTask, ...taskData }))) return;
 			} else {
 				await createTask(taskData);
 			}
 
 			form.showTaskForm = false;
 		} catch (error) {
-			console.error('Failed to save task:', error);
+			showToast(error instanceof Error ? error.message : 'Could not save the task');
 		}
 	}
 </script>

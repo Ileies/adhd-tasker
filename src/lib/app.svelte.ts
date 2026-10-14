@@ -7,7 +7,7 @@ export type ThemeMode = 'light' | 'dark' | 'auto';
 export interface Toast {
 	message: string;
 	/** Reverts the action the toast reports, the toast offers an Undo button when set. */
-	undo?: () => void | Promise<void>;
+	undo?: () => unknown;
 }
 
 export interface ChatEntry {

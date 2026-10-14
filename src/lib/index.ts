@@ -1,7 +1,5 @@
-import { browser } from '$app/env';
-import type { tasks } from '#lib/server/db/schema.js';
-import type { Task } from '#lib/types.js';
 import { tasker } from '#lib/app.svelte.js';
+import { browser } from '$app/env';
 import { readTone, toneNotes, type Tone } from '#lib/tones.js';
 import { duckSpeech } from '#lib/speech.js';
 
@@ -115,59 +113,5 @@ export function playTone(tone: Tone) {
 	);
 }
 
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
-
-/** Shows a short confirmation. With `undo` it offers a way back, so no action needs a confirm dialog. */
-export function showToast(message: string, undo?: () => void | Promise<void>) {
-	clearTimeout(toastTimer);
-	tasker.toast = { message, undo };
-	toastTimer = setTimeout(dismissToast, 8000);
-}
-
-export function dismissToast() {
-	clearTimeout(toastTimer);
-	tasker.toast = null;
-}
-
-export async function createTask(taskData: typeof tasks.$inferInsert) {
-	const response = await fetch('/edit', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(taskData)
-	});
-
-	if (!response.ok) {
-		throw new Error('Failed to create task');
-	}
-
-	tasker.tasks = [...tasker.tasks, await response.json()];
-}
-
-export async function updateTask(taskData: Task) {
-	const taskIndex = tasker.tasks.findIndex((t) => t.id === taskData.id);
-	if (taskIndex === -1) return;
-	tasker.tasks[taskIndex] = { ...taskData };
-
-	await fetch('/edit', {
-		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(taskData)
-	});
-}
-
-export async function deleteTask(task: Task) {
-	tasker.tasks = tasker.tasks.filter((t) => t.id !== task.id);
-	await fetch('/edit', {
-		method: 'DELETE',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ id: task.id })
-	});
-}
-
-/** Fetches every task of one day, replacing what the client holds for that day. */
-export async function loadDay(date: string) {
-	const response = await fetch(`/edit?date=${date}`);
-	if (!response.ok) throw new Error('Failed to load day');
-	const day: Task[] = await response.json();
-	tasker.tasks = [...tasker.tasks.filter((t) => t.date !== date), ...day];
-}
+export { showToast, dismissToast } from '#lib/toast.js';
+export { createTask, updateTask, deleteTask, loadDay } from '#lib/tasks.js';

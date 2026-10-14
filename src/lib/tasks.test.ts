@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { createTask, deleteTask, dismissToast, loadDay, updateTask } from '#lib/index.js';
+import { createTask, deleteTask, loadDay, updateTask } from '#lib/tasks.js';
+import { dismissToast } from '#lib/toast.js';
 import { tasker } from '#lib/app.svelte.js';
 import { fakeFetch } from '#test/fakes.js';
 import { Priority, TaskStatus, type Task } from '#lib/types.js';
@@ -96,7 +97,8 @@ describe('createTask', () => {
 
 	test('throws with the reason and adds nothing when the server answers 400', async () => {
 		fakeFetch({ 'POST http://localhost:5173/edit': rejected(400, 'title is required') });
-		await expect(createTask(input)).rejects.toThrow('title is required');
+		const failure = await createTask(input).catch((error: Error) => error);
+		expect((failure as Error).message).toContain('title is required');
 		expect(tasker.tasks).toHaveLength(3);
 	});
 });
@@ -111,7 +113,8 @@ describe('loadDay', () => {
 
 	test('throws and keeps the plan when the server fails', async () => {
 		fakeFetch({ 'http://localhost:5173/edit': rejected(500, 'boom') });
-		await expect(loadDay('2026-10-14')).rejects.toThrow();
+		const failure = await loadDay('2026-10-14').catch((error: Error) => error);
+		expect(failure).toBeInstanceOf(Error);
 		expect(tasker.tasks).toHaveLength(3);
 	});
 });
