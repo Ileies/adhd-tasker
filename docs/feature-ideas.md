@@ -1,6 +1,6 @@
 # Feature Ideas (Brainstorm)
 
-Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts.
+Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts. "Wrap-up cue before a task ends" and "Hyperfocus exit ramp" moved to `docs/soon-plan.md` (Part 4).
 
 **Rating (1 to 10)** = how much this would improve the day of a person with ADHD if done well. It measures impact only, not effort. Effort is the scope section.
 
@@ -30,10 +30,9 @@ The ideas that look like the strongest return on a small investment. Details are
 4. **Leave-by alarms for appointments** (S, 9)
 5. **Record actual start and finish** (XS, 8, unlocks a lot)
 6. **Overbooked day warning** (XS, 8)
-7. **Wrap-up cue before a task ends** (XS, 8)
-8. **Break it down button** (S, 9)
-9. **Overwhelmed button** (S, 9)
-10. **Missed tasks: one-tap rehome** (S, 9)
+7. **Break it down button** (S, 9)
+8. **Overwhelmed button** (S, 9)
+9. **Missed tasks: one-tap rehome** (S, 9)
 
 ---
 
@@ -44,9 +43,6 @@ The ideas that look like the strongest return on a small investment. Details are
 
 - **Overbooked day warning** `8/10`
   Pure function: sum of unfinished task minutes vs. minutes left until `dayEnd`. When the plan cannot fit, the Plan view says so in one calm line ("About 90 minutes more than fits today"). ADHD planning is chronically optimistic; this catches it at planning time instead of at 9 pm.
-
-- **Wrap-up cue before a task ends** `8/10`
-  A distinct, soft sound and a subtle color shift 5 minutes before the current task ends ("start wrapping up"). Transitions are one of the hardest parts of ADHD; a warning makes the switch less of a jolt. Configurable minutes, display device only.
 
 - **Wire up focus mode** `7/10`
   `enableFocusMode` already exists in the schema and is unused. Make it hide the rail, missed strip and card strip so only the current task and its remaining time stay. One thing at a time, taken literally.
@@ -105,9 +101,6 @@ The ideas that look like the strongest return on a small investment. Details are
 
 - **Next tiny step on the hero** `8/10`
   An optional "first step" field per task. When set, the hero shows it bigger than the title ("Open the tax folder" above "Taxes"). The title is the goal, the step is what you actually do now.
-
-- **Hyperfocus exit ramp** `8/10`
-  When the overrun alarm fires, instead of only a nudge, offer: "Keep going 15 min (pushes the rest)", "Save place and switch", "Stop now". Respects hyperfocus when it is valuable and makes stopping a choice instead of a fight.
 
 - **Morning briefing** `8/10` **(planned)**
   `day.started` event: one card with the shape of the day, the one most important thing, and anything that does not fit. Spoken if voice replies are on.

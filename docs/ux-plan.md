@@ -2,6 +2,8 @@
 
 Status: decided, ready to implement. No code changes yet. The answers to the open questions are in section 15.
 
+**Waits for `docs/soon-plan.md`.** Phases 1 (Transitions) and 2 (Feedback and silence) moved there, with the hero states, the hero details, the tab title, the silence line, the feedback table (former section 12), problems 1 to 3 and the decisions on stuck timers and when "15 more min" appears. What is left here starts once that plan is done. Section and phase numbers are kept so references stay valid.
+
 Basis: a review of every route and component (`+layout.svelte`, Now, Plan, TaskForm, AssistantDrawer, Alarms, Activity, Settings and all settings forms, dialogs, toast, banner). It was read from code, not from screenshots, so every phase ends with a look at the real screen on a wide display and a phone.
 
 ## 1. How every control is judged
@@ -21,12 +23,11 @@ Three more rules:
 - **The moment of transition is the hardest moment** for ADHD (ending one thing, starting the next). It deserves the most design care, and today it gets the least.
 - **Silence must be visible.** Muted sound or a browser that blocks audio removes the anchor without the user knowing. That state is always shown.
 
-## 2. The ten biggest problems, ranked by impact
+## 2. The biggest problems, ranked by impact
 
-1. **A task that runs out silently vanishes from the hero.** `rank()` moves it to `missed` the minute its window ends, the hero switches to the next task or "Free time", and the only trace is a small entry in the rail. A hyperfocused user looks up and sees "Free time" while still on the task. The overrun signal is a toast. There is no "time is up, what now" moment at all. (`urgencyLevel` even has a level for time below zero, but the hero can never reach it.)
-2. **No way to ask for more time on the current task.** "+15 min" only exists for missed tasks in the rail. Running long is the most common case and needs a trip to Plan and a resize.
-3. **Completing a task has weak feedback.** Done shows a toast. The only sound is the task-started chime, and only if another task becomes current. Finishing the last task of the block is silent.
-4. **Sound can be off without the user knowing.** Browsers block Web Audio until the first tap after a load, so an always-on screen that reloaded overnight plays nothing. Mute has no timer and no visible reminder, so "muted for a meeting" easily becomes "muted all day".
+Problems 1 to 3 and the blocked audio part of 4 are solved by the soon plan.
+
+4. **Mute has no timer**, so "muted for a meeting" easily becomes "muted all day". (The visible silence line comes with the soon plan.)
 5. **Navigation has no clear model.** Plan is a button on the left, Now is the logo, `/edit` adds its own "Back to Now", and Alarms, Activity and Settings sit under a user icon that reads as "account".
 6. **Priority colors disagree across the app.** High is orange on Now, a blue block on the Plan timeline and an amber chip in the phone list. Urgent is a yellow block but a red chip. Colors only help if they mean one thing.
 7. **Settings mixes instant and Save-button saving.** Theme and timezone apply at once, three other cards need their own Save. Forgetting to press Save is a typical ADHD failure. Free number inputs ask for decisions that presets could answer.
@@ -59,7 +60,7 @@ Two primary places and one tool, everything else is secondary:
   - Plan: the day switcher `< Today, Wed 14 Oct >`. This removes the second toolbar row on Plan.
   - Other pages: the page title.
 - **Sound button** opens a small popover instead of the hover slider (which is hidden on touch and mutes on the same tap):
-  - Mute for 1 hour (first), 30 min, or until I unmute. Stored as `mutedUntil` in `tasker`, sound returns on its own
+  - Mute for 1 hour (first), 30 min, or until I unmute. Stored as `mutedUntil` in `tasker`, sound returns on its own. The silence line from the soon plan then says "Sound off until 15:30"
   - Volume slider
   - "This screen plays sound" switch (moved from the Alarms page, this is where the user thinks about sound)
 - **Fullscreen** leaves the bar (tier 4: once per session). Menu item plus the `F` key.
@@ -82,19 +83,7 @@ Shortcuts are ignored while typing in a field. Pure key map in `src/lib/shortcut
 
 ## 4. Now screen
 
-### Hero states
-
-The hero becomes a small state machine. A pure `heroState(ranking, now, settings)` in `src/lib/now.ts` (tested) returns one of the states below, the component only renders it. `rank()` stays as it is, so client and server still agree.
-
-| State           | When                                                                                                                                     | What the hero shows                                                                                                            |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **active**      | A task is current, more than the wrap-up threshold left                                                                                  | Time window, title, note, time left, Done, I'm stuck, `...`                                                                    |
-| **wrapping up** | Last 10 min or last 25% of the current task                                                                                              | Same, plus "15 more min" as a ghost button, and the heads-up line for the next task                                            |
-| **time up**     | No task is current (or the new current started at the same minute) and the latest unfinished task ended less than its overrun window ago | "Time is up" over the ended task's title, "ended 3 min ago", Done, 15 more min, Move to later. The next task is one line below |
-| **free**        | Nothing current, something later today                                                                                                   | "Free time", next task and "starts in"                                                                                         |
-| **empty**       | Nothing left today                                                                                                                       | "Nothing left today" plus a quick add line and "Open Plan" (see 11)                                                            |
-
-The time-up state replaces both the silent switch to "Free time" and the overrun toast, and it is the screen the hyperfocus tap sounds for. When the next task has already started, the hero shows the new task and a slim **transition bar** across its top: "Time for Write intro is up. [Done] [15 more min] [Later]". It stays until answered or until the new task is 15 min old.
+The hero (states, time up, transition bar, `...` menu, Done feedback, time bar, tab title) is built by the soon plan. What is left here is the rail and the phone layout around it.
 
 ### Layout, wide screen
 
@@ -135,29 +124,13 @@ The time-up state replaces both the silent switch to "Free time" and the overrun
 +-----------------------------+
 ```
 
-### Hero details
-
-- **Time left in words**: "28 min left, until 15:00" and "1 h 20 min left". The current `0:28` reads like minutes and seconds. New `formatLeft` in `src/lib/format.ts` (tested).
-- **Time bar drains instead of fills**: full hero width, thicker (about 12 to 16 px), showing what is left like a Time Timer. Time blindness is the core problem, an emptying bar is easier to feel than digits.
-- **Meta line**: the time window only. The "High priority" label leaves the hero: the urgency color already says it, and it is one more thing to read. When several tasks run at once, the meta line says "Highest of 2 right now", which is the only time priority explains anything.
-- **Reason line**: only shown after a switch that happened while the page was open, and faded out after 60 s. "Scheduled for now" on every load is noise.
-- **Done**: stays the largest control. After a tap the hero shows a short confirmation (check mark, title struck through, about 1.5 s, no motion beyond a crossfade), a distinct warm **done** sound plays (new `playSound('done')`, on the display device, respects mute), then the hero crossfades to the next state. Toast with Undo stays.
-- **I'm stuck**: stays secondary but slightly smaller than Done so the hierarchy is clear. Every hint gets one action button: "Start a 2 min timer", "Start a 5 min break" and so on create a short alarm, so the app holds the timer instead of the user. The action lives next to the hint text in `STUCK_REASONS` (`anchoring.ts`, tested).
-- **`...` menu** (tier 3): Edit, 15 more min, Move to later today (next free slot), Move to tomorrow, Drop. Every entry has Undo. Edit opens the same task sheet as Plan without leaving Now.
-- **Heads-up for the next task** moves from a toast into the hero: "Call dentist starts in 5 min. Start wrapping up." The chime stays. A toast could replace an Undo toast and is gone in 8 s.
-
 ### Rail details
 
 - Clock stays at the top on wide screens, with one quiet line under it: "3 done today". Done count only, never "of 7", so it only grows and cannot turn into a guilt meter. Hidden at 0. This is one plain line, not a stat tile, CLAUDE.md gets that exception written down. A productivity rating is tracked in `TODO.md` for later.
-- **Next list**: "in 28 min, 15 min" is ambiguous. Show "15:00 - 15:15" under the title and "in 28 min" only on the first item. Items are tappable and open the task sheet. "+3 later today" links to Plan.
+- **Next list**: "in 28 min, 15 min" is ambiguous. Show "15:00 - 15:15" under the title and "in 28 min" only on the first item. Items are tappable and open the task sheet. "+3 later today" links to Plan. While the hero shows the heads-up line, the first item is emphasized.
 - **Next alarm** line when an alarm is set for today ("Alarm 15:40 Leave"). Knowing the app will ring removes the urge to watch the clock.
-- **Missed**: the card stack becomes one quiet line, "2 tasks need a decision", that opens a **triage sheet** showing one task at a time: "Did you do Write intro?" [Done] [Later today] [Tomorrow] [Drop], with "1 of 2". One decision at a time instead of a wall of nine buttons. "Later today" uses a pure `nextFreeSlot(tasks, now, duration)` in `src/lib/plan.ts` (tested). Tasks from earlier days stay out of scope here, as today.
+- **Missed**: the card stack becomes one quiet line, "2 tasks need a decision", that opens a **triage sheet** showing one task at a time: "Did you do Write intro?" [Done] [Later today] [Tomorrow] [Drop], with "1 of 2". One decision at a time instead of a wall of nine buttons. "Later today" uses `nextFreeSlot` from the soon plan. Tasks from earlier days stay out of scope here, as today.
 - **Assistant card** stays above Next (it is rare and time-sensitive). On phones the hero gets a one-line "1 assistant note" link, because the rail is below the fold and a question there is never seen.
-- **Silence line**: "Sound off until 15:30" when muted, "Tap anywhere to turn sound on" when the browser blocks audio (see 12). Placed at the bottom of the rail, in the hero on phones.
-
-### Tab title
-
-`document.title` follows the hero: "28 min - Write intro", "Time is up - Write intro", "Free until 15:00". When the app is a background tab instead of a second screen, the tab itself becomes the anchor. Other pages get "Plan - ADHD Tasker" and so on (only Privacy and Terms set a title today).
 
 ### Sounds on Now
 
@@ -275,20 +248,6 @@ The **Google Workspace** card is hidden until Calendar sync uses the grant. Exis
 - Sign-in page stays as it is (it is already calm and clear), minus the header controls (see 3).
 - The timezone dialog stays, it only appears on a real mismatch.
 
-## 12. Feedback system
-
-| Signal                       | Today                                    | Planned                                                                           |
-| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------- |
-| Task done                    | Toast, sound only if another task starts | Hero confirmation, `done` sound, toast with Undo                                  |
-| Next task soon               | Toast plus chime                         | Hero line plus chime, first rail item emphasized                                  |
-| Overrun                      | Toast plus nudge tone                    | Time-up state or transition bar plus nudge tone                                   |
-| Task switch                  | Chime, reason line                       | Same, reason line fades after 60 s                                                |
-| Muted                        | Icon in a hidden bar                     | Silence line with the unmute time                                                 |
-| Audio blocked by the browser | Nothing, sounds fail silently            | Silence line "Tap anywhere to turn sound on", cleared by the first gesture        |
-| Undoable action              | Toast, 8 s, newest replaces older        | Same. Toasts are now only for Undo, so a reminder can no longer push an Undo away |
-
-Audio unlock: create one shared `AudioContext` on load, read its `state`, and set `tasker.device.audioBlocked` until `resume()` succeeds on the first pointer or key event. Today every sound creates its own context.
-
 ## 13. Visual system
 
 - **One priority color ramp** used by the hero, timeline blocks, phone list chips, the priority control and the meter, derived from the urgency tokens (Low calm teal, Medium amber, High and Urgent orange, Critical red). `priorityStyle` in `urgency.ts` gets rebuilt on these tokens and its `chip` and `block` maps agree. Done items stay muted with a line through.
@@ -302,33 +261,31 @@ Audio unlock: create one shared `AudioContext` on load, read its `state`, and se
 
 ## 14. Phases
 
-Each phase is shippable on its own and ends with `bun run check`, `bun test`, a look on a wide screen and a phone, and small separate commits. Pure logic first with tests, then components.
+Each phase is shippable on its own and ends with `bun run verify --quick`, a look on a wide screen and a phone, and small separate commits. Pure logic first with tests, then components.
 
-| Phase                       | Content                                                                                                                                                                                                                            | Main files                                                                                                                              |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Transitions**          | `heroState`, time-up state, transition bar, 15 more min, `...` menu with move to later or tomorrow, `nextFreeSlot`, heads-up line in the hero                                                                                      | `src/lib/now.ts` (new), `plan.ts`, `NowHero.svelte`, `+page.svelte`                                                                     |
-| **2. Feedback and silence** | Done confirmation and sound, `formatLeft`, draining bar, reason fade, shared AudioContext and blocked state, silence line, tab title                                                                                               | `index.ts`, `format.ts`, `NowHero.svelte`, `UpcomingRail.svelte`, `+layout.svelte`                                                      |
-| **3. Navigation**           | Now/Plan switch, context slot, menu, sound popover with timed mute, fullscreen to menu, assistant icon only with key, logged-out redirects, keyboard shortcuts                                                                     | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts`                                                    |
-| **4. Rail and phone Now**   | Done today line (plus the CLAUDE.md exception), next list clarity, tappable items, next alarm line, missed triage sheet, phone sticky actions, phone assistant link                                                                | `UpcomingRail.svelte`, `AgentStrip.svelte`, new `MissedTriage.svelte`                                                                   |
-| **5. Colors and system**    | One priority ramp, page frame, type scale, touch targets, sentence case                                                                                                                                                            | `app.css`, `urgency.ts`, `PriorityMeter.svelte`, all pages                                                                              |
-| **6. Plan**                 | Day switcher in the bar, quick add with preview, 30 min default, past dimming, collapsed hours outside My day (07:00 to 23:00 until phase 8 adds the setting), drag to create, keyboard blocks, named overlaps, grouped phone list | `edit/+page.svelte`, `DayTimeline.svelte`, `quickadd.ts`, `plan.ts`                                                                     |
-| **7. Task sheet**           | New layout, chips, priority control, failure toast                                                                                                                                                                                 | `TaskForm.svelte`                                                                                                                       |
-| **8. Settings**             | Sections, auto-save, presets, check-in interval, My day, Google card hidden, assistant disclosure                                                                                                                                  | `settings/+page.svelte`, `+page.server.ts`, settings forms, `users` schema (then `bun run db:push`)                                     |
-| **8b. Daylight theme**      | `sunTimes`, IP lookup on login, device location and city search override, theme without hour fields, Privacy page update                                                                                                           | `src/lib/sun.ts` (new), `src/lib/server/location.ts` (new), `theme.ts`, `ThemePicker.svelte`, `hooks.server.ts`, `privacy/+page.svelte` |
-| **9. Secondary pages**      | Alarms cleanup, quick timers, one snooze, Assistant activity with check-ins, assistant drawer suggestions and composer                                                                                                             | `alarms/+page.svelte`, `AlarmBanner.svelte`, `activity/+page.svelte`, `AssistantDrawer.svelte`                                          |
-| **10. First run**           | Remove SetupDialog, empty day state, one-time second screen hint                                                                                                                                                                   | `SetupDialog.svelte` (delete), `NowHero.svelte`, `theme.ts`                                                                             |
+Phases 1 (Transitions) and 2 (Feedback and silence) are in `docs/soon-plan.md`.
 
-Phases 1 and 2 carry most of the ADHD value and touch the fewest files, so they come first. CLAUDE.md and the Privacy page get updated in the phases that change what they describe.
+| Phase                     | Content                                                                                                                                                                                                                            | Main files                                                                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **3. Navigation**         | Now/Plan switch, context slot, menu, sound popover with timed mute, fullscreen to menu, assistant icon only with key, logged-out redirects, keyboard shortcuts                                                                     | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts`                                                    |
+| **4. Rail and phone Now** | Done today line (plus the CLAUDE.md exception), next list clarity, tappable items, next alarm line, missed triage sheet, phone sticky actions, phone assistant link                                                                | `UpcomingRail.svelte`, `AgentStrip.svelte`, new `MissedTriage.svelte`                                                                   |
+| **5. Colors and system**  | One priority ramp, page frame, type scale, touch targets, sentence case                                                                                                                                                            | `app.css`, `urgency.ts`, `PriorityMeter.svelte`, all pages                                                                              |
+| **6. Plan**               | Day switcher in the bar, quick add with preview, 30 min default, past dimming, collapsed hours outside My day (07:00 to 23:00 until phase 8 adds the setting), drag to create, keyboard blocks, named overlaps, grouped phone list | `edit/+page.svelte`, `DayTimeline.svelte`, `quickadd.ts`, `plan.ts`                                                                     |
+| **7. Task sheet**         | New layout, chips, priority control, failure toast                                                                                                                                                                                 | `TaskForm.svelte`                                                                                                                       |
+| **8. Settings**           | Sections, auto-save, presets, check-in interval, My day, Google card hidden, assistant disclosure                                                                                                                                  | `settings/+page.svelte`, `+page.server.ts`, settings forms, `users` schema (then `bun run db:push`)                                     |
+| **8b. Daylight theme**    | `sunTimes`, IP lookup on login, device location and city search override, theme without hour fields, Privacy page update                                                                                                           | `src/lib/sun.ts` (new), `src/lib/server/location.ts` (new), `theme.ts`, `ThemePicker.svelte`, `hooks.server.ts`, `privacy/+page.svelte` |
+| **9. Secondary pages**    | Alarms cleanup, quick timers, one snooze, Assistant activity with check-ins, assistant drawer suggestions and composer                                                                                                             | `alarms/+page.svelte`, `AlarmBanner.svelte`, `activity/+page.svelte`, `AssistantDrawer.svelte`                                          |
+| **10. First run**         | Remove SetupDialog, empty day state, one-time second screen hint                                                                                                                                                                   | `SetupDialog.svelte` (delete), `NowHero.svelte`, `theme.ts`                                                                             |
+
+Phase 3 comes first after the soon plan, because the silence line and the sound settings meet in its sound popover. CLAUDE.md and the Privacy page get updated in the phases that change what they describe.
 
 ## 15. Decisions (2026-10-14)
 
 1. **Timed mute**: yes. 1 hour first, then 30 min and "until I unmute".
-2. **Timer buttons in "I'm stuck"**: yes, one action per hint.
-3. **Quick timers** on Alarms: 5, 10, 25 min and 1 h.
-4. **Snooze**: 5 min, once per alarm.
-5. **"15 more min" appears** in the last 10 min or the last 25 %, whichever comes first.
-6. **Collapsed hours** on the timeline: a separate **My day** setting, default 07:00 to 23:00, auto-extending to fit tasks outside it.
-7. **Daylight theme**: no user-set hours any more. Sunrise and sunset at the user's location, found by an external IP geolocation API, overridable with the device location or a city search (for a VPN). See section 10.
-8. **Google card**: hidden until Calendar sync.
-9. **First-run theme dialog**: removed, default "by daylight".
-10. **Done count**: one plain line "3 done today" in the rail, done count only. A productivity rating is wanted later but depends on the day's real load, which the app cannot know yet, so it is in `TODO.md` under Later.
+2. **Quick timers** on Alarms: 5, 10, 25 min and 1 h.
+3. **Snooze**: 5 min, once per alarm.
+4. **Collapsed hours** on the timeline: a separate **My day** setting, default 07:00 to 23:00, auto-extending to fit tasks outside it.
+5. **Daylight theme**: no user-set hours any more. Sunrise and sunset at the user's location, found by an external IP geolocation API, overridable with the device location or a city search (for a VPN). See section 10.
+6. **Google card**: hidden until Calendar sync.
+7. **First-run theme dialog**: removed, default "by daylight".
+8. **Done count**: one plain line "3 done today" in the rail, done count only. A productivity rating is wanted later but depends on the day's real load, which the app cannot know yet, so it is in `TODO.md` under Later.
