@@ -5,8 +5,9 @@
  * Components and routes never call `fetch`, they go through `tasker.backend`.
  */
 import type { NewTask, Task } from '#lib/core/repo.js';
-import type { Alarm, AgentCard, Wakeup } from '#lib/app.svelte.js';
+import type { Alarm, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
+import type { AgentFeed } from '#lib/core/feed.js';
 import type { Repeat } from '#lib/schedule.js';
 import type { SettingsPatch } from '#lib/settings.js';
 import type { ToneName } from '#lib/tones.js';
@@ -30,13 +31,6 @@ export interface AlarmFields {
 	tone: ToneName;
 	repeat: Repeat;
 	duration_minutes?: number;
-}
-
-/** What the agent did on its own since the cursor: the open cards and the plan changes it made. */
-export interface AgentFeed {
-	cursor: number;
-	cards: AgentCard[];
-	changes: { id: number; summary: string; dates: string[] }[];
 }
 
 export interface Backend {

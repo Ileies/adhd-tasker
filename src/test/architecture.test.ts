@@ -90,7 +90,6 @@ describe('pairing rule', () => {
 		'theme.ts': 'until UX phase 8b replaces its day window with sun.ts',
 		'core/agent.ts': 'until checks plan phase 4',
 		'core/assistant.ts': 'until checks plan phase 4',
-		'core/schedule.ts': 'until checks plan phase 4',
 		'core/usage.ts': 'until checks plan phase 4',
 		'core/voice.ts': 'until checks plan phase 4',
 		'core/context.ts': 'types and one error class, covered by the model and route tests',

@@ -1,4 +1,4 @@
-import type { Ctx } from '#lib/core/context.js';
+import { AssistantError, type Ctx } from '#lib/core/context.js';
 import { countUsesToday, recordUsage } from '#lib/core/usage.js';
 import { emit } from '#lib/core/events.js';
 import type { ScheduleEntry, Settings } from '#lib/core/repo.js';
@@ -48,6 +48,31 @@ export async function createAlarm(ctx: Ctx, fields: AlarmFields, createdBy: 'use
 	});
 	ctx.hint({ type: 'schedule' });
 	return row;
+}
+
+/** The pending alarms (the client rings them itself) and the agent's wakeups (shown, never played). */
+export async function scheduleOverview(ctx: Ctx) {
+	const rows = await ctx.repo.schedule.pending();
+	return {
+		alarms: alarmsOf(rows),
+		wakeups: rows
+			.filter((row) => row.kind === 'wakeup')
+			.map((row) => ({ id: row.id, fireAt: row.fireAt, note: row.note ?? '' }))
+	};
+}
+
+/** A user-made alarm: `{ at: 'HH:MM', label, tone?: name, repeat? }`. Custom tones are for the agent only. */
+export async function addUserAlarm(ctx: Ctx, body: unknown, timezone: string) {
+	if (typeof body !== 'object' || body === null) throw new AssistantError('Invalid request', 400);
+	if ('tone' in body && body.tone !== undefined && typeof body.tone !== 'string')
+		throw new AssistantError('Pick a tone from the list', 400);
+
+	const parsed = parseAlarm(body as Record<string, unknown>, ctx.now(), timezone);
+	if (!parsed.ok) throw new AssistantError(parsed.error, 400);
+	const alarms = (await ctx.repo.schedule.pending()).filter((row) => row.kind === 'alarm');
+	if (alarms.length >= SCHEDULE_LIMITS.maxAlarms)
+		throw new AssistantError(`At most ${SCHEDULE_LIMITS.maxAlarms} alarms`, 400);
+	return createAlarm(ctx, parsed.value, 'user');
 }
 
 /** `null` when the id is not a pending entry of this user. */
