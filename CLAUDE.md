@@ -174,7 +174,7 @@ Everything is synthesized with the Web Audio API. `playSound('task-started')` wh
 
 ## Roadmap (`TODO.md`, scope and progress to 1.0 in `docs/roadmap-1.0.md`)
 
-**Current work: `docs/soon-plan.md`.** It is the only plan being worked on. `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` wait until it is done; then it is deleted and they are updated once against the new code.
+**Current work: `docs/local-first-plan.md`** (login optional, guest mode on the device, first run, the account move, Google Calendar). It comes before everything else. `docs/soon-plan.md` is paused after Part 4 and continues with Part 5 when it is done. `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` wait for both; then they are updated once against the new code. Until Part 8 of the local first plan rewrites them, the Auth section and "What to Avoid" below describe the old login-only model.
 
 **Planned, do not implement without discussion:** Google Calendar sync (two-way), end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
 

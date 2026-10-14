@@ -1,6 +1,6 @@
 # Soon Plan
 
-Status: decided, 2026-10-14. This is the only plan being worked on. It combines the parts of `checks-and-tests-plan.md`, `ux-plan.md` and `feature-ideas.md` that are feasible now and that every later plan builds on. Those parts were removed from their source plans.
+Status: decided, 2026-10-14. **Paused after Part 4** for `local-first-plan.md`, which comes first; Part 5 continues when that plan is done. It combines the parts of `checks-and-tests-plan.md`, `ux-plan.md` and `feature-ideas.md` that are feasible now and that every later plan builds on. Those parts were removed from their source plans.
 
 ## Why one plan first
 
