@@ -29,6 +29,16 @@
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
+
+	/* Urgency scale: 0 calm, 1 normal, 2 pressing, 3 critical. All pairs pass WCAG AA. */
+	--urgency-0: oklch(0.5 0.09 200);
+	--urgency-0-foreground: oklch(0.985 0 0);
+	--urgency-1: oklch(0.8 0.13 85);
+	--urgency-1-foreground: oklch(0.2 0.04 85);
+	--urgency-2: oklch(0.68 0.17 50);
+	--urgency-2-foreground: oklch(0.18 0.04 50);
+	--urgency-3: oklch(0.5 0.21 27);
+	--urgency-3-foreground: oklch(0.985 0 0);
 }
 
 .dark {
@@ -56,6 +66,16 @@
 	--border: oklch(1 0 0 / 10%);
 	--input: oklch(1 0 0 / 15%);
 	--ring: oklch(0.556 0 0);
+
+	/* Dimmer than light mode so a wall screen does not glare at night */
+	--urgency-0: oklch(0.34 0.07 200);
+	--urgency-0-foreground: oklch(0.97 0 0);
+	--urgency-1: oklch(0.4 0.09 85);
+	--urgency-1-foreground: oklch(0.97 0 0);
+	--urgency-2: oklch(0.44 0.13 50);
+	--urgency-2-foreground: oklch(0.97 0 0);
+	--urgency-3: oklch(0.4 0.18 27);
+	--urgency-3-foreground: oklch(0.97 0 0);
 }
 
 @theme inline {
@@ -84,6 +104,21 @@
 	--color-warning-foreground: var(--warning-foreground);
 	--color-info: var(--info);
 	--color-info-foreground: var(--info-foreground);
+	--color-urgency-0: var(--urgency-0);
+	--color-urgency-0-foreground: var(--urgency-0-foreground);
+	--color-urgency-1: var(--urgency-1);
+	--color-urgency-1-foreground: var(--urgency-1-foreground);
+	--color-urgency-2: var(--urgency-2);
+	--color-urgency-2-foreground: var(--urgency-2-foreground);
+	--color-urgency-3: var(--urgency-3);
+	--color-urgency-3-foreground: var(--urgency-3-foreground);
+
+	/* Display sizes for the glanceable Now view */
+	--text-display: clamp(2.25rem, 6vw, 6.5rem);
+	--text-display--line-height: 1.05;
+	--text-clock: clamp(3rem, 9vw, 9rem);
+	--text-clock--line-height: 1;
+
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -94,6 +129,10 @@
 		@apply border-border outline-ring/50;
 	}
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-background text-foreground antialiased;
+	}
+	/* Digits keep a fixed width so countdowns and clocks do not jitter */
+	.tabular {
+		font-variant-numeric: tabular-nums;
 	}
 }
