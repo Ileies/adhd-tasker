@@ -356,6 +356,10 @@ const DEFINITIONS = [
 						type: 'string',
 						enum: ['none', 'daily', 'weekdays'],
 						description: 'Repeating needs at, not in_minutes'
+					},
+					duration_minutes: {
+						type: 'integer',
+						description: `How long it keeps ringing, default ${SCHEDULE_LIMITS.defaultAlarmMinutes}, at most ${SCHEDULE_LIMITS.maxAlarmMinutes}`
 					}
 				},
 				required: ['label']

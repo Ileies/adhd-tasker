@@ -106,12 +106,13 @@ export interface ScheduleEntry {
 	label: string | null;
 	note: string | null;
 	tone: Tone | null;
+	durationMin: number; // minutes an alarm rings
 	createdBy: 'user' | 'agent';
 	status: 'pending' | 'done' | 'cancelled';
 	createdAt: number;
 }
 export type NewEntry = Pick<ScheduleEntry, 'kind' | 'fireAt' | 'createdBy' | 'createdAt'> &
-	Partial<Pick<ScheduleEntry, 'minutes' | 'repeat' | 'label' | 'note' | 'tone'>>;
+	Partial<Pick<ScheduleEntry, 'minutes' | 'repeat' | 'label' | 'note' | 'tone' | 'durationMin'>>;
 
 export interface Repo {
 	readonly email: string;

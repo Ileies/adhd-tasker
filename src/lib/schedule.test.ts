@@ -110,6 +110,24 @@ describe('parseAlarm', () => {
 		});
 	});
 
+	test('rings for 5 minutes unless told otherwise', () => {
+		const result = parseAlarm({ at: '15:00', label: 'x' }, NOW, BERLIN);
+		expect(result.ok && result.value.durationMin).toBe(5);
+	});
+
+	test.each([
+		[1, true],
+		[30, true],
+		[0, false],
+		[31, false],
+		[2.5, false],
+		['5', false]
+	])('duration_minutes %p is accepted: %p', (value, accepted) => {
+		const result = parseAlarm({ at: '15:00', label: 'x', duration_minutes: value }, NOW, BERLIN);
+		expect(result.ok).toBe(accepted);
+		if (result.ok) expect(result.value.durationMin).toBe(value as number);
+	});
+
 	test('needs a label, a valid tone and a clock time for repeats', () => {
 		expect(parseAlarm({ at: '15:00' }, NOW, BERLIN).ok).toBe(false);
 		expect(parseAlarm({ at: '15:00', label: 'x', tone: 'airhorn' }, NOW, BERLIN).ok).toBe(false);

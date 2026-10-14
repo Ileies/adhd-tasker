@@ -22,6 +22,9 @@ export const SCHEDULE_LIMITS = {
 	maxAheadDays: 14,
 	maxNote: 300,
 	maxLabel: 60,
+	/** How long an alarm keeps ringing when nobody dismisses it. */
+	defaultAlarmMinutes: 5,
+	maxAlarmMinutes: 30,
 	/** A fired entry that is older than this was missed (server down), it is retired instead of ringing late. */
 	lateMs: 10 * 60_000
 } as const;
@@ -122,6 +125,8 @@ export interface AlarmFields {
 	tone: Tone;
 	custom: boolean;
 	repeat: Repeat;
+	/** Minutes it rings before it stops by itself. */
+	durationMin: number;
 }
 
 export function parseAlarm(args: Args, nowMs: number, timezone: string): Parsed<AlarmFields> {
@@ -136,9 +141,26 @@ export function parseAlarm(args: Args, nowMs: number, timezone: string): Parsed<
 		return fail('a repeating alarm needs a clock time (at), not in_minutes');
 	const label = parseText(args.label, SCHEDULE_LIMITS.maxLabel);
 	if (!label) return fail(`label is required (max ${SCHEDULE_LIMITS.maxLabel} characters)`);
+	const durationMin = args.duration_minutes ?? SCHEDULE_LIMITS.defaultAlarmMinutes;
+	if (
+		typeof durationMin !== 'number' ||
+		!Number.isInteger(durationMin) ||
+		durationMin < 1 ||
+		durationMin > SCHEDULE_LIMITS.maxAlarmMinutes
+	)
+		return fail(
+			`duration_minutes must be a whole number from 1 to ${SCHEDULE_LIMITS.maxAlarmMinutes}`
+		);
 	return {
 		ok: true,
-		value: { ...when.value, label, tone: tone.value, custom: tone.custom, repeat: repeat as Repeat }
+		value: {
+			...when.value,
+			label,
+			tone: tone.value,
+			custom: tone.custom,
+			repeat: repeat as Repeat,
+			durationMin
+		}
 	};
 }
 

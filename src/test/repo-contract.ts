@@ -314,7 +314,13 @@ export function describeRepo(name: string, harness: RepoHarness) {
 
 		test('an inserted entry is pending with its defaults', async () => {
 			const entry = await repo.schedule.insert(alarm(5000));
-			expect(entry).toMatchObject({ status: 'pending', repeat: 'none', minutes: null, note: null });
+			expect(entry).toMatchObject({
+				status: 'pending',
+				repeat: 'none',
+				minutes: null,
+				note: null,
+				durationMin: 5
+			});
 		});
 
 		test('pending is soonest first and leaves out ended entries', async () => {
