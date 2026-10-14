@@ -54,3 +54,8 @@ export function heroState<T extends RankTask>(
 		return { kind: 'wrapping-up', task: current, left, next };
 	return { kind: 'active', task: current, left };
 }
+
+/** How long ago a task ended, for the time up screen. */
+export function endedAgo(over: number): string {
+	return over < 1 ? 'Ended just now' : `Ended ${over} min ago`;
+}

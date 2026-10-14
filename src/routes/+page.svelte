@@ -16,9 +16,11 @@
 	} from '#lib';
 	import { playsSound } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
-	import { hyperfocusDue, momentKey, reminderDue } from '#lib/anchoring.js';
-	import { extendTask } from '#lib/plan.js';
+	import { OVERRUN_LIMITS, hyperfocusDue, momentKey, reminderDue } from '#lib/anchoring.js';
+	import { heroState } from '#lib/now.js';
+	import { extendTask, moveLater } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
+	import { formatClock } from '#lib/format.js';
 	import { minutesNow, todayIn } from '#lib/time.js';
 	import { untrack } from 'svelte';
 	import { TaskStatus, type Task } from '#lib/types.js';
@@ -35,6 +37,9 @@
 		)
 	);
 	const hasCurrent = $derived(ranking.current !== null);
+	const hero = $derived(
+		heroState(ranking, now, { overrunMinutes: data.user?.overrunMinutes ?? OVERRUN_LIMITS.default })
+	);
 
 	$effect(() => {
 		const tick = () => {
@@ -63,8 +68,9 @@
 		return () => clearInterval(timer);
 	});
 
-	// Heads-up before the next task starts and a tap when the latest task runs over. Each moment sounds once on the display device,
-	// and a late page load stays quiet because `hyperfocusDue` only reports the minutes right after the threshold.
+	// Heads-up before the next task starts and a tap when the latest task runs over, while the time up screen shows it.
+	// Each moment sounds once on the display device, and a late page load stays quiet because `hyperfocusDue` only
+	// reports the minutes right after the threshold.
 	// Bookkeeping only: a reactive set would make the effect below depend on what it just sounded
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const sounded = new Set<string>();
@@ -92,7 +98,6 @@
 			const key = momentKey('overrun', today, over);
 			if (!sounded.has(key)) {
 				sounded.add(key);
-				showToast(`${over.title} ended ${now - over.startTime - over.duration} min ago`);
 				if (!quiet) playTone('nudge');
 			}
 		}
@@ -123,11 +128,25 @@
 		showToast(`Done: ${task.title}`, () => setStatus(task, before));
 	}
 
-	/** Gives a missed task 15 more minutes from now. */
+	/** Gives a task 15 more minutes: from now when it already ran out, on top of its end while it runs. */
 	function extend(task: Task) {
 		const before = task.duration;
 		void updateTask({ ...task, duration: extendTask(task, now, 15) });
 		showToast(`${task.title}: 15 more minutes`, () => updateTask({ ...task, duration: before }));
+	}
+
+	/** Moves a task that ran out to the next free slot today, or to tomorrow when nothing fits. */
+	function later(task: Task) {
+		const others = tasker.tasks.filter((other) => other.date === today && other.id !== task.id);
+		const to = moveLater(task, others, today, now);
+		const before = { date: task.date, startTime: task.startTime };
+		void updateTask({ ...task, date: to.date, startTime: to.startTime });
+		showToast(
+			to.tomorrow
+				? `Nothing fits today. ${task.title} moved to tomorrow at ${formatClock(to.startTime)}`
+				: `${task.title} moved to ${formatClock(to.startTime)}`,
+			() => updateTask({ ...task, ...before })
+		);
 	}
 
 	function drop(task: Task) {
@@ -152,11 +171,12 @@
 		class="grid min-h-svh md:min-h-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"
 	>
 		<NowHero
-			task={ranking.current}
-			next={ranking.upcoming[0] ?? null}
+			{hero}
 			{now}
 			{reason}
 			onDone={complete}
+			onExtend={extend}
+			onLater={later}
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
 		/>
 		<UpcomingRail

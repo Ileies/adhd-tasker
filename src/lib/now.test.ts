@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
 import { Priority, TaskStatus } from '#lib/types.js';
 import { rank, type RankTask } from '#lib/priority.js';
-import { BAR_MINUTES, heroState, wrapUpWindow } from '#lib/now.js';
+import { BAR_MINUTES, endedAgo, heroState, wrapUpWindow } from '#lib/now.js';
 
 let nextId = 1;
 const task = (
@@ -165,5 +165,15 @@ describe('heroState', () => {
 				}
 			)
 		);
+	});
+});
+
+describe('endedAgo', () => {
+	test.each([
+		[0, 'Ended just now'],
+		[1, 'Ended 1 min ago'],
+		[14, 'Ended 14 min ago']
+	])('%d minutes over reads "%s"', (over, text) => {
+		expect(endedAgo(over)).toBe(text);
 	});
 });
