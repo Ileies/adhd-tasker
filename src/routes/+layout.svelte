@@ -27,6 +27,12 @@
 	let loginForm: HTMLFormElement | undefined = $state();
 	let logoutForm: HTMLFormElement | undefined = $state();
 
+	function logout() {
+		// Otherwise One Tap auto select would sign the user straight back in
+		(window as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }).google?.accounts?.id?.disableAutoSelect?.();
+		logoutForm?.requestSubmit();
+	}
+
 	const priorityColors = {
 		[Priority.Critical]: 'bg-destructive text-white',
 		[Priority.Urgent]: 'bg-warning text-warning-foreground',
@@ -100,7 +106,7 @@
 					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
 					{#if data.user}
 						<DropdownMenu.Separator />
-						<DropdownMenu.Item onSelect={() => logoutForm?.requestSubmit()}>Log out</DropdownMenu.Item>
+						<DropdownMenu.Item onSelect={logout}>Log out</DropdownMenu.Item>
 					{/if}
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>

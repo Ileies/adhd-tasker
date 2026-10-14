@@ -6,7 +6,10 @@ export const actions = {
 		login(event);
 	},
 	logout: async ({ cookies }) => {
-		await google.revokeToken(cookies.get('token') || '');
+		const token = cookies.get('token');
+		if (token) await google.revokeToken(token);
+		cookies.delete('session', { path: '/' });
+		cookies.delete('token', { path: '/' });
 		return { success: true };
 	}
 } satisfies Actions;
