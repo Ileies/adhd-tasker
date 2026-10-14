@@ -132,6 +132,22 @@ describe('remoteBackend requests', () => {
 		expect(await requests[0].json()).toEqual({ showClock: true });
 	});
 
+	test('settings: loading gives the settings the server sent', async () => {
+		fakeFetch({
+			'GET http://localhost:5173/settings': json({ showClock: true, hasOpenaiKey: false })
+		});
+		expect(await remoteBackend.settings.load()).toMatchObject({
+			showClock: true,
+			hasOpenaiKey: false
+		});
+	});
+
+	test('tasks: everything from one day on is a GET with from', async () => {
+		const { requests } = fakeFetch({ 'GET http://localhost:5173/edit': json([{ id: 1 }]) });
+		expect(await remoteBackend.tasks.since('2026-10-13')).toMatchObject([{ id: 1 }]);
+		expect(new URL(requests[0].url).search).toBe('?from=2026-10-13');
+	});
+
 	test('settings: the timezone is a PUT', async () => {
 		const { requests } = fakeFetch({ 'PUT http://localhost:5173/settings/timezone': json(true) });
 		await remoteBackend.settings.saveTimezone('Asia/Tokyo');

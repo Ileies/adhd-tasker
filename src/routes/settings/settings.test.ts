@@ -1,11 +1,31 @@
 /// <reference types="bun" />
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { PUT } from './+server.js';
+import { GET, PUT } from './+server.js';
 import { dbRepo } from '#lib/server/db-repo.js';
 import { resetDb } from '#test/db.js';
 import { TEST_EMAIL, callRoute, makeUser } from '#test/fixtures.js';
 
 beforeEach(resetDb);
+
+describe('GET /settings', () => {
+	test('needs a login', async () => {
+		expect((await callRoute(GET)).status).toBe(401);
+	});
+
+	test('answers every setting, and for the key only whether one is saved', async () => {
+		const user = await makeUser({ openaiKey: 'secret-ciphertext', showClock: true });
+		const { status, body } = await callRoute(GET, { user });
+		expect(status).toBe(200);
+		expect(body).toMatchObject({ showClock: true, overrunMinutes: 15, hasOpenaiKey: true });
+		expect(JSON.stringify(body)).not.toContain('secret-ciphertext');
+		expect(body).not.toHaveProperty('openaiKey');
+	});
+
+	test('a user without a key has none', async () => {
+		const user = await makeUser();
+		expect((await callRoute(GET, { user })).body).toMatchObject({ hasOpenaiKey: false });
+	});
+});
 
 describe('PUT /settings', () => {
 	test('needs a login', async () => {

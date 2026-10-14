@@ -9,7 +9,7 @@ import type { Alarm, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
 import type { AgentFeed } from '#lib/core/feed.js';
 import type { Repeat } from '#lib/schedule.js';
-import type { SettingsPatch } from '#lib/settings.js';
+import type { ClientSettings, SettingsPatch } from '#lib/settings.js';
 import type { ToneName } from '#lib/tones.js';
 
 /** A failure with a reason to show. `status` is the HTTP status, `null` when nothing could be reached. */
@@ -37,6 +37,8 @@ export interface Backend {
 	tasks: {
 		/** Every task of one day. */
 		load(date: string): Promise<Task[]>;
+		/** Every task from one day on, for the first look after a load. */
+		since(date: string): Promise<Task[]>;
 		create(task: NewTask): Promise<Task>;
 		update(task: Task): Promise<void>;
 		delete(id: number): Promise<void>;
@@ -61,6 +63,8 @@ export interface Backend {
 		stuck(taskId: number, reason: string): Promise<void>;
 	};
 	settings: {
+		/** What the screens show and the forms start from. */
+		load(): Promise<ClientSettings>;
 		saveTimezone(timezone: string): Promise<void>;
 		/** Stores the changed settings. Rejects with the reason when a value is out of range. */
 		save(patch: SettingsPatch): Promise<void>;

@@ -18,9 +18,14 @@ async function answering<T>(work: Promise<T>) {
 	}
 }
 
-/** All tasks of one day, for days the layout did not preload. */
+/** All tasks of one day (`?date=`), or of every day from one on (`?from=`) for the first look after a load. */
 export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user) error(401, 'Login required');
+	const from = url.searchParams.get('from');
+	if (from !== null) {
+		if (!isDateKey(from)) error(400, 'from must be YYYY-MM-DD');
+		return Response.json(await serverCtx(locals.user.email).repo.tasks.between(from));
+	}
 	const date = url.searchParams.get('date');
 	if (!isDateKey(date)) error(400, 'date must be YYYY-MM-DD');
 	return Response.json(await serverCtx(locals.user.email).repo.tasks.between(date, date));

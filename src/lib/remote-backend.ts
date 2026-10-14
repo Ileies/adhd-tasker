@@ -35,6 +35,9 @@ export const remoteBackend: Backend = {
 		async load(date) {
 			return (await request(`/edit?date=${date}`)).json();
 		},
+		async since(date) {
+			return (await request(`/edit?from=${date}`)).json();
+		},
 		async create(task) {
 			return (await post('/edit', task)).json();
 		},
@@ -104,6 +107,9 @@ export const remoteBackend: Backend = {
 	},
 
 	settings: {
+		async load() {
+			return (await request('/settings')).json();
+		},
 		async saveTimezone(timezone) {
 			await send('/settings/timezone', {
 				method: 'PUT',

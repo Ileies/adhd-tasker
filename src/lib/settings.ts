@@ -7,6 +7,13 @@ import { isEventType } from '#lib/events.js';
 import { isAutonomy, type AgentSettings } from '#lib/guardrails.js';
 import type { Settings } from '#lib/core/repo.js';
 
+/** What the page may know: everything but the key itself, which only says whether one is saved. */
+export type ClientSettings = Omit<Settings, 'openaiKey'> & { hasOpenaiKey: boolean };
+
+export function clientSettings({ openaiKey, ...rest }: Settings): ClientSettings {
+	return { ...rest, hasOpenaiKey: !!openaiKey };
+}
+
 export type SettingsPatch = Partial<
 	Pick<
 		Settings,

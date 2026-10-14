@@ -46,6 +46,23 @@ describe('GET /edit', () => {
 	});
 });
 
+describe('GET /edit?from=', () => {
+	test('returns every task of the user from that day on, oldest first', async () => {
+		const user = await makeUser();
+		await makeTask({ date: '2026-10-13' });
+		const later = await makeTask({ date: '2026-10-16', title: 'later' });
+		const first = await makeTask({ date: TEST_DATE });
+		await makeTask({ date: TEST_DATE, email: 'other@example.com' });
+		const result = await callRoute(GET, { user, url: `/edit?from=${TEST_DATE}` });
+		expect((result.body as { id: number }[]).map((task) => task.id)).toEqual([first.id, later.id]);
+	});
+
+	test('a start that is not a date gives 400', async () => {
+		const user = await makeUser();
+		expect((await callRoute(GET, { user, url: '/edit?from=soon' })).status).toBe(400);
+	});
+});
+
 describe('POST /edit', () => {
 	test('needs a login', async () => {
 		expect((await callRoute(POST, { body: valid })).status).toBe(401);
