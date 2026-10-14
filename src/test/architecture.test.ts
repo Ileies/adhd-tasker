@@ -86,7 +86,6 @@ describe('pairing rule', () => {
 		'server/index.ts': 'covered by the login route tests',
 		'server/db/index.ts': 'used by every integration test',
 		'index.ts': 'audio synthesis, browser API wiring (the task mutations live in tasks.ts)',
-		'format.ts': 'until soon plan 5.2 (formatLeft)',
 		'theme.ts': 'until UX phase 8b replaces its day window with sun.ts',
 		'core/agent.ts': 'until checks plan phase 4',
 		'core/assistant.ts': 'until checks plan phase 4',
