@@ -21,7 +21,8 @@ export const users = sqliteTable('users', {
 	quietEnd: integer('quiet_end').default(420).notNull(), // until here
 	dailyTokenBudget: integer('daily_token_budget'), // null: no limit for unprompted reactions
 	lastCurrentTaskId: integer('last_current_task_id'), // what the scheduler saw as current at its last tick, to detect task.switched
-	displayDevice: text('display_device') // id of the device that plays alarms and agent tones, null: every device does
+	displayDevice: text('display_device'), // id of the device that plays alarms and agent tones, null: every device does
+	voiceReplies: integer('voice_replies', { mode: 'boolean' }).default(false).notNull() // the assistant speaks its replies and notes
 });
 
 export const tasks = sqliteTable('tasks', {
