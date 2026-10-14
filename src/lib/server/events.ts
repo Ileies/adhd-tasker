@@ -21,7 +21,7 @@ export async function emit(email: string, type: EventType, payload: Record<strin
 	try {
 		const now = Date.now();
 		// The agent's own doing and the chat itself need no reaction, they are only logged
-		const outcome = origin === 'agent' ? 'caused by the agent' : type === 'user.message' ? 'answered in the chat' : null;
+		const outcome = origin === 'agent' ? 'caused by the agent' : type === 'user.message' ? 'answered in the chat' : type === 'alarm.fired' ? 'rang on the open screens' : null;
 		const [row] = await db
 			.insert(events)
 			.values({ email, type, payload, origin, key: key ?? null, createdAt: now, handledAt: outcome ? now : null, outcome })
@@ -51,6 +51,15 @@ export async function tokensSince(email: string, since: number) {
 		.select({ total: sql<number>`coalesce(sum(${aiUsage.tokens}), 0)` })
 		.from(aiUsage)
 		.where(and(eq(aiUsage.email, email), gte(aiUsage.createdAt, since)));
+	return row?.total ?? 0;
+}
+
+/** How often something was used since a moment, for the daily caps on custom tones. */
+export async function countUses(email: string, use: string, since: number) {
+	const [row] = await db
+		.select({ total: sql<number>`count(*)` })
+		.from(aiUsage)
+		.where(and(eq(aiUsage.email, email), eq(aiUsage.use, use), gte(aiUsage.createdAt, since)));
 	return row?.total ?? 0;
 }
 

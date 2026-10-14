@@ -1,5 +1,7 @@
 import { Priority } from '#lib/types.js';
 import { addDays, isDateKey } from '#lib/time.js';
+import { SCHEDULE_LIMITS } from '#lib/schedule.js';
+import { TONE_LIMITS, TONE_NAMES, WAVES } from '#lib/tones.js';
 
 /** What the model may ask for. Pure validation, the database work lives in `#lib/server/assistant`. */
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -150,6 +152,16 @@ const taskProps = {
 	priority: { type: 'integer', description: '1 low, 2 medium, 3 high, 4 urgent, 5 critical' }
 };
 
+const whenProps = {
+	in_minutes: { type: 'integer', description: 'Minutes from now' },
+	at: { type: 'string', description: '24 hour HH:MM, today if still ahead, else tomorrow' },
+	date: { type: 'string', description: 'YYYY-MM-DD, only together with at' }
+};
+
+const toneProp = {
+	description: `A library name (${TONE_NAMES.join(', ')}) or a custom tone: an object { wave: ${WAVES.join('|')}, notes: [{ hz, ms, rest? }] } with at most ${TONE_LIMITS.maxNotes} notes, ${TONE_LIMITS.minHz} to ${TONE_LIMITS.maxHz} Hz, ${TONE_LIMITS.minNoteMs} to ${TONE_LIMITS.maxNoteMs} ms per note and ${TONE_LIMITS.maxMs / 1000} seconds in total. Custom tones are limited to ${TONE_LIMITS.customPerDay} per day, prefer a name.`
+};
+
 const DEFINITIONS = [
 	{
 		type: 'function',
@@ -210,6 +222,38 @@ const DEFINITIONS = [
 				required: ['text']
 			}
 		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'schedule_wakeup',
+			description: `Wake yourself up later with a note to yourself, for example to check whether the user finished something. The note is handed back to you when it fires. At least ${SCHEDULE_LIMITS.minWakeupMinutes} minutes ahead, at most ${SCHEDULE_LIMITS.maxWakeups} pending, not in quiet hours. Give in_minutes, or at (HH:MM).`,
+			parameters: { type: 'object', properties: { ...whenProps, note: { type: 'string', description: `What to check or do when you wake up, at most ${SCHEDULE_LIMITS.maxNote} characters` } }, required: ['note'] }
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'set_alarm',
+			description: 'Set an alarm the user sees and hears on the Now screen, listed in their alarm list where they can cancel it. Give in_minutes, or at (HH:MM, optionally date). Only when it clearly helps, such as a leave now alarm.',
+			parameters: { type: 'object', properties: { ...whenProps, label: { type: 'string', description: `Shown while it rings, at most ${SCHEDULE_LIMITS.maxLabel} characters` }, tone: toneProp, repeat: { type: 'string', enum: ['none', 'daily', 'weekdays'], description: 'Repeating needs at, not in_minutes' } }, required: ['label'] }
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'play_tone',
+			description: 'Play a tone on the screen the user uses for sound, right now. Use rarely, a tone interrupts.',
+			parameters: { type: 'object', properties: { tone: toneProp }, required: ['tone'] }
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'cancel_schedule',
+			description: 'Cancel a pending alarm or wakeup by its id from the schedule list.',
+			parameters: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] }
+		}
 	}
 ] as const;
 
@@ -224,9 +268,13 @@ export interface Tool {
 const ALL_TOOLS: Tool[] = DEFINITIONS.map(({ function: fn }) => ({ type: 'function' as const, ...fn }));
 const pick = (...names: string[]) => ALL_TOOLS.filter((tool) => names.includes(tool.name));
 
-/** The chat reads and edits the plan. */
-export const TOOLS = pick('list_tasks', 'add_task', 'update_task', 'delete_task');
 export const WRITE_TOOLS = ['add_task', 'update_task', 'delete_task'];
+/** Tools that touch the schedule, not the plan. `set_alarm` puts something new in front of the user, so unprompted it needs autonomy act. */
+export const SCHEDULE_TOOLS = ['schedule_wakeup', 'set_alarm', 'play_tone', 'cancel_schedule'];
+export const ACT_ONLY_TOOLS = [...WRITE_TOOLS, 'set_alarm'];
 
-/** An unprompted reaction may talk, and may edit only when the user allowed it (autonomy act). */
-export const reactionTools = (mayEdit: boolean) => (mayEdit ? pick('list_tasks', 'say', 'ask', ...WRITE_TOOLS) : pick('list_tasks', 'say', 'ask'));
+/** The chat reads and edits the plan and the schedule, the user asked for it. */
+export const TOOLS = pick('list_tasks', ...WRITE_TOOLS, ...SCHEDULE_TOOLS);
+
+/** An unprompted reaction may talk and plan its own wakeups, and may edit or set alarms only when the user allowed it (autonomy act). */
+export const reactionTools = (mayEdit: boolean) => pick('list_tasks', 'say', 'ask', 'schedule_wakeup', 'play_tone', 'cancel_schedule', ...(mayEdit ? ACT_ONLY_TOOLS : []));

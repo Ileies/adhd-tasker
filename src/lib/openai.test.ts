@@ -21,8 +21,13 @@ describe('buildRequest', () => {
 		expect(request.model).toBe('gpt-6-luna');
 		expect(request.store).toBe(false);
 		expect(request.service_tier).toBe('flex');
-		expect(request.tools.map((tool) => tool.name)).toEqual(['list_tasks', 'say', 'ask']);
-		expect(buildRequest([], '', 'reaction', reactionTools(true)).tools.map((tool) => tool.name)).toContain('update_task');
+		const names = request.tools.map((tool) => tool.name);
+		expect(names).toEqual(['list_tasks', 'say', 'ask', 'schedule_wakeup', 'play_tone', 'cancel_schedule']);
+		expect(names).not.toContain('update_task');
+		expect(names).not.toContain('set_alarm');
+		const acting = buildRequest([], '', 'reaction', reactionTools(true)).tools.map((tool) => tool.name);
+		expect(acting).toContain('update_task');
+		expect(acting).toContain('set_alarm');
 		expect(buildRequest([], '', 'chat').tools.map((tool) => tool.name)).not.toContain('say');
 	});
 
