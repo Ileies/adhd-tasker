@@ -1,19 +1,6 @@
 # ADHD Tasker - TODO
 
-Roadmap and rationale: `docs/ui-rework-plan.md`.
-
-## Now (UI rework)
-
-- [x] Phase 0: cleanup (test.ts, localStorage fallback, stale comments, footer)
-- [x] Phase 1: design foundations (urgency tokens, shared priority module, typography)
-- [x] Phase 2: priority engine and Now screen
-- [x] Phase 3: dated days and Plan screen
-- [x] Phase 4: responsive layouts and PWA
-- [x] Phase 5: assistant (text, plan tools, undo log)
-- [x] Phase 6: event bus and AI reactions (guardrails, rate limits, autonomy)
-- [x] Phase 7: scheduler, AI wakeups, alarms and tone library
-- [x] Phase 8: assistant (voice)
-- [x] Phase 9: "I'm stuck", hyperfocus alarm, reminders, settings page
+Rationale: `docs/ui-rework-plan.md`.
 
 ## Later
 
@@ -21,6 +8,8 @@ Roadmap and rationale: `docs/ui-rework-plan.md`.
 - Recurring tasks
 - Capture inbox (`Shift+Space`)
 - End-of-day summary
+- Morning briefing (`day.started` event)
+- Mark agent-made tasks in the Plan view
 
 ## Parked
 

@@ -181,20 +181,7 @@ Today and tomorrow's tasks, the current ranking, last 20 events, pending wakeups
 
 ## 8. Phases
 
-Each phase ends with `bun run check`, `bun run test`, a browser check at 3 widths (1920 wide, tablet, phone) via the `run` skill, and its own small commits. Phases 0 and 1 are done.
-
-0. **Cleanup**: delete `test.ts` (it contains tokens), stale German comments, localStorage fallback, marketing footer, dead README/TODO entries. Update `CLAUDE.md` with the new scope.
-1. **Design foundations**: urgency tokens, typography, shared priority module, remove duplicated color maps.
-2. **Priority engine + Now screen**: `priority.ts` with unit tests, new hero + rail, switch reasons, overdue to `missed`, fullscreen and wake lock, auto-hiding bar. Delete dashboard, stat tiles, sidebar and the separate fullscreen overlay.
-3. **Dated days + Plan screen**: schema, migration, day switcher, pointer-based timeline, quick add, undo.
-4. **Responsive and PWA**: manifest, installability, phone layouts for Now and Plan.
-5. **Assistant (text)**: endpoint, plan tools, drawer UI, key encryption, `agent_actions` log with undo.
-6. **Event bus and reactions**: `emit()` in every mutation path, `events` log, server-side `task.switched`, `task.missed` and `task.overrun` detection by running the shared `rank()` on a scheduler tick, event coalescing, rate limits, autonomy setting, assistant strip on Now, activity log UI.
-7. **Scheduler, wakeups and alarms**: `schedule` table and poller, SSE stream to clients, `schedule_wakeup`, `set_alarm`, alarm list UI, tone library plus custom tone definitions with safety caps, display-device selection. User-made alarms ship here too and work without AI.
-8. **Assistant (voice)**: push-to-talk, STT, TTS, chime ducking, spoken reactions.
-9. **Anchoring and settings**: "I'm stuck" (emits an event), next-up preview behavior, hyperfocus alarm, reminders, real settings page including per-event toggles, quiet hours and token budget.
-
-Phases 0 to 2 already deliver the core idea and are worth shipping before the data and AI work. Phases 5 to 7 are the agent: build them in order, because each one is only safe once the previous guardrails exist (undo before autonomy, rate limits before events, caps before free-form tones).
+Phases 0 to 9 are all done and removed from this plan. What is left is tracked in `TODO.md`.
 
 ## 9. Open questions
 
