@@ -29,9 +29,12 @@
 
 	onMount(initPreferences);
 
+	// Legal pages are read-only and public: no welcome dialog and no One Tap prompt in the way
+	const legal = $derived(['/privacy', '/terms'].includes(page.url.pathname));
+
 	// The GSI script can scan the DOM before hydration, so close a prompt that is already showing
 	$effect(() => {
-		if (!data.user) return;
+		if (!data.user && !legal) return;
 		const cancel = () =>
 			(
 				window as { google?: { accounts?: { id?: { cancel?: () => void } } } }
@@ -115,7 +118,7 @@
 <svelte:window onpointermove={activity} onpointerdown={activity} onkeydown={activity} />
 <svelte:document onfullscreenchange={() => (isFullscreen = !!document.fullscreenElement)} />
 
-<SetupDialog />
+{#if !legal}<SetupDialog />{/if}
 <TimezoneDialog loggedIn={!!data.user} />
 <UndoToast />
 <AlarmBanner />
@@ -211,7 +214,7 @@
 	</main>
 </div>
 
-{#if !data.user}
+{#if !data.user && !legal}
 	<div
 		id="g_id_onload"
 		data-client_id={PUBLIC_GOOGLE_CLIENT_ID}
