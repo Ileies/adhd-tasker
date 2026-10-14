@@ -34,8 +34,8 @@ When implementing new features, think carefully about the ADHD experience. When 
 | Route | Purpose |
 |---|---|
 | `/` | Now - current task hero in an urgency color, rail with the next 4 tasks, missed strip. Top bar auto-hides, fullscreen + wake lock |
-| `/edit` | 24-hour timeline calendar for scheduling tasks |
-| `/edit` (API) | Task CRUD - POST (create), PUT (update), DELETE |
+| `/edit` | Plan - day switcher, 24-hour timeline (drag to move, handle to resize, 15 min snap), quick add line, phone list |
+| `/edit` (API) | Task CRUD - GET (one day, `?date=`), POST, PUT, DELETE |
 | `/callback` | Google OAuth callback |
 | `/settings` | User preferences (currently theme only; stored in localStorage) |
 
@@ -62,7 +62,7 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 - `email` (PK), `enableReminders`, `reminderAdvanceTime` (minutes), `enableOverdueNotifications`, `enableFocusMode`, `darkMode`, `openaiKey`
 
 **`tasks`**
-- `id`, `title`, `description`, `email` (FK), `startTime` (minutes since midnight), `duration` (minutes), `priority` (1–5 enum), `status` ('pending'|'active'|'completed'|'overdue')
+- `id`, `title`, `description`, `email` (FK), `date` (`YYYY-MM-DD` in the user's timezone), `startTime` (minutes since midnight), `duration` (minutes), `priority` (1–5 enum), `status` ('pending'|'active'|'completed'|'overdue')
 
 **`reminders`** - prepared for Google Calendar sync, not yet wired up
 - `id`, `taskId` (FK), `reminderTime` (minutes since midnight)
@@ -76,6 +76,8 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 ### Time Representation
 
 All times are stored as **minutes since midnight** (0–1440). A task at 9:30am = `570`. Duration of 90 minutes = `90`. Convert carefully when working with JS `Date` objects.
+
+The day a task belongs to is `task.date` (`YYYY-MM-DD`, user timezone, helpers in `src/lib/time.ts`). Tasks do not cross midnight, split them. The Now screen ranks only today's tasks. The layout preloads tasks from yesterday on, the Plan screen fetches any other day with `loadDay(date)`.
 
 ### Audio (`src/lib/index.ts`)
 
@@ -98,7 +100,6 @@ bun run db:studio    # Drizzle Studio GUI
 - Stored statuses `active` and `overdue` are no longer written or read. Missed tasks are derived by `rank()` (window ended, not completed). Remove the unused enum values in a later cleanup
 - Reminder notifications are schema-ready but not wired up
 - `openaiKey` in user schema is prepared for the assistant (not implemented yet, stored in plain text, must be encrypted before use)
-- Tasks have no date yet, only minutes since midnight
 
 ## Product Direction (UI rework)
 
@@ -114,7 +115,7 @@ The full plan is in `docs/ui-rework-plan.md`. Summary:
 
 - **Google Calendar sync** - two-way, needs dated days first
 - **End-of-day summary** - small retrospective, replaces the full analytics dashboard
-- **Recurring tasks, capture inbox, PWA** - after dated days
+- **Recurring tasks, capture inbox, PWA** - dated days exist now
 - Parked on purpose: adaptive behavior model, Crisis Mode, anti-context-switch scheduler
 
 ## What to Avoid
@@ -124,4 +125,4 @@ The full plan is in `docs/ui-rework-plan.md`. Summary:
 - Do not add unauthenticated/localStorage fallback - login is required by design
 - Do not add animation or visual complexity that competes with the active task display (no emoji, no decorative elements, no flashing)
 - Do not add stat tiles, marketing copy or footers to the main views
-- Do not touch the DB schema without running `bun run db:push` afterward
+- Do not touch the DB schema without applying it afterward (`bun run db:push`, or a script like `scripts/add-task-date.ts` when drizzle-kit cannot run)
