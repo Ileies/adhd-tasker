@@ -164,7 +164,7 @@ Everything is synthesized with the Web Audio API on one shared `AudioContext` (`
 
 ## Deployment
 
-`bun run deploy` (`scripts/deploy.ts`) deploys the committed HEAD of the current branch to the server (`tasker.ileies.de`, ssh alias `home`, clone at `/var/www/adhd-tasker`): preflight, `git reset`, install, build on the server (because `DATABASE_URL` is baked in from the server's `.env`), database backup, pm2 restart, verify. Preflight runs `bun run verify` in full and refuses to deploy when it fails. A change to `schema.ts` since the server's commit stops the deploy before the server is touched, unless `--db-push` applies it or `--schema-applied` says it was applied by hand. Flags: `--push`, `--dry-run`, `--skip-check` (skips `verify`), `--db-push`, `--schema-applied`, `--host <alias>`. `pm2.config.cjs` is the local pm2 spec (port 3002).
+`bun run deploy` (`scripts/deploy.ts`) deploys the committed HEAD of the current branch to the server (`tasker.ileies.de`, ssh alias `home`, clone at `/var/www/adhd-tasker`): preflight, `git reset`, install, build on the server (because `DATABASE_URL` is baked in from the server's `.env`), database backup, pm2 restart, verify. Preflight runs `bun run verify` in full and refuses to deploy when it fails. A change to `schema.ts` since the server's commit stops the deploy before the server is touched, unless `--db-push` applies it or `--schema-applied` says it was applied by hand. Flags: `--push`, `--dry-run`, `--skip-check` (skips `verify`), `--force` (deploy HEAD despite uncommitted changes), `--db-push`, `--schema-applied`, `--host <alias>`. `pm2.config.cjs` is the local pm2 spec (port 3002).
 
 ## Known Gaps
 

@@ -14,6 +14,8 @@
  *   bun run deploy --skip-check      skip `bun run verify` (format, tests, types, lint, build)
  *   bun run deploy --db-push         run `drizzle-kit push --force` after the backup (schema changes)
  *   bun run deploy --schema-applied  deploy a schema.ts change that is already applied by hand
+ *   bun run deploy --force           deploy the committed HEAD although the working tree has uncommitted
+ *                                    changes (`verify` still runs on the working tree, not on HEAD)
  *   bun run deploy --host <alias>    deploy somewhere other than `home`
  *
  * Without --db-push or --schema-applied, a change to schema.ts since the server's commit stops the
@@ -106,8 +108,13 @@ step('Preflight (local)');
 const dirty = (await $`git status --porcelain`.text()).trim();
 if (dirty) {
 	console.error(dirty);
-	fail(
-		'working tree has uncommitted changes - the server deploys a commit, so it would get something else'
+	if (!flag('force'))
+		fail(
+			'working tree has uncommitted changes - the server deploys a commit, so it would get something else. ' +
+				'Rerun with --force to deploy the committed HEAD anyway.'
+		);
+	console.log(
+		'  --force: deploying the committed HEAD, the changes above stay local and unshipped'
 	);
 }
 

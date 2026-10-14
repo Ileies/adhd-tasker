@@ -106,7 +106,7 @@ Times are stored as minutes since midnight, each task belongs to a dated day (`Y
 
 ## Deployment
 
-`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), backs up the database, restarts PM2 and verifies the site. It refuses to start when `bun run verify` fails, and when `schema.ts` changed since the server's commit unless `--db-push` (apply it) or `--schema-applied` (applied by hand) is given. Useful flags: `--push`, `--dry-run`, `--db-push`, `--schema-applied`, `--skip-check` (skips `verify`). The app runs as a single process on port 3002, which the event stream requires.
+`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), backs up the database, restarts PM2 and verifies the site. It refuses to start when `bun run verify` fails, and when `schema.ts` changed since the server's commit unless `--db-push` (apply it) or `--schema-applied` (applied by hand) is given. Useful flags: `--push`, `--dry-run`, `--db-push`, `--schema-applied`, `--skip-check` (skips `verify`), `--force` (deploy the committed HEAD despite uncommitted changes). The app runs as a single process on port 3002, which the event stream requires.
 
 ## Roadmap
 
