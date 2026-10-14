@@ -5,15 +5,11 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 
-	let { loggedIn }: { loggedIn: boolean } = $props();
-
 	const device = deviceTimezone();
 	let dismissed = $state(false);
 
 	// Only ask when a timezone was saved earlier and this device differs from it
-	const open = $derived(
-		loggedIn && !dismissed && tasker.timezone !== null && tasker.timezone !== device
-	);
+	const open = $derived(!dismissed && tasker.timezone !== null && tasker.timezone !== device);
 
 	function useDevice() {
 		// Applied locally at once. If saving fails, this dialog asks again on the next load

@@ -10,11 +10,8 @@
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import * as Select from '#lib/components/ui/select/index.js';
 
-	const {
-		email,
-		form = $bindable(),
-		onDelete
-	}: { email: string; form: TaskForm; onDelete?: (task: Task) => void } = $props();
+	const { form = $bindable(), onDelete }: { form: TaskForm; onDelete?: (task: Task) => void } =
+		$props();
 
 	const priorityOptions = [
 		{ value: Priority.Low, label: 'Low' },
@@ -53,8 +50,7 @@
 			date: form.date,
 			duration: form.duration,
 			startTime: form.startTime,
-			priority: form.priority,
-			email
+			priority: form.priority
 		};
 
 		try {

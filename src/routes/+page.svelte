@@ -15,13 +15,7 @@
 	} from '#lib';
 	import { addAlarm, playsSound } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
-	import {
-		OVERRUN_LIMITS,
-		hyperfocusDue,
-		momentKey,
-		reminderDue,
-		type StuckAction
-	} from '#lib/anchoring.js';
+	import { hyperfocusDue, momentKey, reminderDue, type StuckAction } from '#lib/anchoring.js';
 	import {
 		DONE_CONFIRM_MS,
 		REASON_MS,
@@ -43,7 +37,11 @@
 	// The server render has no shared client state (it is module level and must not leak between requests),
 	// so it reads the load data directly. Otherwise the first paint would be the empty state, then flip.
 	const tasks = $derived(browser ? tasker.tasks : data.tasks);
-	const timezone = $derived(tasker.timezone ?? data.user?.timezone ?? null);
+	const settings = $derived(browser ? tasker.settings : (data.user ?? tasker.settings));
+	// A signed in visitor's plan came with the page. A guest's is on the device and shows once it was read:
+	// until then one calm frame, never the empty state, which would be a lie for a moment
+	const ready = $derived(!!data.user || tasker.account.ready);
+	const timezone = $derived(tasker.timezone ?? settings.timezone ?? null);
 
 	let now = $state(minutesNow(untrack(() => timezone)));
 	let today = $state(todayIn(untrack(() => timezone)));
@@ -57,13 +55,11 @@
 	const hasCurrent = $derived(ranking.current !== null);
 	// The next task when it starts within the heads-up minutes, shown in the hero (the chime sounds below)
 	const headsUp = $derived(
-		data.user?.enableReminders
-			? reminderDue(ranking.upcoming, now, data.user.reminderAdvanceTime)
+		settings.enableReminders
+			? reminderDue(ranking.upcoming, now, settings.reminderAdvanceTime)
 			: null
 	);
-	const hero = $derived(
-		heroState(ranking, now, { overrunMinutes: data.user?.overrunMinutes ?? OVERRUN_LIMITS.default })
-	);
+	const hero = $derived(heroState(ranking, now, { overrunMinutes: settings.overrunMinutes }));
 
 	$effect(() => {
 		const tick = () => {
@@ -80,7 +76,7 @@
 	$effect(() => {
 		if (today === checkedDay) return;
 		checkedDay = today;
-		if (data.user) loadDay(today).catch(() => {});
+		loadDay(today).catch(() => {});
 	});
 
 	// Soft chime every 5 minutes while there is something to do, to pull attention back
@@ -98,8 +94,8 @@
 	const sounded = new Set<string>();
 	let opened = false;
 	$effect(() => {
-		const user = data.user;
-		if (!user) return;
+		// A guest's plan is still being read from the device: nothing is due yet, and what is due after it came in is old
+		if (!ready) return;
 		// The first run is the page opening: the user is looking at it, so moments already due stay silent
 		const quiet = !playsSound() || !opened;
 		opened = true;
@@ -126,8 +122,8 @@
 			}
 		}
 
-		const over = user.hyperfocusAlarm
-			? hyperfocusDue(ranking.missed, now, user.overrunMinutes)
+		const over = settings.hyperfocusAlarm
+			? hyperfocusDue(ranking.missed, now, settings.overrunMinutes)
 			: null;
 		if (over) {
 			const key = momentKey('overrun', today, over);
@@ -272,15 +268,14 @@
 </script>
 
 <svelte:head>
-	<title>{data.user ? tabTitle(hero) : 'Now - ADHD Tasker'}</title>
+	<title>{ready ? tabTitle(hero) : 'Now - ADHD Tasker'}</title>
 </svelte:head>
 
-{#if !data.user}
+{#if !ready}
+	<div class="min-h-full" aria-hidden="true"></div>
+{:else if tasker.account.problem}
 	<div class="flex min-h-full flex-col items-center justify-center gap-6 px-6 py-12 text-center">
-		<h1 class="text-display font-bold">ADHD Tasker</h1>
-		<p class="text-muted-foreground max-w-md text-xl">
-			One task at a time, always on screen. Sign in to see your plan.
-		</p>
+		<p class="max-w-md text-xl" role="alert">{tasker.account.problem}</p>
 		<form method="POST" action="/login">
 			<Button type="submit" size="lg" class="h-14 px-8 text-lg">Sign in with Google</Button>
 		</form>
@@ -303,7 +298,7 @@
 			onDrop={drop}
 			onTimer={startTimer}
 			concurrent={ranking.concurrent}
-			showClock={data.user.showClock}
+			showClock={settings.showClock}
 			{timezone}
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
 		/>
@@ -316,5 +311,5 @@
 			onDrop={drop}
 		/>
 	</div>
-	<TaskForm email={data.user.email} bind:form onDelete={drop} />
+	<TaskForm bind:form onDelete={drop} />
 {/if}

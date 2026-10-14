@@ -15,8 +15,6 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 
-	const { data } = $props();
-
 	const DEFAULT_DURATION = 30;
 	const DEFAULT_START = 9 * 60;
 
@@ -250,4 +248,4 @@
 	</div>
 </div>
 
-<TaskForm email={data.user?.email || ''} bind:form onDelete={remove} />
+<TaskForm bind:form onDelete={remove} />

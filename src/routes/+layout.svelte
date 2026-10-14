@@ -9,6 +9,7 @@
 	import { keepAwake, toggleFullscreen } from '#lib/display.js';
 	import { startStream } from '#lib/stream.js';
 	import { showOneTap } from '#lib/onetap.js';
+	import { beginGuest, useAccount } from '#lib/mode.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { goto } from '$app/navigation';
@@ -25,8 +26,19 @@
 
 	let { children, data } = $props();
 
-	// Hydrate once: later invalidations must not overwrite optimistic edits or days loaded since
-	if (browser) tasker.tasks = untrack(() => data.tasks);
+	// Hydrate once: later invalidations must not overwrite optimistic edits or days loaded since.
+	// A signed in visitor's plan and settings came with the page, a guest's are read from the device below
+	// A guest runs on the device: the plan is read from IndexedDB, the agent, alarms and sound run in this tab.
+	// Started right here, before the page below runs its own effects, so that its first requests already wait for the device
+	let stopGuest = () => {};
+	if (browser)
+		untrack(() => {
+			if (data.user) {
+				const { email, ...settings } = data.user;
+				useAccount(email, settings, data.tasks);
+			} else stopGuest = beginGuest();
+		});
+	onMount(() => stopGuest);
 
 	onMount(() => {
 		const stopPreferences = initPreferences();
@@ -70,7 +82,7 @@
 	$effect(keepAwake);
 
 	$effect(() => {
-		tasker.voice.replies = !!data.user?.voiceReplies;
+		tasker.voice.replies = tasker.settings.voiceReplies;
 	});
 
 	// Muting or turning the volume down also quiets speech that is being said
@@ -80,10 +92,10 @@
 		syncSpeechVolume();
 	});
 
-	// The saved timezone is the source of truth, the first login saves this device's timezone
+	// The saved timezone is the source of truth, the first visit saves this device's timezone
 	$effect(() => {
-		if (!data.user) return;
-		if (data.user.timezone) tasker.timezone = data.user.timezone;
+		if (!tasker.account.ready || tasker.account.problem) return;
+		if (tasker.settings.timezone) tasker.timezone = tasker.settings.timezone;
 		// Applied locally at once, a failed save is retried on the next load
 		else setTimezone(deviceTimezone()).catch(() => {});
 	});
@@ -102,7 +114,7 @@
 	// On the Now screen the bar floats over the content and fades out when nothing is touched,
 	// so the display stays calm. Any input brings it back.
 	const HIDE_AFTER_MS = 5000;
-	const overlay = $derived(page.url.pathname === '/' && !!data.user);
+	const overlay = $derived(page.url.pathname === '/');
 	let barVisible = $state(true);
 	let isFullscreen = $state(false);
 	let headerEl: HTMLElement | undefined = $state();
@@ -138,10 +150,10 @@
 <svelte:document onfullscreenchange={() => (isFullscreen = !!document.fullscreenElement)} />
 
 {#if !legal}<SetupDialog />{/if}
-<TimezoneDialog loggedIn={!!data.user} />
+<TimezoneDialog />
 <UndoToast />
 <AlarmBanner />
-{#if data.user}<AssistantDrawer hasKey={data.user.hasOpenaiKey} />{/if}
+<AssistantDrawer hasKey={tasker.settings.hasOpenaiKey} />
 
 <!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
 <form method="POST" action="/login" bind:this={loginForm} class="hidden"></form>
@@ -168,17 +180,15 @@
 		</button>
 
 		<div class="flex items-center justify-end gap-1">
-			{#if data.user}
-				<Button
-					variant="ghost"
-					size="icon-lg"
-					onclick={() => (tasker.assistant.open = true)}
-					aria-label="Assistant"
-					title="Assistant"
-				>
-					<MessageSquare class="size-5" />
-				</Button>
-			{/if}
+			<Button
+				variant="ghost"
+				size="icon-lg"
+				onclick={() => (tasker.assistant.open = true)}
+				aria-label="Assistant"
+				title="Assistant"
+			>
+				<MessageSquare class="size-5" />
+			</Button>
 			<VolumeMenu />
 
 			<Button
@@ -211,10 +221,8 @@
 						>
 					{/if}
 					<DropdownMenu.Separator />
-					{#if data.user}
-						<DropdownMenu.Item onSelect={() => goto('/alarms')}>Alarms</DropdownMenu.Item>
-						<DropdownMenu.Item onSelect={() => goto('/activity')}>Activity</DropdownMenu.Item>
-					{/if}
+					<DropdownMenu.Item onSelect={() => goto('/alarms')}>Alarms</DropdownMenu.Item>
+					<DropdownMenu.Item onSelect={() => goto('/activity')}>Activity</DropdownMenu.Item>
 					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
 					{#if data.user}
 						<DropdownMenu.Separator />

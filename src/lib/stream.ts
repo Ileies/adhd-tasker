@@ -1,5 +1,5 @@
 import { tasker } from '#lib/app.svelte.js';
-import { playTone } from '#lib';
+import { loadDay, playTone } from '#lib';
 import { pollAgent } from '#lib/agent.js';
 import { deviceId, loadSchedule, playsSound, ring } from '#lib/alarms.js';
 import type { Tone } from '#lib/tones.js';
@@ -15,10 +15,16 @@ interface Message {
 	tone?: Tone;
 	durationMin?: number;
 	device?: string | null;
+	/** The days another tab of a guest's device changed. */
+	dates?: string[];
 }
 
-function handle(message: Message) {
+/** What a hint means for this screen. The server stream and the tabs of a guest's device both end up here. */
+export function handleHint(message: Message) {
 	switch (message.type) {
+		case 'plan':
+			for (const date of message.dates ?? []) void loadDay(date).catch(() => {});
+			return;
 		case 'agent':
 			return void pollAgent().catch(() => {});
 		case 'schedule':
@@ -63,7 +69,7 @@ export function startStream() {
 	};
 	source.onmessage = (event) => {
 		try {
-			handle(JSON.parse(event.data));
+			handleHint(JSON.parse(event.data));
 		} catch {
 			// a malformed push is not worth anything, the next fetch is the truth
 		}
