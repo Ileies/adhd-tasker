@@ -57,6 +57,20 @@ export default ts.config(
 		}
 	},
 	{
+		// Scripts share helpers with each other, but reach the app through #lib/...
+		files: ['scripts/**'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{ group: ['../*'], message: 'Import through #lib/... instead of a relative path.' }
+					]
+				}
+			]
+		}
+	},
+	{
 		// pm2 loads its config as CommonJS
 		files: ['**/*.cjs'],
 		rules: { '@typescript-eslint/no-require-imports': 'off' }
