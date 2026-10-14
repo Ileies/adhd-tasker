@@ -4,6 +4,7 @@ import fc from 'fast-check';
 import { minutesOf } from '#lib/schedule.js';
 import {
 	addDays,
+	clockParts,
 	formatDay,
 	isDateKey,
 	isValidTimezone,
@@ -13,6 +14,18 @@ import {
 } from '#lib/time.js';
 
 afterEach(() => setSystemTime());
+
+describe('clockParts', () => {
+	test('shows the wall clock of the timezone with seconds apart', () => {
+		const at = new Date('2026-10-14T23:05:09Z');
+		expect(clockParts('UTC', at)).toEqual({ time: '23:05', seconds: '09' });
+		expect(clockParts('Asia/Tokyo', at)).toEqual({ time: '08:05', seconds: '09' });
+	});
+
+	test('midnight is 00:00, not 24:00', () => {
+		expect(clockParts('UTC', new Date('2026-10-14T00:00:00Z')).time).toBe('00:00');
+	});
+});
 
 describe('dates', () => {
 	test('todayIn follows the timezone, not the machine', () => {

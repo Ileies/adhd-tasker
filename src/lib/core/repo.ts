@@ -43,6 +43,7 @@ export interface Settings {
 	lastCurrentTaskId: number | null;
 	displayDevice: string | null;
 	voiceReplies: boolean;
+	showClock: boolean;
 }
 
 /** One change the assistant made, `before` and `after` are tasks, null when absent. */

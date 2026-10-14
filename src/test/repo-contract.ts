@@ -423,6 +423,7 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				dailyTokenBudget: null,
 				openaiKey: null,
 				voiceReplies: false,
+				showClock: false,
 				displayDevice: null
 			});
 		});

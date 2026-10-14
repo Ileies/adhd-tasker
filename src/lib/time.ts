@@ -24,6 +24,22 @@ export function minutesNow(timezone?: string | null): number {
 	return get('hour') * 60 + get('minute');
 }
 
+/** The wall clock in the given timezone as `HH:MM` and `SS`, for the clock on the Now screen. */
+export function clockParts(
+	timezone?: string | null,
+	at = new Date()
+): { time: string; seconds: string } {
+	const parts = new Intl.DateTimeFormat('en-US', {
+		timeZone: timezone && isValidTimezone(timezone) ? timezone : undefined,
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hourCycle: 'h23'
+	}).formatToParts(at);
+	const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+	return { time: `${get('hour')}:${get('minute')}`, seconds: get('second') };
+}
+
 /** A calendar day as `YYYY-MM-DD`, the format of `task.date`. */
 export type DateKey = string;
 
