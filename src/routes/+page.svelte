@@ -17,6 +17,7 @@
 	import { playsSound } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
 	import { hyperfocusDue, momentKey, reminderDue } from '#lib/anchoring.js';
+	import { extendTask } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
 	import { minutesNow, todayIn } from '#lib/time.js';
 	import { untrack } from 'svelte';
@@ -125,7 +126,7 @@
 	/** Gives a missed task 15 more minutes from now. */
 	function extend(task: Task) {
 		const before = task.duration;
-		void updateTask({ ...task, duration: now - task.startTime + 15 });
+		void updateTask({ ...task, duration: extendTask(task, now, 15) });
 		showToast(`${task.title}: 15 more minutes`, () => updateTask({ ...task, duration: before }));
 	}
 

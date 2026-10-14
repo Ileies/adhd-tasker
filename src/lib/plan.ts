@@ -19,6 +19,18 @@ export function resizeTo(start: number, duration: number): number {
 	return Math.min(DAY_MINUTES - start, Math.max(MIN_DURATION, snap(duration)));
 }
 
+/**
+ * The duration after giving a task `minutes` more: from the later of its end and `now`, so a
+ * missed task gets them from now and a running one on top of its end. Ends by midnight at the latest.
+ */
+export function extendTask(
+	task: Pick<Task, 'startTime' | 'duration'>,
+	now: number,
+	minutes: number
+): number {
+	const end = Math.max(task.startTime + task.duration, now) + minutes;
+	return Math.max(task.duration, Math.min(DAY_MINUTES, end) - task.startTime);
+}
 type Span = Pick<Task, 'id' | 'startTime' | 'duration'>;
 
 const overlap = (a: Span, b: Span) =>
