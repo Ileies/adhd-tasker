@@ -1,5 +1,7 @@
 /// <reference types="bun" />
 import { afterEach, describe, expect, setSystemTime, test } from 'bun:test';
+import fc from 'fast-check';
+import { minutesOf } from '#lib/schedule.js';
 import {
 	addDays,
 	formatDay,
@@ -113,5 +115,79 @@ describe('zonedToEpoch', () => {
 		expect(at(120)).toBe(Date.parse('2026-10-25T01:00:00Z'));
 		expect(at(119)).toBe(Date.parse('2026-10-24T23:59:00Z'));
 		expect(at(180)).toBe(Date.parse('2026-10-25T02:00:00Z'));
+	});
+});
+
+describe('properties', () => {
+	const ZONES = [
+		'Europe/Berlin',
+		'America/St_Johns',
+		'Asia/Kathmandu',
+		'Australia/Lord_Howe',
+		'Pacific/Kiritimati',
+		'Pacific/Pago_Pago'
+	];
+	const zone = fc.constantFrom(...ZONES);
+	const dateKey = fc
+		.date({
+			min: new Date('2024-01-01T00:00:00Z'),
+			max: new Date('2030-12-31T00:00:00Z'),
+			noInvalidDate: true
+		})
+		.map((date) => date.toISOString().slice(0, 10));
+	const minute = fc.integer({ min: 0, max: 1439 });
+
+	/** The UTC offset in minutes at an instant, read independently of the code under test. */
+	function offsetAt(at: number, timezone: string) {
+		const name = new Intl.DateTimeFormat('en-US', {
+			timeZone: timezone,
+			timeZoneName: 'longOffset'
+		})
+			.formatToParts(new Date(at))
+			.find((part) => part.type === 'timeZoneName')!.value;
+		const match = /GMT([+-])(\d{2}):(\d{2})/.exec(name);
+		return match ? (match[1] === '-' ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) : 0;
+	}
+
+	/** True when the offset does not change within a day and a half around the date, so no gap is in play. */
+	function steady(date: string, timezone: string) {
+		const midnight = Date.parse(date + 'T00:00:00Z');
+		return (
+			offsetAt(midnight - 36 * 3_600_000, timezone) ===
+			offsetAt(midnight + 60 * 3_600_000, timezone)
+		);
+	}
+
+	test('a wall time outside a daylight saving change reads back as the same minute and day', () => {
+		fc.assert(
+			fc.property(dateKey, minute, zone, (date, minutes, timezone) => {
+				fc.pre(steady(date, timezone));
+				const at = zonedToEpoch(date, minutes, timezone);
+				expect(minutesOf(at, timezone)).toBe(minutes);
+				expect(todayIn(timezone, new Date(at))).toBe(date);
+			})
+		);
+	});
+
+	test('around a daylight saving change the result is never more than an hour from the wall time', () => {
+		fc.assert(
+			fc.property(dateKey, minute, zone, (date, minutes, timezone) => {
+				const at = zonedToEpoch(date, minutes, timezone);
+				const wall = Date.parse(date + 'T00:00:00Z') + minutes * 60_000;
+				const shown =
+					Date.parse(todayIn(timezone, new Date(at)) + 'T00:00:00Z') +
+					minutesOf(at, timezone) * 60_000;
+				expect(Math.abs(shown - wall)).toBeLessThanOrEqual(60 * 60_000);
+			})
+		);
+	});
+
+	test('addDays and its inverse give back the date', () => {
+		fc.assert(
+			fc.property(dateKey, fc.integer({ min: -4000, max: 4000 }), (date, days) => {
+				expect(addDays(addDays(date, days), -days)).toBe(date);
+				expect(isDateKey(addDays(date, days))).toBe(true);
+			})
+		);
 	});
 });
