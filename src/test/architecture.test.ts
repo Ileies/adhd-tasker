@@ -78,6 +78,7 @@ describe('pairing rule', () => {
 	const UNTESTED: Record<string, string> = {
 		'types.ts': 'types only',
 		'core/repo.ts': 'types only',
+		'backend.ts': 'the interface and one error class, tested through remote-backend.test.ts',
 		'utils.ts': 'generated shadcn helper',
 		'app.svelte.ts': 'the state object, used by every client test',
 		'display.ts': 'browser API wiring, its rules live in tested modules',
@@ -188,5 +189,20 @@ describe('pages', () => {
 		expect(pages.filter(({ content }) => !/<title>/.test(content)).map(({ path }) => path)).toEqual(
 			[]
 		);
+	});
+});
+
+describe('network access', () => {
+	test('fetch is only called by backends, adapters and server code, never by a component or a route page', () => {
+		expect(appCodeMentioning(/\bfetch\(/)).toEqual([
+			'src/hooks.server.ts',
+			'src/lib/core/voice.ts',
+			'src/lib/openai.ts',
+			'src/lib/remote-backend.ts',
+			'src/lib/server/session.ts',
+			'src/routes/callback/+server.ts',
+			'src/routes/settings/+page.server.ts',
+			'src/service-worker/index.ts'
+		]);
 	});
 });

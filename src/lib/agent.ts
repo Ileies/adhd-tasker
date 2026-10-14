@@ -7,18 +7,11 @@ import { speak } from '#lib/speech.js';
 /** Cards already seen on this page, so a card is spoken once however often the feed is fetched. */
 const announced = new Set<number>();
 
-interface Feed {
-	cursor: number;
-	cards: AgentCard[];
-	changes: { id: number; summary: string; dates: string[] }[];
-}
-
 /** Fetches what the agent did on its own: refreshes the plan, offers Undo for its edits and fills the strip on Now. The stream calls it when there is news. */
 export async function pollAgent() {
 	const since = tasker.agent.cursor;
-	const response = await fetch(since === null ? '/agent' : `/agent?since=${since}`);
-	if (!response.ok) return;
-	const feed: Feed = await response.json();
+	const feed = await tasker.backend.agent.feed(since);
+	if (!feed) return;
 
 	tasker.agent.cursor = feed.cursor;
 	tasker.agent.cards = feed.cards;
@@ -53,7 +46,7 @@ export async function pollAgent() {
  */
 export async function resolveCard(card: AgentCard, answer?: string) {
 	tasker.agent.cards = tasker.agent.cards.filter((open) => open.id !== card.id);
-	await fetch(`/agent/cards/${card.id}`, { method: 'POST' }).catch(() => {});
+	await tasker.backend.agent.resolveCard(card.id).catch(() => {});
 	if (!answer) return;
 
 	const chat = tasker.assistant;
@@ -64,9 +57,5 @@ export async function resolveCard(card: AgentCard, answer?: string) {
 
 /** Tells the server the user is stuck on a task. The on-screen hint does not wait for it, a failure costs only the assistant's answer. */
 export async function reportStuck(taskId: number, reason: string) {
-	await fetch('/agent/stuck', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ taskId, reason })
-	}).catch(() => {});
+	await tasker.backend.agent.stuck(taskId, reason).catch(() => {});
 }

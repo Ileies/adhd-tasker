@@ -1,7 +1,7 @@
 import { tasker, type Alarm } from '#lib/app.svelte.js';
 import { startRinging } from '#lib';
-import { SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
-import type { ToneName } from '#lib/tones.js';
+import { SCHEDULE_LIMITS } from '#lib/schedule.js';
+import type { AlarmFields } from '#lib/backend.js';
 
 const DEVICE_KEY = 'tasker.device';
 /** An alarm whose time passed while the tab slept still rings if it is this recent. */
@@ -69,45 +69,30 @@ function arm() {
 }
 
 export async function loadSchedule() {
-	const response = await fetch('/schedule');
-	if (!response.ok) return;
-	const body = await response.json();
+	const body = await tasker.backend.schedule.load();
+	if (!body) return;
 	tasker.schedule.alarms = body.alarms;
 	tasker.schedule.wakeups = body.wakeups;
 	tasker.schedule.loaded = true;
 	arm();
 }
 
-/** `at` is a clock time for a daily or one-off alarm, `in_minutes` a timer from now (it cannot repeat). */
-export async function addAlarm(fields: {
-	at?: string;
-	in_minutes?: number;
-	label: string;
-	tone: ToneName;
-	repeat: Repeat;
-	duration_minutes?: number;
-}): Promise<string | null> {
-	const response = await fetch('/schedule', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(fields)
-	});
-	if (!response.ok)
-		return (await response.json().catch(() => null))?.message ?? 'Could not save the alarm';
+/** `at` is a clock time for a daily or one-off alarm, `in_minutes` a timer from now (it cannot repeat). Returns why it failed. */
+export async function addAlarm(fields: AlarmFields): Promise<string | null> {
+	try {
+		await tasker.backend.schedule.addAlarm(fields);
+	} catch (error) {
+		return error instanceof Error ? error.message : 'Could not save the alarm';
+	}
 	await loadSchedule();
 	return null;
 }
 
 export async function removeEntry(id: number) {
-	await fetch(`/schedule/${id}`, { method: 'DELETE' });
+	await tasker.backend.schedule.remove(id);
 	await loadSchedule();
 }
 
 /** `null` lets every device play again. */
-export async function chooseDisplay(device: string | null) {
-	await fetch('/schedule/display', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ device })
-	});
-}
+export const chooseDisplay = (device: string | null) =>
+	tasker.backend.schedule.chooseDisplay(device);

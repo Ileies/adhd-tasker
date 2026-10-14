@@ -1,6 +1,8 @@
 import { type Task } from '#lib/types.js';
 import type { Repeat } from '#lib/schedule.js';
 import type { Tone } from '#lib/tones.js';
+import type { Backend } from '#lib/backend.js';
+import { remoteBackend } from '#lib/remote-backend.js';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -45,6 +47,8 @@ export interface Wakeup {
 }
 
 export const tasker: {
+	/** Where everything is stored and computed, set once when the app loads. */
+	backend: Backend;
 	tasks: Task[];
 	isMuted: boolean;
 	volume: number; // 0-100
@@ -64,6 +68,7 @@ export const tasker: {
 	device: { id: string; display: string | null; streaming: boolean }; // display: the device that plays sound, null means every device
 	voice: { replies: boolean; recording: boolean; transcribing: boolean; speaking: boolean }; // replies: the user's setting to hear the assistant
 } = $state({
+	backend: remoteBackend,
 	tasks: [],
 	isMuted: false,
 	volume: 100,

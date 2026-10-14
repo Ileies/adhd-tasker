@@ -55,11 +55,7 @@ export function setDayTime(key: 'dayStart' | 'dayEnd', minutes: number) {
 export async function setTimezone(timezone: string) {
 	tasker.timezone = timezone;
 	syncTheme();
-	await fetch('/settings/timezone', {
-		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ timezone })
-	});
+	await tasker.backend.settings.saveTimezone(timezone);
 }
 
 export function setVolume(value: number) {

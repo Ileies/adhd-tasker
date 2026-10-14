@@ -89,15 +89,7 @@ export async function finishRecording(): Promise<string | null> {
 
 	tasker.voice.transcribing = true;
 	try {
-		const form = new FormData();
-		form.set('audio', blob);
-		const response = await fetch('/assistant/transcribe', { method: 'POST', body: form });
-		if (!response.ok)
-			throw new Error(
-				(await response.json().catch(() => null))?.message ?? 'Could not understand the recording'
-			);
-		const { text }: { text: string } = await response.json();
-		return text.trim() || null;
+		return (await tasker.backend.voice.transcribe(blob)) || null;
 	} finally {
 		tasker.voice.transcribing = false;
 	}
@@ -148,14 +140,8 @@ export async function speak(text: string) {
 	stopSpeaking();
 	const run = speechRun;
 	try {
-		const response = await fetch('/assistant/speak', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ text: input })
-		});
-		if (!response.ok || run !== speechRun) return;
-		const blob = await response.blob();
-		if (run !== speechRun) return;
+		const blob = await tasker.backend.voice.speak(input);
+		if (!blob || run !== speechRun) return;
 
 		playerUrl = URL.createObjectURL(blob);
 		player = new Audio(playerUrl);
