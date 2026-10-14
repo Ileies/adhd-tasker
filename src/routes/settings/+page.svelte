@@ -7,6 +7,7 @@
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
 	import ClockSettingsForm from '#lib/components/ClockSettingsForm.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
+	import DataSettings from '#lib/components/DataSettings.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import PageFrame from '#lib/components/PageFrame.svelte';
 	import { browser } from '$app/env';
@@ -27,6 +28,7 @@
 		{ id: 'assistant', label: 'Assistant' },
 		{ id: 'voice', label: 'Voice' },
 		{ id: 'agent', label: 'Assistant on its own' },
+		{ id: 'data', label: 'Your data' },
 		...(data.user ? [{ id: 'google', label: 'Google Workspace' }] : [])
 	]);
 </script>
@@ -132,6 +134,16 @@
 					quietEnd={settings.quietEnd}
 					budget={settings.dailyTokenBudget}
 				/>
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root id="data" class="mt-4 scroll-mt-6">
+			<Card.Header>
+				<Card.Title>Your data</Card.Title>
+				<Card.Description>Take a copy with you, or bring one back.</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<DataSettings signedIn={!!data.user} />
 			</Card.Content>
 		</Card.Root>
 
