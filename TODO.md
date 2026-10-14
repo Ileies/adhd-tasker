@@ -1,6 +1,10 @@
 # ADHD Tasker - TODO
 
-Rationale: `docs/ui-rework-plan.md`.
+Plans in `docs/`:
+
+- `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
+- `soon-plan.md`: current work
+- `ux-plan.md`, `checks-and-tests-plan.md`, `feature-ideas.md`: waiting for the soon plan
 
 ## Now
 

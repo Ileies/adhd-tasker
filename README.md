@@ -98,8 +98,8 @@ src/
 │   └── server/                 DB, auth session, agent scheduler, events, crypto, stream
 ├── service-worker/             PWA asset cache
 scripts/                        deploy.ts and one-off schema scripts
-docs/ui-rework-plan.md          Product direction and phases
-TODO.md                         Roadmap
+docs/roadmap-1.0.md             Scope, scorecard and milestones to 1.0
+TODO.md                         Open items and plan index
 ```
 
 Times are stored as minutes since midnight, each task belongs to a dated day (`YYYY-MM-DD` in the user's timezone). Imports use the `#lib/` alias.
@@ -110,4 +110,4 @@ Times are stored as minutes since midnight, each task belongs to a dated day (`Y
 
 ## Roadmap
 
-Done: priority engine, Now and Plan screens, PWA, assistant, event-driven agent, scheduler, alarms and tones. Next: voice assistant (push-to-talk), "I'm stuck", hyperfocus alarm and reminders. Later: Google Calendar sync, recurring tasks, capture inbox, end-of-day summary. Details in `TODO.md` and `docs/ui-rework-plan.md`.
+Done: priority engine, Now and Plan screens, PWA, assistant, event-driven agent, scheduler, alarms and tones. Next: voice assistant (push-to-talk), "I'm stuck", hyperfocus alarm and reminders. Later: Google Calendar sync, recurring tasks, capture inbox, end-of-day summary. Scope and order to 1.0 in `docs/roadmap-1.0.md`, open items in `TODO.md`.
