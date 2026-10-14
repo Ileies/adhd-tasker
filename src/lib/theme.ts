@@ -5,7 +5,9 @@ import { minutesNow } from '#lib/time.js';
 function save(key: string, value: string) {
 	try {
 		localStorage.setItem(key, value);
-	} catch {}
+	} catch {
+		// Storage can be blocked, the setting then only lasts for this page
+	}
 }
 
 function resolveDark(): boolean {
@@ -100,7 +102,9 @@ export function initPreferences() {
 			const raw = localStorage.getItem(key);
 			if (raw !== null && Number(raw) >= 0 && Number(raw) < 1440) tasker[key] = Number(raw);
 		}
-	} catch {}
+	} catch {
+		// Storage can be blocked, the defaults stay in place
+	}
 
 	// The inline script in app.html only guesses, so sync to the loaded settings
 	applyDark(resolveDark());

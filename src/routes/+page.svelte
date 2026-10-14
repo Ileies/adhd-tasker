@@ -64,6 +64,8 @@
 
 	// Heads-up before the next task starts and a tap when the latest task runs over. Each moment sounds once on the display device,
 	// and a late page load stays quiet because `hyperfocusDue` only reports the minutes right after the threshold.
+	// Bookkeeping only: a reactive set would make the effect below depend on what it just sounded
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const sounded = new Set<string>();
 	$effect(() => {
 		const user = data.user;

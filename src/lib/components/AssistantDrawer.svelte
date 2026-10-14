@@ -56,8 +56,8 @@
 
 	// Keep the newest message in view
 	$effect(() => {
-		chat.messages.length;
-		chat.busy;
+		void chat.messages.length;
+		void chat.busy;
 		tick().then(() => list?.scrollTo({ top: list.scrollHeight }));
 	});
 </script>

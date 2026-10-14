@@ -82,13 +82,19 @@ describe('parseSpeakBody', () => {
 
 describe('buildSpeechEvents', () => {
 	test('configures audio only output, then sends the text and asks for a response', () => {
-		const [session, item, response] = buildSpeechEvents('Hello') as any[];
-		expect(session.type).toBe('session.update');
-		expect(session.session.output_modalities).toEqual(['audio']);
-		expect(session.session.audio.output.format).toEqual({ type: 'audio/pcm', rate: 24000 });
-		expect(session.session.audio.input.turn_detection).toBeNull();
-		expect(item.item.content).toEqual([{ type: 'input_text', text: 'Hello' }]);
-		expect(response.type).toBe('response.create');
+		const [session, item, response] = buildSpeechEvents('Hello');
+		expect(session).toMatchObject({
+			type: 'session.update',
+			session: {
+				output_modalities: ['audio'],
+				audio: {
+					output: { format: { type: 'audio/pcm', rate: 24000 } },
+					input: { turn_detection: null }
+				}
+			}
+		});
+		expect(item).toMatchObject({ item: { content: [{ type: 'input_text', text: 'Hello' }] } });
+		expect(response).toMatchObject({ type: 'response.create' });
 	});
 	test('targets the realtime mini model', () => {
 		expect(REALTIME_URL).toContain('model=gpt-realtime-2.1-mini');

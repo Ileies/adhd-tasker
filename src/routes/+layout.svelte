@@ -53,8 +53,8 @@
 
 	// Muting or turning the volume down also quiets speech that is being said
 	$effect(() => {
-		tasker.isMuted;
-		tasker.volume;
+		void tasker.isMuted;
+		void tasker.volume;
 		syncSpeechVolume();
 	});
 

@@ -36,15 +36,22 @@ export function parseQuickTask(text: string): QuickTask {
 		rest = rest.replace(match[0], ' ');
 		return true;
 	};
+	// Only the first pattern that matches is taken
+	const takeFirst = (...options: Parameters<typeof take>[]) =>
+		options.some(([pattern, read]) => take(pattern, read));
 
 	// Duration first so "1h30m" is not read as a time
-	take(DURATION_COMBINED, (m) => (duration = Number(m[1]) * 60 + Number(m[2]))) ||
-		take(DURATION_HOURS, (m) => (duration = Math.round(Number(m[1].replace(',', '.')) * 60))) ||
-		take(DURATION_MINUTES, (m) => (duration = Number(m[1])));
+	takeFirst(
+		[DURATION_COMBINED, (m) => (duration = Number(m[1]) * 60 + Number(m[2]))],
+		[DURATION_HOURS, (m) => (duration = Math.round(Number(m[1].replace(',', '.')) * 60))],
+		[DURATION_MINUTES, (m) => (duration = Number(m[1]))]
+	);
 
-	take(TIME_COLON, (m) => (startTime = to24h(Number(m[1]), m[3]) * 60 + Number(m[2]))) ||
-		take(TIME_MERIDIEM, (m) => (startTime = to24h(Number(m[1]), m[2]) * 60)) ||
-		take(TIME_AT, (m) => (startTime = Number(m[1]) * 60));
+	takeFirst(
+		[TIME_COLON, (m) => (startTime = to24h(Number(m[1]), m[3]) * 60 + Number(m[2]))],
+		[TIME_MERIDIEM, (m) => (startTime = to24h(Number(m[1]), m[2]) * 60)],
+		[TIME_AT, (m) => (startTime = Number(m[1]) * 60)]
+	);
 
 	const title = rest
 		.replace(/\b(for|at)\s*$/i, ' ')

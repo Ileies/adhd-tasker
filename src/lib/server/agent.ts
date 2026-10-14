@@ -167,7 +167,7 @@ export async function react(email: string) {
 	await settle(ids, 'reacting');
 	const eventId = ids[ids.length - 1];
 	let tokens = 0;
-	let outcome = 'nothing to say';
+	let outcome = 'failed, the model could not be reached';
 	try {
 		const instructions = await contextPrompt(
 			email,
@@ -232,7 +232,6 @@ export async function react(email: string) {
 		outcome = did.length ? `reacted: ${did.join(', ')}` : 'nothing to say';
 	} catch (error) {
 		console.error('[agent] reaction failed', error);
-		outcome = 'failed, the model could not be reached';
 	} finally {
 		// Also written when the call failed, so a broken key or an outage can not turn into a retry storm
 		await recordUsage(email, 'reaction', tokens).catch(() => {});
