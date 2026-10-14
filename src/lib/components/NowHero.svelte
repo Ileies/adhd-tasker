@@ -21,7 +21,7 @@
 </script>
 
 <section
-	class="flex min-h-svh flex-col justify-center px-6 pt-20 pb-10 transition-colors duration-[1500ms] sm:px-12 lg:min-h-full {surface}"
+	class="flex min-h-svh flex-col justify-center px-6 pt-20 pb-10 transition-colors duration-[1500ms] sm:px-12 md:min-h-[60svh] lg:min-h-full {surface}"
 	aria-live="polite"
 >
 	{#if task}
@@ -61,9 +61,9 @@
 				<p class="text-base opacity-80">{reason}</p>
 			{/if}
 
-			<!-- The rail sits below the fold on small screens, so hint at what is next -->
+			<!-- The rail sits below the fold on phones, so hint at what is next -->
 			{#if next}
-				<p class="truncate text-base opacity-90 lg:hidden">
+				<p class="truncate text-base opacity-90 md:hidden">
 					Next <span class="tabular font-semibold">{formatClock(next.startTime)}</span> {next.title}
 				</p>
 			{/if}

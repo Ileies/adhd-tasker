@@ -99,7 +99,7 @@
 		</form>
 	</div>
 {:else}
-	<div class="grid min-h-svh lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
+	<div class="grid min-h-svh md:min-h-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
 		<NowHero task={ranking.current} next={ranking.upcoming[0] ?? null} {now} {reason} onDone={complete} />
 		<UpcomingRail upcoming={ranking.upcoming} missed={ranking.missed} {now} onDone={complete} onExtend={extend} onDrop={drop} />
 	</div>
