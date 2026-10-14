@@ -183,6 +183,9 @@
 						<DropdownMenu.Separator />
 						<DropdownMenu.Item onSelect={logout}>Log out</DropdownMenu.Item>
 					{/if}
+					<DropdownMenu.Separator />
+					<DropdownMenu.Item onSelect={() => goto('/privacy')}>Privacy</DropdownMenu.Item>
+					<DropdownMenu.Item onSelect={() => goto('/terms')}>Terms</DropdownMenu.Item>
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>
 		</div>
