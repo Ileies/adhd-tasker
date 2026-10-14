@@ -38,7 +38,9 @@ When implementing new features, think carefully about the ADHD experience. When 
 | `/edit` (API) | Task CRUD - GET (one day, `?date=`), POST, PUT, DELETE |
 | `/callback` | Google OAuth callback |
 | `/assistant` (API) | `POST` chat turn (tool loop against OpenAI with the user's own key), `POST /assistant/undo` reverts one logged change |
-| `/settings` | Theme, timezone, OpenAI key (form actions `saveOpenaiKey`/`removeOpenaiKey`), and "Google Workspace": tick Tasks, Calendar, Keep and link them (incremental Google authorization, form actions `linkGoogle`/`unlinkGoogle`) |
+| `/settings` | Theme, timezone, OpenAI key (form actions `saveOpenaiKey`/`removeOpenaiKey`), "Assistant on its own" (autonomy, events, quiet hours, daily budget, form action `saveAgent`), and "Google Workspace": tick Tasks, Calendar, Keep and link them (incremental Google authorization, form actions `linkGoogle`/`unlinkGoogle`) |
+| `/activity` | What the assistant changed (reason, Undo) and the events it saw with what became of them, plus today's token use |
+| `/agent` (API) | `GET` what the agent did on its own (open card, plan changes since `?since=<action id>`), polled every 15 s. `POST /agent/cards/[id]` dismisses or answers a card |
 
 ### State Management
 
@@ -49,7 +51,9 @@ tasker = {
   tasks: Task[],
   isMuted: boolean, volume: number,
   themeMode, dayStart, dayEnd, timezone,
-  toast: { message, undo? } | null   // transient confirmation with an Undo button
+  toast: { message, undo? } | null,  // transient confirmation with an Undo button
+  assistant: { open, busy, messages },
+  agent: { cards, cursor }           // open card for the strip on Now, last agent action id seen
 }
 ```
 
@@ -60,12 +64,18 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
 **`users`** - keyed by Google email
-- `email` (PK), `enableReminders`, `reminderAdvanceTime` (minutes), `enableOverdueNotifications`, `enableFocusMode`, `darkMode`, `openaiKey`, `timezone`, `googleServices` (space separated ids of linked Google services, scopes in `src/lib/google.ts`)
+- `email` (PK), `enableReminders`, `reminderAdvanceTime` (minutes), `enableOverdueNotifications`, `enableFocusMode`, `darkMode`, `openaiKey`, `timezone`, `googleServices` (space separated ids of linked Google services, scopes in `src/lib/google.ts`), agent settings `aiAutonomy` (observe|suggest|act, default suggest), `aiEvents` (space separated event types it may react to), `quietStart`/`quietEnd`, `dailyTokenBudget` (null = none), `lastCurrentTaskId` (what the scheduler saw as current, 0 = free time, null = never tracked)
 
 **`tasks`**
 - `id`, `title`, `description`, `email` (FK), `date` (`YYYY-MM-DD` in the user's timezone), `startTime` (minutes since midnight), `duration` (minutes), `priority` (1–5 enum), `status` ('pending'|'active'|'completed'|'overdue')
 
-**`agent_actions`** - every plan change the assistant made: `email`, `tool`, `before`/`after` (task JSON), `createdAt`, `undoneAt`. Undo restores `before`
+**`agent_actions`** - every plan change the assistant made: `email`, `tool`, `before`/`after` (task JSON), `eventId` (set when a reaction made it, null for chat), `reason`, `createdAt`, `undoneAt`. Undo restores `before`
+
+**`events`** - everything the agent can observe: `type`, `payload`, `origin` (user|agent|system), `key` (detected events only, unique per user so a fact is logged once), `createdAt`, `handledAt`, `outcome` (what became of it, e.g. `silent: quiet hours`, `reacted: ask`). Pruned after 30 days
+
+**`agent_cards`** - notes (`say`) and questions (`ask`, with `options`) shown in the strip on Now until resolved. A new card resolves the older open ones
+
+**`ai_usage`** - tokens per model call (`use`: chat|reaction), for the daily meter, the budget and the reaction rate limit
 
 **`reminders`** - prepared for Google Calendar sync, not yet wired up
 - `id`, `taskId` (FK), `reminderTime` (minutes since midnight)
@@ -87,6 +97,16 @@ Chat drawer (`AssistantDrawer.svelte`, opened from the top bar, chat state in `t
 **OpenAI rules, always enforced** (`src/lib/openai.ts`, every request is built by `buildRequest`, covered by tests): Responses API (`/v1/responses`), model `gpt-6-luna`, `store: false`, `service_tier: 'flex'`. Because nothing is stored at OpenAI, each round sends the whole conversation and the previous output items, with `reasoning.encrypted_content` included. Reasoning effort is not a user setting: it is fixed per use in `EFFORT_BY_USE` (`chat` medium, `reaction` low, `replan` high). New model calls must go through `buildRequest` with a `Use`. Flex can be slow or out of capacity, so the call waits up to 120 s and retries once on 429.
 
 The OpenAI key is encrypted at rest (AES-256-GCM, key derived from `GOOGLE_CLIENT_SECRET`, `src/lib/server/crypto.ts`) and never reaches the client: the layout only passes `hasOpenaiKey`. Changing `GOOGLE_CLIENT_SECRET` invalidates saved keys, the user pastes the key again.
+
+### Event-driven agent
+
+Every plan edit calls `emit()` (`src/lib/server/events.ts`): the UI routes in `/edit`, the assistant tools and undo. Events are logged first, `emit` never throws so an edit cannot fail because of logging. Types and detection are pure and shared: `src/lib/events.ts` (`detectEvents` runs the same `rank()` as the screen to find `task.switched`, `task.missed` after 5 min, `task.overrun` after 15 min for the most recently ended unfinished task, `describeChange` turns a before/after pair into an event). The scheduler (`src/lib/server/agent.ts`, started once in `hooks.server.ts`, skipped during the build) ticks every 15 s and compares with `users.lastCurrentTaskId`.
+
+**Events caused by the agent never wake the agent**: its own edits are emitted with `origin: agent` and are only logged, a switch within 60 s of an agent edit counts as agent too. A reaction may use at most 4 tool calls and show at most one card.
+
+Guardrails live in the pure `src/lib/guardrails.ts` (`decideReaction`, covered by tests) and run before any model call: autonomy (`observe` logs only, `suggest` offers `say`/`ask` and cannot edit, `act` may also edit with a reason and Undo, enforced again server side), per-event toggles (default: completed, missed, overrun), quiet hours (default 22:00 to 07:00), events within 5 s are coalesced into one reaction, at most 6 reactions per hour and 3 minutes apart, optional daily token budget (unprompted reactions only, chat is exempt), no key means silence. Events older than 10 minutes are dropped instead of answered late. The reaction model call uses `reaction` effort (low) and `reactionTools(mayEdit)` through `buildRequest`. Every event gets an `outcome`, shown on `/activity`.
+
+The client polls `/agent` (`src/lib/agent.ts`, started in the layout) for the card and for plan changes the agent made on its own, which show an Undo toast. Answering a card continues in the chat: the question becomes the assistant's last message and the chosen option the user's reply.
 
 ### Time Representation
 
@@ -116,7 +136,9 @@ bun run db:studio    # Drizzle Studio GUI
 
 - Stored statuses `active` and `overdue` are no longer written or read. Missed tasks are derived by `rank()` (window ended, not completed). Remove the unused enum values in a later cleanup
 - Reminder notifications are schema-ready but not wired up
-- The assistant answers in one piece, not streamed. Voice, event reactions and wakeups come in later phases
+- The assistant answers in one piece, not streamed. Voice and wakeups come in later phases
+- The agent feed is polled every 15 s, phase 7 replaces it with a pushed stream. Events `stuck.pressed`, `alarm.fired`, `wakeup.fired` and `day.started` arrive with their phases. Agent-made tasks are not yet marked in the Plan view, the activity page lists them. With several open devices every one shows the card, "display device" selection comes with phase 7
+- The overrun event is a fixed 15 minutes (`OVERRUN_MINUTES` in `src/lib/events.ts`), the hyperfocus alarm of phase 9 makes it configurable
 
 ## Product Direction (UI rework)
 

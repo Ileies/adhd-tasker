@@ -10,7 +10,7 @@ Roadmap and rationale: `docs/ui-rework-plan.md`.
 - [x] Phase 3: dated days and Plan screen
 - [x] Phase 4: responsive layouts and PWA
 - [x] Phase 5: assistant (text, plan tools, undo log)
-- [ ] Phase 6: event bus and AI reactions (guardrails, rate limits, autonomy)
+- [x] Phase 6: event bus and AI reactions (guardrails, rate limits, autonomy)
 - [ ] Phase 7: scheduler, AI wakeups, alarms and tone library
 - [ ] Phase 8: assistant (voice)
 - [ ] Phase 9: "I'm stuck", hyperfocus alarm, reminders, settings page
