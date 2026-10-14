@@ -137,6 +137,29 @@ describe('parseUpdateTask', () => {
 		expect(parseUpdateTask({ id: 4 }).ok).toBe(false);
 		expect(parseUpdateTask({ id: 4, status: 'active' }).ok).toBe(false);
 	});
+
+	test.each([
+		['a title that is empty', { title: '  ' }],
+		['a description that is not text', { description: 5 }],
+		['a date that is not a date', { date: '14.10.2026' }],
+		['a start that is not a time', { start: '25:00' }],
+		['a duration under five minutes', { duration_minutes: 4 }],
+		['a fractional duration', { duration_minutes: 7.5 }],
+		['a priority above five', { priority: 6 }],
+		['a priority that is text', { priority: '3' }]
+	])('rejects %s', (_name, change) => {
+		expect(parseUpdateTask({ id: 4, ...change }).ok).toBe(false);
+	});
+
+	test('a non integer id is rejected', () => {
+		expect(parseUpdateTask({ id: 1.5, start: '09:00' }).ok).toBe(false);
+		expect(parseUpdateTask({ id: '4', start: '09:00' }).ok).toBe(false);
+	});
+
+	test('a long description is cut to 1000 characters', () => {
+		const result = parseUpdateTask({ id: 4, description: 'x'.repeat(1500) });
+		expect(result.ok && result.value.patch.description?.length).toBe(1000);
+	});
 });
 
 describe('parseListTasks and parseDeleteTask', () => {

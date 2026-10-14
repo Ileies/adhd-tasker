@@ -6,6 +6,7 @@ import {
 	minutesOf,
 	nextRepeat,
 	parseAlarm,
+	parseId,
 	parseWakeup,
 	resolveWhen
 } from '#lib/schedule.js';
@@ -154,5 +155,14 @@ describe('describeEntry', () => {
 			BERLIN
 		);
 		expect(line).toBe('#4 2026-10-14 10:00 alarm "Leave now", Every day (by user)');
+	});
+});
+
+describe('parseId', () => {
+	test('needs a whole number', () => {
+		expect(parseId({ id: 7 })).toEqual({ ok: true, value: 7 });
+		expect(parseId({ id: 7.5 }).ok).toBe(false);
+		expect(parseId({ id: '7' }).ok).toBe(false);
+		expect(parseId({}).ok).toBe(false);
 	});
 });

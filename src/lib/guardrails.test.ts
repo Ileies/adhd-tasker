@@ -6,6 +6,7 @@ import {
 	REACTION_EVENTS,
 	decideReaction,
 	inQuietHours,
+	parseEvents,
 	parseSettingsForm,
 	type ReactionContext
 } from '#lib/guardrails.js';
@@ -173,5 +174,18 @@ describe('parseSettingsForm', () => {
 		expect(parseSettingsForm(form([['autonomy', 'wild'], ...base.slice(1)])).ok).toBe(false);
 		expect(parseSettingsForm(form([base[0], ['quietStart', '25:00'], base[2]])).ok).toBe(false);
 		expect(parseSettingsForm(form([...base, ['budget', '-3']])).ok).toBe(false);
+	});
+});
+
+describe('parseEvents', () => {
+	test('keeps known types in order and drops junk', () => {
+		expect(parseEvents('task.missed bogus task.completed  ')).toEqual([
+			'task.missed',
+			'task.completed'
+		]);
+	});
+
+	test('an empty string means no events', () => {
+		expect(parseEvents('')).toEqual([]);
 	});
 });

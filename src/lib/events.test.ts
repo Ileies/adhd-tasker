@@ -6,6 +6,7 @@ import {
 	STALE_MINUTES,
 	describeChange,
 	describeEvent,
+	EVENT_TYPES,
 	detectEvents
 } from '#lib/events.js';
 import { Priority, TaskStatus } from '#lib/types.js';
@@ -166,5 +167,29 @@ describe('describeEvent', () => {
 		expect(describeEvent('task.missed', { title: 'Call', minutesOver: 7 })).toContain(
 			'7 minutes ago'
 		);
+	});
+});
+
+describe('every event type', () => {
+	test.each([...EVENT_TYPES])('%s has a readable description even without a payload', (type) => {
+		const line = describeEvent(type, {});
+		expect(line.length).toBeGreaterThan(0);
+		expect(line).not.toContain('[object Object]');
+	});
+
+	test('descriptions with a full payload never print undefined', () => {
+		const payload = {
+			title: 'Write intro',
+			startTime: 540,
+			changed: ['title'],
+			from: 'A',
+			to: 'B',
+			reason: 'it started',
+			minutesOver: 7,
+			label: 'Leave',
+			createdBy: 'user',
+			note: 'check in'
+		};
+		for (const type of EVENT_TYPES) expect(describeEvent(type, payload)).not.toContain('undefined');
 	});
 });
