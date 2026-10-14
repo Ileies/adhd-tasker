@@ -2,15 +2,13 @@ import { tasker, type AgentCard } from '#lib/app.svelte.js';
 import { loadDay, showToast } from '#lib';
 import { sendMessage, undoChange } from '#lib/assistant.js';
 
-const POLL_MS = 15_000;
-
 interface Feed {
 	cursor: number;
 	cards: AgentCard[];
 	changes: { id: number; summary: string; dates: string[] }[];
 }
 
-/** Fetches what the agent did on its own: refreshes the plan, offers Undo for its edits and fills the strip on Now. */
+/** Fetches what the agent did on its own: refreshes the plan, offers Undo for its edits and fills the strip on Now. The stream calls it when there is news. */
 export async function pollAgent() {
 	const since = tasker.agent.cursor;
 	const response = await fetch(since === null ? '/agent' : `/agent?since=${since}`);
@@ -28,20 +26,6 @@ export async function pollAgent() {
 			for (const change of [...changes].reverse()) await undoChange(change);
 		});
 	}
-}
-
-/** Polls while the page is visible. Returns the stop function for an effect cleanup. */
-export function startAgentPolling() {
-	const run = () => {
-		if (!document.hidden) pollAgent().catch(() => {});
-	};
-	run();
-	const timer = setInterval(run, POLL_MS);
-	document.addEventListener('visibilitychange', run);
-	return () => {
-		clearInterval(timer);
-		document.removeEventListener('visibilitychange', run);
-	};
 }
 
 /**

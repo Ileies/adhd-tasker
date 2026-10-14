@@ -2,6 +2,7 @@ import { browser } from '$app/env';
 import type { tasks } from '#lib/server/db/schema.js';
 import type { Task } from '#lib/types.js';
 import { tasker } from '#lib/app.svelte.js';
+import { readTone, toneNotes, type Tone } from '#lib/tones.js';
 
 export function playSound(type: 'task-started' | 'reminder') {
 	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
@@ -71,6 +72,40 @@ export function playSound(type: 'task-started' | 'reminder') {
 			break;
 		}
 	}
+}
+
+/**
+ * Plays a stored or agent-made tone. The sequence is validated again here, so nothing over the caps can ever play,
+ * and the user's volume is the ceiling. Muted means silent, the alarm banner still shows.
+ */
+export function playTone(tone: Tone) {
+	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
+	const { wave, notes } = toneNotes(readTone(tone));
+
+	const audioContext = new AudioContext();
+	void audioContext.resume();
+	const master = audioContext.createGain();
+	master.gain.value = tasker.volume / 100;
+	master.connect(audioContext.destination);
+
+	let at = audioContext.currentTime + 0.02;
+	for (const note of notes) {
+		const length = note.ms / 1000;
+		const oscillator = audioContext.createOscillator();
+		const gain = audioContext.createGain();
+		oscillator.type = wave;
+		oscillator.frequency.setValueAtTime(note.hz, at);
+		gain.gain.setValueAtTime(0, at);
+		gain.gain.linearRampToValueAtTime(0.35, at + 0.01);
+		gain.gain.setValueAtTime(0.35, at + Math.max(0.01, length - 0.06));
+		gain.gain.exponentialRampToValueAtTime(0.001, at + length);
+		oscillator.connect(gain);
+		gain.connect(master);
+		oscillator.start(at);
+		oscillator.stop(at + length);
+		at += length + (note.rest ?? 0) / 1000;
+	}
+	setTimeout(() => void audioContext.close().catch(() => {}), (at - audioContext.currentTime) * 1000 + 300);
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;

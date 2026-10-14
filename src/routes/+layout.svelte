@@ -6,7 +6,7 @@
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
 	import { toggleFullscreen } from '#lib/display.js';
-	import { startAgentPolling } from '#lib/agent.js';
+	import { startStream } from '#lib/stream.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
@@ -15,6 +15,7 @@
 	import VolumeMenu from '#lib/components/VolumeMenu.svelte';
 	import SetupDialog from '#lib/components/SetupDialog.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
+	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { browser } from '$app/env';
@@ -36,10 +37,10 @@
 		return () => clearTimeout(timer);
 	});
 
-	// Cards and plan changes the agent made on its own
+	// Alarms, cards and plan changes the agent made on its own arrive over one pushed stream
 	$effect(() => {
 		if (!data.user) return;
-		return startAgentPolling();
+		return startStream();
 	});
 
 	// The saved timezone is the source of truth, the first login saves this device's timezone
@@ -99,6 +100,7 @@
 <SetupDialog />
 <TimezoneDialog loggedIn={!!data.user} />
 <UndoToast />
+<AlarmBanner />
 {#if data.user}<AssistantDrawer hasKey={data.user.hasOpenaiKey} />{/if}
 
 <!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
@@ -161,6 +163,7 @@
 					{/if}
 					<DropdownMenu.Separator />
 					{#if data.user}
+						<DropdownMenu.Item onSelect={() => goto('/alarms')}>Alarms</DropdownMenu.Item>
 						<DropdownMenu.Item onSelect={() => goto('/activity')}>Activity</DropdownMenu.Item>
 					{/if}
 					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
