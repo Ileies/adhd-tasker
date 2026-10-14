@@ -3,6 +3,7 @@
 	import TimezonePicker from '#lib/components/TimezonePicker.svelte';
 	import OpenAiKeyForm from '#lib/components/OpenAiKeyForm.svelte';
 	import AgentSettingsForm from '#lib/components/AgentSettingsForm.svelte';
+	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
 
@@ -38,6 +39,16 @@
 			</Card.Header>
 			<Card.Content>
 				<OpenAiKeyForm hasKey={data.user.hasOpenaiKey} message={form && 'openaiMessage' in form ? form.openaiMessage : undefined} />
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root class="mt-4">
+			<Card.Header>
+				<Card.Title>Voice</Card.Title>
+				<Card.Description>Talk to the assistant and let it talk back. Off by default.</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<VoiceSettingsForm replies={data.user.voiceReplies} saved={!!form && 'voiceSaved' in form} />
 			</Card.Content>
 		</Card.Root>
 

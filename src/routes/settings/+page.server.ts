@@ -48,6 +48,14 @@ export const actions = {
 		return { agentSaved: true };
 	},
 
+	/** Whether the assistant speaks its replies and notes. */
+	saveVoice: async ({ locals, request }) => {
+		if (!locals.user) return fail(401, { voiceMessage: 'Sign in first' });
+		const replies = (await request.formData()).has('replies');
+		await db.update(users).set({ voiceReplies: replies }).where(eq(users.email, locals.user.email));
+		return { voiceSaved: true };
+	},
+
 	removeOpenaiKey: async ({ locals }) => {
 		if (!locals.user) return fail(401, { openaiMessage: 'Sign in first' });
 		await db.update(users).set({ openaiKey: null }).where(eq(users.email, locals.user.email));
