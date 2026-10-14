@@ -102,7 +102,7 @@ Measured in a real browser, results written into this section:
 
 - `/v1/models`, a full `/v1/responses` call built by `buildRequest`, and a `/v1/audio/transcriptions` upload all answer 200 with `access-control-allow-origin: *`.
 - The Realtime WebSocket with `['realtime', 'openai-insecure-api-key.<key>']` as subprotocols works: `speak` from `core/voice.ts` returned a WAV (79 kB for "Time to start."). Header-less, so a browser can do it.
-- Not measured: an actual browser tab (no page was served, because that would put the key on a local port). Browsers do not apply CORS to WebSockets and the preflight and the response headers above are what a browser checks, so D3 stands without a relay.
+- **In a real browser (headless Chrome on `http://localhost:5199`, 2026-10-15, driven over the DevTools protocol, the key typed into the Settings form of a fresh guest profile):** the key check (`GET /v1/models` with its preflight), a full assistant turn (two `POST /v1/responses`, one preflight) that added a task to the guest's IndexedDB, a transcription upload (`200`) and the Realtime socket with `['realtime', 'openai-insecure-api-key.<key>']` (three audio chunks, response `completed`) all work. Over the whole session the page made no API call to this server. D3 stands without a relay.
 
 If OpenAI refuses browser calls, D3 needs a stateless relay on this server that forwards and stores nothing. The key would then pass through the server, and Privacy must say so. Decide then, not now.
 
