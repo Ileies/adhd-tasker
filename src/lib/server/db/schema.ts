@@ -1,33 +1,41 @@
 import { Priority, TaskStatus } from '#lib/types.js';
+import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import type { EventOrigin, EventType } from '#lib/events.js';
 import type { Autonomy } from '#lib/guardrails.js';
 import type { Repeat, ScheduleKind } from '#lib/schedule.js';
 import type { Tone } from '#lib/tones.js';
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+/** Column defaults come from `DEFAULT_SETTINGS`, so an account and a guest start the same. */
+const D = DEFAULT_SETTINGS;
+
 export const users = sqliteTable('users', {
 	email: text('email').notNull().primaryKey(),
-	enableReminders: integer('enable_reminders', { mode: 'boolean' }).default(true).notNull(),
-	reminderAdvanceTime: integer('reminder_advance_time').default(15).notNull(), // minutes before the next task starts
-	hyperfocusAlarm: integer('hyperfocus_alarm', { mode: 'boolean' }).default(true).notNull(), // a tone when a task runs past its end
-	overrunMinutes: integer('overrun_minutes').default(15).notNull(), // how long past its end counts as an overrun, for the alarm and the agent event
+	enableReminders: integer('enable_reminders', { mode: 'boolean' })
+		.default(D.enableReminders)
+		.notNull(),
+	reminderAdvanceTime: integer('reminder_advance_time').default(D.reminderAdvanceTime).notNull(), // minutes before the next task starts
+	hyperfocusAlarm: integer('hyperfocus_alarm', { mode: 'boolean' })
+		.default(D.hyperfocusAlarm)
+		.notNull(), // a tone when a task runs past its end
+	overrunMinutes: integer('overrun_minutes').default(D.overrunMinutes).notNull(), // how long past its end counts as an overrun, for the alarm and the agent event
 	enableOverdueNotifications: integer('enable_overdue_notifications', { mode: 'boolean' })
 		.default(true)
 		.notNull(),
 	enableFocusMode: integer('enable_focus_mode', { mode: 'boolean' }).default(false).notNull(),
-	darkMode: integer('dark_mode', { mode: 'boolean' }).default(false).notNull(),
+	darkMode: integer('dark_mode', { mode: 'boolean' }).default(D.darkMode).notNull(),
 	openaiKey: text('openai_key'),
 	timezone: text('timezone'), // IANA name, null until first set
-	googleServices: text('google_services').default('').notNull(), // linked Google services, space separated (see #lib/google)
-	aiAutonomy: text('ai_autonomy').$type<Autonomy>().default('suggest').notNull(),
-	aiEvents: text('ai_events').default('task.completed task.missed task.overrun').notNull(), // event types the agent may react to, space separated
-	quietStart: integer('quiet_start').default(1320).notNull(), // minutes since midnight, no unprompted reactions from here
-	quietEnd: integer('quiet_end').default(420).notNull(), // until here
+	googleServices: text('google_services').default(D.googleServices).notNull(), // linked Google services, space separated (see #lib/google)
+	aiAutonomy: text('ai_autonomy').$type<Autonomy>().default(D.aiAutonomy).notNull(),
+	aiEvents: text('ai_events').default(D.aiEvents).notNull(), // event types the agent may react to, space separated
+	quietStart: integer('quiet_start').default(D.quietStart).notNull(), // minutes since midnight, no unprompted reactions from here
+	quietEnd: integer('quiet_end').default(D.quietEnd).notNull(), // until here
 	dailyTokenBudget: integer('daily_token_budget'), // null: no limit for unprompted reactions
 	lastCurrentTaskId: integer('last_current_task_id'), // what the scheduler saw as current at its last tick, to detect task.switched
 	displayDevice: text('display_device'), // id of the device that plays alarms and agent tones, null: every device does
-	voiceReplies: integer('voice_replies', { mode: 'boolean' }).default(false).notNull(), // the assistant speaks its replies and notes
-	showClock: integer('show_clock', { mode: 'boolean' }).default(false).notNull() // the time of day with seconds on the Now screen
+	voiceReplies: integer('voice_replies', { mode: 'boolean' }).default(D.voiceReplies).notNull(), // the assistant speaks its replies and notes
+	showClock: integer('show_clock', { mode: 'boolean' }).default(D.showClock).notNull() // the time of day with seconds on the Now screen
 });
 
 export const tasks = sqliteTable('tasks', {
