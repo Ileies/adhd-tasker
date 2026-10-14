@@ -9,6 +9,7 @@ import {
 	conflictsWith,
 	extendTask,
 	layoutDay,
+	moveLater,
 	moveTo,
 	nextFreeSlot,
 	resizeTo,
@@ -230,5 +231,28 @@ describe('nextFreeSlot', () => {
 				}
 			)
 		);
+	});
+});
+
+describe('moveLater', () => {
+	const h = (hours: number, minutes = 0) => hours * 60 + minutes;
+	const missed = { startTime: h(9), duration: 60 };
+
+	test('takes the next free slot today', () => {
+		const others = [span(2, h(10), 60)];
+		expect(moveLater(missed, others, '2026-10-14', h(10, 5))).toEqual({
+			date: '2026-10-14',
+			startTime: h(11),
+			tomorrow: false
+		});
+	});
+
+	test('keeps the start time on the next day when nothing fits today', () => {
+		const others = [span(2, h(10), 840)];
+		expect(moveLater(missed, others, '2026-10-31', h(10, 5))).toEqual({
+			date: '2026-11-01',
+			startTime: h(9),
+			tomorrow: true
+		});
 	});
 });

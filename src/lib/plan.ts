@@ -1,3 +1,4 @@
+import { addDays, type DateKey } from '#lib/time.js';
 import { TaskStatus, type Task } from '#lib/types.js';
 
 export const DAY_MINUTES = 1440;
@@ -98,6 +99,22 @@ export function layoutDay<T extends Span>(tasks: T[]): Placement<T>[] {
 	}
 	closeGroup();
 	return placements;
+}
+
+/**
+ * Where "Move to later" puts a task: the next free slot today, or, when nothing fits before midnight,
+ * the same start time tomorrow. `others` are today's tasks without the one being moved.
+ */
+export function moveLater<T extends Span & { status: TaskStatus }>(
+	task: Pick<Task, 'startTime' | 'duration'>,
+	others: T[],
+	today: DateKey,
+	now: number
+): { date: DateKey; startTime: number; tomorrow: boolean } {
+	const slot = nextFreeSlot(others, now, task.duration);
+	return slot === null
+		? { date: addDays(today, 1), startTime: task.startTime, tomorrow: true }
+		: { date: today, startTime: slot, tomorrow: false };
 }
 
 /** Open tasks that overlap `task`, used for the warning when scheduling. */
