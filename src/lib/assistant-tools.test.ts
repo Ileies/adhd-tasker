@@ -1,6 +1,8 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
+import fc from 'fast-check';
 import {
+	MAX_LIST_DAYS,
 	MAX_SAY,
 	TOOLS,
 	parseAddTask,
@@ -12,6 +14,7 @@ import {
 	parseToolArguments,
 	parseUpdateTask
 } from '#lib/assistant-tools.js';
+import { addDays, isDateKey } from '#lib/time.js';
 
 describe('strict tool schemas', () => {
 	type Schema = {
@@ -176,5 +179,105 @@ describe('parseListTasks and parseDeleteTask', () => {
 	test('delete needs an integer id', () => {
 		expect(parseDeleteTask({ id: 3 }).ok).toBe(true);
 		expect(parseDeleteTask({ id: '3' }).ok).toBe(false);
+	});
+});
+
+describe('properties', () => {
+	const date = fc
+		.date({
+			min: new Date('2024-01-01T00:00:00Z'),
+			max: new Date('2030-12-31T00:00:00Z'),
+			noInvalidDate: true
+		})
+		.map((day) => day.toISOString().slice(0, 10));
+	// Mostly plausible values, mixed with arbitrary JSON, so both the accepted and the rejected paths run
+	const field = (plausible: fc.Arbitrary<unknown>) =>
+		fc.oneof({ weight: 9, arbitrary: plausible }, { weight: 1, arbitrary: fc.jsonValue() });
+	const clock = fc
+		.tuple(fc.integer({ min: 0, max: 23 }), fc.integer({ min: 0, max: 59 }))
+		.map(([h, m]) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+	const args = fc.record(
+		{
+			id: field(fc.integer({ min: 1, max: 50 })),
+			title: field(fc.string({ maxLength: 220 })),
+			description: field(fc.string({ maxLength: 1200 })),
+			date: field(date),
+			start: field(fc.oneof(clock, fc.integer({ min: -10, max: 1500 }))),
+			duration_minutes: field(fc.integer({ min: -10, max: 1600 })),
+			priority: field(fc.integer({ min: -1, max: 7 })),
+			status: field(fc.constantFrom('pending', 'completed', 'active')),
+			from: field(date),
+			to: field(date)
+		},
+		{ requiredKeys: ['id', 'title', 'date', 'start'] }
+	);
+	// What the server sees: the model's JSON text, nulls and all
+	const sent = args.map((value) => parseToolArguments(JSON.stringify(value))!);
+
+	test('no parser throws, whatever the model sends', () => {
+		fc.assert(
+			fc.property(sent, (value) => {
+				for (const parse of [
+					parseAddTask,
+					parseUpdateTask,
+					parseDeleteTask,
+					parseListTasks,
+					parseSay,
+					parseAsk
+				])
+					expect(() => parse(value)).not.toThrow();
+			})
+		);
+		fc.assert(
+			fc.property(fc.string(), (raw) => {
+				expect(() => parseToolArguments(raw)).not.toThrow();
+			})
+		);
+	});
+
+	test('an accepted new task is whole: titled, on one day and never across midnight', () => {
+		fc.assert(
+			fc.property(sent, (value) => {
+				const parsed = parseAddTask(value);
+				if (!parsed.ok) return;
+				const task = parsed.value;
+				expect(task.title).toBe(task.title.trim());
+				expect(task.title.length).toBeGreaterThan(0);
+				expect(task.title.length).toBeLessThanOrEqual(200);
+				expect(isDateKey(task.date)).toBe(true);
+				expect(task.startTime).toBeGreaterThanOrEqual(0);
+				expect(task.startTime + task.duration).toBeLessThanOrEqual(1440);
+				expect(task.duration).toBeGreaterThanOrEqual(5);
+				expect(task.priority).toBeGreaterThanOrEqual(1);
+				expect(task.priority).toBeLessThanOrEqual(5);
+			})
+		);
+	});
+
+	test('an accepted patch holds only valid fields', () => {
+		fc.assert(
+			fc.property(sent, (value) => {
+				const parsed = parseUpdateTask(value);
+				if (!parsed.ok) return;
+				const { patch } = parsed.value;
+				expect(Object.keys(patch).length).toBeGreaterThan(0);
+				if (patch.startTime !== undefined) expect(patch.startTime).toBeLessThan(1440);
+				if (patch.duration !== undefined) expect(patch.duration).toBeLessThanOrEqual(1440);
+				if (patch.priority !== undefined) expect([1, 2, 3, 4, 5]).toContain(patch.priority);
+				if (patch.status !== undefined) expect(['pending', 'completed']).toContain(patch.status);
+			})
+		);
+	});
+
+	test('an accepted range is ordered and at most the allowed days', () => {
+		fc.assert(
+			fc.property(sent, (value) => {
+				const parsed = parseListTasks(value);
+				if (!parsed.ok) return;
+				const { from, to } = parsed.value;
+				expect(to >= from).toBe(true);
+				expect(addDays(from, MAX_LIST_DAYS - 1) >= to).toBe(true);
+			})
+		);
 	});
 });

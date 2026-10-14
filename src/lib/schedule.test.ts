@@ -1,5 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
+import fc from 'fast-check';
 import {
 	SCHEDULE_LIMITS,
 	describeEntry,
@@ -8,9 +9,10 @@ import {
 	parseAlarm,
 	parseId,
 	parseWakeup,
-	resolveWhen
+	resolveWhen,
+	type Repeat
 } from '#lib/schedule.js';
-import { zonedToEpoch } from '#lib/time.js';
+import { todayIn, zonedToEpoch } from '#lib/time.js';
 
 const BERLIN = 'Europe/Berlin';
 // 2026-10-14 10:00 in Berlin (CEST, UTC+2)
@@ -164,5 +166,56 @@ describe('parseId', () => {
 		expect(parseId({ id: 7.5 }).ok).toBe(false);
 		expect(parseId({ id: '7' }).ok).toBe(false);
 		expect(parseId({}).ok).toBe(false);
+	});
+});
+
+describe('properties', () => {
+	const ZONES = ['Europe/Berlin', 'America/St_Johns', 'Asia/Kathmandu', 'Australia/Lord_Howe'];
+	const zone = fc.constantFrom(...ZONES);
+	const after = fc.integer({
+		min: Date.parse('2026-01-01T00:00:00Z'),
+		max: Date.parse('2027-12-31T00:00:00Z')
+	});
+	const repeat = fc.constantFrom<Repeat>('daily', 'weekdays');
+	const anyMinute = fc.integer({ min: 0, max: 1439 });
+	// Clock times that exist every day: the daylight saving changes of these zones all happen before 04:00
+	const safeMinute = fc.integer({ min: 240, max: 1439 });
+	const DAY_MS = 86_400_000;
+
+	test('the next ring is always after the given moment', () => {
+		fc.assert(
+			fc.property(repeat, anyMinute, after, zone, (kind, minutes, afterMs, timezone) => {
+				expect(nextRepeat(kind, minutes, afterMs, timezone)!).toBeGreaterThan(afterMs);
+			})
+		);
+	});
+
+	test('the ring keeps its local clock time, one day later at most (25 hours across daylight saving)', () => {
+		fc.assert(
+			fc.property(safeMinute, after, zone, (minutes, afterMs, timezone) => {
+				const at = nextRepeat('daily', minutes, afterMs, timezone)!;
+				expect(minutesOf(at, timezone)).toBe(minutes);
+				expect(at - afterMs).toBeLessThanOrEqual(DAY_MS + 3_600_000);
+			})
+		);
+	});
+
+	test('weekdays never ring on a weekend and wait at most until Monday', () => {
+		fc.assert(
+			fc.property(anyMinute, after, zone, (minutes, afterMs, timezone) => {
+				const at = nextRepeat('weekdays', minutes, afterMs, timezone)!;
+				const weekday = new Date(todayIn(timezone, new Date(at)) + 'T00:00:00Z').getUTCDay();
+				expect([0, 6]).not.toContain(weekday);
+				expect(at - afterMs).toBeLessThanOrEqual(3 * DAY_MS + 3_600_000);
+			})
+		);
+	});
+
+	test('a one-off never repeats', () => {
+		fc.assert(
+			fc.property(anyMinute, after, zone, (minutes, afterMs, timezone) => {
+				expect(nextRepeat('none', minutes, afterMs, timezone)).toBeNull();
+			})
+		);
 	});
 });
