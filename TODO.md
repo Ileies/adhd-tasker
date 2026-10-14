@@ -10,6 +10,7 @@ Rationale: `docs/ui-rework-plan.md`.
 - End-of-day summary
 - Morning briefing (`day.started` event)
 - Mark agent-made tasks in the Plan view
+- Productivity rating for the day so far (next to the "done today" line). Needs a fair measure of the day's load, including load the app cannot see, before it can be honest
 
 ## Parked
 
