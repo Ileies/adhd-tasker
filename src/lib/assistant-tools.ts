@@ -112,6 +112,35 @@ export function parseDeleteTask(args: Args): Parsed<{ id: number }> {
 	return { ok: true, value: { id: args.id } };
 }
 
+export const MAX_SAY = 200;
+export const MAX_OPTIONS = 3;
+export const MAX_OPTION = 40;
+
+/** Why the agent made a change, shown in the activity log. Optional, never fails a change. */
+export function parseReason(value: unknown): string | null {
+	const reason = typeof value === 'string' ? value.trim().slice(0, 200) : '';
+	return reason || null;
+}
+
+export function parseSay(args: Args): Parsed<{ text: string }> {
+	const text = typeof args.text === 'string' ? args.text.trim() : '';
+	if (!text) return fail('text is required');
+	if (text.length > MAX_SAY) return fail(`text must be at most ${MAX_SAY} characters, shorten it`);
+	return { ok: true, value: { text } };
+}
+
+export function parseAsk(args: Args): Parsed<{ text: string; options: string[] }> {
+	const said = parseSay(args);
+	if (!said.ok) return said;
+	const raw = args.options === undefined ? [] : args.options;
+	if (!Array.isArray(raw) || raw.length > MAX_OPTIONS) return fail(`options is a list of at most ${MAX_OPTIONS} short answers`);
+	const options = raw.map((option) => (typeof option === 'string' ? option.trim() : ''));
+	if (options.some((option) => !option || option.length > MAX_OPTION)) return fail(`each option must be 1 to ${MAX_OPTION} characters`);
+	return { ok: true, value: { text: said.value.text, options } };
+}
+
+const reasonProp = { reason: { type: 'string', description: 'Why you are making this change, one short sentence. The user reads it in the activity log.' } };
+
 const taskProps = {
 	title: { type: 'string' },
 	description: { type: 'string' },
@@ -139,7 +168,7 @@ const DEFINITIONS = [
 		function: {
 			name: 'add_task',
 			description: 'Add a task to the plan.',
-			parameters: { type: 'object', properties: taskProps, required: ['title', 'date', 'start'] }
+			parameters: { type: 'object', properties: { ...taskProps, ...reasonProp }, required: ['title', 'date', 'start'] }
 		}
 	},
 	{
@@ -149,7 +178,7 @@ const DEFINITIONS = [
 			description: 'Change a task: move, rename, resize, reprioritise, or mark done or pending. Only send the fields that change.',
 			parameters: {
 				type: 'object',
-				properties: { id: { type: 'integer' }, ...taskProps, status: { type: 'string', enum: ['pending', 'completed'] } },
+				properties: { id: { type: 'integer' }, ...taskProps, status: { type: 'string', enum: ['pending', 'completed'] }, ...reasonProp },
 				required: ['id']
 			}
 		}
@@ -159,10 +188,45 @@ const DEFINITIONS = [
 		function: {
 			name: 'delete_task',
 			description: 'Delete a task. Only when the user clearly wants it gone.',
-			parameters: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] }
+			parameters: { type: 'object', properties: { id: { type: 'integer' }, ...reasonProp }, required: ['id'] }
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'say',
+			description: `Show the user one short note on the Now screen, at most ${MAX_SAY} characters. Only when it really helps, once per reaction.`,
+			parameters: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] }
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'ask',
+			description: `Show the user one short question with up to ${MAX_OPTIONS} short answers (each at most ${MAX_OPTION} characters). The chosen answer comes back to you as a chat message.`,
+			parameters: {
+				type: 'object',
+				properties: { text: { type: 'string' }, options: { type: 'array', items: { type: 'string' }, description: 'Short answers, for example Yes, Not now' } },
+				required: ['text']
+			}
 		}
 	}
 ] as const;
 
+export interface Tool {
+	type: 'function';
+	name: string;
+	description: string;
+	parameters: object;
+}
+
 /** Tool definitions in the Responses API format (flat, not nested under `function`). */
-export const TOOLS = DEFINITIONS.map(({ function: fn }) => ({ type: 'function' as const, ...fn }));
+const ALL_TOOLS: Tool[] = DEFINITIONS.map(({ function: fn }) => ({ type: 'function' as const, ...fn }));
+const pick = (...names: string[]) => ALL_TOOLS.filter((tool) => names.includes(tool.name));
+
+/** The chat reads and edits the plan. */
+export const TOOLS = pick('list_tasks', 'add_task', 'update_task', 'delete_task');
+export const WRITE_TOOLS = ['add_task', 'update_task', 'delete_task'];
+
+/** An unprompted reaction may talk, and may edit only when the user allowed it (autonomy act). */
+export const reactionTools = (mayEdit: boolean) => (mayEdit ? pick('list_tasks', 'say', 'ask', ...WRITE_TOOLS) : pick('list_tasks', 'say', 'ask'));

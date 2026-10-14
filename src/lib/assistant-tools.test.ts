@@ -1,6 +1,28 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { parseAddTask, parseDeleteTask, parseListTasks, parseUpdateTask } from './assistant-tools';
+import { MAX_SAY, parseAddTask, parseAsk, parseDeleteTask, parseListTasks, parseReason, parseSay, parseUpdateTask } from './assistant-tools';
+
+describe('say, ask and reason', () => {
+	test('say needs short text', () => {
+		expect(parseSay({ text: ' Call done? ' })).toEqual({ ok: true, value: { text: 'Call done?' } });
+		expect(parseSay({ text: '' }).ok).toBe(false);
+		expect(parseSay({ text: 'x'.repeat(MAX_SAY + 1) }).ok).toBe(false);
+	});
+
+	test('ask accepts up to three short options', () => {
+		expect(parseAsk({ text: 'Move study?', options: ['Yes', ' Not now '] })).toEqual({ ok: true, value: { text: 'Move study?', options: ['Yes', 'Not now'] } });
+		expect(parseAsk({ text: 'Move study?' })).toEqual({ ok: true, value: { text: 'Move study?', options: [] } });
+		expect(parseAsk({ text: 'q', options: ['a', 'b', 'c', 'd'] }).ok).toBe(false);
+		expect(parseAsk({ text: 'q', options: [''] }).ok).toBe(false);
+		expect(parseAsk({ text: 'q', options: 'yes' }).ok).toBe(false);
+	});
+
+	test('reason is optional and capped', () => {
+		expect(parseReason(undefined)).toBe(null);
+		expect(parseReason('  ')).toBe(null);
+		expect(parseReason('x'.repeat(500))).toHaveLength(200);
+	});
+});
 
 describe('parseAddTask', () => {
 	test('reads HH:MM and applies defaults', () => {

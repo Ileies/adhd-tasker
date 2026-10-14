@@ -1,5 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
+import { reactionTools } from './assistant-tools';
 import { EFFORT_BY_USE, OPENAI_URL, buildRequest, functionCalls, outputText, type Use } from './openai';
 
 describe('buildRequest', () => {
@@ -14,6 +15,16 @@ describe('buildRequest', () => {
 			expect(request.tools.every((tool) => tool.type === 'function' && typeof tool.name === 'string')).toBe(true);
 		});
 	}
+
+	test('a different tool set never loosens the fixed settings', () => {
+		const request = buildRequest([], '', 'reaction', reactionTools(false));
+		expect(request.model).toBe('gpt-6-luna');
+		expect(request.store).toBe(false);
+		expect(request.service_tier).toBe('flex');
+		expect(request.tools.map((tool) => tool.name)).toEqual(['list_tasks', 'say', 'ask']);
+		expect(buildRequest([], '', 'reaction', reactionTools(true)).tools.map((tool) => tool.name)).toContain('update_task');
+		expect(buildRequest([], '', 'chat').tools.map((tool) => tool.name)).not.toContain('say');
+	});
 
 	test('uses the Responses API endpoint', () => {
 		expect(OPENAI_URL).toBe('https://api.openai.com/v1/responses');

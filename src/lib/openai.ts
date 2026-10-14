@@ -1,4 +1,4 @@
-import { TOOLS } from '#lib/assistant-tools.js';
+import { TOOLS, type Tool } from '#lib/assistant-tools.js';
 
 /**
  * Every OpenAI call of the app is built here, so the rules cannot be bypassed from a call site:
@@ -34,9 +34,11 @@ export interface OutputItem {
 
 export interface ResponseBody {
 	output: OutputItem[];
+	usage?: { total_tokens?: number };
 }
 
-export function buildRequest(input: unknown[], instructions: string, use: Use) {
+/** The tool set varies by use (chat edits the plan, a reaction mostly talks), the rules above never do. */
+export function buildRequest(input: unknown[], instructions: string, use: Use, tools: Tool[] = TOOLS) {
 	return {
 		model: MODEL,
 		service_tier: SERVICE_TIER,
@@ -46,7 +48,7 @@ export function buildRequest(input: unknown[], instructions: string, use: Use) {
 		reasoning: { effort: EFFORT_BY_USE[use] },
 		instructions,
 		input,
-		tools: TOOLS,
+		tools,
 		max_output_tokens: 2000
 	};
 }

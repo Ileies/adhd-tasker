@@ -1,0 +1,109 @@
+/// <reference types="bun" />
+import { describe, expect, test } from 'bun:test';
+import { MISSED_GRACE_MINUTES, OVERRUN_MINUTES, STALE_MINUTES, describeChange, describeEvent, detectEvents } from './events';
+import { Priority, TaskStatus } from './types';
+
+const task = (id: number, startTime: number, duration: number, priority = Priority.Medium, status = TaskStatus.Pending) => ({
+	id,
+	title: `Task ${id}`,
+	date: '2026-10-14',
+	startTime,
+	duration,
+	priority,
+	status
+});
+
+const types = (events: { type: string }[]) => events.map((event) => event.type);
+
+describe('task.switched', () => {
+	test('is silent when the tracked task is unknown', () => {
+		const { events, currentId } = detectEvents([task(1, 540, 60)], 560, undefined);
+		expect(events).toEqual([]);
+		expect(currentId).toBe(1);
+	});
+
+	test('is silent while the current task stays the same', () => {
+		expect(detectEvents([task(1, 540, 60)], 570, 1).events).toEqual([]);
+	});
+
+	test('reports the reason when a higher priority task starts', () => {
+		const tasks = [task(1, 540, 120), task(2, 600, 30, Priority.Critical)];
+		const { events, currentId } = detectEvents(tasks, 600, 1);
+		expect(currentId).toBe(2);
+		expect(events).toHaveLength(1);
+		expect(events[0].type).toBe('task.switched');
+		expect(events[0].payload).toMatchObject({ fromId: 1, toId: 2, reason: 'Critical priority task started' });
+	});
+
+	test('reports a task that was completed or removed', () => {
+		const done = detectEvents([task(1, 540, 60, Priority.Medium, TaskStatus.Completed)], 560, 1);
+		expect(done.events[0].payload).toMatchObject({ toId: null, reason: 'Previous task done. Nothing else is due right now' });
+		const removed = detectEvents([], 560, 1);
+		expect(removed.events[0].payload).toMatchObject({ reason: 'Previous task removed. Nothing else is due right now' });
+	});
+
+	test('free time to a task counts as a switch', () => {
+		expect(detectEvents([task(1, 540, 60)], 540, null).events[0].payload).toMatchObject({ fromId: null, toId: 1 });
+	});
+});
+
+describe('task.missed and task.overrun', () => {
+	const tasks = [task(1, 480, 60), task(2, 400, 30)];
+
+	test('waits for the grace period', () => {
+		expect(detectEvents(tasks, 540 + MISSED_GRACE_MINUTES - 1, 1).events.filter((e) => e.type !== 'task.switched')).toEqual([]);
+	});
+
+	test('reports a missed task once its grace ended, with a stable key', () => {
+		const a = detectEvents([task(1, 480, 60)], 540 + MISSED_GRACE_MINUTES, 1);
+		const b = detectEvents([task(1, 480, 60)], 540 + MISSED_GRACE_MINUTES + 1, null);
+		const keyOf = (events: ReturnType<typeof detectEvents>['events']) => events.find((e) => e.type === 'task.missed')?.key;
+		expect(keyOf(a.events)).toBeDefined();
+		expect(keyOf(a.events)).toBe(keyOf(b.events));
+	});
+
+	test('a changed window gives a new key', () => {
+		const first = detectEvents([task(1, 480, 60)], 560, 1).events.find((e) => e.type === 'task.missed');
+		const extended = detectEvents([task(1, 480, 75)], 580, 1).events.find((e) => e.type === 'task.missed');
+		expect(first!.key).not.toBe(extended!.key);
+	});
+
+	test('overrun is only the most recently ended task', () => {
+		const events = detectEvents(tasks, 540 + OVERRUN_MINUTES, 1).events;
+		const overrun = events.filter((e) => e.type === 'task.overrun');
+		expect(overrun).toHaveLength(1);
+		expect(overrun[0].payload.taskId).toBe(1);
+		expect(types(events)).toContain('task.missed');
+	});
+
+	test('ignores completed tasks and old history', () => {
+		expect(detectEvents([task(1, 480, 60, Priority.Medium, TaskStatus.Completed)], 700, 1).events.filter((e) => e.type !== 'task.switched')).toEqual([]);
+		expect(detectEvents([task(1, 100, 30)], 130 + STALE_MINUTES + 1, null).events).toEqual([]);
+	});
+});
+
+describe('describeChange', () => {
+	const base = { ...task(1, 540, 60), description: '' };
+
+	test('classifies the edit', () => {
+		expect(describeChange(null, base)?.type).toBe('task.created');
+		expect(describeChange(base, null)?.type).toBe('task.deleted');
+		expect(describeChange(base, { ...base, status: TaskStatus.Completed })).toMatchObject({ type: 'task.completed', payload: { completed: true } });
+		expect(describeChange({ ...base, status: TaskStatus.Completed }, base)).toMatchObject({ type: 'task.completed', payload: { completed: false } });
+		expect(describeChange(base, { ...base, startTime: 600 })).toMatchObject({ type: 'task.updated', payload: { changed: ['startTime'] } });
+	});
+
+	test('ignores edits nobody would notice', () => {
+		expect(describeChange(base, { ...base })).toBe(null);
+		expect(describeChange(base, { ...base, status: TaskStatus.Active })).toBe(null);
+		expect(describeChange(null, null)).toBe(null);
+	});
+});
+
+describe('describeEvent', () => {
+	test('quotes titles and names the time', () => {
+		expect(describeEvent('task.created', { title: 'Call', startTime: 570 })).toBe('Task "Call" was added at 09:30');
+		expect(describeEvent('task.completed', { title: 'Call', completed: false })).toBe('Task "Call" was reopened');
+		expect(describeEvent('task.missed', { title: 'Call', minutesOver: 7 })).toContain('7 minutes ago');
+	});
+});
