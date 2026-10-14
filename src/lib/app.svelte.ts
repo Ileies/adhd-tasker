@@ -3,6 +3,8 @@ import type { Repeat } from '#lib/schedule.js';
 import type { Tone } from '#lib/tones.js';
 import type { Backend } from '#lib/backend.js';
 import { remoteBackend } from '#lib/remote-backend.js';
+import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
+import { clientSettings, type ClientSettings } from '#lib/settings.js';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -49,6 +51,10 @@ export interface Wakeup {
 export const tasker: {
 	/** Where everything is stored and computed, set once when the app loads. */
 	backend: Backend;
+	/** `email` is null for a guest, whose plan lives on this device. `ready` turns true once the plan could be read (a guest waits for the device), `problem` says why it could not. */
+	account: { email: string | null; ready: boolean; problem: string | null };
+	/** The user's settings as the screens use them, kept in step with the backend after every save. */
+	settings: ClientSettings;
 	tasks: Task[];
 	isMuted: boolean;
 	volume: number; // 0-100
@@ -69,6 +75,8 @@ export const tasker: {
 	voice: { replies: boolean; recording: boolean; transcribing: boolean; speaking: boolean }; // replies: the user's setting to hear the assistant
 } = $state({
 	backend: remoteBackend,
+	account: { email: null, ready: false, problem: null },
+	settings: clientSettings(DEFAULT_SETTINGS),
 	tasks: [],
 	isMuted: false,
 	volume: 100,

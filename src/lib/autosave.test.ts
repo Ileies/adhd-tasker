@@ -4,10 +4,12 @@ import { tasker } from '#lib/app.svelte.js';
 import { BackendError, type Backend } from '#lib/backend.js';
 import { saveSettings } from '#lib/autosave.js';
 import { remoteBackend } from '#lib/remote-backend.js';
-import type { SettingsPatch } from '#lib/settings.js';
+import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
+import { clientSettings, type SettingsPatch } from '#lib/settings.js';
 
 afterEach(() => {
 	tasker.backend = remoteBackend;
+	tasker.settings = clientSettings(DEFAULT_SETTINGS);
 });
 
 function backendSaving(save: (patch: SettingsPatch) => Promise<void>) {
@@ -20,6 +22,21 @@ describe('saveSettings', () => {
 		backendSaving(async (patch) => void sent.push(patch));
 		expect(await saveSettings({ ok: true, value: { showClock: true } })).toBeNull();
 		expect(sent).toEqual([{ showClock: true }]);
+	});
+
+	test('a stored change shows in the settings of the screens at once', async () => {
+		backendSaving(async () => {});
+		await saveSettings({ ok: true, value: { overrunMinutes: 30 } });
+		expect(tasker.settings.overrunMinutes).toBe(30);
+		expect(tasker.settings.showClock).toBe(false);
+	});
+
+	test('a refused change leaves the settings as they were', async () => {
+		backendSaving(async () => {
+			throw new BackendError('no', 400);
+		});
+		await saveSettings({ ok: true, value: { showClock: true } });
+		expect(tasker.settings.showClock).toBe(false);
 	});
 
 	test('a form that did not parse is not sent, its error comes back', async () => {

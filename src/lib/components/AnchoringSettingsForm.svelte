@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import { OVERRUN_LIMITS, REMINDER_LIMITS, parseAnchoringForm } from '#lib/anchoring.js';
 	import { saveSettings } from '#lib/autosave.js';
 	import { anchoringPatch } from '#lib/settings.js';
@@ -26,10 +25,7 @@
 		message = await saveSettings(
 			parsed.ok ? { ok: true, value: anchoringPatch(parsed.value) } : parsed
 		);
-		if (message === null) {
-			saved = true;
-			await invalidateAll();
-		}
+		saved = message === null;
 	}
 </script>
 

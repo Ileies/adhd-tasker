@@ -51,9 +51,10 @@ export function setDayTime(key: 'dayStart' | 'dayEnd', minutes: number) {
 	syncTheme();
 }
 
-/** Saves the timezone to the account and applies it right away. */
+/** Saves the timezone (to the account, or on a guest's device) and applies it right away. */
 export async function setTimezone(timezone: string) {
 	tasker.timezone = timezone;
+	tasker.settings.timezone = timezone;
 	syncTheme();
 	await tasker.backend.settings.saveTimezone(timezone);
 }

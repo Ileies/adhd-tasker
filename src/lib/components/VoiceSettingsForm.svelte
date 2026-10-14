@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import { saveSettings } from '#lib/autosave.js';
 
 	const { replies }: { replies: boolean } = $props();
@@ -11,10 +10,7 @@
 		saved = false;
 		const checked = (event.target as HTMLInputElement).checked;
 		message = await saveSettings({ ok: true, value: { voiceReplies: checked } });
-		if (message === null) {
-			saved = true;
-			await invalidateAll();
-		}
+		saved = message === null;
 	}
 </script>
 

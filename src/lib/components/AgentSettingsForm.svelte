@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import {
 		AUTONOMY,
 		REACTION_EVENTS,
@@ -59,10 +58,7 @@
 		message = await saveSettings(
 			parsed.ok ? { ok: true, value: agentPatch(parsed.value) } : parsed
 		);
-		if (message === null) {
-			saved = true;
-			await invalidateAll();
-		}
+		saved = message === null;
 	}
 </script>
 
