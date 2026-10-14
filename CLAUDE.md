@@ -37,7 +37,7 @@ When implementing new features, think carefully about the ADHD experience. When 
 | `/edit` | Plan - day switcher, 24-hour timeline (drag to move, handle to resize, 15 min snap), quick add line, phone list |
 | `/edit` (API) | Task CRUD - GET (one day, `?date=`), POST, PUT, DELETE |
 | `/callback` | Google OAuth callback |
-| `/settings` | User preferences (currently theme only; stored in localStorage) |
+| `/settings` | Theme, timezone, and "Google Workspace": tick Tasks, Calendar, Keep and link them (incremental Google authorization, form actions `linkGoogle`/`unlinkGoogle`) |
 
 ### State Management
 
@@ -59,7 +59,7 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
 **`users`** - keyed by Google email
-- `email` (PK), `enableReminders`, `reminderAdvanceTime` (minutes), `enableOverdueNotifications`, `enableFocusMode`, `darkMode`, `openaiKey`
+- `email` (PK), `enableReminders`, `reminderAdvanceTime` (minutes), `enableOverdueNotifications`, `enableFocusMode`, `darkMode`, `openaiKey`, `timezone`, `googleServices` (space separated ids of linked Google services, scopes in `src/lib/google.ts`)
 
 **`tasks`**
 - `id`, `title`, `description`, `email` (FK), `date` (`YYYY-MM-DD` in the user's timezone), `startTime` (minutes since midnight), `duration` (minutes), `priority` (1–5 enum), `status` ('pending'|'active'|'completed'|'overdue')
@@ -100,6 +100,8 @@ bun run db:studio    # Drizzle Studio GUI
 ```
 
 ## Current Gaps & Known Issues
+
+- Linking Google services only records the grant. Access and refresh tokens are not stored yet, store them encrypted when the first feature (Calendar sync) needs them. Google Clock has no API, so it is not offered
 
 - Stored statuses `active` and `overdue` are no longer written or read. Missed tasks are derived by `rank()` (window ended, not completed). Remove the unused enum values in a later cleanup
 - Reminder notifications are schema-ready but not wired up
