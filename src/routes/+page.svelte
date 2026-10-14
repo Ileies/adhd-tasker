@@ -109,10 +109,4 @@
 			<TaskList />
 		</div>
 	</div>
-
-	<!-- Footer -->
-	<footer class="mt-16 border-t py-8 text-center">
-		<p class="text-sm text-muted-foreground">ADHD Tasker - Helping you stay focused, one task at a time 🎯</p>
-		<p class="mt-2 text-xs text-muted-foreground/60">Built with SvelteKit and shadcn-svelte</p>
-	</footer>
 </div>

@@ -6,6 +6,7 @@
 	import { initPreferences } from '#lib/theme.js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
 	import VolumeMenu from '#lib/components/VolumeMenu.svelte';
 	import SetupDialog from '#lib/components/SetupDialog.svelte';
@@ -124,8 +125,18 @@
 	</header>
 
 	<!-- Page content -->
-	<main class="min-h-0 flex-1 overflow-auto">
-		{@render children()}
+	<main class="flex min-h-0 flex-1 flex-col overflow-auto">
+		<div class="flex-1">
+			{@render children()}
+		</div>
+
+		<!-- The edit timeline fills the viewport, so it has no footer -->
+		{#if page.url.pathname !== '/edit'}
+			<footer class="mt-16 shrink-0 border-t py-8 text-center">
+				<p class="text-sm text-muted-foreground">ADHD Tasker - Helping you stay focused, one task at a time 🎯</p>
+				<p class="mt-2 text-xs text-muted-foreground/60">Built with SvelteKit and shadcn-svelte</p>
+			</footer>
+		{/if}
 	</main>
 </div>
 
