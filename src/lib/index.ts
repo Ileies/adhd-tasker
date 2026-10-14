@@ -134,5 +134,5 @@ export function playTone(tone: Tone) {
 	);
 }
 
-export { showToast, dismissToast } from '#lib/toast.js';
+export { showToast, dismissToast, errorText } from '#lib/toast.js';
 export { createTask, updateTask, deleteTask, loadDay } from '#lib/tasks.js';

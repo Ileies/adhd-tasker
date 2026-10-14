@@ -4,6 +4,11 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+	/* Layer scale: the toast sits above dialogs, the alarm banner above everything */
+	--z-bar: 40;
+	--z-overlay: 50;
+	--z-toast: 60;
+	--z-alarm: 70;
 	--radius: 0.625rem;
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.145 0 0);

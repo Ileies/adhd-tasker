@@ -13,3 +13,8 @@ export function dismissToast() {
 	clearTimeout(toastTimer);
 	tasker.toast = null;
 }
+
+/** The reason carried by a thrown error, or the plain fallback when it carries none. */
+export function errorText(error: unknown, fallback: string) {
+	return error instanceof Error && error.message ? error.message : fallback;
+}

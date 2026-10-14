@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { createTask, showToast, updateTask } from '#lib';
+	import { createTask, errorText, showToast, updateTask } from '#lib';
+	import { tasker } from '#lib/app.svelte.js';
 	import { Priority, type Task, type TaskForm } from '#lib/types.js';
 	import { Edit, Plus, Trash2 } from '@lucide/svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -35,8 +36,16 @@
 		priorityOptions.find((o) => o.value === form.priority)?.label ?? 'Select priority'
 	);
 
+	// The reason a save failed, shown above the buttons because the eye is in the dialog
+	let failure = $state('');
+
+	$effect(() => {
+		if (form.showTaskForm) failure = '';
+	});
+
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
+		failure = '';
 
 		const taskData = {
 			title: form.title,
@@ -51,14 +60,18 @@
 		try {
 			if (form.isEditing && form.selectedTask) {
 				// A refused change shows its toast and leaves the dialog open
-				if (!(await updateTask({ ...form.selectedTask, ...taskData }))) return;
+				if (!(await updateTask({ ...form.selectedTask, ...taskData }))) {
+					failure = tasker.toast?.message ?? 'Could not save the task';
+					return;
+				}
 			} else {
 				await createTask(taskData);
 			}
 
 			form.showTaskForm = false;
 		} catch (error) {
-			showToast(error instanceof Error ? error.message : 'Could not save the task');
+			failure = errorText(error, 'Could not save the task');
+			showToast(failure);
 		}
 	}
 </script>
@@ -171,6 +184,10 @@
 					{/each}
 				</div>
 			</div>
+
+			{#if failure}
+				<p class="text-destructive text-sm" role="alert">{failure}</p>
+			{/if}
 
 			<Dialog.Footer>
 				{#if form.isEditing && form.selectedTask && onDelete}

@@ -7,7 +7,7 @@
 {#if tasker.schedule.ringing}
 	<!-- Calm on purpose: a fixed bar with text and one button, no flashing and no motion -->
 	<div
-		class="border-primary bg-popover text-popover-foreground fixed inset-x-4 top-16 z-50 mx-auto flex max-w-md items-center gap-3 rounded-xl border-2 py-3 pr-3 pl-4 shadow-lg"
+		class="border-primary bg-popover text-popover-foreground fixed inset-x-4 top-16 z-(--z-alarm) mx-auto flex max-w-md items-center gap-3 rounded-xl border-2 py-3 pr-3 pl-4 shadow-lg"
 		role="alert"
 	>
 		<span class="min-w-0 flex-1">

@@ -139,7 +139,7 @@
 <div class="relative flex h-dvh flex-col {barHidden ? 'cursor-none' : ''}">
 	<header
 		bind:this={headerEl}
-		class="z-40 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2 py-1 transition-opacity duration-500
+		class="z-(--z-bar) grid shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2 py-1 transition-opacity duration-500
 			{overlay ? 'bg-background/70 absolute inset-x-0 top-0 backdrop-blur-md' : 'bg-background border-b'}
 			{barHidden ? 'pointer-events-none opacity-0' : ''}"
 	>

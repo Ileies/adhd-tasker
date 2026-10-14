@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { afterEach, describe, expect, jest, test } from 'bun:test';
 import { tasker } from '#lib/app.svelte.js';
-import { dismissToast, showToast } from '#lib/toast.js';
+import { dismissToast, errorText, showToast } from '#lib/toast.js';
 
 afterEach(() => {
 	dismissToast();
@@ -33,5 +33,16 @@ describe('toast', () => {
 		expect(tasker.toast?.message).toBe('second');
 		jest.advanceTimersByTime(3000);
 		expect(tasker.toast).toBeNull();
+	});
+});
+
+describe('errorText', () => {
+	test('uses the message of an error', () => {
+		expect(errorText(new Error('title is required'), 'Could not add')).toBe('title is required');
+	});
+
+	test('falls back when there is no message to show', () => {
+		expect(errorText(new Error(''), 'Could not add')).toBe('Could not add');
+		expect(errorText('boom', 'Could not add')).toBe('Could not add');
 	});
 });
