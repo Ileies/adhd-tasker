@@ -23,6 +23,16 @@
 
 	onMount(initPreferences);
 
+	// The GSI script can scan the DOM before hydration, so close a prompt that is already showing
+	$effect(() => {
+		if (!data.user) return;
+		const cancel = () =>
+			(window as { google?: { accounts?: { id?: { cancel?: () => void } } } }).google?.accounts?.id?.cancel?.();
+		cancel();
+		const timer = setTimeout(cancel, 1000);
+		return () => clearTimeout(timer);
+	});
+
 	let sidebarOpen = $state(false);
 	let loginForm: HTMLFormElement | undefined = $state();
 	let logoutForm: HTMLFormElement | undefined = $state();
@@ -165,9 +175,11 @@
 	</Sheet.Content>
 </Sheet.Root>
 
-<div
-	id="g_id_onload"
-	data-client_id={PUBLIC_GOOGLE_CLIENT_ID}
-	data-login_uri={PUBLIC_REDIRECT_URI}
-	data-auto_select="true"
-></div>
+{#if !data.user}
+	<div
+		id="g_id_onload"
+		data-client_id={PUBLIC_GOOGLE_CLIENT_ID}
+		data-login_uri={PUBLIC_REDIRECT_URI}
+		data-auto_select="true"
+	></div>
+{/if}
