@@ -34,16 +34,21 @@ let timers: ReturnType<typeof setTimeout>[] = [];
 let replay: ReturnType<typeof setTimeout> | undefined;
 
 /** Rings one alarm instance once, whichever path (own timer or the stream) gets there first. */
-export function ring(alarm: Pick<Alarm, 'id' | 'fireAt' | 'label' | 'tone'>) {
+export function ring(
+	alarm: Pick<Alarm, 'id' | 'fireAt' | 'label' | 'tone'>,
+	{ silentFirst = false } = {}
+) {
 	const key = `${alarm.id}@${alarm.fireAt}`;
 	if (rung.has(key)) return;
 	rung.add(key);
 
 	tasker.schedule.ringing = { id: alarm.id, label: alarm.label };
 	let replays = 0;
+	let skip = silentFirst;
 	const sound = () => {
 		if (!tasker.schedule.ringing || tasker.schedule.ringing.id !== alarm.id) return;
-		if (playsSound()) playTone(alarm.tone);
+		if (playsSound() && !skip) playTone(alarm.tone);
+		skip = false;
 		if (replays++ < MAX_REPLAYS) replay = setTimeout(sound, REPLAY_MS);
 	};
 	clearTimeout(replay);
@@ -58,13 +63,13 @@ export function dismissAlarm() {
 }
 
 /** Keeps the next alarms in local timers, so a dropped stream or a slow server tick does not delay them. */
-function arm() {
+function arm(firstLoad = false) {
 	timers.forEach(clearTimeout);
 	timers = [];
 	const now = Date.now();
 	for (const alarm of tasker.schedule.alarms) {
 		const wait = alarm.fireAt - now;
-		if (wait <= 0 && wait > -CATCH_UP_MS) ring(alarm);
+		if (wait <= 0 && wait > -CATCH_UP_MS) ring(alarm, { silentFirst: firstLoad });
 		else if (wait > 0 && wait < MAX_WAIT_MS) timers.push(setTimeout(() => ring(alarm), wait));
 	}
 }
@@ -75,8 +80,9 @@ export async function loadSchedule() {
 	const body = await response.json();
 	tasker.schedule.alarms = body.alarms;
 	tasker.schedule.wakeups = body.wakeups;
+	const firstLoad = !tasker.schedule.loaded;
 	tasker.schedule.loaded = true;
-	arm();
+	arm(firstLoad);
 }
 
 /** `at` is a clock time for a daily or one-off alarm, `in_minutes` a timer from now (it cannot repeat). */

@@ -86,11 +86,14 @@
 	// reports the minutes right after the threshold.
 	// Bookkeeping only: a reactive set would make the effect below depend on what it just sounded
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
+	let opened = false;
 	const sounded = new Set<string>();
 	$effect(() => {
 		const user = data.user;
 		if (!user) return;
-		const quiet = !playsSound();
+		// The first run is the page opening: the user is looking at it, so moments already due stay silent
+		const quiet = !playsSound() || !opened;
+		opened = true;
 
 		let chimed = false;
 		const upcoming = headsUp;
