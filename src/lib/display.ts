@@ -14,10 +14,10 @@ export function keepAwake(): () => void {
 
 	// The browser drops the lock whenever the tab is hidden, so take it again on return
 	const onVisible = () => {
-		if (document.visibilityState === 'visible') acquire();
+		if (document.visibilityState === 'visible') void acquire();
 	};
 	document.addEventListener('visibilitychange', onVisible);
-	acquire();
+	void acquire();
 
 	return () => {
 		stopped = true;
@@ -27,6 +27,6 @@ export function keepAwake(): () => void {
 }
 
 export function toggleFullscreen() {
-	if (document.fullscreenElement) document.exitFullscreen();
+	if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
 	else document.documentElement.requestFullscreen().catch(() => {});
 }

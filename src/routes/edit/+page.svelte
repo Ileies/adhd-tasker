@@ -36,7 +36,7 @@
 	// Always refresh the selected day, it may have been changed elsewhere (another device, the assistant later)
 	$effect(() => {
 		const date = selected;
-		untrack(() => loadDay(date).catch(() => showToast('Could not load this day')));
+		void untrack(() => loadDay(date).catch(() => showToast('Could not load this day')));
 	});
 
 	const dayTasks = $derived(tasker.tasks.filter((task) => task.date === selected));
@@ -109,7 +109,7 @@
 	function toggle(task: Task) {
 		const before = task.status;
 		const status = before === TaskStatus.Completed ? TaskStatus.Pending : TaskStatus.Completed;
-		updateTask({ ...task, status });
+		void updateTask({ ...task, status });
 		showToast(
 			status === TaskStatus.Completed ? `Done: ${task.title}` : `Reopened: ${task.title}`,
 			() => updateTask({ ...task, status: before })
@@ -117,18 +117,18 @@
 	}
 
 	function move(task: Task, startTime: number) {
-		updateTask({ ...task, startTime });
+		void updateTask({ ...task, startTime });
 		showToast(`${task.title} moved to ${formatClock(startTime)}`, () => updateTask(task));
 	}
 
 	function resize(task: Task, duration: number) {
-		updateTask({ ...task, duration });
+		void updateTask({ ...task, duration });
 		showToast(`${task.title} now ${formatDuration(duration)}`, () => updateTask(task));
 	}
 
 	function remove(task: Task) {
 		const { id: _id, ...rest } = task;
-		deleteTask(task);
+		void deleteTask(task);
 		showToast(`Deleted: ${task.title}`, () => createTask(rest));
 	}
 

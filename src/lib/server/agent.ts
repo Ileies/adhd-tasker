@@ -378,7 +378,7 @@ export function startAgent() {
 	setReactor(reactSoon);
 
 	let running = false;
-	state.__taskerAgent = setInterval(async () => {
+	async function run() {
 		if (running) return;
 		running = true;
 		try {
@@ -388,5 +388,6 @@ export function startAgent() {
 		} finally {
 			running = false;
 		}
-	}, TICK_MS);
+	}
+	state.__taskerAgent = setInterval(() => void run(), TICK_MS);
 }

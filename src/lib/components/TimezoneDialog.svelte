@@ -16,7 +16,8 @@
 	);
 
 	function useDevice() {
-		setTimezone(device);
+		// Applied locally at once. If saving fails, this dialog asks again on the next load
+		setTimezone(device).catch(() => {});
 		dismissed = true;
 	}
 </script>

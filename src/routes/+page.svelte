@@ -118,20 +118,20 @@
 
 	function complete(task: Task) {
 		const before = task.status;
-		setStatus(task, TaskStatus.Completed);
+		void setStatus(task, TaskStatus.Completed);
 		showToast(`Done: ${task.title}`, () => setStatus(task, before));
 	}
 
 	/** Gives a missed task 15 more minutes from now. */
 	function extend(task: Task) {
 		const before = task.duration;
-		updateTask({ ...task, duration: now - task.startTime + 15 });
+		void updateTask({ ...task, duration: now - task.startTime + 15 });
 		showToast(`${task.title}: 15 more minutes`, () => updateTask({ ...task, duration: before }));
 	}
 
 	function drop(task: Task) {
 		const { id: _id, ...rest } = task;
-		deleteTask(task);
+		void deleteTask(task);
 		showToast(`Dropped: ${task.title}`, () => createTask(rest));
 	}
 </script>

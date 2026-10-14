@@ -62,7 +62,8 @@
 	$effect(() => {
 		if (!data.user) return;
 		if (data.user.timezone) tasker.timezone = data.user.timezone;
-		else setTimezone(deviceTimezone());
+		// Applied locally at once, a failed save is retried on the next load
+		else setTimezone(deviceTimezone()).catch(() => {});
 	});
 
 	let loginForm: HTMLFormElement | undefined = $state();

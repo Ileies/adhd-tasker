@@ -58,7 +58,7 @@
 	$effect(() => {
 		void chat.messages.length;
 		void chat.busy;
-		tick().then(() => list?.scrollTo({ top: list.scrollHeight }));
+		void tick().then(() => list?.scrollTo({ top: list.scrollHeight }));
 	});
 </script>
 
@@ -125,7 +125,7 @@
 				aria-label="Message the assistant"
 				disabled={!hasKey}
 				onkeydown={(e) => {
-					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) submit(e);
+					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) void submit(e);
 				}}
 			/>
 			{#if canRecord()}
@@ -139,12 +139,12 @@
 					disabled={!hasKey || chat.busy || voice.transcribing}
 					onpointerdown={(e) => {
 						e.currentTarget.setPointerCapture(e.pointerId);
-						press(e);
+						void press(e);
 					}}
 					onpointerup={release}
 					onpointercancel={release}
 					onkeydown={(e) => {
-						if (e.key === ' ' && !e.repeat) press(e);
+						if (e.key === ' ' && !e.repeat) void press(e);
 					}}
 					onkeyup={(e) => e.key === ' ' && release()}
 					onclick={(e) => e.preventDefault()}

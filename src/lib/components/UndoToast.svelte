@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tasker } from '#lib/app.svelte.js';
-	import { dismissToast } from '#lib';
+	import { dismissToast, showToast } from '#lib';
 	import { Button } from '#lib/components/ui/button/index.js';
 </script>
 
@@ -15,8 +15,10 @@
 			<Button
 				variant="secondary"
 				onclick={() => {
-					toast.undo?.();
+					const undo = toast.undo;
 					dismissToast();
+					// An undo that fails on the network says so instead of failing silently
+					void Promise.resolve(undo?.()).catch(() => showToast('Could not undo that'));
 				}}
 			>
 				Undo
