@@ -27,6 +27,19 @@ export const tasks = sqliteTable('tasks', {
 	status: text('status').$type<TaskStatus>().default(TaskStatus.Pending).notNull()
 });
 
+/** Every change the assistant made to the plan, with enough to undo it. `before`/`after` are task JSON, null when absent. */
+export const agentActions = sqliteTable('agent_actions', {
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+	email: text('email')
+		.references(() => users.email, { onDelete: 'cascade' })
+		.notNull(),
+	tool: text('tool').notNull(), // add_task | update_task | delete_task
+	before: text('before', { mode: 'json' }),
+	after: text('after', { mode: 'json' }),
+	createdAt: integer('created_at').notNull(), // ms since epoch
+	undoneAt: integer('undone_at')
+});
+
 // Only for Google Calendar
 export const reminders = sqliteTable('reminders', {
 	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
