@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { dev } from '$app/env';
 import type { RequestHandler } from './$types';
 import { google } from '#lib/server/index.js';
 
@@ -21,7 +22,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
 		cookies.set('token', accessToken, {
 			path: '/',
-			secure: true,
+			secure: !dev,
 			httpOnly: true,
 			maxAge: 60 * 60 * 24 * 7 // 1 week
 		});
