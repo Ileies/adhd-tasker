@@ -261,6 +261,8 @@
 			onDrop={drop}
 			onTimer={startTimer}
 			concurrent={ranking.concurrent}
+			showClock={data.user.showClock}
+			{timezone}
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
 		/>
 		<UpcomingRail

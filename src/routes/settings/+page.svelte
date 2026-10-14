@@ -5,6 +5,7 @@
 	import OpenAiKeyForm from '#lib/components/OpenAiKeyForm.svelte';
 	import AgentSettingsForm from '#lib/components/AgentSettingsForm.svelte';
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
+	import ClockSettingsForm from '#lib/components/ClockSettingsForm.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import PageFrame from '#lib/components/PageFrame.svelte';
@@ -16,6 +17,7 @@
 		{ id: 'timezone', label: 'Timezone' },
 		...(data.user
 			? [
+					{ id: 'clock', label: 'Clock' },
 					{ id: 'reminders', label: 'Reminders and overruns' },
 					{ id: 'assistant', label: 'Assistant' },
 					{ id: 'voice', label: 'Voice' },
@@ -54,6 +56,16 @@
 	</Card.Root>
 
 	{#if data.user}
+		<Card.Root id="clock" class="mt-4 scroll-mt-6">
+			<Card.Header>
+				<Card.Title>Clock</Card.Title>
+				<Card.Description>Show the time of day on the Now screen.</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<ClockSettingsForm show={data.user.showClock} saved={!!form && 'clockSaved' in form} />
+			</Card.Content>
+		</Card.Root>
+
 		<Card.Root id="reminders" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Reminders and overruns</Card.Title>

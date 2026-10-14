@@ -71,6 +71,14 @@ export const actions = {
 		return { voiceSaved: true };
 	},
 
+	/** Whether the Now screen shows the time of day. */
+	saveClock: async ({ locals, request }) => {
+		if (!locals.user) return fail(401, { clockMessage: 'Sign in first' });
+		const show = (await request.formData()).has('show');
+		await db.update(users).set({ showClock: show }).where(eq(users.email, locals.user.email));
+		return { clockSaved: true };
+	},
+
 	removeOpenaiKey: async ({ locals }) => {
 		if (!locals.user) return fail(401, { openaiMessage: 'Sign in first' });
 		await db.update(users).set({ openaiKey: null }).where(eq(users.email, locals.user.email));

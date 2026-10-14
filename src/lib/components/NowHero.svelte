@@ -5,6 +5,7 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import HeroMenu from '#lib/components/HeroMenu.svelte';
+	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import { formatClock, formatCountdown } from '#lib/format.js';
 	import { endedAgo, headsUpLine, type HeroState } from '#lib/now.js';
 	import { minutesLeft } from '#lib/priority.js';
@@ -23,7 +24,9 @@
 		onEdit,
 		onDrop,
 		onTimer,
-		concurrent
+		concurrent,
+		showClock = false,
+		timezone = null
 	}: {
 		hero: HeroState<Task>;
 		now: number;
@@ -38,6 +41,8 @@
 		onDrop: (task: Task) => void;
 		onTimer: (action: StuckAction) => void;
 		concurrent: number;
+		showClock?: boolean;
+		timezone?: string | null;
 	} = $props();
 
 	// Time up without a current task owns the whole hero, with one it is a bar above that task
@@ -86,9 +91,15 @@
 </script>
 
 <section
-	class="flex min-h-svh flex-col justify-center px-6 pt-20 pb-10 transition-colors duration-[1500ms] sm:px-12 md:min-h-[60svh] lg:min-h-full {surface}"
+	class="relative flex min-h-svh flex-col justify-center px-6 pt-20 pb-10 transition-colors duration-[1500ms] sm:px-12 md:min-h-[60svh] lg:min-h-full {surface}"
 	aria-live="polite"
 >
+	{#if showClock}
+		<div class="absolute right-6 bottom-4 sm:right-12">
+			<ClockReadout {timezone} />
+		</div>
+	{/if}
+
 	{#if timeUp}
 		{@const ended = timeUp.ended}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
