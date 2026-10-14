@@ -12,7 +12,7 @@ export const google = new arctic.Google(
 );
 
 /** Plain sign-in, or with `services` an incremental authorization for extra Google services. */
-export function login(event: RequestEvent, services: GoogleServiceId[] = []) {
+export function login(event: RequestEvent, services: GoogleServiceId[] = []): never {
 	const state = arctic.generateState();
 	const codeVerifier = arctic.generateCodeVerifier();
 	const extra = GOOGLE_SERVICES.filter((service) => services.includes(service.id)).map(

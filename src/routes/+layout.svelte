@@ -10,7 +10,6 @@
 	import { showOneTap } from '#lib/onetap.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
-	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
@@ -133,8 +132,8 @@
 {#if data.user}<AssistantDrawer hasKey={data.user.hasOpenaiKey} />{/if}
 
 <!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
-<form method="POST" action="?/login" use:enhance bind:this={loginForm} class="hidden"></form>
-<form method="POST" action="?/logout" use:enhance bind:this={logoutForm} class="hidden"></form>
+<form method="POST" action="/login" bind:this={loginForm} class="hidden"></form>
+<form method="POST" action="/logout" bind:this={logoutForm} class="hidden"></form>
 
 <div class="relative flex h-dvh flex-col {barHidden ? 'cursor-none' : ''}">
 	<header

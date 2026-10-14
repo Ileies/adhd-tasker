@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { tasker } from '#lib/app.svelte.js';
 	import NowHero from '#lib/components/NowHero.svelte';
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
@@ -86,8 +85,8 @@
 	// reports the minutes right after the threshold.
 	// Bookkeeping only: a reactive set would make the effect below depend on what it just sounded
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
-	let opened = false;
 	const sounded = new Set<string>();
+	let opened = false;
 	$effect(() => {
 		const user = data.user;
 		if (!user) return;
@@ -231,7 +230,7 @@
 		<p class="text-muted-foreground max-w-md text-xl">
 			One task at a time, always on screen. Sign in to see your plan.
 		</p>
-		<form method="POST" action="?/login" use:enhance>
+		<form method="POST" action="/login">
 			<Button type="submit" size="lg" class="h-14 px-8 text-lg">Sign in with Google</Button>
 		</form>
 	</div>

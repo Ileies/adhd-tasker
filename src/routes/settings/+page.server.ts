@@ -2,29 +2,14 @@ import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions } from './$types';
 import { parseAnchoringForm } from '#lib/anchoring.js';
-import { isGoogleServiceId } from '#lib/google.js';
 import { parseSettingsForm } from '#lib/guardrails.js';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
-import { login } from '#lib/server/index.js';
 import { encrypt } from '#lib/server/crypto.js';
 import { OPENAI_KEY_PURPOSE } from '#lib/server/assistant.js';
 import { GOOGLE_CLIENT_SECRET } from '$app/env/private';
 
 export const actions = {
-	/** Asks Google for the ticked services on top of the sign-in. Nothing is stored until Google confirms in /callback. */
-	linkGoogle: async (event) => {
-		if (!event.locals.user) return fail(401, { message: 'Sign in first' });
-
-		const services = (await event.request.formData())
-			.getAll('service')
-			.filter((value) => typeof value === 'string')
-			.filter(isGoogleServiceId);
-		if (services.length === 0) return fail(400, { message: 'Tick at least one service' });
-
-		login(event, services);
-	},
-
 	/** Checks the key with OpenAI, then stores it encrypted. It is never sent back to the client. */
 	saveOpenaiKey: async ({ locals, request }) => {
 		if (!locals.user) return fail(401, { openaiMessage: 'Sign in first' });

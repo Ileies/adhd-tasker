@@ -2,8 +2,7 @@
 	import { GOOGLE_SERVICES, parseServices } from '#lib/google.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 
-	const { linked: stored, message }: { linked: string | null | undefined; message?: string } =
-		$props();
+	const { linked: stored }: { linked: string | null | undefined } = $props();
 
 	const linked = $derived(parseServices(stored));
 	// Ticks start from what is already linked, so adding one service keeps the others
@@ -16,14 +15,14 @@
 	});
 </script>
 
-<form method="POST" action="?/linkGoogle" class="space-y-4">
+<form method="POST" action="/login" class="space-y-4">
 	<fieldset class="space-y-3">
 		<legend class="sr-only">Google services to link</legend>
 		{#each GOOGLE_SERVICES as service (service.id)}
 			<label class="flex cursor-pointer items-start gap-3">
 				<input
 					type="checkbox"
-					name="service"
+					name="services"
 					value={service.id}
 					class="accent-primary mt-1 size-4"
 					checked={ticked.includes(service.id)}
@@ -41,14 +40,12 @@
 		{/each}
 	</fieldset>
 
-	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
-
 	<div class="flex flex-wrap items-center gap-2">
 		<Button type="submit" disabled={ticked.length === 0}
 			>{linked.length ? 'Update Google link' : 'Link Google Workspace'}</Button
 		>
 		{#if linked.length}
-			<Button type="submit" variant="ghost" formaction="?/unlinkGoogle" formnovalidate
+			<Button type="submit" variant="ghost" formaction="/settings?/unlinkGoogle" formnovalidate
 				>Unlink</Button
 			>
 		{/if}

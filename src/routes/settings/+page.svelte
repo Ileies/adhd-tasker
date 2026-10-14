@@ -116,10 +116,7 @@
 				>
 			</Card.Header>
 			<Card.Content>
-				<GoogleLinkPicker
-					linked={data.user.googleServices}
-					message={form && 'message' in form ? form.message : undefined}
-				/>
+				<GoogleLinkPicker linked={data.user.googleServices} />
 			</Card.Content>
 		</Card.Root>
 	{/if}
