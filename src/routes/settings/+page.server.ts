@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import type { Actions } from './$types';
 import { isGoogleServiceId } from '#lib/google.js';
+import { parseSettingsForm } from '#lib/guardrails.js';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { login } from '#lib/server/index.js';
@@ -33,6 +34,18 @@ export const actions = {
 
 		await db.update(users).set({ openaiKey: encrypt(key, GOOGLE_CLIENT_SECRET, OPENAI_KEY_PURPOSE) }).where(eq(users.email, locals.user.email));
 		return { openaiSaved: true };
+	},
+
+	/** Autonomy, which events it may react to, quiet hours and the daily budget. */
+	saveAgent: async ({ locals, request }) => {
+		if (!locals.user) return fail(401, { agentMessage: 'Sign in first' });
+
+		const parsed = parseSettingsForm(await request.formData());
+		if (!parsed.ok) return fail(400, { agentMessage: parsed.error });
+
+		const { autonomy, events, quietStart, quietEnd, dailyTokenBudget } = parsed.value;
+		await db.update(users).set({ aiAutonomy: autonomy, aiEvents: events.join(' '), quietStart, quietEnd, dailyTokenBudget }).where(eq(users.email, locals.user.email));
+		return { agentSaved: true };
 	},
 
 	removeOpenaiKey: async ({ locals }) => {
