@@ -15,8 +15,8 @@
 		<meta property="og:description" content="One task at a time, always on screen." />
 		<meta property="og:image" content="https://tasker.ileies.de/icon-512.png" />
 		<meta name="twitter:card" content="summary" />
-		<script src="https://accounts.google.com/gsi/client" async></script>
-		<script>
+		<script src="https://accounts.google.com/gsi/client" async nonce="%sveltekit.nonce%"></script>
+		<script nonce="%sveltekit.nonce%">
 			try {
 				const saved = localStorage.getItem('theme');
 				const now = new Date();

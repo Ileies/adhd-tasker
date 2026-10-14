@@ -125,9 +125,10 @@ describe('pairing rule', () => {
 });
 
 describe('OpenAI call sites', () => {
-	test('only openai.ts, voice.ts and the key check name the OpenAI host', () => {
+	test('only openai.ts, voice.ts, the key check and the CSP name the OpenAI host', () => {
 		expect(appCodeMentioning(/api\.openai\.com/)).toEqual([
 			'src/lib/core/openai-key.ts',
+			'src/lib/csp.ts',
 			'src/lib/openai.ts',
 			'src/lib/voice.ts'
 		]);
