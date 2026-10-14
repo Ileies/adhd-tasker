@@ -224,7 +224,27 @@ async function watch(user: UserRow) {
 	const previous = user.lastCurrentTaskId === null ? undefined : user.lastCurrentTaskId === 0 ? null : user.lastCurrentTaskId;
 	const { events: detected, currentId } = detectEvents(todays, now, previous);
 
-	for (const event of detected) {
+	// A missed task stays detected for a while, so skip the facts that are already logged instead of inserting every tick
+	const known = detected.length
+		? new Set(
+				(
+					await db
+						.select({ key: events.key })
+						.from(events)
+						.where(
+							and(
+								eq(events.email, user.email),
+								inArray(
+									events.key,
+									detected.map((event) => event.key)
+								)
+							)
+						)
+				).map((row) => row.key)
+			)
+		: new Set<string | null>();
+
+	for (const event of detected.filter((event) => !known.has(event.key))) {
 		const origin = event.type === 'task.switched' && (await agentEditedRecently(user.email)) ? 'agent' : 'system';
 		await emit(user.email, event.type, event.payload, origin, event.key);
 	}
