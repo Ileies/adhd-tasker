@@ -12,6 +12,7 @@ export const BACKEND_METHODS = {
 	agent: ['feed', 'resolveCard', 'stuck'],
 	activity: ['load'],
 	settings: ['load', 'saveTimezone', 'saveKey', 'removeKey', 'save'],
+	data: ['export', 'import', 'erase'],
 	voice: ['transcribe', 'speak']
 } as const satisfies { [Area in keyof Backend]: readonly (keyof Backend[Area])[] };
 

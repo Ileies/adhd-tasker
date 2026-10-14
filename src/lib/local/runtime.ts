@@ -9,7 +9,7 @@ import type { Backend } from '#lib/backend.js';
 import type { Hint, Model } from '#lib/core/context.js';
 import { TICK_MS, createAgentLoop } from '#lib/local/agent-loop.js';
 import { localBackend } from '#lib/local/backend.js';
-import { openLocalDb } from '#lib/local/db.js';
+import { deleteLocalDb, openLocalDb } from '#lib/local/db.js';
 import { electLeader, type LockApi } from '#lib/local/leader.js';
 import { localRepo } from '#lib/local/repo.js';
 
@@ -17,7 +17,12 @@ export const DATABASE_NAME = 'tasker-guest';
 export const CHANNEL_NAME = 'tasker-local';
 
 /** What one tab tells the others. A `react` message goes to the leader only, who runs the agent. */
-export type LocalMessage = Hint | { type: 'plan'; dates: string[] } | { type: 'react' };
+export type LocalMessage =
+	| Hint
+	| { type: 'plan'; dates: string[] }
+	| { type: 'react' }
+	/** The device's data was deleted: every tab starts again from an empty database. */
+	| { type: 'reload' };
 
 export interface RuntimeEnv {
 	factory: IDBFactory;
@@ -27,18 +32,21 @@ export interface RuntimeEnv {
 	tickMs?: number;
 	coalesceMs?: number;
 	modelFor?: (key: string) => Model;
+	/** Asks the browser to keep the site's data. */
+	persist?: () => void;
 }
 
 /** The browser's own storage, locks and channel. */
 export const browserEnv = (): RuntimeEnv => ({
 	factory: indexedDB,
 	locks: typeof navigator === 'undefined' ? undefined : navigator.locks,
-	channel: typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(CHANNEL_NAME)
+	channel: typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(CHANNEL_NAME),
+	persist: () => void navigator.storage?.persist?.().catch(() => {})
 });
 
 export interface RuntimeHandlers {
 	/** What this tab shows: its own hints and what the other tabs sent. */
-	handle(message: Hint | { type: 'plan'; dates: string[] }): void;
+	handle(message: Exclude<LocalMessage, { type: 'react' }>): void;
 	/** Whether this tab is the one that ticks and makes sound. */
 	onLeader(leading: boolean): void;
 }
@@ -48,7 +56,8 @@ export async function startLocalRuntime(
 	env: RuntimeEnv = browserEnv()
 ): Promise<{ backend: Backend; stop(): void }> {
 	const { channel = null } = env;
-	const repo = localRepo(await openLocalDb(env.factory, DATABASE_NAME));
+	const db = await openLocalDb(env.factory, DATABASE_NAME);
+	const repo = localRepo(db);
 	let leading = false;
 	let timer: ReturnType<typeof setInterval> | undefined;
 
@@ -74,7 +83,16 @@ export async function startLocalRuntime(
 		// Only the leader runs the agent: the others ask it to look
 		react: () => (leading ? agent.reactSoon() : channel?.postMessage({ type: 'react' })),
 		planChanged: (dates) => channel?.postMessage({ type: 'plan', dates } satisfies LocalMessage),
-		modelFor: env.modelFor
+		modelFor: env.modelFor,
+		persist: env.persist,
+		async erase() {
+			// Stop first, so no tick writes into a database that is going away
+			clearInterval(timer);
+			agent.stop();
+			db.close();
+			await deleteLocalDb(env.factory, DATABASE_NAME);
+			channel?.postMessage({ type: 'reload' } satisfies LocalMessage);
+		}
 	});
 
 	if (channel)

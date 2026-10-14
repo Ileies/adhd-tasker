@@ -142,6 +142,31 @@ describe('remoteBackend requests', () => {
 		});
 	});
 
+	test('data: the export is a GET, an import a POST of the file with the result back', async () => {
+		const { requests } = fakeFetch({
+			'GET http://localhost:5173/export': json({ app: 'adhd-tasker', tasks: [] }),
+			'POST http://localhost:5173/import': json({ tasks: 2, skipped: 0, alarms: 0 })
+		});
+		expect(await remoteBackend.data.export()).toMatchObject({ app: 'adhd-tasker' });
+		expect(await remoteBackend.data.import({ app: 'adhd-tasker' })).toEqual({
+			tasks: 2,
+			skipped: 0,
+			alarms: 0
+		});
+		expect(await requests[1].json()).toEqual({ app: 'adhd-tasker' });
+	});
+
+	test('data: a refused import carries the reason, deleting an account is not offered yet', async () => {
+		fakeFetch({
+			'POST http://localhost:5173/import': refuse(400, 'This is not an ADHD Tasker export file')
+		});
+		expect(await failure(() => remoteBackend.data.import({}))).toMatchObject({
+			status: 400,
+			message: 'This is not an ADHD Tasker export file'
+		});
+		expect(await failure(() => remoteBackend.data.erase())).toMatchObject({ status: 501 });
+	});
+
 	test('activity: the view is a GET of /activity', async () => {
 		fakeFetch({ 'GET http://localhost:5173/activity': json({ tokensToday: 3 }) });
 		expect(await remoteBackend.activity.load()).toMatchObject({ tokensToday: 3 });

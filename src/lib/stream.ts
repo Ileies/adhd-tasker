@@ -25,6 +25,9 @@ export function handleHint(message: Message) {
 		case 'plan':
 			for (const date of message.dates ?? []) void loadDay(date).catch(() => {});
 			return;
+		case 'reload':
+			// Another tab deleted the device's data: start again from the empty database
+			return location.reload();
 		case 'agent':
 			return void pollAgent().catch(() => {});
 		case 'schedule':

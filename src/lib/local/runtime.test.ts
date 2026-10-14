@@ -35,7 +35,7 @@ async function twoTabs() {
 	};
 	const leader = await open();
 	const follower = await open();
-	return { leader, follower, locks };
+	return { leader, follower, locks, factory };
 }
 
 /** Lets the broadcast channel deliver. */
@@ -89,6 +89,22 @@ describe('a device with two tabs', () => {
 		await settle();
 		expect(follower.seen).toContainEqual({ type: 'schedule' });
 		expect(leader.seen).toContainEqual({ type: 'schedule' });
+	});
+
+	test('erasing in one tab deletes the database and tells every other tab to start again', async () => {
+		const { leader, follower, factory } = await tabs();
+		await follower.backend.tasks.create(task);
+		await leader.backend.data.erase();
+		await settle();
+		expect(follower.seen).toContainEqual({ type: 'reload' });
+
+		// What is opened next is a new, empty database
+		const again = await startLocalRuntime(
+			{ handle: () => {}, onLeader: () => {} },
+			{ factory, channel: null }
+		);
+		expect(await again.backend.tasks.since('0000-01-01')).toEqual([]);
+		again.stop();
 	});
 
 	test('an event made in a follower is picked up by the leader, who runs the agent', async () => {

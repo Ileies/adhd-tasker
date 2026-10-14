@@ -57,6 +57,18 @@ export function openLocalDb(
 	});
 }
 
+/**
+ * Deletes the whole database. Other tabs that still have it open close their connection when they hear
+ * about it (`onversionchange` above), so the deletion is not held up for long.
+ */
+export function deleteLocalDb(factory: IDBFactory, name: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const request = factory.deleteDatabase(name);
+		request.onsuccess = () => resolve();
+		request.onerror = () => reject(request.error);
+	});
+}
+
 export const done = <T>(request: IDBRequest<T>) =>
 	new Promise<T>((resolve, reject) => {
 		request.onsuccess = () => resolve(request.result);

@@ -5,6 +5,8 @@ import {
 	EXPORT_LIMITS,
 	EXPORT_VERSION,
 	buildExport,
+	describeImport,
+	exportFileName,
 	importExport,
 	parseExport,
 	type ExportFile
@@ -200,6 +202,24 @@ describe('parseExport', () => {
 	test('an unknown tone becomes the default tone instead of failing the whole file', () => {
 		const result = parseExport(file({ alarms: [{ ...alarm, tone: 'bogus' as never }] }));
 		expect(result.ok).toBe(true);
+	});
+});
+
+describe('describeImport', () => {
+	test.each([
+		[{ tasks: 12, skipped: 0, alarms: 0 }, 'Imported 12 tasks.'],
+		[{ tasks: 1, skipped: 0, alarms: 1 }, 'Imported 1 task and 1 alarm.'],
+		[
+			{ tasks: 3, skipped: 2, alarms: 2 },
+			'Imported 3 tasks and 2 alarms. 2 tasks already here, left alone.'
+		],
+		[{ tasks: 0, skipped: 1, alarms: 0 }, 'Imported 0 tasks. 1 task already here, left alone.']
+	])('%j says %s', (result, sentence) => {
+		expect(describeImport(result)).toBe(sentence);
+	});
+
+	test('the file is named by its day', () => {
+		expect(exportFileName('2026-10-15')).toBe('adhd-tasker-2026-10-15.json');
 	});
 });
 

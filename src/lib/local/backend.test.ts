@@ -192,6 +192,80 @@ describe('agent', () => {
 	});
 });
 
+describe('data', () => {
+	test('an export of the device imports into another device with the same plan', async () => {
+		const source = await setup();
+		await source.backend.tasks.create(task);
+		await source.backend.settings.save({ showClock: true });
+		const file = JSON.parse(JSON.stringify(await source.backend.data.export()));
+
+		const target = await setup();
+		expect(await target.backend.data.import(file)).toEqual({ tasks: 1, skipped: 0, alarms: 0 });
+		expect((await target.backend.tasks.load('2026-10-14')).map((t) => t.title)).toEqual([
+			'Write intro'
+		]);
+		expect((await target.backend.settings.load()).showClock).toBe(true);
+	});
+
+	test('an import tells the other tabs which days changed and that alarms may have', async () => {
+		const { backend, planChanges, hints } = await setup();
+		await backend.data.import({
+			app: 'adhd-tasker',
+			version: 1,
+			settings: {},
+			tasks: [task, { ...task, date: '2026-10-15', startTime: 600 }],
+			alarms: [
+				{
+					fireAt: 4_000_000_000_000,
+					minutes: null,
+					repeat: 'none',
+					label: 'a',
+					tone: 'chime',
+					durationMin: 5
+				}
+			]
+		});
+		expect(planChanges).toEqual([['2026-10-14', '2026-10-15']]);
+		expect(hints).toContainEqual({ type: 'schedule' });
+	});
+
+	test('a file that is not an export is refused with the reason', async () => {
+		const { backend } = await setup();
+		const error = await failure(backend.data.import({ hello: 'world' }));
+		expect(error).toBeInstanceOf(BackendError);
+		expect(error).toMatchObject({ status: 400, message: 'This is not an ADHD Tasker export file' });
+	});
+
+	test('the first saved task asks the browser to keep the data, once', async () => {
+		const made = await testCtx();
+		let asked = 0;
+		const backend = localBackend({
+			repo: made.repo,
+			hint: () => 1,
+			react: () => {},
+			persist: () => void asked++
+		});
+		await backend.tasks.create(task);
+		await backend.tasks.create({ ...task, startTime: 700 });
+		expect(asked).toBe(1);
+	});
+
+	test('erase deletes through the runtime, and says so when there is nothing to delete', async () => {
+		const made = await testCtx();
+		let erased = 0;
+		const withErase = localBackend({
+			repo: made.repo,
+			hint: () => 1,
+			react: () => {},
+			erase: async () => void erased++
+		});
+		await withErase.data.erase();
+		expect(erased).toBe(1);
+		const without = localBackend({ repo: made.repo, hint: () => 1, react: () => {} });
+		expect(await failure(without.data.erase())).toMatchObject({ status: 400 });
+	});
+});
+
 describe('activity', () => {
 	test('shows what an edit logged', async () => {
 		const { backend } = await setup();

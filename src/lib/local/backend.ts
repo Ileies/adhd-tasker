@@ -5,6 +5,7 @@
  */
 import { BackendError, type Backend } from '#lib/backend.js';
 import { activityView } from '#lib/core/activity.js';
+import { buildExport, importExport, parseExport } from '#lib/core/export.js';
 import { parseMessages, runAssistant, undoAction } from '#lib/core/assistant.js';
 import { AssistantError, type Ctx, type Hint, type Model } from '#lib/core/context.js';
 import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
@@ -29,11 +30,17 @@ export interface LocalDeps {
 	planChanged?(dates: string[]): void;
 	/** Builds the model for a key, a test swaps it for a fake. */
 	modelFor?(key: string): Model;
+	/** Asks the browser to keep this site's data, called once when the first task is saved. */
+	persist?(): void;
+	/** Deletes the device's database and tells the other tabs. */
+	erase?(): Promise<void>;
 }
 
 /** In a browser the key travels as a subprotocol, the server variant sends a header. */
 const browserSocket = (url: string, key: string) =>
 	new WebSocket(url, ['realtime', `openai-insecure-api-key.${key}`]);
+
+const FIRST_DAY = '0000-01-01';
 
 const RATE = { requests: 20, windowMs: 5 * 60_000 };
 const VOICE_RATE = { requests: 30, windowMs: 5 * 60_000 };
@@ -78,6 +85,8 @@ export function localBackend(deps: LocalDeps): Backend {
 				guarded(async () => {
 					const created = await createPlanTask(ctx(), task);
 					deps.planChanged?.([created.date]);
+					// The first task is the first thing worth keeping: ask the browser not to clear it under storage pressure
+					if ((await repo.tasks.between(FIRST_DAY)).length === 1) deps.persist?.();
 					return created;
 				}),
 			update: (task) =>
@@ -149,6 +158,24 @@ export function localBackend(deps: LocalDeps): Backend {
 					const parsed = parseSettingsPatch(patch);
 					if (!parsed.ok) throw new AssistantError(parsed.error, 400);
 					await repo.settings.update(parsed.value);
+				})
+		},
+
+		data: {
+			export: () => buildExport(repo, now()),
+			import: (raw) =>
+				guarded(async () => {
+					const parsed = parseExport(raw);
+					if (!parsed.ok) throw new AssistantError(parsed.error, 400);
+					const result = await importExport(repo, parsed.value, now());
+					deps.planChanged?.([...new Set(parsed.value.tasks.map((task) => task.date))]);
+					if (parsed.value.alarms.length) deps.hint({ type: 'schedule' });
+					return result;
+				}),
+			erase: () =>
+				guarded(async () => {
+					if (!deps.erase) throw new AssistantError('Nothing to delete on this device', 400);
+					await deps.erase();
 				})
 		},
 

@@ -8,6 +8,7 @@ import type { NewTask, Task } from '#lib/core/repo.js';
 import type { Alarm, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
 import type { ActivityView } from '#lib/core/activity.js';
+import type { ExportFile, ImportResult } from '#lib/core/export.js';
 import type { AgentFeed } from '#lib/core/feed.js';
 import type { Repeat } from '#lib/schedule.js';
 import type { ClientSettings, SettingsPatch } from '#lib/settings.js';
@@ -76,6 +77,14 @@ export interface Backend {
 		removeKey(): Promise<void>;
 		/** Stores the changed settings. Rejects with the reason when a value is out of range. */
 		save(patch: SettingsPatch): Promise<void>;
+	};
+	data: {
+		/** Everything the user may take with them, as the export file. */
+		export(): Promise<ExportFile>;
+		/** Adds what an export file holds. Rejects with the reason when it is not a valid file. */
+		import(raw: unknown): Promise<ImportResult>;
+		/** Deletes everything stored on this device. Only a guest has data on a device. */
+		erase(): Promise<void>;
 	};
 	voice: {
 		/** The recognized text. */

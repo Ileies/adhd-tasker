@@ -142,6 +142,18 @@ export const remoteBackend: Backend = {
 		}
 	},
 
+	data: {
+		async export() {
+			return (await request('/export')).json();
+		},
+		async import(raw) {
+			return (await post('/import', raw, 'Could not import the file')).json();
+		},
+		async erase() {
+			throw new BackendError('Deleting an account is not possible here yet', 501);
+		}
+	},
+
 	voice: {
 		async transcribe(audio) {
 			const form = new FormData();

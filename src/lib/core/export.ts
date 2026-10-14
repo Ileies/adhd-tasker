@@ -200,6 +200,18 @@ export interface ImportResult {
 const sameTask = (task: { title: string; date: string; startTime: number; duration: number }) =>
 	`${task.date}|${task.startTime}|${task.duration}|${task.title}`;
 
+/** The sentence that tells what an import did. */
+export function describeImport({ tasks, skipped, alarms }: ImportResult): string {
+	const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+	const parts = [`Imported ${plural(tasks, 'task')}`];
+	if (alarms) parts.push(plural(alarms, 'alarm'));
+	const said = parts.join(' and ');
+	return skipped ? `${said}. ${plural(skipped, 'task')} already here, left alone.` : `${said}.`;
+}
+
+/** The name of a downloaded export, one per day. */
+export const exportFileName = (date: string) => `adhd-tasker-${date}.json`;
+
 /**
  * Adds what the file holds. A task or an alarm that is already there is left alone, so importing the same file twice
  * changes nothing, and nothing the user has is replaced. The file's settings are applied. Written straight to the
