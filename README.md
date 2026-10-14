@@ -59,7 +59,7 @@ src/
 │   │   ├── ActiveTaskDisplay.svelte
 │   │   ├── TaskList.svelte
 │   │   ├── TaskForm.svelte
-│   │   └── DarkModeSwitch.svelte
+│   │   └── ...                 # Theme, volume and timezone pickers, setup dialogs
 │   └── server/
 │       ├── db/schema.ts        # Drizzle schema (users, tasks, reminders)
 │       ├── db/index.ts         # DB connection

@@ -96,21 +96,30 @@ bun run db:studio    # Drizzle Studio GUI
 
 - Overdue task status (`TaskStatus.Overdue`) is defined but never automatically set
 - Reminder notifications are schema-ready but not wired up
-- `test.ts` in root is a leftover - should be deleted
-- `openaiKey` in user schema is prepared for AI integration (not implemented yet)
+- `openaiKey` in user schema is prepared for the assistant (not implemented yet, stored in plain text, must be encrypted before use)
+- Tasks have no date yet, only minutes since midnight
+
+## Product Direction (UI rework)
+
+The full plan is in `docs/ui-rework-plan.md`. Summary:
+
+- The app is an **ambient priority display** for an always-on second screen (desktop first, fully responsive). The Now view is the home page, not an optional mode.
+- Now shows the current top-priority task in an urgency color, plus a rail of the following tasks. Ranking lives in one pure function (`src/lib/priority.ts`).
+- Plan screen with dated days replaces the dashboard list and sidebar.
+- An assistant (text and push-to-talk voice) reads and edits the plan through server-side tool calls.
 
 ## Planned Features (Do Not Implement Without Discussion)
 
-- **Productivity analytics dashboard** - retrospective view of completion rates, patterns by time of day/priority
-- **Google Calendar sync** - two-way (killer feature, high complexity)
-- **AI integration** - scheduling assistant during daily planning, contextual ADHD tips. Uses `openaiKey` stored per user. Scope needs design before implementation.
-- **Settings page** - user preferences: reminders, focus mode, dark mode, OpenAI key input
-- **Overdue detection** - automatic status transitions with notifications
+- **Google Calendar sync** - two-way, needs dated days first
+- **End-of-day summary** - small retrospective, replaces the full analytics dashboard
+- **Recurring tasks, capture inbox, PWA** - after dated days
+- Parked on purpose: adaptive behavior model, Crisis Mode, anti-context-switch scheduler
 
 ## What to Avoid
 
 - Do not add features that increase cognitive load on the user without a clear ADHD-experience justification
 - Do not split state into multiple stores - the single `tasker` object is intentional
 - Do not add unauthenticated/localStorage fallback - login is required by design
-- Do not add animation or visual complexity that competes with the active task display
+- Do not add animation or visual complexity that competes with the active task display (no emoji, no decorative elements, no flashing)
+- Do not add stat tiles, marketing copy or footers to the main views
 - Do not touch the DB schema without running `bun run db:push` afterward
