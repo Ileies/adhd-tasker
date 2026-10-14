@@ -24,6 +24,15 @@ describe('toast', () => {
 		expect(tasker.toast).toBeNull();
 	});
 
+	test('a toast with a longer window stays for that long', () => {
+		jest.useFakeTimers();
+		showToast('Everything will be deleted', () => {}, 10_000);
+		jest.advanceTimersByTime(9999);
+		expect(tasker.toast).not.toBeNull();
+		jest.advanceTimersByTime(1);
+		expect(tasker.toast).toBeNull();
+	});
+
 	test('a newer toast replaces the older one and restarts the wait', () => {
 		jest.useFakeTimers();
 		showToast('first');
