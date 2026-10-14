@@ -3,12 +3,12 @@ import { GOOGLE_CLIENT_SECRET } from '$app/env/private';
 import { db } from '#lib/server/db/index.js';
 import { agentActions, tasks, users } from '#lib/server/db/schema.js';
 import { decrypt } from '#lib/server/crypto.js';
-import { TOOLS, parseAddTask, parseDeleteTask, parseListTasks, parseUpdateTask } from '#lib/assistant-tools.js';
+import { OPENAI_URL, buildRequest, functionCalls, outputText, type ResponseBody, type Use } from '#lib/openai.js';
+import { parseAddTask, parseDeleteTask, parseListTasks, parseUpdateTask } from '#lib/assistant-tools.js';
 import { addDays, minutesNow, todayIn } from '#lib/time.js';
 import { formatClock } from '#lib/format.js';
 import { TaskStatus, type Task } from '#lib/types.js';
 
-const MODEL = 'gpt-4.1-mini';
 const MAX_ROUNDS = 6;
 const MAX_HISTORY = 20;
 const MAX_MESSAGE = 2000;
@@ -88,31 +88,34 @@ async function systemPrompt(email: string, timezone: string) {
 	].join('\n');
 }
 
-interface Call {
-	id: string;
-	function: { name: string; arguments: string };
-}
+/** Flex processing is cheaper but can be slow and is sometimes out of capacity (429), so wait longer and retry once. */
+const FLEX_TIMEOUT_MS = 120_000;
+const FLEX_RETRY_DELAY_MS = 3000;
 
-interface Completion {
-	choices: { message: { content: string | null; tool_calls?: Call[] } }[];
-}
+async function complete(key: string, input: unknown[], instructions: string, use: Use): Promise<ResponseBody> {
+	const body = JSON.stringify(buildRequest(input, instructions, use));
 
-async function complete(key: string, messages: unknown[]): Promise<Completion> {
-	let response: Response;
-	try {
-		response = await fetch('https://api.openai.com/v1/chat/completions', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-			body: JSON.stringify({ model: MODEL, messages, tools: TOOLS, max_completion_tokens: 600 }),
-			signal: AbortSignal.timeout(30_000)
-		});
-	} catch {
-		throw new AssistantError('Could not reach OpenAI', 502);
+	for (let attempt = 0; ; attempt++) {
+		let response: Response;
+		try {
+			response = await fetch(OPENAI_URL, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+				body,
+				signal: AbortSignal.timeout(FLEX_TIMEOUT_MS)
+			});
+		} catch {
+			throw new AssistantError('Could not reach OpenAI or it took too long', 502);
+		}
+		if (response.status === 401) throw new AssistantError('OpenAI rejected the saved key, check it in Settings', 400);
+		if (response.status === 429 && attempt === 0) {
+			await new Promise((resolve) => setTimeout(resolve, FLEX_RETRY_DELAY_MS));
+			continue;
+		}
+		if (response.status === 429) throw new AssistantError('OpenAI is out of flex capacity or your quota is used up, try again later', 429);
+		if (!response.ok) throw new AssistantError('OpenAI could not answer, try again', 502);
+		return response.json();
 	}
-	if (response.status === 401) throw new AssistantError('OpenAI rejected the saved key, check it in Settings', 400);
-	if (response.status === 429) throw new AssistantError('OpenAI rate limit or quota reached', 429);
-	if (!response.ok) throw new AssistantError('OpenAI could not answer, try again', 502);
-	return response.json();
 }
 
 async function record(email: string, tool: string, before: Task | null, after: Task | null) {
@@ -120,15 +123,15 @@ async function record(email: string, tool: string, before: Task | null, after: T
 	return row.id;
 }
 
-async function runTool(email: string, call: Call, changes: Change[]): Promise<unknown> {
+async function runTool(email: string, name: string, rawArguments: string, changes: Change[]): Promise<unknown> {
 	let args: Record<string, unknown>;
 	try {
-		args = JSON.parse(call.function.arguments || '{}');
+		args = JSON.parse(rawArguments || '{}');
 	} catch {
 		return { error: 'arguments were not valid JSON' };
 	}
 
-	switch (call.function.name) {
+	switch (name) {
 		case 'list_tasks': {
 			const parsed = parseListTasks(args);
 			if (!parsed.ok) return { error: parsed.error };
@@ -181,16 +184,20 @@ export async function runAssistant(email: string, history: ChatMessage[]) {
 	const key = decrypt(user?.openaiKey, GOOGLE_CLIENT_SECRET, OPENAI_KEY_PURPOSE);
 	if (!key) throw new AssistantError('Add your OpenAI key in Settings first', 400);
 
-	const messages: unknown[] = [{ role: 'system', content: await systemPrompt(email, user?.timezone ?? 'UTC') }, ...history];
+	const instructions = await systemPrompt(email, user?.timezone ?? 'UTC');
+	// Nothing is stored at OpenAI (store: false), so every round sends the whole conversation including its own output
+	const input: unknown[] = [...history];
 	const changes: Change[] = [];
 
 	for (let round = 0; round < MAX_ROUNDS; round++) {
-		const { message } = (await complete(key, messages)).choices[0];
-		if (!message.tool_calls?.length) return { reply: message.content?.trim() || 'Done.', changes };
+		const response = await complete(key, input, instructions, 'chat');
+		const calls = functionCalls(response);
+		if (calls.length === 0) return { reply: outputText(response) || 'Done.', changes };
 
-		messages.push(message);
-		for (const call of message.tool_calls) {
-			messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(await runTool(email, call, changes)) });
+		input.push(...response.output);
+		for (const call of calls) {
+			const result = await runTool(email, call.name!, call.arguments ?? '', changes);
+			input.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(result) });
 		}
 	}
 	return { reply: 'I stopped after too many steps. Check the plan and tell me what is still missing.', changes };

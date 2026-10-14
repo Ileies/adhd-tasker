@@ -121,8 +121,7 @@ const taskProps = {
 	priority: { type: 'integer', description: '1 low, 2 medium, 3 high, 4 urgent, 5 critical' }
 };
 
-/** Tool definitions in the OpenAI chat completions format. */
-export const TOOLS = [
+const DEFINITIONS = [
 	{
 		type: 'function',
 		function: {
@@ -164,3 +163,6 @@ export const TOOLS = [
 		}
 	}
 ] as const;
+
+/** Tool definitions in the Responses API format (flat, not nested under `function`). */
+export const TOOLS = DEFINITIONS.map(({ function: fn }) => ({ type: 'function' as const, ...fn }));
