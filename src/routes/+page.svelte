@@ -29,16 +29,22 @@
 	import { formatClock } from '#lib/format.js';
 	import { addDays, minutesNow, todayIn } from '#lib/time.js';
 	import { untrack } from 'svelte';
+	import { browser } from '$app/env';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
 
 	const { data } = $props();
 
-	let now = $state(minutesNow(tasker.timezone));
-	let today = $state(todayIn(tasker.timezone));
+	// The server render has no shared client state (it is module level and must not leak between requests),
+	// so it reads the load data directly. Otherwise the first paint would be the empty state, then flip.
+	const tasks = $derived(browser ? tasker.tasks : data.tasks);
+	const timezone = $derived(tasker.timezone ?? data.user?.timezone ?? null);
+
+	let now = $state(minutesNow(untrack(() => timezone)));
+	let today = $state(todayIn(untrack(() => timezone)));
 	// Only today's tasks compete for the screen, other days live on the Plan screen
 	const ranking = $derived(
 		rank(
-			tasker.tasks.filter((task) => task.date === today),
+			tasks.filter((task) => task.date === today),
 			now
 		)
 	);
@@ -55,8 +61,8 @@
 
 	$effect(() => {
 		const tick = () => {
-			now = minutesNow(tasker.timezone);
-			today = todayIn(tasker.timezone);
+			now = minutesNow(timezone);
+			today = todayIn(timezone);
 		};
 		tick();
 		const timer = setInterval(tick, 1000);
