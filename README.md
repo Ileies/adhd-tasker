@@ -1,104 +1,106 @@
-# ADHS Tasker
+# ADHD Tasker
 
-A task management web app built specifically for people with ADHD. The core idea is simple: instead of a to-do list you have to mentally manage, the app is always open, always visible, and always shows you exactly what to do *right now*. One task. Full screen. No ambiguity. Your working memory gets to rest.
+A planner for people with ADHD. The app stays open on a second screen and always shows exactly what you should be doing *right now*: one task, in a color that tells you how urgent it is, with the next few tasks lined up beside it. Your working memory gets to rest.
 
 **Live:** [tasker.ileies.de](https://tasker.ileies.de)
 
----
+## The Problem
 
-## The Problem It Solves
+People with ADHD struggle less with *doing* things than with *knowing what comes next* and *staying anchored* to a plan. Classic to-do apps need constant self-directed attention, which is the thing ADHD impairs. ADHD Tasker holds the plan for you, works out what is current from the clock and priorities, and pulls your attention back when you drift.
 
-People with ADHD struggle less with *doing* things and more with *knowing what to do next* and *staying anchored* to a plan. Classic to-do apps fail because they require constant self-directed attention - the very thing ADHD impairs. ADHS Tasker is a safe external anchor: it holds the entire plan so you never have to. It tracks the time, surfaces the right task automatically, and keeps pulling your attention back when you drift - so you don't have to juggle 100 things in your head. Just look at the screen and do the one thing it shows you.
+## Features
 
----
+- **Now screen:** the current task in an urgency color (priority and time pressure), a countdown, Done with undo, a rail of the next tasks, and a quiet strip for missed ones. The top bar hides itself, and the screen can go fullscreen and stay awake.
+- **Predictable priority engine:** the current task is derived, never stored. Among tasks whose time window contains now, the highest priority wins, and every switch shows a one-line reason.
+- **Plan screen:** dated days with a 24 hour timeline (drag to move, handle to resize, 15 minute snap), a quick add line ("call dentist 14:30 20m") and a list view for phones.
+- **Audio cues:** synthesized with the Web Audio API, no audio files. A sound when the task changes and a soft reminder every 5 minutes.
+- **Alarms:** your own alarms (one-off, daily, weekdays) with a tone library and preview. With several screens open, one device can be chosen to make the sound.
+- **AI assistant (optional, bring your own OpenAI key):** chat that reads and edits your plan. Every change it makes is logged with a reason and can be undone.
+- **Event-driven agent (optional):** it can react to completed, missed or overrunning tasks with a short note or a question, schedule its own wakeups and set alarms. You control autonomy (observe, suggest, act), which events it may react to, quiet hours and a daily token budget. It never wakes itself with its own edits. See `/activity` for what it saw and did.
+- **Forgiving by design:** destructive actions show an Undo toast instead of a confirm dialog.
+- **PWA:** installable, fullscreen, with a service worker that only caches static assets so your plan is never stale.
+- **Google sign-in:** one login, data lives server side and follows you across devices.
 
-## Core Features
-
-- **Active task display** - Fullscreen focus view shows the current task, a live countdown, and a color-coded progress bar (green → yellow → red as time runs out)
-- **24-hour timeline editor** - Drag-and-drop task scheduling on a visual day view with compact/expanded toggle
-- **Priority system** - 5 levels (Low → Critical) with automatic active task selection by priority and time window
-- **Audio cues** - Synthesized tones via Web Audio API on task start; soft reminder chimes every 5 minutes to re-anchor attention
-- **Productivity analytics** *(planned)* - Retrospective view of completion rates, patterns by time of day, and priority adherence
-- **AI integration** *(planned)* - Scheduling assistance and contextual ADHD-specific tips during daily planning
-- **Google Calendar sync** *(planned)* - Two-way sync so tasks appear in and can be created from Google Calendar
-- **Google OAuth** - Sign in with Google; all data is stored server-side and persists across devices
-
----
+The app works fully without AI. Without a key the agent stays silent.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Framework | SvelteKit 2 + Svelte 5 (Runes) |
+| Framework | SvelteKit 3 + Svelte 5 (Runes) |
 | Styling | Tailwind CSS 4 + shadcn-svelte |
 | Database | SQLite + Drizzle ORM |
-| Auth | Google OAuth 2.0 via Arctic |
+| Auth | Google OAuth 2.0 (PKCE) and One Tap via Arctic |
+| AI | OpenAI Responses API with the user's own key, stored encrypted |
 | Runtime | Bun |
-| Deployment | Node.js adapter + PM2 on NixOS |
+| Deployment | `adapter-node` + PM2 |
 
----
+## Getting Started
 
-## Architecture
+```bash
+bun install
+cp .env.example .env      # fill in the values below
+bun run db:push           # create the SQLite schema
+bun run dev
+```
+
+Environment variables (all read at build time):
+
+| Variable | Meaning |
+|---|---|
+| `PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client id |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. Also signs sessions and derives the key that encrypts saved OpenAI keys, so changing it logs everyone out and requires pasting keys again |
+| `PUBLIC_REDIRECT_URI` | OAuth callback, e.g. `http://localhost:5173/callback` for local dev. Must be registered in your Google client |
+| `DATABASE_URL` | SQLite file, `local.db` by default |
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `bun run dev` | Dev server |
+| `bun run build` | Production build |
+| `bun run check` | Type check (svelte-check) |
+| `bun test` | Unit tests |
+| `bun run lint` | Prettier and ESLint |
+| `bun run format` | Auto-format |
+| `bun run db:push` | Apply the schema to the database |
+| `bun run db:studio` | Drizzle Studio |
+| `bun run deploy` | Deploy the committed HEAD to the server (see below) |
+
+## Project Layout
 
 ```
 src/
 ├── routes/
-│   ├── +layout.svelte          # Navbar, drawer sidebar, global layout
-│   ├── +layout.server.ts       # Session validation, task loading
-│   ├── +page.svelte            # Dashboard: active task + task list
-│   ├── +page.server.ts         # Auth actions (login/logout)
-│   ├── edit/
-│   │   ├── +page.svelte        # 24h timeline calendar editor
-│   │   └── +server.ts          # Task CRUD API (POST/PUT/DELETE)
-│   └── callback/+server.ts     # Google OAuth callback
+│   ├── +page.svelte            Now screen
+│   ├── edit/                   Plan screen and task CRUD API
+│   ├── alarms/                 Alarms, tone preview, display device
+│   ├── activity/               What the assistant changed and saw
+│   ├── settings/               Theme, timezone, OpenAI key, agent, Google services
+│   ├── assistant/              Chat turn and undo API
+│   ├── agent/                  Agent feed and card API
+│   ├── schedule/               Alarm and wakeup API
+│   ├── stream/                 Server-Sent Events
+│   └── callback/               Google OAuth callback
 ├── lib/
-│   ├── app.svelte.ts           # Global reactive state (Svelte 5 $state)
-│   ├── types.ts                # Task, Priority, TaskStatus types
-│   ├── index.ts                # Client-side task operations + audio
-│   ├── components/
-│   │   ├── ActiveTaskDisplay.svelte
-│   │   ├── TaskList.svelte
-│   │   ├── TaskForm.svelte
-│   │   └── ...                 # Theme, volume and timezone pickers, setup dialogs
-│   └── server/
-│       ├── db/schema.ts        # Drizzle schema (users, tasks, reminders)
-│       ├── db/index.ts         # DB connection
-│       └── index.ts            # Server-side helpers
+│   ├── app.svelte.ts           The single global state object
+│   ├── priority.ts, urgency.ts Ranking and urgency colors (pure)
+│   ├── events.ts, guardrails.ts, assistant-tools.ts, schedule.ts, tones.ts   Agent logic (pure, tested)
+│   ├── openai.ts               Request builder for every model call
+│   ├── components/             App components, ui/ is shadcn-svelte
+│   └── server/                 DB, auth session, agent scheduler, events, crypto, stream
+├── service-worker/             PWA asset cache
+scripts/                        deploy.ts and one-off schema scripts
+docs/ui-rework-plan.md          Product direction and phases
+TODO.md                         Roadmap
 ```
 
-**State management:** A single global `tasker` object (Svelte 5 `$state`) holds all tasks, the active task, focus mode state, and mute state. It is hydrated server-side on load and updated optimistically on mutations.
+Times are stored as minutes since midnight, each task belongs to a dated day (`YYYY-MM-DD` in the user's timezone). Imports use the `#lib/` alias.
 
-**Time representation:** Task times are stored as *minutes since midnight* (0–1440). Durations are also in minutes.
+## Deployment
 
----
+`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), backs up the database, restarts PM2 and verifies the site. Useful flags: `--push`, `--dry-run`, `--db-push` (after schema changes), `--skip-check`. The app runs as a single process on port 3002, which the event stream requires.
 
-## Development Setup
+## Roadmap
 
-```bash
-# Install dependencies
-bun install
-
-# Environment variables
-cp .env.example .env
-# Fill in GOOGLE_CLIENT_SECRET and PUBLIC_GOOGLE_CLIENT_ID
-
-# Push DB schema
-bun run db:push
-
-# Start dev server
-bun run dev
-```
-
-**Useful commands:**
-
-| Command | Description |
-|---|---|
-| `bun run dev` | Dev server with hot reload |
-| `bun run build` | Production build |
-| `bun run check` | TypeScript + Svelte type checks |
-| `bun run lint` | Prettier + ESLint |
-| `bun run format` | Auto-format everything |
-| `bun run db:push` | Apply schema changes to DB |
-| `bun run db:studio` | Open Drizzle Studio (DB GUI) |
-
-**Production:** Build with `bun run build`, run with PM2 (`pm2 start pm2.config.cjs`). App serves on port 3002.
+Done: priority engine, Now and Plan screens, PWA, assistant, event-driven agent, scheduler, alarms and tones. Next: voice assistant (push-to-talk), "I'm stuck", hyperfocus alarm and reminders. Later: Google Calendar sync, recurring tasks, capture inbox, end-of-day summary. Details in `TODO.md` and `docs/ui-rework-plan.md`.
