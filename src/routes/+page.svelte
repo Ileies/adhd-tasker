@@ -186,10 +186,12 @@
 
 	function complete(task: Task) {
 		const before = task.status;
+		// Read before the update: the optimistic edit moves the hero on at once
+		const inHero = heroFocus(hero)?.id === task.id;
 		void setStatus(task, TaskStatus.Completed);
 		if (playsSound()) playSound('done');
 		// Only the task the hero is about gets the confirmation, one finished from the rail needs none
-		if (heroFocus(hero)?.id === task.id) {
+		if (inHero) {
 			clearTimeout(confirmTimer);
 			confirming = task.title;
 			confirmTimer = setTimeout(endConfirmation, DONE_CONFIRM_MS);
