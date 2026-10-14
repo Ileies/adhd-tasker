@@ -37,7 +37,8 @@ When implementing new features, think carefully about the ADHD experience. When 
 | `/edit` | Plan - day switcher, 24-hour timeline (drag to move, handle to resize, 15 min snap), quick add line, phone list |
 | `/edit` (API) | Task CRUD - GET (one day, `?date=`), POST, PUT, DELETE |
 | `/callback` | Google OAuth callback |
-| `/settings` | Theme, timezone, and "Google Workspace": tick Tasks, Calendar, Keep and link them (incremental Google authorization, form actions `linkGoogle`/`unlinkGoogle`) |
+| `/assistant` (API) | `POST` chat turn (tool loop against OpenAI with the user's own key), `POST /assistant/undo` reverts one logged change |
+| `/settings` | Theme, timezone, OpenAI key (form actions `saveOpenaiKey`/`removeOpenaiKey`), and "Google Workspace": tick Tasks, Calendar, Keep and link them (incremental Google authorization, form actions `linkGoogle`/`unlinkGoogle`) |
 
 ### State Management
 
@@ -64,6 +65,8 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 **`tasks`**
 - `id`, `title`, `description`, `email` (FK), `date` (`YYYY-MM-DD` in the user's timezone), `startTime` (minutes since midnight), `duration` (minutes), `priority` (1–5 enum), `status` ('pending'|'active'|'completed'|'overdue')
 
+**`agent_actions`** - every plan change the assistant made: `email`, `tool`, `before`/`after` (task JSON), `createdAt`, `undoneAt`. Undo restores `before`
+
 **`reminders`** - prepared for Google Calendar sync, not yet wired up
 - `id`, `taskId` (FK), `reminderTime` (minutes since midnight)
 
@@ -76,6 +79,12 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 ### PWA
 
 `static/manifest.webmanifest` and icons make the app installable (standalone, fullscreen preferred). `src/service-worker/` caches only built assets and static files, pages and task data always come from the server. The service worker has its own tsconfig and is excluded from the root one (SvelteKit 3 layout). `DATABASE_URL` is a static env: it is baked in at build time, so a production build always uses the DB from `.env`.
+
+### Assistant
+
+Chat drawer (`AssistantDrawer.svelte`, opened from the top bar, chat state in `tasker.assistant`, lives for the page session). Server side in `src/lib/server/assistant.ts`: system prompt with today and tomorrow, tools `list_tasks`, `add_task`, `update_task`, `delete_task` (validated by the pure `src/lib/assistant-tools.ts`, always scoped to the logged-in email), max 6 tool rounds, 20 requests per 5 minutes per user. Every write is logged to `agent_actions`; the client refreshes the touched days with `loadDay` and shows an Undo toast plus per-change Undo buttons. The model is `MODEL` in `assistant.ts`.
+
+The OpenAI key is encrypted at rest (AES-256-GCM, key derived from `GOOGLE_CLIENT_SECRET`, `src/lib/server/crypto.ts`) and never reaches the client: the layout only passes `hasOpenaiKey`. Changing `GOOGLE_CLIENT_SECRET` invalidates saved keys, the user pastes the key again.
 
 ### Time Representation
 
@@ -105,7 +114,7 @@ bun run db:studio    # Drizzle Studio GUI
 
 - Stored statuses `active` and `overdue` are no longer written or read. Missed tasks are derived by `rank()` (window ended, not completed). Remove the unused enum values in a later cleanup
 - Reminder notifications are schema-ready but not wired up
-- `openaiKey` in user schema is prepared for the assistant (not implemented yet, stored in plain text, must be encrypted before use)
+- The assistant answers in one piece, not streamed. Voice, event reactions and wakeups come in later phases
 
 ## Product Direction (UI rework)
 
