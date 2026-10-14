@@ -6,7 +6,9 @@
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import HeroMenu from '#lib/components/HeroMenu.svelte';
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
-	import { formatClock, formatCountdown } from '#lib/format.js';
+	import SilenceLine from '#lib/components/SilenceLine.svelte';
+	import { fade } from 'svelte/transition';
+	import { formatClock, formatLeft, formatMinutes } from '#lib/format.js';
 	import { endedAgo, headsUpLine, type HeroState } from '#lib/now.js';
 	import { minutesLeft } from '#lib/priority.js';
 	import { urgencyLevel, urgencySurface } from '#lib/urgency.js';
@@ -16,6 +18,7 @@
 		now,
 		reason,
 		headsUp,
+		done = null,
 		onDone,
 		onStuck,
 		onExtend,
@@ -32,6 +35,8 @@
 		now: number;
 		reason: string | null;
 		headsUp: Task | null;
+		/** Title of the task that was just finished, shown for a moment before the hero moves on. */
+		done?: string | null;
 		onDone: (task: Task) => void;
 		onStuck: (task: Task, reason: StuckReason) => void;
 		onExtend: (task: Task) => void;
@@ -73,15 +78,16 @@
 	}
 
 	const left = $derived(task ? minutesLeft(task, now) : 0);
-	const progress = $derived(
-		task ? Math.min(100, Math.max(0, 100 - (100 * left) / task.duration)) : 0
-	);
+	// The bar drains like a Time Timer: it shows what is left
+	const remaining = $derived(task ? Math.min(100, Math.max(0, (100 * left) / task.duration)) : 0);
 	const surface = $derived(
-		timeUp
-			? urgencySurface[urgencyLevel(timeUp.ended.priority, -timeUp.over, timeUp.ended.duration)]
-			: task
-				? urgencySurface[urgencyLevel(task.priority, left, task.duration)]
-				: urgencySurface[0]
+		done !== null
+			? urgencySurface[0]
+			: timeUp
+				? urgencySurface[urgencyLevel(timeUp.ended.priority, -timeUp.over, timeUp.ended.duration)]
+				: task
+					? urgencySurface[urgencyLevel(task.priority, left, task.duration)]
+					: urgencySurface[0]
 	);
 
 	const doneClass =
@@ -100,7 +106,19 @@
 		</div>
 	{/if}
 
-	{#if timeUp}
+	{#if done !== null}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6" in:fade={{ duration: 400 }}>
+			<div class="flex items-center gap-3 text-lg opacity-90">
+				<Check class="size-7" aria-hidden="true" />
+				<span class="font-semibold">Done</span>
+			</div>
+			<h1
+				class="text-display line-clamp-3 font-bold break-words line-through decoration-2 opacity-80"
+			>
+				{done}
+			</h1>
+		</div>
+	{:else if timeUp}
 		{@const ended = timeUp.ended}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
 			<div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-lg opacity-90">
@@ -172,21 +190,24 @@
 			{/if}
 
 			<div>
-				<div class="tabular text-clock font-bold">{formatCountdown(Math.max(0, left))}</div>
-				<div class="mt-1 text-lg opacity-90">left</div>
+				<div class="tabular text-clock font-bold">{formatMinutes(left)}</div>
+				<div class="mt-1 text-lg opacity-90">
+					left, until {formatClock(task.startTime + task.duration)}
+				</div>
 			</div>
 
 			<div
-				class="h-3 max-w-xl overflow-hidden rounded-full bg-current/20"
+				class="h-4 w-full overflow-hidden rounded-full bg-current/20"
 				role="progressbar"
-				aria-valuenow={Math.round(progress)}
+				aria-valuenow={Math.round(remaining)}
 				aria-valuemin={0}
 				aria-valuemax={100}
-				aria-label="Time used"
+				aria-valuetext={formatLeft(left, task.startTime + task.duration)}
+				aria-label="Time left"
 			>
 				<div
 					class="h-full rounded-full bg-current transition-[width] duration-1000"
-					style="width: {progress}%"
+					style="width: {remaining}%"
 				></div>
 			</div>
 
@@ -265,7 +286,7 @@
 			{/if}
 
 			{#if reason}
-				<p class="text-base opacity-80">{reason}</p>
+				<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
 			{/if}
 
 			<!-- The rail sits below the fold on phones, so hint at what is next -->
@@ -282,22 +303,27 @@
 			<p class="text-xl opacity-90 md:text-2xl">Next: {hero.next.title}</p>
 			<div>
 				<div class="tabular text-clock font-bold">
-					{formatCountdown(hero.next.startTime - now)}
+					{formatMinutes(hero.next.startTime - now)}
 				</div>
 				<div class="mt-1 text-lg opacity-90">
 					until it starts at {formatClock(hero.next.startTime)}
 				</div>
 			</div>
 			{#if reason}
-				<p class="text-base opacity-80">{reason}</p>
+				<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
 			{/if}
 		</div>
 	{:else}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
 			<h1 class="text-display font-bold">Nothing left today</h1>
 			{#if reason}
-				<p class="text-base opacity-80">{reason}</p>
+				<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
 			{/if}
 		</div>
 	{/if}
+
+	<!-- On wide screens the line sits at the bottom of the rail instead -->
+	<div class="mx-auto mt-8 w-full max-w-5xl lg:hidden">
+		<SilenceLine class="flex" />
+	</div>
 </section>

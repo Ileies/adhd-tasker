@@ -31,8 +31,3 @@ export function formatLeft(minutes: number, until?: number): string {
 	const left = minutes < 1 ? 'Less than 1 min left' : `${formatMinutes(minutes)} left`;
 	return until === undefined ? left : `${left}, until ${formatClock(until)}`;
 }
-
-/** Remaining minutes as `H:MM` for countdowns. */
-export function formatCountdown(minutes: number): string {
-	return Math.floor(minutes / 60) + ':' + (minutes % 60).toString().padStart(2, '0');
-}

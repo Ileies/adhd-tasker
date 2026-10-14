@@ -1,12 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import {
-	formatClock,
-	formatCountdown,
-	formatDuration,
-	formatLeft,
-	formatMinutes
-} from '#lib/format.js';
+import { formatClock, formatDuration, formatLeft, formatMinutes } from '#lib/format.js';
 
 describe('formatClock', () => {
 	test.each([
@@ -27,16 +21,6 @@ describe('formatDuration', () => {
 		[0, '0m']
 	])('%d minutes is %s', (minutes, text) => {
 		expect(formatDuration(minutes)).toBe(text);
-	});
-});
-
-describe('formatCountdown', () => {
-	test.each([
-		[28, '0:28'],
-		[5, '0:05'],
-		[80, '1:20']
-	])('%d minutes is %s', (minutes, text) => {
-		expect(formatCountdown(minutes)).toBe(text);
 	});
 });
 

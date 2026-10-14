@@ -4,6 +4,7 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import AgentStrip from '#lib/components/AgentStrip.svelte';
+	import SilenceLine from '#lib/components/SilenceLine.svelte';
 	import { formatClock, formatDuration } from '#lib/format.js';
 
 	const NEXT_COUNT = 4;
@@ -104,4 +105,7 @@
 			{/if}
 		</section>
 	{/if}
+
+	<!-- On phones the line is in the hero, the rail sits below the fold -->
+	<SilenceLine class="text-muted-foreground mt-auto hidden lg:flex" />
 </aside>

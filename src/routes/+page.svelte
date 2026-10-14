@@ -23,7 +23,14 @@
 		reminderDue,
 		type StuckAction
 	} from '#lib/anchoring.js';
-	import { heroState, wrapUpStarted } from '#lib/now.js';
+	import {
+		DONE_CONFIRM_MS,
+		REASON_MS,
+		heroFocus,
+		heroState,
+		tabTitle,
+		wrapUpStarted
+	} from '#lib/now.js';
 	import { extendTask, moveLater } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
 	import { formatClock } from '#lib/format.js';
@@ -134,19 +141,43 @@
 		}
 	});
 
-	// Explain every switch, and chime for switches that happen while the page is open
+	// The hero confirms Done for a moment (the title struck through) before it moves on to the next state
+	let confirming = $state<string | null>(null);
+	let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+	// A task that started while the confirmation showed gets its chime when the confirmation ends, not on top of the done sound
+	let startPending = false;
+
+	function endConfirmation() {
+		clearTimeout(confirmTimer);
+		confirming = null;
+		if (startPending && ranking.current) playSound('task-started');
+		startPending = false;
+	}
+
+	// Explain every switch that happens while the page is open, and chime for it. A switch the page loads with
+	// ("Scheduled for now" on every load) is noise: the screen already shows the task.
 	let reason = $state<string | null>(null);
 	let previous: Task | null = null;
 	let initialized = false;
 	$effect(() => {
 		const current = ranking.current;
 		const why = switchReason(previous, ranking, tasker.tasks, now);
-		if (why !== null) {
+		if (why !== null && initialized) {
 			reason = why;
-			if (current && initialized) playSound('task-started');
+			if (current) {
+				if (untrack(() => confirming) !== null) startPending = true;
+				else playSound('task-started');
+			}
 		}
 		previous = current;
 		initialized = true;
+	});
+
+	// The reason fades out after a minute, a new one starts the minute again
+	$effect(() => {
+		if (reason === null) return;
+		const timer = setTimeout(() => (reason = null), REASON_MS);
+		return () => clearTimeout(timer);
 	});
 
 	function setStatus(task: Task, status: TaskStatus) {
@@ -156,7 +187,18 @@
 	function complete(task: Task) {
 		const before = task.status;
 		void setStatus(task, TaskStatus.Completed);
-		showToast(`Done: ${task.title}`, () => setStatus(task, before));
+		if (playsSound()) playSound('done');
+		// Only the task the hero is about gets the confirmation, one finished from the rail needs none
+		if (heroFocus(hero)?.id === task.id) {
+			clearTimeout(confirmTimer);
+			confirming = task.title;
+			confirmTimer = setTimeout(endConfirmation, DONE_CONFIRM_MS);
+		}
+		showToast(`Done: ${task.title}`, () => {
+			// Undoing brings the task back at once, so the confirmation has nothing left to say
+			endConfirmation();
+			return setStatus(task, before);
+		});
 	}
 
 	/** Gives a task 15 more minutes: from now when it already ran out, on top of its end while it runs. */
@@ -231,7 +273,7 @@
 </script>
 
 <svelte:head>
-	<title>Now - ADHD Tasker</title>
+	<title>{data.user ? tabTitle(hero) : 'Now - ADHD Tasker'}</title>
 </svelte:head>
 
 {#if !data.user}
@@ -253,6 +295,7 @@
 			{now}
 			{reason}
 			{headsUp}
+			done={confirming}
 			onDone={complete}
 			onExtend={extend}
 			onLater={later}

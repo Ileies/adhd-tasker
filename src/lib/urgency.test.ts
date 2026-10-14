@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { Priority } from '#lib/types.js';
 import { urgencyLevel } from '#lib/urgency.js';
-import { formatClock, formatCountdown, formatDuration } from '#lib/format.js';
+import { formatClock, formatDuration } from '#lib/format.js';
 
 describe('urgencyLevel', () => {
 	test('follows priority while there is plenty of time', () => {
@@ -31,8 +31,5 @@ describe('format', () => {
 		expect(formatDuration(45)).toBe('45m');
 		expect(formatDuration(120)).toBe('2h');
 		expect(formatDuration(90)).toBe('1h 30m');
-	});
-	test('formatCountdown', () => {
-		expect(formatCountdown(65)).toBe('1:05');
 	});
 });
