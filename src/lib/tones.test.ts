@@ -3,13 +3,60 @@ import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
 import {
 	DEFAULT_TONE,
+	RING,
 	TONE_LIMITS,
 	TONE_NAMES,
 	parseTone,
 	readTone,
+	ringGain,
+	ringTimeline,
 	toneLength,
 	toneNotes
 } from '#lib/tones.js';
+
+describe('ringGain', () => {
+	test('starts quiet, reaches full volume after the ramp and never goes past it', () => {
+		expect(ringGain(0)).toBe(RING.startGain);
+		expect(ringGain(RING.rampMs)).toBe(1);
+		expect(ringGain(RING.rampMs * 10)).toBe(1);
+	});
+
+	test('gets louder with every moment of the ramp', () => {
+		expect(ringGain(5000)).toBeGreaterThan(ringGain(0));
+		expect(ringGain(10_000)).toBeGreaterThan(ringGain(5000));
+	});
+
+	test('a negative time is treated as the start', () => {
+		expect(ringGain(-500)).toBe(RING.startGain);
+	});
+});
+
+describe('ringTimeline', () => {
+	const tone = toneNotes('wake');
+	const step = toneLength(tone) + RING.gapMs;
+
+	test('repeats follow each other with only the short gap in between', () => {
+		const timeline = ringTimeline(tone, 60_000);
+		expect(timeline[1].atMs - timeline[0].atMs).toBe(step);
+		expect(RING.gapMs).toBeLessThan(1000);
+	});
+
+	test('no repeat starts at or after the duration', () => {
+		const timeline = ringTimeline(tone, 5 * 60_000);
+		expect(timeline.at(-1)!.atMs).toBeLessThan(5 * 60_000);
+		expect(timeline.at(-1)!.atMs + step).toBeGreaterThanOrEqual(5 * 60_000);
+	});
+
+	test('each repeat is at least as loud as the one before', () => {
+		const gains = ringTimeline(tone, 60_000).map((repeat) => repeat.gain);
+		expect(gains).toEqual([...gains].sort((a, b) => a - b));
+		expect(gains.at(-1)).toBe(1);
+	});
+
+	test('no duration means nothing rings', () => {
+		expect(ringTimeline(tone, 0)).toEqual([]);
+	});
+});
 
 describe('the library', () => {
 	test('every named tone is valid and within the caps', () => {

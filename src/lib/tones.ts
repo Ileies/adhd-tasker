@@ -34,7 +34,7 @@ export const TONE_LIMITS = {
 } as const;
 
 /** Names the agent and the user can pick. */
-export const TONE_NAMES = ['chime', 'soft', 'nudge', 'rising', 'urgent'] as const;
+export const TONE_NAMES = ['wake', 'chime', 'soft', 'nudge', 'rising', 'urgent'] as const;
 export type ToneName = (typeof TONE_NAMES)[number];
 export const isToneName = (value: unknown): value is ToneName =>
 	TONE_NAMES.includes(value as ToneName);
@@ -43,6 +43,7 @@ export const isToneName = (value: unknown): value is ToneName =>
 export type Tone = ToneName | CustomTone;
 
 export const TONE_TEXT: Record<ToneName, string> = {
+	wake: 'Wake: a rising and falling melody, made for ringing',
 	chime: 'Chime: two bright notes',
 	soft: 'Soft: one gentle note',
 	nudge: 'Nudge: two short taps',
@@ -51,6 +52,20 @@ export const TONE_TEXT: Record<ToneName, string> = {
 };
 
 const LIBRARY: Record<ToneName, CustomTone> = {
+	// A major arpeggio up and a step back down, about 3 s. Loops well because it ends where it can start again.
+	wake: {
+		wave: 'triangle',
+		notes: [
+			{ hz: 523, ms: 160, rest: 40 },
+			{ hz: 659, ms: 160, rest: 40 },
+			{ hz: 784, ms: 160, rest: 40 },
+			{ hz: 1047, ms: 320, rest: 120 },
+			{ hz: 988, ms: 160, rest: 40 },
+			{ hz: 784, ms: 160, rest: 40 },
+			{ hz: 659, ms: 160, rest: 40 },
+			{ hz: 784, ms: 480 }
+		]
+	},
 	chime: {
 		wave: 'sine',
 		notes: [
@@ -90,6 +105,35 @@ export const DEFAULT_TONE: ToneName = 'chime';
 /** Total playing time of a sequence in ms, notes and rests. */
 export function toneLength(tone: CustomTone): number {
 	return tone.notes.reduce((sum, note) => sum + note.ms + (note.rest ?? 0), 0);
+}
+
+export const RING = {
+	/** Share of the user's volume at the first repeat, so the alarm does not start with a jolt. */
+	startGain: 0.15,
+	/** Time until the full volume is reached. */
+	rampMs: 20_000,
+	/** Silence between two repeats of the tone, short so it reads as one continuous ring. */
+	gapMs: 350
+} as const;
+
+/** Share of the user's volume (0 to 1) `elapsedMs` after a ring started: quick, linear and never past the ceiling. */
+export function ringGain(elapsedMs: number): number {
+	const progress = Math.min(1, Math.max(0, elapsedMs / RING.rampMs));
+	return RING.startGain + (1 - RING.startGain) * progress;
+}
+
+/**
+ * When each repeat of a ringing alarm starts and how loud it is. The tone loops back to back until `durationMs`
+ * is over, a repeat that would start after that is not played.
+ */
+export function ringTimeline(
+	tone: CustomTone,
+	durationMs: number
+): { atMs: number; gain: number }[] {
+	const step = toneLength(tone) + RING.gapMs;
+	const repeats: { atMs: number; gain: number }[] = [];
+	for (let atMs = 0; atMs < durationMs; atMs += step) repeats.push({ atMs, gain: ringGain(atMs) });
+	return repeats;
 }
 
 /** The notes to play for any stored tone. */
