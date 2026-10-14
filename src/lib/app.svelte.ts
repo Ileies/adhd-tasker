@@ -12,6 +12,7 @@ export const tasker: {
 	themeMode: ThemeMode;
 	dayStart: number; // minutes since midnight, daytime theme starts
 	dayEnd: number; // minutes since midnight, daytime theme ends
+	timezone: string | null; // IANA name from the user's settings, null until set
 } = $state({
 	tasks: [],
 	activeTask: null,
@@ -21,5 +22,6 @@ export const tasker: {
 	volume: 100,
 	themeMode: 'auto',
 	dayStart: 420,
-	dayEnd: 1140
+	dayEnd: 1140,
+	timezone: null
 });

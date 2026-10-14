@@ -4,6 +4,7 @@
 	import { deleteTask, updateTask } from '#lib';
 	import { goto } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
+	import { minutesNow } from '#lib/time.js';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import type { TaskForm as TaskFormType } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -21,7 +22,7 @@
 		title: '',
 		description: '',
 		duration: 60, // Default to 1 hour
-		startTime: new Date().getHours() * 60 + new Date().getMinutes(),
+		startTime: minutesNow(tasker.timezone),
 		priority: Priority.Medium
 	});
 
@@ -60,7 +61,7 @@
 		form.title = '';
 		form.description = '';
 		form.duration = 60;
-		form.startTime = new Date().getHours() * 60 + new Date().getMinutes();
+		form.startTime = minutesNow(tasker.timezone);
 		form.priority = Priority.Medium;
 		form.showTaskForm = true;
 	}

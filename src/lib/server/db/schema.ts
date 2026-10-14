@@ -9,6 +9,7 @@ export const users = sqliteTable('users', {
 	enableFocusMode: integer('enable_focus_mode', { mode: 'boolean' }).default(false).notNull(),
 	darkMode: integer('dark_mode', { mode: 'boolean' }).default(false).notNull(),
 	openaiKey: text('openai_key'),
+	timezone: text('timezone') // IANA name, null until first set
 });
 
 export const tasks = sqliteTable('tasks', {

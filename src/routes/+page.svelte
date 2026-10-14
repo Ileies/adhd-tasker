@@ -4,6 +4,7 @@
 	import ActiveTaskDisplay from '#lib/components/ActiveTaskDisplay.svelte';
 	import { Priority, TaskStatus } from '#lib/types.js';
 	import { playSound, updateTask } from '#lib';
+	import { minutesNow } from '#lib/time.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Clock, Focus } from '@lucide/svelte';
@@ -12,19 +13,14 @@
 	// nicht alle chats immer anzeigen, fehler beim löschen der Kategorie, history sieht schlecht aus,
 	// chat löschen button funktionieren machen und verschieben
 
-	// Local time as minutes since midnight, same unit as task.startTime
-	const localMinutes = () => {
-		const d = new Date();
-		return d.getHours() * 60 + d.getMinutes();
-	};
-	let now = $state(localMinutes());
+	let now = $state(minutesNow(tasker.timezone));
 
 	const activeTasks = $derived(tasker.tasks.filter((task) => {
 		return task.status === TaskStatus.Pending && task.startTime <= now && now < task.startTime + task.duration;
 	}).sort((a, b) => (b.priority || Priority.Medium) - (a.priority || Priority.Medium)));
 
 	setInterval(() => {
-		now = localMinutes();
+		now = minutesNow(tasker.timezone);
 		tasker.timeLeft = tasker.activeTask ? (tasker.activeTask.startTime + tasker.activeTask.duration) - now : 0;
 	}, 1000);
 

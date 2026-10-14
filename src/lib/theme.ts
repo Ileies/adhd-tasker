@@ -1,5 +1,6 @@
 import { flushSync } from 'svelte';
 import { tasker, type ThemeMode } from '#lib/app.svelte.js';
+import { minutesNow } from '#lib/time.js';
 
 function save(key: string, value: string) {
 	try {
@@ -10,8 +11,7 @@ function save(key: string, value: string) {
 function resolveDark(): boolean {
 	if (tasker.themeMode !== 'auto') return tasker.themeMode === 'dark';
 
-	const now = new Date();
-	const minutes = now.getHours() * 60 + now.getMinutes();
+	const minutes = minutesNow(tasker.timezone);
 	const { dayStart, dayEnd } = tasker;
 	const isDay = dayStart <= dayEnd ? minutes >= dayStart && minutes < dayEnd : minutes >= dayStart || minutes < dayEnd;
 	return !isDay;
@@ -44,6 +44,17 @@ export function setDayTime(key: 'dayStart' | 'dayEnd', minutes: number) {
 	tasker[key] = minutes;
 	save(key, String(minutes));
 	syncTheme();
+}
+
+/** Saves the timezone to the account and applies it right away. */
+export async function setTimezone(timezone: string) {
+	tasker.timezone = timezone;
+	syncTheme();
+	await fetch('/settings/timezone', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ timezone })
+	});
 }
 
 export function setVolume(value: number) {
