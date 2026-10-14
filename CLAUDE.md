@@ -40,7 +40,10 @@ When implementing new features, think carefully about the ADHD experience. When 
 | `/assistant` (API) | `POST` chat turn (tool loop against OpenAI with the user's own key), `POST /assistant/undo` reverts one logged change |
 | `/settings` | Theme, timezone, OpenAI key (form actions `saveOpenaiKey`/`removeOpenaiKey`), "Assistant on its own" (autonomy, events, quiet hours, daily budget, form action `saveAgent`), and "Google Workspace": tick Tasks, Calendar, Keep and link them (incremental Google authorization, form actions `linkGoogle`/`unlinkGoogle`) |
 | `/activity` | What the assistant changed (reason, Undo) and the events it saw with what became of them, plus today's token use |
-| `/agent` (API) | `GET` what the agent did on its own (open card, plan changes since `?since=<action id>`), polled every 15 s. `POST /agent/cards/[id]` dismisses or answers a card |
+| `/agent` (API) | `GET` what the agent did on its own (open card, plan changes since `?since=<action id>`), fetched when the stream says so. `POST /agent/cards/[id]` dismisses or answers a card |
+| `/stream` (API) | Server-Sent Events (`?device=<id>`): hints `agent`, `schedule`, `alarm`, `tone`, `display`. The client fetches the data itself, a missed push costs nothing |
+| `/schedule` (API) | `GET` pending alarms and wakeups, `POST` a user alarm (`at`, `label`, `tone` name, `repeat`), `DELETE /schedule/[id]` cancels, `POST /schedule/display` chooses the display device |
+| `/alarms` | User alarms with tone preview, the "use this device for sound" choice, the assistant's wakeups |
 
 ### State Management
 
@@ -53,7 +56,9 @@ tasker = {
   themeMode, dayStart, dayEnd, timezone,
   toast: { message, undo? } | null,  // transient confirmation with an Undo button
   assistant: { open, busy, messages },
-  agent: { cards, cursor }           // open card for the strip on Now, last agent action id seen
+  agent: { cards, cursor },          // open card for the strip on Now, last agent action id seen
+  schedule: { alarms, wakeups, ringing, loaded },  // pending alarms (rung by local timers and the stream), the alarm banner
+  device: { id, display, streaming } // id: per-browser, display: the device that plays sound (null = all)
 }
 ```
 
@@ -64,7 +69,7 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
 **`users`** - keyed by Google email
-- `email` (PK), `enableReminders`, `reminderAdvanceTime` (minutes), `enableOverdueNotifications`, `enableFocusMode`, `darkMode`, `openaiKey`, `timezone`, `googleServices` (space separated ids of linked Google services, scopes in `src/lib/google.ts`), agent settings `aiAutonomy` (observe|suggest|act, default suggest), `aiEvents` (space separated event types it may react to), `quietStart`/`quietEnd`, `dailyTokenBudget` (null = none), `lastCurrentTaskId` (what the scheduler saw as current, 0 = free time, null = never tracked)
+- `email` (PK), `enableReminders`, `reminderAdvanceTime` (minutes), `enableOverdueNotifications`, `enableFocusMode`, `darkMode`, `openaiKey`, `timezone`, `googleServices` (space separated ids of linked Google services, scopes in `src/lib/google.ts`), agent settings `aiAutonomy` (observe|suggest|act, default suggest), `aiEvents` (space separated event types it may react to), `quietStart`/`quietEnd`, `dailyTokenBudget` (null = none), `lastCurrentTaskId` (what the scheduler saw as current, 0 = free time, null = never tracked), `displayDevice` (browser id that plays alarms and agent tones, null = every device)
 
 **`tasks`**
 - `id`, `title`, `description`, `email` (FK), `date` (`YYYY-MM-DD` in the user's timezone), `startTime` (minutes since midnight), `duration` (minutes), `priority` (1–5 enum), `status` ('pending'|'active'|'completed'|'overdue')
@@ -75,7 +80,9 @@ Hydrated from server on layout load. Updated optimistically on mutations. Destru
 
 **`agent_cards`** - notes (`say`) and questions (`ask`, with `options`) shown in the strip on Now until resolved. A new card resolves the older open ones
 
-**`ai_usage`** - tokens per model call (`use`: chat|reaction), for the daily meter, the budget and the reaction rate limit
+**`ai_usage`** - tokens per model call (`use`: chat|reaction), for the daily meter, the budget and the reaction rate limit. Rows with `use: tone` (0 tokens) count the custom tones the agent defined today
+
+**`schedule`** - `kind` alarm|wakeup, `fireAt` (epoch ms), `repeat` none|daily|weekdays with `minutes` (local clock time, so repeats follow daylight saving), `label`/`tone` (alarm, tone JSON stored so it replays identically), `note` (wakeup, the agent's note to itself), `createdBy` user|agent, `status` pending|done|cancelled. Pruned 7 days after it ended
 
 **`reminders`** - prepared for Google Calendar sync, not yet wired up
 - `id`, `taskId` (FK), `reminderTime` (minutes since midnight)
@@ -106,7 +113,13 @@ Every plan edit calls `emit()` (`src/lib/server/events.ts`): the UI routes in `/
 
 Guardrails live in the pure `src/lib/guardrails.ts` (`decideReaction`, covered by tests) and run before any model call: autonomy (`observe` logs only, `suggest` offers `say`/`ask` and cannot edit, `act` may also edit with a reason and Undo, enforced again server side), per-event toggles (default: completed, missed, overrun), quiet hours (default 22:00 to 07:00), events within 5 s are coalesced into one reaction, at most 6 reactions per hour and 3 minutes apart, optional daily token budget (unprompted reactions only, chat is exempt), no key means silence. Events older than 10 minutes are dropped instead of answered late. The reaction model call uses `reaction` effort (low) and `reactionTools(mayEdit)` through `buildRequest`. Every event gets an `outcome`, shown on `/activity`.
 
-The client polls `/agent` (`src/lib/agent.ts`, started in the layout) for the card and for plan changes the agent made on its own, which show an Undo toast. Answering a card continues in the chat: the question becomes the assistant's last message and the chosen option the user's reply.
+The client opens one event stream (`src/lib/stream.ts`, started in the layout) and fetches `/agent` when it says the agent did something, for the card and for plan changes the agent made on its own, which show an Undo toast. On every (re)connect and when the page becomes visible it fetches again, and while the stream is down `/agent` is polled every 30 s. Answering a card continues in the chat: the question becomes the assistant's last message and the chosen option the user's reply.
+
+**Schedule, wakeups and alarms** (`src/lib/schedule.ts` pure and tested, `src/lib/server/schedule.ts`): the same 15 s tick runs `fireDue()`. A repeating alarm moves on before anything else so a crash cannot ring twice, an entry more than 10 minutes late is retired without ringing. Alarms emit `alarm.fired` (logged, never wakes the agent) and push `alarm` over the stream. The client also keeps the next alarms in `setTimeout`s (`src/lib/alarms.ts`) and dedupes by `id@fireAt`, so a dropped stream or a slow tick does not delay one. A ringing alarm shows a calm banner and repeats its tone up to 3 times, 30 s apart, until dismissed. Wakeups emit `wakeup.fired` with the agent's own note, they need no toggle but obey autonomy, quiet hours, rate limit and budget (a wakeup that is silenced is gone, its outcome says why). Tools (`assistant-tools.ts`): `schedule_wakeup` (at least 5 min ahead, max 10 pending, not in quiet hours unless the user asked in chat), `set_alarm` (unprompted only with autonomy `act`), `play_tone`, `cancel_schedule`. Max 30 alarms, at most 14 days ahead.
+
+**Tones** (`src/lib/tones.ts`, no audio files): library `chime soft nudge rising urgent`, or a custom note sequence (wave, up to 12 notes, 100 to 2000 Hz, 5 s in total). Custom tones are for the agent only (3 per day, enforced server side), the user picks library tones. `playTone` in `src/lib/index.ts` validates again and uses the user's volume as the ceiling, nothing flashes.
+
+**Display device**: with several open screens only the chosen device makes sound (`users.displayDevice`, a per-browser id from localStorage), the others show the alarm silently. If the chosen device is not connected to the stream, every device plays, so an alarm is never silent. `/stream` announces the effective device with a `display` message.
 
 ### Time Representation
 
@@ -116,7 +129,7 @@ The day a task belongs to is `task.date` (`YYYY-MM-DD`, user timezone, helpers i
 
 ### Audio (`src/lib/index.ts`)
 
-Synthesized via Web Audio API - no audio files. `playSound('task-started')` and `playSound('reminder')`. Reminder fires every 5 minutes while a task is current and app is unmuted. `task-started` plays when the current task switches while the page is open.
+Synthesized via Web Audio API - no audio files. `playSound('task-started')` and `playSound('reminder')`, `playTone(tone)` for alarms and agent tones (see Tones above). Reminder fires every 5 minutes while a task is current and app is unmuted. `task-started` plays when the current task switches while the page is open.
 
 ## Development Commands
 
@@ -137,7 +150,8 @@ bun run db:studio    # Drizzle Studio GUI
 - Stored statuses `active` and `overdue` are no longer written or read. Missed tasks are derived by `rank()` (window ended, not completed). Remove the unused enum values in a later cleanup
 - Reminder notifications are schema-ready but not wired up
 - The assistant answers in one piece, not streamed. Voice and wakeups come in later phases
-- The agent feed is polled every 15 s, phase 7 replaces it with a pushed stream. Events `stuck.pressed`, `alarm.fired`, `wakeup.fired` and `day.started` arrive with their phases. Agent-made tasks are not yet marked in the Plan view, the activity page lists them. With several open devices every one shows the card, "display device" selection comes with phase 7
+- Events `stuck.pressed` and `day.started` arrive with their phases. Agent-made tasks are not yet marked in the Plan view, the activity page lists them. Every open device shows the agent card, only sound follows the display device
+- Alarms and wakeups reach only open screens (no Web Push for a closed app yet). Alarms cannot be tied to a task (`task_id` of the plan was left out), the agent computes the time. The stream is in process, one server process only
 - The overrun event is a fixed 15 minutes (`OVERRUN_MINUTES` in `src/lib/events.ts`), the hyperfocus alarm of phase 9 makes it configurable
 
 ## Product Direction (UI rework)
