@@ -5,6 +5,7 @@
 	import { Priority, TaskStatus } from '#lib/types.js';
 	import { playSound, updateTask } from '#lib';
 	import { minutesNow } from '#lib/time.js';
+	import { formatCountdown } from '#lib/format.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Clock, Focus } from '@lucide/svelte';
@@ -65,7 +66,7 @@
 					<div class="min-w-0 flex-1">
 						<h3 class="truncate text-lg font-semibold">Current Task: {tasker.activeTask.title}</h3>
 						<p class="text-sm text-muted-foreground">
-							Time remaining: {Math.floor(tasker.timeLeft / 60) + ':' + (tasker.timeLeft % 60).toString().padStart(2, '0')}
+							Time remaining: {formatCountdown(tasker.timeLeft)}
 						</p>
 					</div>
 					<Button onclick={() => (tasker.isFullScreen = !tasker.isFullScreen)}>Focus Mode</Button>

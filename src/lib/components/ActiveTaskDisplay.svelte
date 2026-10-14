@@ -6,6 +6,8 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Progress } from '#lib/components/ui/progress/index.js';
 	import { Check, X } from '@lucide/svelte';
+	import { formatCountdown } from '#lib/format.js';
+	import { urgencyLevel, urgencySurface } from '#lib/urgency.js';
 
 	function getPriorityLabel(priority: Priority): string {
 		switch (priority) {
@@ -53,11 +55,7 @@
 
 	const backgroundClass = $derived(
 		tasker.activeTask
-			? tasker.timeLeft / tasker.activeTask.duration > 0.8
-				? 'bg-success text-success-foreground'
-				: tasker.timeLeft / tasker.activeTask.duration > 0.5
-					? 'bg-warning text-warning-foreground'
-					: 'bg-destructive text-white'
+			? urgencySurface[urgencyLevel(tasker.activeTask.priority, tasker.timeLeft, tasker.activeTask.duration)]
 			: 'bg-background'
 	);
 </script>
@@ -111,8 +109,8 @@
 
 			<!-- Time remaining -->
 			<div class="mb-8">
-				<div class="text-5xl md:text-7xl font-mono font-bold mb-4">
-					{Math.floor(tasker.timeLeft / 60) + ':' + (tasker.timeLeft % 60).toString().padStart(2, '0')}
+				<div class="tabular text-clock font-bold mb-4">
+					{formatCountdown(tasker.timeLeft)}
 				</div>
 				<div class="text-lg opacity-75">
 					Time Remaining

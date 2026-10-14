@@ -5,6 +5,8 @@
 	import { goto } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
 	import { minutesNow } from '#lib/time.js';
+	import { formatClock, formatDuration } from '#lib/format.js';
+	import { priorityStyle } from '#lib/urgency.js';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import type { TaskForm as TaskFormType } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -25,23 +27,6 @@
 		startTime: minutesNow(tasker.timezone),
 		priority: Priority.Medium
 	});
-
-	const priorityColors = {
-		[Priority.Critical]: 'bg-destructive/80 border-destructive text-white',
-		[Priority.Urgent]: 'bg-warning/80 border-warning text-warning-foreground',
-		[Priority.High]: 'bg-info/80 border-info text-info-foreground',
-		[Priority.Medium]: 'bg-secondary border-primary/50 text-secondary-foreground',
-		[Priority.Low]: 'bg-muted border-border text-muted-foreground'
-	};
-
-	function formatDuration(minutes: number): string {
-		const hours = Math.floor(minutes / 60);
-		const mins = minutes % 60;
-		if (hours > 0) {
-			return `${hours}h ${mins > 0 ? ` ${mins}m` : ''}`;
-		}
-		return `${mins}m`;
-	}
 
 	function openEditForm(e: Event, task: Task) {
 		e.stopPropagation();
@@ -132,7 +117,7 @@
 					<!-- Compact view: Tasks in flexbox layout -->
 					{#each tasker.tasks as task (task.id)}
 						<div
-							class="pointer-events-auto cursor-move rounded-lg border-l-4 p-1 shadow-sm hover:shadow-md transition-shadow group {priorityColors[task.priority]} text-xs m-1"
+							class="pointer-events-auto cursor-move rounded-lg border-l-4 p-1 shadow-sm hover:shadow-md transition-shadow group {priorityStyle[task.priority].block} text-xs m-1"
 							style="flex: {task.duration};"
 							draggable="true"
 							ondragstart={() => draggedTask = task}
@@ -176,7 +161,7 @@
 							{@const topPixels = (task.startTime / 60) * 56}
 							{@const heightPixels = (task.duration / 60) * 56}
 							<div
-								class="absolute pointer-events-auto cursor-move rounded-lg border-l-4 p-2 shadow-sm hover:shadow-md transition-shadow group {priorityColors[task.priority]}"
+								class="absolute pointer-events-auto cursor-move rounded-lg border-l-4 p-2 shadow-sm hover:shadow-md transition-shadow group {priorityStyle[task.priority].block}"
 								style="top: {topPixels}px; height: {heightPixels}px; left: 0%; width: 100%;"
 								draggable="true"
 								ondragstart={() => draggedTask = task}
@@ -190,7 +175,7 @@
 										</h3>
 										<p class="text-xs opacity-70 flex items-center gap-1 mt-1">
 											<Clock class="h-3 w-3" />
-											{Math.floor(task.startTime / 60).toString().padStart(2, '0') + ':' + (task.startTime % 60).toString().padStart(2, '0')} • {formatDuration(task.duration)}
+											{formatClock(task.startTime)} • {formatDuration(task.duration)}
 										</p>
 										<!--{#if task.description}
 											<p class="text-xs text-base-content/60 mt-1 line-clamp-2">

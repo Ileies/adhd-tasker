@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Priority, TaskStatus, type Task } from '#lib/types.js';
+	import { TaskStatus, type Task } from '#lib/types.js';
+	import { formatClock, formatDuration } from '#lib/format.js';
+	import { priorityStyle } from '#lib/urgency.js';
 	import { tasker } from '#lib/app.svelte.js';
 	import { deleteTask, updateTask } from '#lib';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -8,33 +10,6 @@
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { Check, EllipsisVertical, ClipboardList, Trash2 } from '@lucide/svelte';
 	import type { Snippet } from 'svelte';
-
-	const priorityLabels: Record<Priority, string> = {
-		[Priority.Low]: 'Low',
-		[Priority.Medium]: 'Medium',
-		[Priority.High]: 'High',
-		[Priority.Urgent]: 'Urgent',
-		[Priority.Critical]: 'Critical'
-	};
-
-	const priorityColors: Record<Priority, string> = {
-		[Priority.Low]: 'bg-success/20 text-success',
-		[Priority.Medium]: 'bg-info/20 text-info',
-		[Priority.High]: 'bg-warning/25 text-warning',
-		[Priority.Urgent]: 'bg-destructive/15 text-destructive',
-		[Priority.Critical]: 'bg-destructive text-white'
-	};
-
-	function formatDateTime(timestamp: number): string {
-		return Math.floor(timestamp / 60) + ':' + (timestamp % 60).toString().padStart(2, '0');
-	}
-
-	function formatDuration(minutes: number): string {
-		if (minutes > 59) {
-			return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-		}
-		return `${minutes % 60}m`;
-	}
 
 	// Sort tasks by start time
 	const sortedTasks = $derived([...tasker.tasks].sort((a, b) => a.startTime - b.startTime));
@@ -53,8 +28,8 @@
 				<p class="text-sm text-muted-foreground">{task.description}</p>
 			{/if}
 			<div class="mt-2 flex flex-wrap items-center gap-2">
-				<Badge class={priorityColors[task.priority]}>{priorityLabels[task.priority]}</Badge>
-				<span class="font-mono text-xs">{formatDateTime(task.startTime)}</span>
+				<Badge class={priorityStyle[task.priority].chip}>{priorityStyle[task.priority].label}</Badge>
+				<span class="tabular text-xs">{formatClock(task.startTime)}</span>
 				<span class="text-xs text-muted-foreground">Duration: {formatDuration(task.duration)}</span>
 			</div>
 		</div>

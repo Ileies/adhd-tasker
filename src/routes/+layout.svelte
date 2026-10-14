@@ -1,7 +1,9 @@
 <script lang="ts">
 	import '../app.css';
 	import { Calendar, User } from '@lucide/svelte';
-	import { Priority, TaskStatus } from '#lib/types.js';
+	import { TaskStatus } from '#lib/types.js';
+	import { formatClock, formatDuration } from '#lib/format.js';
+	import { priorityStyle } from '#lib/urgency.js';
 	import { onMount } from 'svelte';
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
@@ -52,33 +54,12 @@
 		logoutForm?.requestSubmit();
 	}
 
-	const priorityColors = {
-		[Priority.Critical]: 'bg-destructive text-white',
-		[Priority.Urgent]: 'bg-warning text-warning-foreground',
-		[Priority.High]: 'bg-info text-info-foreground',
-		[Priority.Medium]: 'bg-secondary text-secondary-foreground',
-		[Priority.Low]: 'bg-muted text-muted-foreground'
-	};
-
 	const statusColors = {
 		[TaskStatus.Completed]: 'text-success',
 		[TaskStatus.Active]: 'text-info',
 		[TaskStatus.Overdue]: 'text-destructive',
 		[TaskStatus.Pending]: 'text-foreground'
 	};
-
-	function formatTime(minutes: number): string {
-		return Math.floor(minutes / 60).toString().padStart(2, '0') + ':' + (minutes % 60).toString().padStart(2, '0');
-	}
-
-	function formatDuration(minutes: number): string {
-		const hours = Math.floor(minutes / 60);
-		const mins = minutes % 60;
-		if (hours > 0) {
-			return `${hours}h ${mins}m`;
-		}
-		return `${mins}m`;
-	}
 </script>
 
 <SetupDialog />
@@ -165,12 +146,12 @@
 											<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
 										{/if}
 									</div>
-									<Badge class={priorityColors[task.priority]}>P{task.priority}</Badge>
+									<Badge class={priorityStyle[task.priority].chip}>{priorityStyle[task.priority].label}</Badge>
 								</div>
 
 								<div class="mt-2 flex items-center justify-between">
 									<div class="flex items-center gap-2 text-xs">
-										<span class="font-mono">{formatTime(task.startTime)}</span>
+										<span class="tabular">{formatClock(task.startTime)}</span>
 										<span class="opacity-50">•</span>
 										<span>{formatDuration(task.duration)}</span>
 									</div>
