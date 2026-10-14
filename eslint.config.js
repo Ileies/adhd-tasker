@@ -57,6 +57,20 @@ export default ts.config(
 		}
 	},
 	{
+		// A route test imports the route next to it, which has no #lib alias
+		files: ['src/routes/**/*.test.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{ group: ['../*'], message: 'Import through #lib/... instead of a relative path.' }
+					]
+				}
+			]
+		}
+	},
+	{
 		// Scripts share helpers with each other, but reach the app through #lib/...
 		files: ['scripts/**'],
 		rules: {
