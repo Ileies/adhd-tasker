@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
-	import { CalendarDays, Maximize, Minimize, User } from '@lucide/svelte';
+	import { CalendarDays, Maximize, Minimize, MessageSquare, User } from '@lucide/svelte';
+	import AssistantDrawer from '#lib/components/AssistantDrawer.svelte';
 	import { onMount } from 'svelte';
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
@@ -91,6 +92,7 @@
 <SetupDialog />
 <TimezoneDialog loggedIn={!!data.user} />
 <UndoToast />
+{#if data.user}<AssistantDrawer hasKey={data.user.hasOpenaiKey} />{/if}
 
 <!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
 <form method="POST" action="?/login" use:enhance bind:this={loginForm} class="hidden"></form>
@@ -115,6 +117,11 @@
 		</button>
 
 		<div class="flex items-center justify-end gap-1">
+			{#if data.user}
+				<Button variant="ghost" size="icon-lg" onclick={() => (tasker.assistant.open = true)} aria-label="Assistant" title="Assistant">
+					<MessageSquare class="size-5" />
+				</Button>
+			{/if}
 			<VolumeMenu />
 
 			<Button
