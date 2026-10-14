@@ -33,7 +33,7 @@ When implementing new features, think carefully about the ADHD experience. When 
 
 | Route | Purpose |
 |---|---|
-| `/` | Dashboard - active task display + task list |
+| `/` | Now - current task hero in an urgency color, rail with the next 4 tasks, missed strip. Top bar auto-hides, fullscreen + wake lock |
 | `/edit` | 24-hour timeline calendar for scheduling tasks |
 | `/edit` (API) | Task CRUD - POST (create), PUT (update), DELETE |
 | `/callback` | Google OAuth callback |
@@ -46,14 +46,15 @@ Single global reactive object in `src/lib/app.svelte.ts`:
 ```ts
 tasker = {
   tasks: Task[],
-  activeTask: Task | null,
-  isFullScreen: boolean,
-  timeLeft: number,       // minutes remaining on active task
-  isMuted: boolean
+  isMuted: boolean, volume: number,
+  themeMode, dayStart, dayEnd, timezone,
+  toast: { message, undo? } | null   // transient confirmation with an Undo button
 }
 ```
 
-Hydrated from server on layout load. Updated optimistically on mutations. **Login is required** - there is no unauthenticated localStorage fallback (by design).
+There is no stored "active task". What is current is derived on every tick by the pure `rank(tasks, now)` in `src/lib/priority.ts` (highest priority among tasks whose window contains now; completed tasks are the only status that matters). `switchReason()` explains each switch. Urgency colors come from `urgencyLevel()` in `src/lib/urgency.ts`.
+
+Hydrated from server on layout load. Updated optimistically on mutations. Destructive actions have an Undo toast (`showToast` in `src/lib/index.ts`) instead of confirm dialogs. **Login is required** - there is no unauthenticated localStorage fallback (by design).
 
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
@@ -78,7 +79,7 @@ All times are stored as **minutes since midnight** (0–1440). A task at 9:30am 
 
 ### Audio (`src/lib/index.ts`)
 
-Synthesized via Web Audio API - no audio files. `playSound('task-started')` and `playSound('reminder')`. Reminder fires every 5 minutes while a task is active and app is unmuted.
+Synthesized via Web Audio API - no audio files. `playSound('task-started')` and `playSound('reminder')`. Reminder fires every 5 minutes while a task is current and app is unmuted. `task-started` plays when the current task switches while the page is open.
 
 ## Development Commands
 
@@ -94,7 +95,7 @@ bun run db:studio    # Drizzle Studio GUI
 
 ## Current Gaps & Known Issues
 
-- Overdue task status (`TaskStatus.Overdue`) is defined but never automatically set
+- Stored statuses `active` and `overdue` are no longer written or read. Missed tasks are derived by `rank()` (window ended, not completed). Remove the unused enum values in a later cleanup
 - Reminder notifications are schema-ready but not wired up
 - `openaiKey` in user schema is prepared for the assistant (not implemented yet, stored in plain text, must be encrypted before use)
 - Tasks have no date yet, only minutes since midnight

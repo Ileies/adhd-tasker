@@ -6,7 +6,7 @@ Roadmap and rationale: `docs/ui-rework-plan.md`.
 
 - [x] Phase 0: cleanup (test.ts, localStorage fallback, stale comments, footer)
 - [x] Phase 1: design foundations (urgency tokens, shared priority module, typography)
-- [ ] Phase 2: priority engine and Now screen
+- [x] Phase 2: priority engine and Now screen
 - [ ] Phase 3: dated days and Plan screen
 - [ ] Phase 4: responsive layouts and PWA
 - [ ] Phase 5: assistant (text, plan tools, undo log)
