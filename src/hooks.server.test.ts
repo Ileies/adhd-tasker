@@ -1,13 +1,16 @@
 /// <reference types="bun" />
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { handle } from './hooks.server.js';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { SESSION_MAX_AGE, signSession } from '#lib/server/session-token.js';
 import { resetDb } from '#test/db.js';
 import { fakeFetch } from '#test/fakes.js';
 import { TEST_EMAIL, makeUser, requestEvent } from '#test/fixtures.js';
+
+// The scheduler is not under test here and would pull in the whole agent
+await mock.module('#lib/server/agent.js', () => ({ startAgent: () => {} }));
+const { handle } = await import('./hooks.server.js');
 
 const USERINFO = 'https://openidconnect.googleapis.com/v1/userinfo';
 const SECRET = 'test-secret';
