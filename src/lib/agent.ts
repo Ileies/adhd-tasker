@@ -1,6 +1,11 @@
 import { tasker, type AgentCard } from '#lib/app.svelte.js';
 import { loadDay, showToast } from '#lib';
 import { sendMessage, undoChange } from '#lib/assistant.js';
+import { playsSound } from '#lib/alarms.js';
+import { speak } from '#lib/speech.js';
+
+/** Cards already seen on this page, so a card is spoken once however often the feed is fetched. */
+const announced = new Set<number>();
 
 interface Feed {
 	cursor: number;
@@ -17,6 +22,12 @@ export async function pollAgent() {
 
 	tasker.agent.cursor = feed.cursor;
 	tasker.agent.cards = feed.cards;
+
+	// Only the display device speaks unprompted, and only what is new: the first poll after a load stays silent
+	// (the guardrails already decided server side that this card may exist, quiet hours included)
+	const fresh = feed.cards.filter((card) => !announced.has(card.id));
+	feed.cards.forEach((card) => announced.add(card.id));
+	if (since !== null && tasker.voice.replies && playsSound() && fresh.length) void speak(fresh.at(-1)!.text);
 
 	if (feed.changes.length) {
 		await Promise.all([...new Set(feed.changes.flatMap((change) => change.dates))].map((date) => loadDay(date).catch(() => {})));

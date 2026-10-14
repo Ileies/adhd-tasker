@@ -1,5 +1,6 @@
 import { tasker, type ChatEntry } from '#lib/app.svelte.js';
 import { loadDay, showToast } from '#lib';
+import { speak, stopSpeaking } from '#lib/speech.js';
 
 type Change = NonNullable<ChatEntry['changes']>[number];
 
@@ -12,6 +13,7 @@ export async function sendMessage(text: string) {
 	const chat = tasker.assistant;
 	if (chat.busy || !text.trim()) return;
 
+	stopSpeaking();
 	chat.messages.push({ role: 'user', content: text.trim() });
 	chat.busy = true;
 	try {
@@ -28,6 +30,7 @@ export async function sendMessage(text: string) {
 
 		const { reply, changes }: { reply: string; changes: Change[] } = await response.json();
 		chat.messages.push({ role: 'assistant', content: reply, changes: changes.length ? changes : undefined });
+		if (tasker.voice.replies) void speak(reply);
 		if (changes.length) {
 			await refresh(changes.flatMap((c) => c.dates));
 			showToast(changes.length === 1 ? changes[0].summary : `Assistant made ${changes.length} changes`, () => undoAll(changes));

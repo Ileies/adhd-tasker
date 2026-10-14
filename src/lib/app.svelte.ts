@@ -55,6 +55,7 @@ export const tasker: {
 	agent: { cards: AgentCard[]; cursor: number | null }; // cursor: last agent action id seen, null before the first poll
 	schedule: { alarms: Alarm[]; wakeups: Wakeup[]; ringing: { id: number; label: string } | null; loaded: boolean };
 	device: { id: string; display: string | null; streaming: boolean }; // display: the device that plays sound, null means every device
+	voice: { replies: boolean; recording: boolean; transcribing: boolean; speaking: boolean }; // replies: the user's setting to hear the assistant
 } = $state({
 	tasks: [],
 	isMuted: false,
@@ -67,5 +68,6 @@ export const tasker: {
 	assistant: { open: false, busy: false, messages: [] },
 	agent: { cards: [], cursor: null },
 	schedule: { alarms: [], wakeups: [], ringing: null, loaded: false },
-	device: { id: '', display: null, streaming: false }
+	device: { id: '', display: null, streaming: false },
+	voice: { replies: false, recording: false, transcribing: false, speaking: false }
 });

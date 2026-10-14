@@ -3,9 +3,12 @@ import type { tasks } from '#lib/server/db/schema.js';
 import type { Task } from '#lib/types.js';
 import { tasker } from '#lib/app.svelte.js';
 import { readTone, toneNotes, type Tone } from '#lib/tones.js';
+import { duckSpeech } from '#lib/speech.js';
 
 export function playSound(type: 'task-started' | 'reminder') {
 	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
+	// Anchor sounds win over speech
+	duckSpeech(type === 'task-started' ? 200 : 1200);
 
 	const audioContext = new AudioContext();
 	const master = audioContext.createGain();
@@ -105,6 +108,7 @@ export function playTone(tone: Tone) {
 		oscillator.stop(at + length);
 		at += length + (note.rest ?? 0) / 1000;
 	}
+	duckSpeech((at - audioContext.currentTime) * 1000);
 	setTimeout(() => void audioContext.close().catch(() => {}), (at - audioContext.currentTime) * 1000 + 300);
 }
 

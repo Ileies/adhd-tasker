@@ -7,6 +7,7 @@
 	import { deviceTimezone } from '#lib/time.js';
 	import { toggleFullscreen } from '#lib/display.js';
 	import { startStream } from '#lib/stream.js';
+	import { syncSpeechVolume } from '#lib/speech.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
@@ -41,6 +42,17 @@
 	$effect(() => {
 		if (!data.user) return;
 		return startStream();
+	});
+
+	$effect(() => {
+		tasker.voice.replies = !!data.user?.voiceReplies;
+	});
+
+	// Muting or turning the volume down also quiets speech that is being said
+	$effect(() => {
+		tasker.isMuted;
+		tasker.volume;
+		syncSpeechVolume();
 	});
 
 	// The saved timezone is the source of truth, the first login saves this device's timezone

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { Send } from '@lucide/svelte';
+	import { Mic, Send } from '@lucide/svelte';
 	import { tasker } from '#lib/app.svelte.js';
 	import { sendMessage, undoChange } from '#lib/assistant.js';
+	import { canRecord, finishRecording, startRecording } from '#lib/speech.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import * as Sheet from '#lib/components/ui/sheet/index.js';
@@ -19,6 +20,38 @@
 		if (!text.trim() || chat.busy) return;
 		draft = '';
 		await sendMessage(text);
+	}
+
+	const voice = tasker.voice;
+	let micMessage = $state('');
+	let pressed = false;
+
+	async function sendHeard(text: string | null) {
+		if (text) await sendMessage(text);
+		else micMessage = 'Did not catch that';
+	}
+
+	// Push-to-talk: speaking lasts exactly as long as the button or Space is held
+	async function press(event: Event) {
+		event.preventDefault();
+		if (pressed || chat.busy) return;
+		pressed = true;
+		micMessage = '';
+		const limited = (text: string | null) => {
+			pressed = false;
+			void sendHeard(text);
+		};
+		if (!(await startRecording(limited))) micMessage = 'The microphone is not available';
+	}
+
+	async function release() {
+		if (!pressed) return;
+		pressed = false;
+		try {
+			await sendHeard(await finishRecording());
+		} catch (e) {
+			micMessage = e instanceof Error ? e.message : 'Could not understand the recording';
+		}
 	}
 
 	// Keep the newest message in view
@@ -83,9 +116,36 @@
 					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) submit(e);
 				}}
 			/>
+			{#if canRecord()}
+				<Button
+					type="button"
+					size="icon"
+					variant={voice.recording ? 'default' : 'secondary'}
+					aria-label="Hold to talk"
+					title="Hold to talk"
+					aria-pressed={voice.recording}
+					disabled={!hasKey || chat.busy || voice.transcribing}
+					onpointerdown={(e) => {
+						e.currentTarget.setPointerCapture(e.pointerId);
+						press(e);
+					}}
+					onpointerup={release}
+					onpointercancel={release}
+					onkeydown={(e) => {
+						if (e.key === ' ' && !e.repeat) press(e);
+					}}
+					onkeyup={(e) => e.key === ' ' && release()}
+					onclick={(e) => e.preventDefault()}
+				>
+					<Mic />
+				</Button>
+			{/if}
 			<Button type="submit" size="icon" aria-label="Send" disabled={!hasKey || chat.busy || !draft.trim()}>
 				<Send />
 			</Button>
 		</form>
+		<p class="px-3 pb-3 text-sm text-muted-foreground" role="status" aria-live="polite">
+			{#if voice.recording}Listening, release to send{:else if voice.transcribing}Understanding...{:else if micMessage}{micMessage}{/if}
+		</p>
 	</Sheet.Content>
 </Sheet.Root>
