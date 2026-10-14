@@ -77,6 +77,7 @@ describe('pairing rule', () => {
 	 */
 	const UNTESTED: Record<string, string> = {
 		'types.ts': 'types only',
+		'core/repo.ts': 'types only',
 		'utils.ts': 'generated shadcn helper',
 		'app.svelte.ts': 'the state object, used by every client test',
 		'display.ts': 'browser API wiring, its rules live in tested modules',
@@ -97,7 +98,7 @@ describe('pairing rule', () => {
 	};
 
 	const modules = files
-		.filter((path) => /^src\/lib\/([^/]+|server\/.+)\.ts$/.test(path))
+		.filter((path) => /^src\/lib\/([^/]+|server\/.+|core\/.+)\.ts$/.test(path))
 		.filter((path) => !path.endsWith('.test.ts') && !path.endsWith('.d.ts'))
 		.map((path) => path.slice('src/lib/'.length));
 	const hasTest = (module: string) => fileSet.has(`src/lib/${module.replace(/\.ts$/, '.test.ts')}`);
