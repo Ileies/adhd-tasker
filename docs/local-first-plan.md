@@ -98,6 +98,12 @@ Measured in a real browser, results written into this section:
 - Realtime WebSocket: not measurable with curl (HTTP/2 answers 405 to the upgrade). Browsers do not apply CORS to WebSockets, so only the subprotocol key handshake is open. Check it in a browser console with a key before Part 3.5 relies on it. If it fails, voice replies for guests are the only feature that needs the relay.
 - `fake-indexeddb` 6.2.5 works under `bun test --isolate --randomize`: each file gets its own database. Inside one file, tests share it, so the local repo tests need a fresh `IDBFactory` in `beforeEach` (the same shape as `resetDb`).
 
+**With the key from `.env` (2026-10-14, from a Bun script that sends a foreign `Origin` and uses the browser's subprotocol form):**
+
+- `/v1/models`, a full `/v1/responses` call built by `buildRequest`, and a `/v1/audio/transcriptions` upload all answer 200 with `access-control-allow-origin: *`.
+- The Realtime WebSocket with `['realtime', 'openai-insecure-api-key.<key>']` as subprotocols works: `speak` from `core/voice.ts` returned a WAV (79 kB for "Time to start."). Header-less, so a browser can do it.
+- Not measured: an actual browser tab (no page was served, because that would put the key on a local port). Browsers do not apply CORS to WebSockets and the preflight and the response headers above are what a browser checks, so D3 stands without a relay.
+
 If OpenAI refuses browser calls, D3 needs a stateless relay on this server that forwards and stores nothing. The key would then pass through the server, and Privacy must say so. Decide then, not now.
 
 ### 2.2 `Repo` port
