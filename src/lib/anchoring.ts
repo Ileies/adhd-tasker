@@ -1,28 +1,61 @@
 import type { RankTask } from '#lib/priority.js';
 
+/** A short alarm that goes with a hint, so the app holds the timer instead of the user. */
+export interface StuckAction {
+	label: string;
+	minutes: number;
+	/** What the alarm says when it rings. */
+	alarm: string;
+}
+
 /** What the user can say when they press "I'm stuck". The hint is shown at once, so the button helps without any AI. */
 export const STUCK_REASONS = [
 	{
 		id: 'too-big',
 		label: 'It feels too big',
-		hint: 'Pick the smallest piece you can finish in 5 minutes and do only that.'
+		hint: 'Pick the smallest piece you can finish in 5 minutes and do only that.',
+		action: {
+			label: 'Start a 5 min timer',
+			minutes: 5,
+			alarm: 'Five minutes are up. Is the small piece done?'
+		}
 	},
 	{
 		id: 'cant-start',
 		label: 'I cannot get started',
-		hint: 'Set a timer for 2 minutes and do the very first physical action, like opening the file.'
+		hint: 'Set a timer for 2 minutes and do the very first physical action, like opening the file.',
+		action: {
+			label: 'Start a 2 min timer',
+			minutes: 2,
+			alarm: 'Two minutes are up. Keep going or stop here.'
+		}
 	},
 	{
 		id: 'distracted',
 		label: 'I got distracted',
-		hint: 'That is fine. Close the other thing and write one sentence of this task.'
+		hint: 'That is fine. Close the other thing and write one sentence of this task.',
+		action: {
+			label: 'Start a 2 min timer',
+			minutes: 2,
+			alarm: 'Two minutes are up. How far did you get?'
+		}
 	},
 	{
 		id: 'break',
 		label: 'I need a break',
-		hint: 'Step away from the screen for 5 minutes, then come back to this.'
+		hint: 'Step away from the screen for 5 minutes, then come back to this.',
+		action: {
+			label: 'Start a 5 min break',
+			minutes: 5,
+			alarm: 'The break is over. Back to the task.'
+		}
 	}
-] as const;
+] as const satisfies readonly {
+	id: string;
+	label: string;
+	hint: string;
+	action: StuckAction;
+}[];
 
 export type StuckReason = (typeof STUCK_REASONS)[number];
 

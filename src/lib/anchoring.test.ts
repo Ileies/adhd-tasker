@@ -1,12 +1,14 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import {
+	STUCK_REASONS,
 	findStuckReason,
 	hyperfocusDue,
 	momentKey,
 	parseAnchoringForm,
 	reminderDue
 } from '#lib/anchoring.js';
+import { parseAlarm } from '#lib/schedule.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
 const task = (id: number, startTime: number, duration: number) => ({
@@ -94,5 +96,24 @@ describe('parseAnchoringForm', () => {
 		expect(parseAnchoringForm(form({ advance: '0', overrun: '20' })).ok).toBe(false);
 		expect(parseAnchoringForm(form({ advance: '10', overrun: '4' })).ok).toBe(false);
 		expect(parseAnchoringForm(form({ advance: '10', overrun: 'x' })).ok).toBe(false);
+	});
+});
+
+describe('STUCK_REASONS', () => {
+	test.each(STUCK_REASONS.map((reason) => [reason.id, reason.action] as const))(
+		'%s has a timer the schedule accepts',
+		(_id, action) => {
+			const parsed = parseAlarm(
+				{ in_minutes: action.minutes, label: action.alarm, tone: 'soft' },
+				Date.UTC(2026, 9, 14, 10),
+				'UTC'
+			);
+			expect(parsed.ok).toBe(true);
+			expect(action.label).toContain(`${action.minutes} min`);
+		}
+	);
+
+	test('every reason has its own id', () => {
+		expect(new Set(STUCK_REASONS.map((reason) => reason.id)).size).toBe(STUCK_REASONS.length);
 	});
 });

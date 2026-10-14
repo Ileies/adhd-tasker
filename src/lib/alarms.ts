@@ -79,8 +79,10 @@ export async function loadSchedule() {
 	arm();
 }
 
+/** `at` is a clock time for a daily or one-off alarm, `in_minutes` a timer from now (it cannot repeat). */
 export async function addAlarm(fields: {
-	at: string;
+	at?: string;
+	in_minutes?: number;
 	label: string;
 	tone: ToneName;
 	repeat: Repeat;
