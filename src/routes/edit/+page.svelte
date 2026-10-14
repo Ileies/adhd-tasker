@@ -73,7 +73,7 @@
 	<!-- Header -->
 	<div class="sticky top-0 p-4 border-b bg-background z-30">
 		<div class="flex items-center justify-between">
-			<Button onclick={() => goto('/')}>Back to Focus</Button>
+			<Button onclick={() => goto('/')}>Back to Now</Button>
 			<h1 class="text-2xl font-bold">Edit Tasks</h1>
 			<div class="flex items-center gap-2">
 				<Button

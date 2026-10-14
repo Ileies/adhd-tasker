@@ -1,22 +1,19 @@
 <script lang="ts">
 	import '../app.css';
-	import { Calendar, User } from '@lucide/svelte';
-	import { TaskStatus } from '#lib/types.js';
-	import { formatClock, formatDuration } from '#lib/format.js';
-	import { priorityStyle } from '#lib/urgency.js';
+	import { CalendarDays, Maximize, Minimize, User } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
+	import { toggleFullscreen } from '#lib/display.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
 	import VolumeMenu from '#lib/components/VolumeMenu.svelte';
 	import SetupDialog from '#lib/components/SetupDialog.svelte';
+	import UndoToast from '#lib/components/UndoToast.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import { Badge } from '#lib/components/ui/badge/index.js';
-	import * as Card from '#lib/components/ui/card/index.js';
-	import * as Sheet from '#lib/components/ui/sheet/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { browser } from '$app/env';
 	import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$app/env/public';
@@ -44,7 +41,6 @@
 		else setTimezone(deviceTimezone());
 	});
 
-	let sidebarOpen = $state(false);
 	let loginForm: HTMLFormElement | undefined = $state();
 	let logoutForm: HTMLFormElement | undefined = $state();
 
@@ -54,42 +50,92 @@
 		logoutForm?.requestSubmit();
 	}
 
-	const statusColors = {
-		[TaskStatus.Completed]: 'text-success',
-		[TaskStatus.Active]: 'text-info',
-		[TaskStatus.Overdue]: 'text-destructive',
-		[TaskStatus.Pending]: 'text-foreground'
-	};
+	// On the Now screen the bar floats over the content and fades out when nothing is touched,
+	// so the display stays calm. Any input brings it back.
+	const HIDE_AFTER_MS = 5000;
+	const overlay = $derived(page.url.pathname === '/' && !!data.user);
+	let barVisible = $state(true);
+	let isFullscreen = $state(false);
+	let headerEl: HTMLElement | undefined = $state();
+	let hideTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function scheduleHide() {
+		clearTimeout(hideTimer);
+		hideTimer = setTimeout(() => {
+			// Keep the bar while it holds keyboard focus
+			if (headerEl?.matches(':focus-within')) scheduleHide();
+			else barVisible = false;
+		}, HIDE_AFTER_MS);
+	}
+
+	function activity() {
+		barVisible = true;
+		if (overlay) scheduleHide();
+	}
+
+	$effect(() => {
+		if (overlay) scheduleHide();
+		else {
+			clearTimeout(hideTimer);
+			barVisible = true;
+		}
+		return () => clearTimeout(hideTimer);
+	});
+
+	const barHidden = $derived(overlay && !barVisible);
 </script>
+
+<svelte:window onpointermove={activity} onpointerdown={activity} onkeydown={activity} />
+<svelte:document onfullscreenchange={() => (isFullscreen = !!document.fullscreenElement)} />
 
 <SetupDialog />
 <TimezoneDialog loggedIn={!!data.user} />
+<UndoToast />
 
 <!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
 <form method="POST" action="?/login" use:enhance bind:this={loginForm} class="hidden"></form>
 <form method="POST" action="?/logout" use:enhance bind:this={logoutForm} class="hidden"></form>
 
-<div class="flex h-screen flex-col">
-	<!-- Navbar -->
-	<header class="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b bg-background px-2 py-1">
+<div class="relative flex h-dvh flex-col {barHidden ? 'cursor-none' : ''}">
+	<header
+		bind:this={headerEl}
+		class="z-40 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2 py-1 transition-opacity duration-500
+			{overlay ? 'absolute inset-x-0 top-0 bg-background/70 backdrop-blur-md' : 'border-b bg-background'}
+			{barHidden ? 'pointer-events-none opacity-0' : ''}"
+	>
 		<div class="flex">
-			<Button variant="ghost" size="icon-lg" onclick={() => (sidebarOpen = true)} aria-label="Open today's tasks">
-				<Calendar class="h-5 w-5" />
+			<Button variant="ghost" size="lg" onclick={() => goto('/edit')} aria-label="Plan">
+				<CalendarDays class="size-5" />
+				<span class="hidden sm:inline">Plan</span>
 			</Button>
 		</div>
 
 		<button class="flex cursor-pointer items-center" onclick={() => goto('/')}>
-			<img src="/logo.svg" alt="Logo" class="mr-1 h-10" /><span class="text-xl font-bold">ADHD Tasker</span>
+			<img src="/logo.svg" alt="Logo" class="mr-1 h-9" /><span class="hidden text-xl font-bold sm:inline">ADHD Tasker</span>
 		</button>
 
 		<div class="flex items-center justify-end gap-1">
 			<VolumeMenu />
 
+			<Button
+				variant="ghost"
+				size="icon-lg"
+				onclick={toggleFullscreen}
+				aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+				title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+			>
+				{#if isFullscreen}
+					<Minimize class="size-5" />
+				{:else}
+					<Maximize class="size-5" />
+				{/if}
+			</Button>
+
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
 						<Button {...props} variant="ghost" size="icon-lg" aria-label="Profile menu">
-							<User class="h-5 w-5" />
+							<User class="size-5" />
 						</Button>
 					{/snippet}
 				</DropdownMenu.Trigger>
@@ -100,7 +146,6 @@
 						<DropdownMenu.Item onSelect={() => loginForm?.requestSubmit()}>Log in</DropdownMenu.Item>
 					{/if}
 					<DropdownMenu.Separator />
-					<DropdownMenu.Item onSelect={() => goto('/edit')}>Edit Tasks</DropdownMenu.Item>
 					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
 					{#if data.user}
 						<DropdownMenu.Separator />
@@ -111,60 +156,10 @@
 		</div>
 	</header>
 
-	<!-- Page content -->
-	<main class="flex min-h-0 flex-1 flex-col overflow-auto">
-		<div class="flex-1">
-			{@render children()}
-		</div>
-
+	<main class="min-h-0 flex-1 overflow-auto">
+		{@render children()}
 	</main>
 </div>
-
-<!-- Sidebar -->
-<Sheet.Root bind:open={sidebarOpen}>
-	<Sheet.Content side="left" class="w-80 bg-muted/40">
-		<Sheet.Header class="border-b">
-			<Sheet.Title class="text-lg">Today's Tasks</Sheet.Title>
-			<Sheet.Description class="sr-only">All tasks scheduled for today</Sheet.Description>
-		</Sheet.Header>
-
-		<div class="flex-1 overflow-auto p-4">
-			{#if data.tasks.length === 0}
-				<div class="mt-8 text-center text-muted-foreground">
-					<Calendar class="mx-auto mb-4 h-12 w-12 opacity-50" />
-					<p>No tasks for today</p>
-				</div>
-			{:else}
-				<div class="space-y-3">
-					{#each data.tasks as task (task.id)}
-						<Card.Root size="sm">
-							<Card.Content>
-								<div class="flex items-start justify-between gap-2">
-									<div class="min-w-0 flex-1">
-										<h3 class="truncate text-sm font-medium">{task.title}</h3>
-										{#if task.description}
-											<p class="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
-										{/if}
-									</div>
-									<Badge class={priorityStyle[task.priority].chip}>{priorityStyle[task.priority].label}</Badge>
-								</div>
-
-								<div class="mt-2 flex items-center justify-between">
-									<div class="flex items-center gap-2 text-xs">
-										<span class="tabular">{formatClock(task.startTime)}</span>
-										<span class="opacity-50">•</span>
-										<span>{formatDuration(task.duration)}</span>
-									</div>
-									<Badge variant="outline" class={statusColors[task.status]}>{task.status}</Badge>
-								</div>
-							</Card.Content>
-						</Card.Root>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	</Sheet.Content>
-</Sheet.Root>
 
 {#if !data.user}
 	<div

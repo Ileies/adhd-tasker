@@ -73,6 +73,20 @@ export function playSound(type: 'task-started' | 'reminder') {
 	}
 }
 
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Shows a short confirmation. With `undo` it offers a way back, so no action needs a confirm dialog. */
+export function showToast(message: string, undo?: () => void) {
+	clearTimeout(toastTimer);
+	tasker.toast = { message, undo };
+	toastTimer = setTimeout(dismissToast, 8000);
+}
+
+export function dismissToast() {
+	clearTimeout(toastTimer);
+	tasker.toast = null;
+}
+
 export async function createTask(taskData: typeof tasks.$inferInsert) {
 	const response = await fetch('/edit', {
 		method: 'POST',
