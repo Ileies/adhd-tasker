@@ -160,6 +160,8 @@ Everything is synthesized with the Web Audio API. `playSound('task-started')` wh
 
 The UI rework roadmap (phases 0 to 9) is complete and removed from `TODO.md`. What is left is under Planned.
 
+**Current work: `docs/soon-plan.md`.** It is the only plan being worked on. `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` wait until it is done; then it is deleted and they are updated once against the new code.
+
 **Planned, do not implement without discussion:** Google Calendar sync (two-way), end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
 
 ## What to Avoid

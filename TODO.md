@@ -2,6 +2,10 @@
 
 Rationale: `docs/ui-rework-plan.md`.
 
+## Now
+
+- `docs/soon-plan.md`: the gate, pure tests, defect fixes, transitions, feedback and silence. The other plans in `docs/` wait until it is done, then get updated once against the new code
+
 ## Later
 
 - Google Calendar sync (needs dated days)
