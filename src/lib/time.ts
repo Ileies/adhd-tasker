@@ -102,6 +102,12 @@ export function zonedToEpoch(date: DateKey, minutes: number, timezone: string): 
 	return wall - offsetAt(first);
 }
 
+/** The wall clock day and minutes since midnight that an instant has in a timezone, the inverse of `zonedToEpoch`. */
+export function localMoment(at: number, timezone: string): { date: DateKey; minutes: number } {
+	const zone = isValidTimezone(timezone) ? timezone : 'UTC';
+	return { date: todayIn(zone, new Date(at)), minutes: minutesNow(zone, new Date(at)) };
+}
+
 /** `Today`, `Tomorrow`, `Yesterday` or a short weekday and date such as `Fri, Oct 16`. */
 export function formatDay(date: DateKey, today: DateKey): string {
 	if (date === today) return 'Today';

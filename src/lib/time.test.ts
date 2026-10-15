@@ -8,6 +8,7 @@ import {
 	formatDay,
 	isDateKey,
 	isValidTimezone,
+	localMoment,
 	minutesNow,
 	todayIn,
 	zonedToEpoch
@@ -202,5 +203,26 @@ describe('properties', () => {
 				expect(isDateKey(addDays(date, days))).toBe(true);
 			})
 		);
+	});
+});
+
+describe('localMoment', () => {
+	test('gives the day and the minutes the instant has on the wall of the timezone', () => {
+		const at = Date.parse('2026-10-14T23:30:00Z');
+		expect(localMoment(at, 'UTC')).toEqual({ date: '2026-10-14', minutes: 1410 });
+		expect(localMoment(at, 'Asia/Tokyo')).toEqual({ date: '2026-10-15', minutes: 510 });
+		expect(localMoment(at, 'America/St_Johns')).toEqual({ date: '2026-10-14', minutes: 1260 });
+	});
+
+	test('undoes zonedToEpoch', () => {
+		const at = zonedToEpoch('2026-03-29', 600, 'Europe/Berlin');
+		expect(localMoment(at, 'Europe/Berlin')).toEqual({ date: '2026-03-29', minutes: 600 });
+	});
+
+	test('an invalid timezone is read as UTC', () => {
+		expect(localMoment(Date.parse('2026-10-14T10:00:00Z'), 'Not/AZone')).toEqual({
+			date: '2026-10-14',
+			minutes: 600
+		});
 	});
 });
