@@ -1,3 +1,4 @@
+import { formatClock } from '#lib/format.js';
 import { addDays, isDateKey, todayIn, zonedToEpoch } from '#lib/time.js';
 import { parseTone, type Tone } from '#lib/tones.js';
 
@@ -85,6 +86,23 @@ const parseClock = (value: unknown): number | undefined => {
 		typeof value === 'string' ? /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim()) : null;
 	return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
 };
+
+/**
+ * Why a new alarm cannot be set: another alarm (on or off) already rings in the same minute. `ignoreId` is the
+ * alarm being edited. `null` when the time is free.
+ */
+export function alarmClash(
+	alarms: { id: number; fireAt: number }[],
+	fireAt: number,
+	timezone: string,
+	ignoreId?: number
+): string | null {
+	const minute = Math.floor(fireAt / 60_000);
+	const clash = alarms.some(
+		(alarm) => alarm.id !== ignoreId && Math.floor(alarm.fireAt / 60_000) === minute
+	);
+	return clash ? `There is already an alarm at ${formatClock(minutesOf(fireAt, timezone))}` : null;
+}
 
 /** Minutes since midnight of an instant in a timezone. */
 export function minutesOf(ms: number, timezone: string): number {

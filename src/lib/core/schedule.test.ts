@@ -43,8 +43,38 @@ describe('addUserAlarm', () => {
 
 	test('refuses an alarm beyond the limit', async () => {
 		const { ctx } = await testCtx();
-		for (let i = 0; i < SCHEDULE_LIMITS.maxAlarms; i++) await addUserAlarm(ctx, alarm, 'UTC');
-		expect(await failureOf(addUserAlarm(ctx, alarm, 'UTC'))).toMatchObject({ status: 400 });
+		for (let i = 0; i < SCHEDULE_LIMITS.maxAlarms; i++)
+			await addUserAlarm(ctx, { ...alarm, in_minutes: 10 + i }, 'UTC');
+		expect(await failureOf(addUserAlarm(ctx, { ...alarm, in_minutes: 60 }, 'UTC'))).toMatchObject({
+			status: 400
+		});
+	});
+
+	test('refuses a time that already has an alarm, on or off', async () => {
+		const { ctx } = await testCtx();
+		const first = await addUserAlarm(ctx, alarm, 'UTC');
+		await setAlarmEnabled(ctx, first.id, false, 'UTC');
+		expect(await failureOf(addUserAlarm(ctx, alarm, 'UTC'))).toMatchObject({
+			status: 400,
+			message: expect.stringContaining('already an alarm')
+		});
+	});
+
+	test('allows an alarm one minute away from another', async () => {
+		const { ctx, repo } = await testCtx();
+		await addUserAlarm(ctx, alarm, 'UTC');
+		await addUserAlarm(ctx, { ...alarm, in_minutes: 11 }, 'UTC');
+		expect(await repo.schedule.pending()).toHaveLength(2);
+	});
+
+	test('editing an alarm onto another one is refused, onto itself is fine', async () => {
+		const { ctx } = await testCtx();
+		const a = await addUserAlarm(ctx, alarm, 'UTC');
+		await addUserAlarm(ctx, { ...alarm, in_minutes: 20 }, 'UTC');
+		await updateUserAlarm(ctx, a.id, { ...alarm, label: 'Renamed' }, 'UTC');
+		expect(
+			await failureOf(updateUserAlarm(ctx, a.id, { ...alarm, in_minutes: 20 }, 'UTC'))
+		).toMatchObject({ status: 400 });
 	});
 });
 
@@ -52,7 +82,7 @@ describe('scheduleOverview', () => {
 	test('splits alarms from wakeups and leaves out what is over', async () => {
 		const { ctx, repo } = await testCtx();
 		const kept = await addUserAlarm(ctx, alarm, 'UTC');
-		const gone = await addUserAlarm(ctx, alarm, 'UTC');
+		const gone = await addUserAlarm(ctx, { ...alarm, in_minutes: 15 }, 'UTC');
 		await cancelEntry(ctx, gone.id);
 		await repo.schedule.insert({
 			kind: 'wakeup',
@@ -321,9 +351,18 @@ describe('runScheduleTool limits', () => {
 
 	test('at most thirty alarms for the agent too', async () => {
 		const made = await testCtx();
-		for (let i = 0; i < SCHEDULE_LIMITS.maxAlarms; i++) await addUserAlarm(made.ctx, alarm, 'UTC');
-		expect(await run(made, 'set_alarm', alarm)).toMatchObject({
+		for (let i = 0; i < SCHEDULE_LIMITS.maxAlarms; i++)
+			await addUserAlarm(made.ctx, { ...alarm, in_minutes: 10 + i }, 'UTC');
+		expect(await run(made, 'set_alarm', { ...alarm, in_minutes: 60 })).toMatchObject({
 			error: expect.stringContaining('at most 30 alarms')
+		});
+	});
+
+	test('the agent cannot set an alarm at a time that has one', async () => {
+		const made = await testCtx();
+		await addUserAlarm(made.ctx, alarm, 'UTC');
+		expect(await run(made, 'set_alarm', alarm)).toMatchObject({
+			error: expect.stringContaining('already an alarm')
 		});
 	});
 

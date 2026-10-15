@@ -6,6 +6,7 @@ import { inQuietHours } from '#lib/guardrails.js';
 import { parseToolArguments } from '#lib/assistant-tools.js';
 import {
 	SCHEDULE_LIMITS,
+	alarmClash,
 	describeEntry,
 	minutesOf,
 	nextRepeat,
@@ -73,6 +74,8 @@ export async function addUserAlarm(ctx: Ctx, body: unknown, timezone: string) {
 	const alarms = (await ctx.repo.schedule.pending()).filter((row) => row.kind === 'alarm');
 	if (alarms.length >= SCHEDULE_LIMITS.maxAlarms)
 		throw new AssistantError(`At most ${SCHEDULE_LIMITS.maxAlarms} alarms`, 400);
+	const clash = alarmClash(alarms, parsed.value.fireAt, timezone);
+	if (clash) throw new AssistantError(clash, 400);
 	return createAlarm(ctx, parsed.value, 'user');
 }
 
@@ -98,6 +101,9 @@ export async function updateUserAlarm(
 	if (args.tone === undefined && row.tone) args.tone = row.tone;
 	const parsed = parseAlarm(args, ctx.now(), timezone);
 	if (!parsed.ok) throw new AssistantError(parsed.error, 400);
+	const others = (await ctx.repo.schedule.pending()).filter((entry) => entry.kind === 'alarm');
+	const clash = alarmClash(others, parsed.value.fireAt, timezone, id);
+	if (clash) throw new AssistantError(clash, 400);
 	const patch = {
 		fireAt: parsed.value.fireAt,
 		minutes: parsed.value.minutes,
@@ -203,6 +209,8 @@ export async function runScheduleTool(
 			const pending = (await ctx.repo.schedule.pending()).filter((row) => row.kind === 'alarm');
 			if (pending.length >= SCHEDULE_LIMITS.maxAlarms)
 				return { error: `at most ${SCHEDULE_LIMITS.maxAlarms} alarms, cancel one first` };
+			const clash = alarmClash(pending, parsed.value.fireAt, timezone);
+			if (clash) return { error: clash };
 			if (parsed.value.custom) {
 				if ((await customTonesLeft(ctx, settings)) <= 0)
 					return {
