@@ -5,7 +5,6 @@ import {
 	findStuckReason,
 	hyperfocusDue,
 	momentKey,
-	parseAnchoringForm,
 	reminderDue
 } from '#lib/anchoring.js';
 import { parseAlarm } from '#lib/schedule.js';
@@ -72,30 +71,6 @@ describe('momentKey', () => {
 		expect(momentKey('overrun', '2026-10-14', a)).not.toBe(
 			momentKey('overrun', '2026-10-14', { ...a, duration: 75 })
 		);
-	});
-});
-
-describe('parseAnchoringForm', () => {
-	const form = (entries: Record<string, string>) => {
-		const data = new FormData();
-		Object.entries(entries).forEach(([key, value]) => data.set(key, value));
-		return data;
-	};
-	test('reads switches and minutes', () => {
-		expect(parseAnchoringForm(form({ reminders: 'on', advance: '10', overrun: '20' }))).toEqual({
-			ok: true,
-			value: {
-				enableReminders: true,
-				reminderAdvanceTime: 10,
-				hyperfocusAlarm: false,
-				overrunMinutes: 20
-			}
-		});
-	});
-	test('rejects minutes out of range', () => {
-		expect(parseAnchoringForm(form({ advance: '0', overrun: '20' })).ok).toBe(false);
-		expect(parseAnchoringForm(form({ advance: '10', overrun: '4' })).ok).toBe(false);
-		expect(parseAnchoringForm(form({ advance: '10', overrun: 'x' })).ok).toBe(false);
 	});
 });
 

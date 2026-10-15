@@ -2,7 +2,7 @@
  * The settings the forms on /settings change. One patch shape and one validator, so the client
  * checks before it sends and the server checks again with the same rules.
  */
-import { OVERRUN_LIMITS, REMINDER_LIMITS, type AnchoringSettings } from '#lib/anchoring.js';
+import { OVERRUN_LIMITS, REMINDER_LIMITS } from '#lib/anchoring.js';
 import { isEventType } from '#lib/events.js';
 import { isAutonomy, type AgentSettings } from '#lib/guardrails.js';
 import type { Settings } from '#lib/core/repo.js';
@@ -86,8 +86,6 @@ export function parseSettingsPatch(
 	return { ok: true, value: body as SettingsPatch };
 }
 
-export const anchoringPatch = (value: AnchoringSettings): SettingsPatch => ({ ...value });
-
 export const agentPatch = (value: AgentSettings): SettingsPatch => ({
 	aiAutonomy: value.autonomy,
 	aiEvents: value.events.join(' '),
@@ -95,3 +93,29 @@ export const agentPatch = (value: AgentSettings): SettingsPatch => ({
 	quietEnd: value.quietEnd,
 	dailyTokenBudget: value.dailyTokenBudget
 });
+
+/** The choices the settings page offers as one tap, in minutes. Any stored value stays valid, see `withCurrent`. */
+export const HEADS_UP_PRESETS = [5, 10, 15, 30];
+export const OVERRUN_PRESETS = [10, 15, 30, 60];
+/** 0 is off. */
+export const CHECK_IN_PRESETS = [0, 5, 10, 15];
+/** Tokens a day for unprompted reactions. No limit is `null` and has its own chip. */
+export const BUDGET_PRESETS = [50_000, 200_000];
+
+/** The presets, plus the stored value when it is none of them (set earlier or on another device), in order. */
+export function withCurrent(presets: number[], current: number): number[] {
+	return presets.includes(current) ? presets : [...presets, current].sort((a, b) => a - b);
+}
+
+/** `5 min`, `1 h`, or `Off` for zero. */
+export function minutesChip(minutes: number): string {
+	if (minutes === 0) return 'Off';
+	return minutes % 60 === 0 ? `${minutes / 60} h` : `${minutes} min`;
+}
+
+/** `No limit`, `50k` or `1.5M` for a daily token budget. */
+export function budgetChip(tokens: number | null): string {
+	if (tokens === null) return 'No limit';
+	if (tokens >= 1_000_000) return `${tokens / 1_000_000}M`;
+	return `${tokens / 1000}k`;
+}

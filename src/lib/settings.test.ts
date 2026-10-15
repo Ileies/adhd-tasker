@@ -1,10 +1,17 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
+import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import {
+	BUDGET_PRESETS,
+	CHECK_IN_PRESETS,
+	HEADS_UP_PRESETS,
+	OVERRUN_PRESETS,
 	agentPatch,
-	anchoringPatch,
+	budgetChip,
+	minutesChip,
 	parseSettingsPatch,
-	type SettingsPatch
+	type SettingsPatch,
+	withCurrent
 } from '#lib/settings.js';
 
 describe('parseSettingsPatch', () => {
@@ -58,16 +65,6 @@ describe('check-in and My day', () => {
 });
 
 describe('patches from the forms', () => {
-	test('the anchoring settings are already a patch', () => {
-		const value = {
-			enableReminders: true,
-			reminderAdvanceTime: 5,
-			hyperfocusAlarm: false,
-			overrunMinutes: 15
-		};
-		expect(anchoringPatch(value)).toEqual(value);
-	});
-
 	test('the agent settings use the stored names, events as one string', () => {
 		expect(
 			agentPatch({
@@ -84,5 +81,47 @@ describe('patches from the forms', () => {
 			quietEnd: 420,
 			dailyTokenBudget: 5000
 		});
+	});
+});
+
+describe('presets', () => {
+	test('every preset is a valid setting', () => {
+		for (const value of HEADS_UP_PRESETS)
+			expect(parseSettingsPatch({ reminderAdvanceTime: value }).ok).toBe(true);
+		for (const value of OVERRUN_PRESETS)
+			expect(parseSettingsPatch({ overrunMinutes: value }).ok).toBe(true);
+		for (const value of CHECK_IN_PRESETS)
+			expect(parseSettingsPatch({ checkInMinutes: value }).ok).toBe(true);
+		for (const value of BUDGET_PRESETS)
+			expect(parseSettingsPatch({ dailyTokenBudget: value }).ok).toBe(true);
+	});
+
+	test('the default of each setting is one of its presets', () => {
+		expect(HEADS_UP_PRESETS).toContain(DEFAULT_SETTINGS.reminderAdvanceTime);
+		expect(OVERRUN_PRESETS).toContain(DEFAULT_SETTINGS.overrunMinutes);
+		expect(CHECK_IN_PRESETS).toContain(DEFAULT_SETTINGS.checkInMinutes);
+	});
+
+	test('a stored value that is no preset joins the choices in order', () => {
+		expect(withCurrent([5, 10, 15, 30], 20)).toEqual([5, 10, 15, 20, 30]);
+		expect(withCurrent([5, 10, 15, 30], 10)).toEqual([5, 10, 15, 30]);
+	});
+
+	test.each<[number, string]>([
+		[0, 'Off'],
+		[5, '5 min'],
+		[60, '1 h'],
+		[90, '90 min']
+	])('%d minutes reads %s', (minutes, text) => {
+		expect(minutesChip(minutes)).toBe(text);
+	});
+
+	test.each<[number | null, string]>([
+		[null, 'No limit'],
+		[50_000, '50k'],
+		[200_000, '200k'],
+		[1_500_000, '1.5M']
+	])('a budget of %s reads %s', (tokens, text) => {
+		expect(budgetChip(tokens)).toBe(text);
 	});
 });
