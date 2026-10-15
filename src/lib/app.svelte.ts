@@ -4,6 +4,7 @@ import type { Tone } from '#lib/tones.js';
 import type { Backend } from '#lib/backend.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
+import type { Comparison } from '#lib/core/merge.js';
 import { clientSettings, type ClientSettings } from '#lib/settings.js';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
@@ -77,6 +78,18 @@ export const tasker: {
 	firstRun: { welcomed: boolean; screenHintSeen: boolean };
 	/** Ids of the sample day's tasks still in the plan (a guest's device only). */
 	sample: number[];
+	/**
+	 * A signed in visitor whose device still holds a plan from before: the choice on the move screen. The screen
+	 * shows while `comparison` is set, nothing is written until the visitor chose. The plan itself is not kept here:
+	 * a state proxy cannot be stored in IndexedDB, `move.ts` holds it.
+	 */
+	move: {
+		comparison: Comparison | null;
+		/** The device has its own OpenAI key, which can go to the account. */
+		hasKey: boolean;
+		busy: boolean;
+		error: string | null;
+	};
 } = $state({
 	backend: remoteBackend,
 	account: { email: null, ready: false, problem: null },
@@ -95,5 +108,6 @@ export const tasker: {
 	device: { id: '', display: null, streaming: false, audioBlocked: false },
 	voice: { replies: false, recording: false, transcribing: false, speaking: false },
 	firstRun: { welcomed: true, screenHintSeen: true },
-	sample: []
+	sample: [],
+	move: { comparison: null, hasKey: false, busy: false, error: null }
 });

@@ -8,7 +8,9 @@
 	import { deviceTimezone } from '#lib/time.js';
 	import { keepAwake, toggleFullscreen } from '#lib/display.js';
 	import { startStream } from '#lib/stream.js';
-	import { loadGsi, showOneTap, wantsOneTap } from '#lib/onetap.js';
+	import { loadGsi, showOneTap, stopAutoSignIn, wantsOneTap } from '#lib/onetap.js';
+	import { checkMove } from '#lib/move.js';
+	import MoveScreen from '#lib/components/MoveScreen.svelte';
 	import { readFlags, setFlag } from '#lib/flags.js';
 	import { beginGuest, useAccount } from '#lib/mode.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
@@ -43,6 +45,8 @@
 	onMount(() => stopGuest);
 
 	onMount(() => {
+		// A device that was a guest may still hold a plan: it moves into the account, or asks first
+		if (data.user) void checkMove();
 		loadFlags();
 		const stopPreferences = initPreferences();
 		// One audio context for the page, unlocked by the first tap or key
@@ -111,14 +115,11 @@
 		else setTimezone(deviceTimezone()).catch(() => {});
 	});
 
-	let loginForm: HTMLFormElement | undefined = $state();
 	let logoutForm: HTMLFormElement | undefined = $state();
 
 	function logout() {
 		// Otherwise One Tap auto select would sign the user straight back in
-		(
-			window as { google?: { accounts?: { id?: { disableAutoSelect?: () => void } } } }
-		).google?.accounts?.id?.disableAutoSelect?.();
+		stopAutoSignIn();
 		logoutForm?.requestSubmit();
 	}
 
@@ -172,8 +173,7 @@
 <AlarmBanner />
 <AssistantDrawer hasKey={tasker.settings.hasOpenaiKey} />
 
-<!-- Hidden forms: dropdown content is portaled, so it cannot live inside a form -->
-<form method="POST" action="/login" bind:this={loginForm} class="hidden"></form>
+<!-- Hidden form: dropdown content is portaled, so it cannot live inside a form -->
 <form method="POST" action="/logout" bind:this={logoutForm} class="hidden"></form>
 
 <div class="relative flex h-dvh flex-col {barHidden ? 'cursor-none' : ''}">
@@ -230,12 +230,13 @@
 						</Button>
 					{/snippet}
 				</DropdownMenu.Trigger>
-				<DropdownMenu.Content align="end" class="w-52">
+				<DropdownMenu.Content align="end" class="w-64">
 					{#if data.user}
 						<DropdownMenu.Label class="truncate">{data.user.email}</DropdownMenu.Label>
 					{:else}
-						<DropdownMenu.Item onSelect={() => loginForm?.requestSubmit()}>Log in</DropdownMenu.Item
-						>
+						<DropdownMenu.Item onSelect={() => goto('/settings#sync')}>
+							Sync across devices
+						</DropdownMenu.Item>
 					{/if}
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item onSelect={() => goto('/alarms')}>Alarms</DropdownMenu.Item>
@@ -243,7 +244,12 @@
 					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
 					{#if data.user}
 						<DropdownMenu.Separator />
-						<DropdownMenu.Item onSelect={logout}>Log out</DropdownMenu.Item>
+						<DropdownMenu.Item onSelect={logout} class="flex-col items-start gap-0.5">
+							<span>Log out</span>
+							<span class="text-muted-foreground text-xs">
+								Your plan stays in your account, this device goes back to its own plan.
+							</span>
+						</DropdownMenu.Item>
 					{/if}
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item onSelect={() => goto('/about')}>About</DropdownMenu.Item>
@@ -255,6 +261,11 @@
 	</header>
 
 	<main class="min-h-0 flex-1 overflow-auto">
-		{@render children()}
+		<!-- A plan on this device waits for the visitor's choice before anything else is shown -->
+		{#if tasker.move.comparison}
+			<MoveScreen onCancel={logout} />
+		{:else}
+			{@render children()}
+		{/if}
 	</main>
 </div>

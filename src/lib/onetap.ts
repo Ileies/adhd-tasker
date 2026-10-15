@@ -2,6 +2,7 @@ type Gsi = {
 	initialize: (config: Record<string, unknown>) => void;
 	prompt: () => void;
 	cancel: () => void;
+	disableAutoSelect?: () => void;
 };
 type GsiWindow = { google?: { accounts?: { id?: Gsi } } };
 
@@ -27,6 +28,13 @@ export const wantsOneTap = (visit: {
 	legal: boolean;
 	signedInBefore: boolean;
 }) => !visit.signedIn && !visit.legal && visit.signedInBefore;
+
+/** After signing out, so One Tap's auto select does not sign the visitor straight back in. */
+export function stopAutoSignIn(
+	win: GsiWindow = typeof window === 'undefined' ? {} : (window as GsiWindow)
+) {
+	win.google?.accounts?.id?.disableAutoSelect?.();
+}
 
 /** Adds Google's sign in script to the page, once. */
 export function loadGsi(doc: ScriptHost = document as unknown as ScriptHost) {

@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, jest, test } from 'bun:test';
-import { GSI_SRC, loadGsi, showOneTap, wantsOneTap } from '#lib/onetap.js';
+import { GSI_SRC, loadGsi, showOneTap, stopAutoSignIn, wantsOneTap } from '#lib/onetap.js';
 
 function fakeDocument() {
 	const added: { src: string; async: boolean }[] = [];
@@ -20,6 +20,16 @@ describe('wantsOneTap', () => {
 		[{ signedIn: false, legal: true, signedInBefore: true }, false]
 	])('%j is %p', (visit, wanted) => {
 		expect(wantsOneTap(visit)).toBe(wanted);
+	});
+});
+
+describe('stopAutoSignIn', () => {
+	test('turns off auto select, and is fine when the script was never loaded', () => {
+		const calls: string[] = [];
+		const id = { ...fakeGsi().id, disableAutoSelect: () => calls.push('disable') };
+		stopAutoSignIn({ google: { accounts: { id } } });
+		expect(calls).toEqual(['disable']);
+		expect(() => stopAutoSignIn({})).not.toThrow();
 	});
 });
 

@@ -9,6 +9,7 @@ import { tasker } from '#lib/app.svelte.js';
 import { BackendError } from '#lib/backend.js';
 import type { Task } from '#lib/core/repo.js';
 import { deferredBackend } from '#lib/local/deferred.js';
+import { forgetDecline } from '#lib/local/device.js';
 import { startLocalRuntime } from '#lib/local/runtime.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import type { ClientSettings } from '#lib/settings.js';
@@ -63,6 +64,8 @@ export function beginGuest(): () => void {
 			const from = addDays(todayIn(tasker.settings.timezone ?? deviceTimezone()), -1);
 			tasker.tasks = await runtime.backend.tasks.since(from);
 			tasker.sample = await runtime.backend.sample.ids();
+			// Signed out again: the next sign in asks anew about the plan on this device
+			void forgetDecline().catch(() => {});
 			tasker.account.ready = true;
 			void pollAgent().catch(() => {});
 			void loadSchedule().catch(() => {});
