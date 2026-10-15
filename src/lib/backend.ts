@@ -18,6 +18,7 @@ import type { ActivityView } from '#lib/core/activity.js';
 import type { ExportFile, ImportResult } from '#lib/core/export.js';
 import type { AgentFeed } from '#lib/core/feed.js';
 import type { MoveMode, MoveResult, SnapshotInfo } from '#lib/core/merge.js';
+import type { Place } from '#lib/location.js';
 import type { Repeat } from '#lib/schedule.js';
 import type { ClientSettings, SettingsPatch } from '#lib/settings.js';
 import type { ToneName } from '#lib/tones.js';
@@ -85,6 +86,8 @@ export interface Backend {
 		/** Checks the key with OpenAI, then stores it (encrypted on the server, plain on a guest's device). Rejects with the reason. */
 		saveKey(key: string): Promise<void>;
 		removeKey(): Promise<void>;
+		/** Cities that match a typed name, for the daylight theme. Rejects with the reason when the search could not run. */
+		searchPlaces(query: string): Promise<Place[]>;
 		/** Stores the changed settings. Rejects with the reason when a value is out of range. */
 		save(patch: SettingsPatch): Promise<void>;
 	};

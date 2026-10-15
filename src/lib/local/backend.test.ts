@@ -5,7 +5,9 @@ import type { Hint, Model } from '#lib/core/context.js';
 import { localBackend } from '#lib/local/backend.js';
 import type { ResponseBody } from '#lib/openai.js';
 import { Priority } from '#lib/types.js';
+import { GEOCODE_URL } from '#lib/core/geocode.js';
 import { testCtx } from '#test/ctx.js';
+import { fakeFetch } from '#test/fakes.js';
 
 const task = {
 	title: 'Write intro',
@@ -385,6 +387,47 @@ describe('settings', () => {
 		await backend.settings.saveTimezone('Asia/Tokyo');
 		expect((await backend.settings.load()).timezone).toBe('Asia/Tokyo');
 		expect(await failure(backend.settings.saveTimezone('Mars/Base'))).toMatchObject({
+			status: 400
+		});
+	});
+});
+
+describe('city search', () => {
+	test('a guest searches from the browser and gets places back', async () => {
+		fakeFetch({
+			[GEOCODE_URL]: () =>
+				Response.json({
+					results: [{ name: 'Leipzig', latitude: 51.34, longitude: 12.37, country: 'Germany' }]
+				})
+		});
+		const { backend } = await setup();
+		expect(await backend.settings.searchPlaces('Leipzig')).toEqual([
+			{ name: 'Leipzig, Germany', lat: 51.34, lon: 12.37 }
+		]);
+	});
+
+	test('a name that is too short is refused with the reason', async () => {
+		const { backend } = await setup();
+		expect(await failure(backend.settings.searchPlaces('L'))).toMatchObject({ status: 400 });
+	});
+
+	test('a search service that fails is a bad gateway', async () => {
+		fakeFetch({ [GEOCODE_URL]: () => new Response('no', { status: 500 }) });
+		const { backend } = await setup();
+		expect(await failure(backend.settings.searchPlaces('Leipzig'))).toMatchObject({ status: 502 });
+	});
+
+	test('a saved location is kept on the device', async () => {
+		const { backend } = await setup();
+		const place = {
+			locationLat: 51.34,
+			locationLon: 12.37,
+			locationName: 'Leipzig',
+			locationSource: 'city'
+		} as const;
+		await backend.settings.save(place);
+		expect(await backend.settings.load()).toMatchObject(place);
+		expect(await failure(backend.settings.save({ locationLat: 51.34 }))).toMatchObject({
 			status: 400
 		});
 	});

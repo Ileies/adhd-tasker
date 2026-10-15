@@ -207,6 +207,7 @@ describe('network access', () => {
 			'src/lib/openai.ts',
 			'src/lib/remote-backend.ts',
 			'src/lib/server/google-calendar.ts',
+			'src/lib/server/location.ts',
 			'src/lib/server/google-tokens.ts',
 			'src/lib/server/session.ts',
 			'src/routes/callback/+server.ts',

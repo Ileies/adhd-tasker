@@ -10,6 +10,7 @@ import { parseMessages, runAssistant, undoAction } from '#lib/core/assistant.js'
 import { AssistantError, type Ctx, type Hint, type Model } from '#lib/core/context.js';
 import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
 import { createPlanTask, deletePlanTask, updatePlanTask } from '#lib/core/plan.js';
+import { GeocodeError, searchPlaces } from '#lib/core/geocode.js';
 import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
 import type { Repo, Task } from '#lib/core/repo.js';
@@ -173,6 +174,17 @@ export function localBackend(deps: LocalDeps): Backend {
 			// The guest's key is checked from the browser and stays on the device
 			saveKey: (key) =>
 				guarded(
+			// The guest's browser asks the city search itself, only the typed name is sent
+			searchPlaces: (query) =>
+				guarded(async () => {
+					try {
+						return await searchPlaces(query);
+					} catch (thrown) {
+						if (thrown instanceof GeocodeError)
+							throw new AssistantError(thrown.message, thrown.status);
+						throw thrown;
+					}
+				}),
 					async () => void (await repo.settings.update({ openaiKey: await checkOpenaiKey(key) }))
 				),
 			removeKey: async () => void (await repo.settings.update({ openaiKey: null })),

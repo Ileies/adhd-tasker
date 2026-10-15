@@ -142,6 +142,25 @@ describe('remoteBackend requests', () => {
 		});
 	});
 
+	test('settings: a city search is a GET of the typed name, escaped', async () => {
+		const place = { name: 'Zurich, Switzerland', lat: 47.38, lon: 8.54 };
+		const { requests } = fakeFetch({
+			'GET http://localhost:5173/settings/location': json([place])
+		});
+		expect(await remoteBackend.settings.searchPlaces('Zürich & Bern')).toEqual([place]);
+		expect(new URL(requests[0].url).searchParams.get('q')).toBe('Zürich & Bern');
+	});
+
+	test('settings: a search that was refused carries the reason', async () => {
+		fakeFetch({
+			'GET http://localhost:5173/settings/location': refuse(502, 'The city search did not answer')
+		});
+		expect(await failure(() => remoteBackend.settings.searchPlaces('Leipzig'))).toMatchObject({
+			status: 502,
+			message: 'The city search did not answer'
+		});
+	});
+
 	test('data: the export is a GET, an import a POST of the file with the result back', async () => {
 		const { requests } = fakeFetch({
 			'GET http://localhost:5173/export': json({ app: 'adhd-tasker', tasks: [] }),

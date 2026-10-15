@@ -137,6 +137,15 @@ export const remoteBackend: Backend = {
 				'Could not save the key'
 			);
 		},
+		async searchPlaces(query) {
+			return (
+				await request(
+					`/settings/location?q=${encodeURIComponent(query)}`,
+					undefined,
+					'Could not search'
+				)
+			).json();
+		},
 		async removeKey() {
 			await request('/settings/openai-key', { method: 'DELETE' }, 'Could not remove the key');
 		},

@@ -11,7 +11,7 @@ export const BACKEND_METHODS = {
 	assistant: ['chat', 'undo'],
 	agent: ['feed', 'resolveCard', 'stuck'],
 	activity: ['load'],
-	settings: ['load', 'saveTimezone', 'saveKey', 'removeKey', 'save'],
+	settings: ['load', 'saveTimezone', 'searchPlaces', 'saveKey', 'removeKey', 'save'],
 	data: ['export', 'import', 'erase'],
 	account: ['move', 'snapshots', 'restore'],
 	calendar: ['overview', 'preview', 'import', 'sync', 'stop', 'setWrite', 'allDay'],
