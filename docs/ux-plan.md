@@ -1,8 +1,16 @@
 # UX and UI Plan
 
-Status: decided, ready to implement. No code changes yet. The answers to the open questions are in section 15.
+Status: decided, ready to implement, re-read against the code on 2026-10-15 after the local first plan. Phases 3 to 7 and 9 are open, phase 8 is half built, phase 10 is built, phase 8b is out of 1.0. The answers to the open questions are in section 15.
 
-**Waits for the local first plan (deleted, git history `a419224`).** Phases 1 (Transitions) and 2 (Feedback and silence) were built by the soon plan, which was finished and deleted on 2026-10-14 (git history, `docs/soon-plan.md` at `3802a8e`): hero states, time up, transition bar, `...` menu, Done confirmation and sound, draining bar, time in words, tab title, silence line, problems 1 to 3 and the blocked audio part of 4. The local first plan then built parts of this one (a shared page frame, a title on every page, failure toasts above dialogs, an error page) and makes login optional, which changes sections 3, 11 and the logged-out parts of phase 3: there is no sign-in wall and no redirect, a guest sees the same app. Section and phase numbers are kept so references stay valid. What is left here starts once the local first plan is done, and is re-read against the code then.
+**What is already built.** Phases 1 (Transitions) and 2 (Feedback and silence) came from the soon plan, finished and deleted on 2026-10-14 (git history, `docs/soon-plan.md` at `3802a8e`): hero states, time up, transition bar, `...` menu, Done confirmation and sound, draining bar, time in words, tab title, silence line, problems 1 to 3 and the blocked audio part of 4. The local first plan (finished and deleted, git history, `docs/local-first-plan.md` at `a419224`) built these parts of this plan:
+
+- a shared page frame (`PageFrame.svelte`), a title on every page, failure toasts above dialogs, an error page
+- **phase 10, first run** (`Welcome.svelte`, `welcome.ts`, `firstrun.ts`, `core/sample.ts`): no theme question, a welcome with a live example and a sample day, an empty day that asks for the first task, the one time second screen hint, `/about`
+- **auto-save in settings** (`autosave.ts`, `PUT /settings`, "Saved." next to the control): the per-card Save buttons are gone, only the OpenAI key keeps an explicit Save
+- **phase 3, navigation** (`SoundMenu.svelte`, `KeyboardHelp.svelte`, `shortcuts.ts`, `mute.ts`, `nav.ts`): the Now/Plan switch, the context slot, the sound popover with timed mute, Fullscreen and Keyboard shortcuts in the menu, the assistant icon only with a key. Keys `1`, `2`, `A`, `M`, `F` work, the page keys (`D`, `N`, `/`, arrows, `T`) come with phases 4 and 6, the Plan day switcher in the slot with phase 6
+- **login is optional**: there is no sign-in wall and no redirect, a guest sees the same app on the device (guest mode). This changed sections 3, 10 and 11 below
+
+Section and phase numbers are kept so references stay valid. Decisions 5 and 6 of section 15 were changed by the roadmap and by Calendar sync.
 
 Basis: a review of every route and component (`+layout.svelte`, Now, Plan, TaskForm, AssistantDrawer, Alarms, Activity, Settings and all settings forms, dialogs, toast, banner). It was read from code, not from screenshots, so every phase ends with a look at the real screen on a wide display and a phone.
 
@@ -30,10 +38,10 @@ Problems 1 to 3 and the blocked audio part of 4 are solved (hero states, Done fe
 4. **Mute has no timer**, so "muted for a meeting" easily becomes "muted all day". (The visible silence line is built: "Sound off" or "Tap anywhere to turn sound on".)
 5. **Navigation has no clear model.** Plan is a button on the left, Now is the logo, `/edit` adds its own "Back to Now", and Alarms, Activity and Settings sit under a user icon that reads as "account".
 6. **Priority colors disagree across the app.** High is orange on Now, a blue block on the Plan timeline and an amber chip in the phone list. Urgent is a yellow block but a red chip. Colors only help if they mean one thing.
-7. **Settings mixes instant and Save-button saving.** Theme and timezone apply at once, three other cards need their own Save. Forgetting to press Save is a typical ADHD failure. Free number inputs ask for decisions that presets could answer.
+7. **Settings asks for decisions presets could answer.** (Saving is solved: everything saves on change.) Heads-up, overrun and the token budget are still free number inputs, the nine cards are a long scroll, and the assistant cards show all their options even without a key.
 8. **Missed tasks pile up as a wall of buttons.** Up to three cards with Done, +15 min and Drop each sit in the peripheral rail. It is noisy and invites guilt, and there is no "move to later" or "tomorrow", only extend from now or delete.
 9. **Plan has two rows of chrome and a dialog-heavy create flow.** Global bar plus a wrapping toolbar (Back, day switcher, date input, Today, quick add, Details). Clicking the timeline opens a full dialog with a 60 min default, while quick add uses 30 min.
-10. **The first visit asks a question before showing anything** (theme dialog), and an empty day shows "Free time / Nothing else is planned" with no way forward. (The first run part is in the local first plan, part 4.)
+10. ~~The first visit asks a question before showing anything~~ Solved by the first run (phase 10): the first visit shows a welcome with a live example, and an empty day says "Nothing planned today" with a quick add line.
 
 Smaller findings are listed per page below.
 
@@ -45,7 +53,7 @@ Two primary places and one tool, everything else is secondary:
 
 - **Now** and **Plan**: a two-segment switch at the left of the bar, always visible (tier 2). Keys `1` and `2`.
 - **Assistant**: an icon in the bar, only when a key is saved (tier 3). Without a key the button is a dead end, so it is hidden and Settings explains how to turn it on.
-- **Menu** (icon changes from a user to a plain menu icon): Alarms, Assistant activity, Settings, then Fullscreen, Keyboard shortcuts, then the email and Log out, then Privacy and Terms as one small line.
+- **Menu** (icon changes from a user to a plain menu icon): Alarms, Assistant activity, Settings, then Fullscreen, Keyboard shortcuts, then the account part (signed in: the email and Log out with its one line of explanation, a guest: "Sync across devices"), then About, Privacy and Terms as one small line. Built in phase 3.
 
 ### Bar layout
 
@@ -64,7 +72,7 @@ Two primary places and one tool, everything else is secondary:
   - Volume slider
   - "This screen plays sound" switch (moved from the Alarms page, this is where the user thinks about sound)
 - **Fullscreen** leaves the bar (tier 4: once per session). Menu item plus the `F` key.
-- The bar keeps auto-hiding on Now after 5 s. Logged out is guest mode (local first plan): the bar is the same, nothing redirects. Only what needs an account (Activity, the account part of the menu) is hidden or says so.
+- The bar keeps auto-hiding on Now after 5 s. Logged out is guest mode: the bar is the same, nothing redirects. Today a guest sees the same menu entries as an account, and Activity opens for a guest too (the guest agent runs in the leading tab and logs to the device), so nothing is hidden. Keep it that way unless a page turns out to have nothing to show a guest.
 
 ### Keyboard (desktop, shown under Menu > Keyboard shortcuts)
 
@@ -151,6 +159,7 @@ The 5 minute check-in chime is hardcoded today. It moves into the Reminders sett
 | ...   |                                                                   |
 ```
 
+- Still true in the code: the toolbar has Back to Now, the date input, Today and Details, and a timeline click opens the dialog with a 60 min default (quick add uses 30).
 - **Remove "Back to Now"**: the Now/Plan switch handles it.
 - **Day switcher in the bar**: arrows, the day name, and a click on the name opens a calendar popover. The separate date input goes. "Today" appears only when another day is shown.
 - **Quick add is the main control**: full width, focused with `N` or `/`. A live preview under it shows what will be created ("Call dentist, 14:30 to 15:15, 45 min"), so the parse is trusted before Enter. After adding, the new block is scrolled into view and outlined for 2 s. `[+]` (was "Details") opens the task sheet for more options.
@@ -217,11 +226,15 @@ The 5 minute check-in chime is hardcoded today. It moves into the Reminders sett
 
 Sections ordered by how much they shape the daily experience. Wide screens get a sticky section list on the left, phones one scroll.
 
-1. **Reminders and sound**: check-in chime interval, heads-up before the next task, overrun tap, "this screen plays sound", volume.
-2. **Appearance**: theme (light, dark, by daylight). "By daylight" has no hour fields any more: it follows sunrise and sunset at the user's location, like Google Maps, and shows "Light from 07:12 to 18:40, based on Leipzig. [Change location]".
-3. **Time**: timezone, shown as the current value with a "Change" button that reveals the long list. **My day** (default 07:00 to 23:00), which drives the collapsed hours on the Plan timeline.
+Today the page is nine cards in this order: Theme, Timezone, Clock, Reminders and overruns, Assistant (the key), Voice, Assistant on its own, Your data, and Sync across devices (guest) or Google Workspace with the Calendar settings (account). The target order:
 
-### Location for the daylight theme
+1. **Reminders and sound**: check-in chime interval, heads-up before the next task, overrun tap, "this screen plays sound", volume. The Clock option joins this section.
+2. **Appearance**: theme (light, dark, by daylight). Until phase 8b, "by daylight" keeps its two hour fields (`dayStart`, `dayEnd`, in `tasker` and on the device or account). With 8b they go and it follows sunrise and sunset at the user's location, like Google Maps, and shows "Light from 07:12 to 18:40, based on Leipzig. [Change location]".
+3. **Time**: timezone, shown as the current value with a "Change" button that reveals the long list. **My day** (default 07:00 to 23:00), which drives the collapsed hours on the Plan timeline. It is a different thing from the theme hours (when the user is awake, not when it is light), so it is its own setting even before 8b. It must be stored for a guest too: it goes through `Backend.settings` and the `users` row like the other settings, so a new field is added to `remote-backend.ts`, `local/backend.ts`, `settings.ts` (`parseSettingsPatch`) and the schema.
+
+### Location for the daylight theme (phase 8b, not in 1.0)
+
+The roadmap moved this to 1.1: it adds a third party (IP geolocation) and a Privacy page change for a cosmetic gain. Everything below stays as the design for when it is picked up. A guest has no server request to look up an IP from, so for a guest this would be the device location or a city search only, and IP detection would only apply to an account. Decide that before building.
 
 - **Detection**: the server looks up the client IP with an external IP geolocation API on login, and again when the IP changes. The request takes the real client IP from the reverse proxy header. Only a rounded position (2 decimals, about 1 km) and the city name are stored, never the IP. The provider must be HTTPS and gets named on the Privacy page (new third party, purpose, what is sent).
 - **Override** (for a VPN or a wrong guess): "Use this device's location" asks the browser once for a precise position, and a city search (a geocoding API, also named on the Privacy page) covers browsers that refuse. A manual location is never replaced by IP detection until the user resets it to automatic.
@@ -230,23 +243,27 @@ Sections ordered by how much they shape the daily experience. Wide screens get a
 - Without any location (lookup failed, offline), the theme falls back to the timezone's main city, and Settings says so.
 
 4. **Assistant**: without a key, only the key field and two lines on what it does and what is sent. With a key: autonomy as three option cards, voice replies, then an "Advanced" disclosure with event toggles, quiet hours and the token budget.
-5. **Account**: email, Log out, Privacy, Terms.
+5. **Account and data**: signed in: email, Log out, Google and Calendar, Your data. Guest: Sync across devices, Your data. Privacy and Terms are in the menu already.
 
-The **Google Workspace** card is hidden until Calendar sync uses the grant. Existing grants stay stored. Today it records permissions that nothing uses, which is a decision with no effect.
+The **Google Workspace** card is no longer hidden: Calendar sync uses the grant and its settings live inside the card (`CalendarSettings.svelte`). What stays open is that it still offers Tasks and Keep, which nothing uses. They leave `GOOGLE_SERVICES` before Google verification (`TODO.md`), after which the card is the Calendar card.
 
 ### Behavior
 
-- **Everything saves on change**, with a small inline "Saved" next to the control. The per-card Save buttons go. The OpenAI key keeps an explicit Save because it is validated.
-- **Presets instead of number fields**: heads-up [5][10][15][30] min, overrun [10][15][30][60] min, budget [none][50k][200k][custom]. The pure parsers and limits in `anchoring.ts` and `guardrails.ts` stay the validators.
+- **Everything saves on change**: built (`autosave.ts`, "Saved." next to the control, no Save button except the OpenAI key, which is validated).
+- **Presets instead of number fields** (open, the heads-up, overrun and budget fields in `AnchoringSettingsForm.svelte` and `AgentSettingsForm.svelte` are still `type="number"`): heads-up [5][10][15][30] min, overrun [10][15][30][60] min, budget [none][50k][200k][custom]. The pure parsers and limits in `anchoring.ts` and `guardrails.ts` stay the validators.
 - Copy gets shorter: one sentence per option, details on demand.
 
 ## 11. First run, sign-in, empty states
 
-- **Remove the theme SetupDialog.** Default stays "by daylight" (now automatic, see 10), which suits a wall screen, and Settings has the choice. The first screen after sign-in should be the plan, not a question.
-- **Empty day on Now**: "Nothing planned today" with a quick add line right in the hero ("What is the first thing?") and "Open Plan". This is the same quick add as Plan, not the capture inbox from the roadmap.
-- **One-time desktop hint** on Now, dismissible, never shown again: "Running this on a second screen? Press F for fullscreen and make it the sound screen." Two setup steps that matter for the main use case and are otherwise hidden.
-- There is no sign-in page wall any more: the first visit is the app (local first plan part 4 builds the first run and the sample day).
+Built (phase 10, commit `ba93df1`), kept here as the record of what it does:
+
+- The theme SetupDialog is gone. The default stays "by daylight" (with the day hours until 8b) and Settings has the choice.
+- The first visit is the app, with a welcome and a sample day to try (`Welcome.svelte`, `welcome.ts`), not a sign-in wall.
+- **Empty day on Now**: "Nothing planned today" with a quick add line right in the hero ("What is the first thing?"). This is the same quick add as Plan, not the capture inbox from the roadmap.
+- **One-time desktop hint** on Now, dismissible, never shown again, about `F` for fullscreen and the sound screen (`tasker.firstRun.screenHintSeen`, remembered on the device).
 - The timezone dialog stays, it only appears on a real mismatch.
+
+Left to check: the roadmap criterion E6 also wants an essentials intro (sleep, meals, water), which the first run does not have. That belongs to the recurring tasks plan, not here.
 
 ## 13. Visual system
 
@@ -263,29 +280,31 @@ The **Google Workspace** card is hidden until Calendar sync uses the grant. Exis
 
 Each phase is shippable on its own and ends with `bun run verify --quick`, a look on a wide screen and a phone, and small separate commits. Pure logic first with tests, then components.
 
-Phases 1 (Transitions) and 2 (Feedback and silence) are built and shipped.
+Phases 1 (Transitions), 2 (Feedback and silence) and 10 (First run) are built and shipped. Phase 8 is half built (auto-save). The rest is open. Nothing here needs a schema change except phase 8 (My day) and 8b.
 
-| Phase                     | Content                                                                                                                                                                                                                            | Main files                                                                                                                              |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **3. Navigation**         | Now/Plan switch, context slot, menu, sound popover with timed mute, fullscreen to menu, assistant icon only with key, keyboard shortcuts (the logged-out redirects are gone, guest mode replaced them)                             | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts`                                                    |
-| **4. Rail and phone Now** | Done today line (plus the CLAUDE.md exception), next list clarity, tappable items, next alarm line, missed triage sheet, phone sticky actions, phone assistant link                                                                | `UpcomingRail.svelte`, `AgentStrip.svelte`, new `MissedTriage.svelte`                                                                   |
-| **5. Colors and system**  | One priority ramp, page frame, type scale, touch targets, sentence case                                                                                                                                                            | `app.css`, `urgency.ts`, `PriorityMeter.svelte`, all pages                                                                              |
-| **6. Plan**               | Day switcher in the bar, quick add with preview, 30 min default, past dimming, collapsed hours outside My day (07:00 to 23:00 until phase 8 adds the setting), drag to create, keyboard blocks, named overlaps, grouped phone list | `edit/+page.svelte`, `DayTimeline.svelte`, `quickadd.ts`, `plan.ts`                                                                     |
-| **7. Task sheet**         | New layout, chips, priority control, failure toast                                                                                                                                                                                 | `TaskForm.svelte`                                                                                                                       |
-| **8. Settings**           | Sections, auto-save, presets, check-in interval, My day, Google card hidden, assistant disclosure                                                                                                                                  | `settings/+page.svelte`, `+page.server.ts`, settings forms, `users` schema (then `bun run db:push`)                                     |
-| **8b. Daylight theme**    | `sunTimes`, IP lookup on login, device location and city search override, theme without hour fields, Privacy page update                                                                                                           | `src/lib/sun.ts` (new), `src/lib/server/location.ts` (new), `theme.ts`, `ThemePicker.svelte`, `hooks.server.ts`, `privacy/+page.svelte` |
-| **9. Secondary pages**    | Alarms cleanup, quick timers, one snooze, Assistant activity with check-ins, assistant drawer suggestions and composer                                                                                                             | `alarms/+page.svelte`, `AlarmBanner.svelte`, `activity/+page.svelte`, `AssistantDrawer.svelte`                                          |
-| **10. First run**         | Remove SetupDialog, empty day state, one-time second screen hint                                                                                                                                                                   | `SetupDialog.svelte` (delete), `NowHero.svelte`, `theme.ts`                                                                             |
+| Phase                     | Content                                                                                                                                                                                                                            | Main files                                                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **3. Navigation**         | Built                                                                                                                                                                                                                              | `+layout.svelte`, `VolumeMenu.svelte`, `src/lib/shortcuts.ts` (new), `app.svelte.ts`                                                     |
+| **4. Rail and phone Now** | Done today line (plus the CLAUDE.md exception), next list clarity, tappable items, next alarm line, missed triage sheet, phone sticky actions, phone assistant link                                                                | `UpcomingRail.svelte`, `AgentStrip.svelte`, new `MissedTriage.svelte`                                                                    |
+| **5. Colors and system**  | One priority ramp, page frame, type scale, touch targets, sentence case                                                                                                                                                            | `app.css`, `urgency.ts`, `PriorityMeter.svelte`, all pages                                                                               |
+| **6. Plan**               | Day switcher in the bar, quick add with preview, 30 min default, past dimming, collapsed hours outside My day (07:00 to 23:00 until phase 8 adds the setting), drag to create, keyboard blocks, named overlaps, grouped phone list | `edit/+page.svelte`, `DayTimeline.svelte`, `quickadd.ts`, `plan.ts`                                                                      |
+| **7. Task sheet**         | New layout, chips, priority control, failure toast                                                                                                                                                                                 | `TaskForm.svelte`                                                                                                                        |
+| **8. Settings**           | Left: sections in the new order, presets, check-in interval, My day (guest and account, on both backends), assistant disclosure, Google card trimmed to Calendar. Built: auto-save                                                 | `settings/+page.svelte`, settings forms, `settings.ts`, `local/backend.ts`, `remote-backend.ts`, `users` schema (then `bun run db:push`) |
+| **8b. Daylight theme**    | Out of 1.0 (roadmap). `sunTimes`, IP lookup, device location and city search override, theme without hour fields, Privacy page update                                                                                              | `src/lib/sun.ts` (new), `src/lib/server/location.ts` (new), `theme.ts`, `ThemePicker.svelte`, `hooks.server.ts`, `privacy/+page.svelte`  |
+| **9. Secondary pages**    | Alarms cleanup, quick timers, one snooze, Assistant activity with check-ins, assistant drawer suggestions and composer                                                                                                             | `alarms/+page.svelte`, `AlarmBanner.svelte`, `activity/+page.svelte`, `AssistantDrawer.svelte`                                           |
+| **10. First run**         | Built                                                                                                                                                                                                                              | `Welcome.svelte`, `welcome.ts`, `firstrun.ts`, `NowHero.svelte`                                                                          |
 
-Phase 3 comes first after the local first plan, because the silence line and the sound settings meet in its sound popover. CLAUDE.md and the Privacy page get updated in the phases that change what they describe.
+Phase 3 comes first, because the silence line and the sound settings meet in its sound popover. Every new setting and every new `Backend` method must exist on both backends (CLAUDE.md, Conventions). A phase that changes the UI of a guest-visible page also needs a look as a guest. CLAUDE.md and the Privacy page get updated in the phases that change what they describe.
 
 ## 15. Decisions (2026-10-14)
+
+Amended 2026-10-15: decision 5 moved to 1.1 (roadmap), decision 6 is replaced, decision 7 is done.
 
 1. **Timed mute**: yes. 1 hour first, then 30 min and "until I unmute".
 2. **Quick timers** on Alarms: 5, 10, 25 min and 1 h.
 3. **Snooze**: 5 min, once per alarm.
 4. **Collapsed hours** on the timeline: a separate **My day** setting, default 07:00 to 23:00, auto-extending to fit tasks outside it.
-5. **Daylight theme**: no user-set hours any more. Sunrise and sunset at the user's location, found by an external IP geolocation API, overridable with the device location or a city search (for a VPN). See section 10.
-6. **Google card**: hidden until Calendar sync.
-7. **First-run theme dialog**: removed, default "by daylight".
+5. **Daylight theme**: no user-set hours any more. Sunrise and sunset at the user's location, found by an external IP geolocation API, overridable with the device location or a city search (for a VPN). See section 10. **Not in 1.0**: until then the theme keeps its hour fields.
+6. ~~Google card hidden until Calendar sync~~ **Replaced**: Calendar sync exists, so the card stays and holds the Calendar settings. Tasks and Keep come out of the list before Google verification.
+7. **First-run theme dialog**: removed, default "by daylight". Done.
 8. **Done count**: one plain line "3 done today" in the rail, done count only. A productivity rating is wanted later but depends on the day's real load, which the app cannot know yet, so it is in `TODO.md` under Later.

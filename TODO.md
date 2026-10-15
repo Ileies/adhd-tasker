@@ -7,7 +7,7 @@ Plans in `docs/`:
 
 ## Now
 
-- Re-read `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` against the code after the local first plan, update them once, pick the next plan
+- Pick the next plan: the three plans are re-read. UX phase 3 (navigation) is built, phases 4 to 9 are open in `docs/ux-plan.md`. Suggested by the checks plan: its phases 4 and 5 (core guardrails, route matrices)
 
 - Google Calendar, real run: import, move, done and a forced conflict on a real calendar, by hand (only fakes so far)
 - Google verification (`docs/google-verification.md`): remove Tasks and Keep from `GOOGLE_SERVICES` first, record the demo video, submit
