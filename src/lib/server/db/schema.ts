@@ -160,6 +160,43 @@ export const googleTokens = sqliteTable('google_tokens', {
 	createdAt: integer('created_at').notNull() // ms since epoch
 });
 
+/**
+ * Which calendars of a user are read. `preview` is the choice before the first import: nothing was written to
+ * the plan yet. `active` calendars are synced every few minutes. One row per user.
+ */
+export const calendarSync = sqliteTable('calendar_sync', {
+	email: text('email')
+		.primaryKey()
+		.references(() => users.email, { onDelete: 'cascade' }),
+	calendars: text('calendars', { mode: 'json' }).$type<string[]>().notNull(), // calendar ids
+	status: text('status').$type<'preview' | 'active'>().notNull(),
+	syncedAt: integer('synced_at'), // ms since epoch of the last successful sync
+	createdAt: integer('created_at').notNull()
+});
+
+/**
+ * An event the app imported, so a sync can tell new from changed from gone (by `etag`) without touching tasks the
+ * user changed. `taskIds` are the tasks made from it: empty for an event left out on import and for all-day
+ * events, which are a line on Plan and not tasks. A task the user deleted is not made again.
+ */
+export const calendarEvents = sqliteTable(
+	'calendar_events',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+		email: text('email')
+			.references(() => users.email, { onDelete: 'cascade' })
+			.notNull(),
+		calendarId: text('calendar_id').notNull(),
+		eventId: text('event_id').notNull(),
+		etag: text('etag').notNull(),
+		kind: text('kind').$type<'timed' | 'allDay'>().notNull(),
+		title: text('title').notNull(),
+		dates: text('dates', { mode: 'json' }).$type<string[]>().notNull(), // days it covers, YYYY-MM-DD
+		taskIds: text('task_ids', { mode: 'json' }).$type<number[]>().notNull()
+	},
+	(table) => [uniqueIndex('calendar_events_key').on(table.email, table.calendarId, table.eventId)]
+);
+
 // Only for Google Calendar
 export const reminders = sqliteTable('reminders', {
 	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),

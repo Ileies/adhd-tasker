@@ -6,7 +6,7 @@ import { GOOGLE_CLIENT_SECRET } from '$app/env/private';
 import { eq } from 'drizzle-orm';
 import { decrypt, encrypt } from '#lib/server/crypto.js';
 import { db } from '#lib/server/db/index.js';
-import { googleTokens, users } from '#lib/server/db/schema.js';
+import { calendarEvents, calendarSync, googleTokens, users } from '#lib/server/db/schema.js';
 
 export const GOOGLE_TOKEN_PURPOSE = 'google-refresh-token';
 export const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
@@ -53,7 +53,21 @@ export async function revokeGoogle(email: string): Promise<{ revoked: boolean }>
 			revoked = false;
 		}
 	}
-	db.delete(googleTokens).where(eq(googleTokens.email, email)).run();
-	db.update(users).set({ googleServices: '' }).where(eq(users.email, email)).run();
+	forgetGoogle(email);
 	return { revoked };
+}
+
+/** Access tokens traded for the refresh token, kept in memory until they expire (`google-calendar.ts`). */
+export const accessTokens = new Map<string, { token: string; expiresAt: number }>();
+
+/** Forgets every access token held, for tests: this state lives as long as the process. */
+export const clearAccessTokens = () => accessTokens.clear();
+
+/** Forgets the token, the linked services and what was synced, without telling Google (it already dropped the grant). */
+export function forgetGoogle(email: string) {
+	accessTokens.delete(email);
+	db.delete(googleTokens).where(eq(googleTokens.email, email)).run();
+	db.delete(calendarSync).where(eq(calendarSync.email, email)).run();
+	db.delete(calendarEvents).where(eq(calendarEvents.email, email)).run();
+	db.update(users).set({ googleServices: '' }).where(eq(users.email, email)).run();
 }
