@@ -61,7 +61,16 @@ export function restoreFields(alarm: Alarm, nowMs: number, timezone: string): Al
 	};
 }
 
-/** `Wake` for "Wake: a rising and falling melody": the name alone fits a menu. */
+/** How long an alarm may ring, offered as chips. */
+export const RING_DURATIONS = [1, 5, 10, 15, 30] as const;
+
+/** The chips for the ring duration: the usual ones, plus the alarm's own when it is none of them (set by the agent). */
+export const durationChoices = (current: number): number[] =>
+	RING_DURATIONS.includes(current as (typeof RING_DURATIONS)[number])
+		? [...RING_DURATIONS]
+		: [...RING_DURATIONS, current].sort((a, b) => a - b);
+
+/** `Wake` for "Wake:a rising and falling melody": the name alone fits a menu. */
 export const toneLabel = (name: ToneName) => TONE_TEXT[name].split(':')[0];
 
 /** How an alarm relates to one day of the plan: rings that day, rings on other days only, or is switched off. */

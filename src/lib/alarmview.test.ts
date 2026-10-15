@@ -7,6 +7,7 @@ import {
 	alarmStatus,
 	stackCards,
 	dayPanelAlarms,
+	durationChoices,
 	groupAlarms,
 	restoreFields,
 	timerFields,
@@ -34,6 +35,16 @@ describe('quick timers', () => {
 
 	test('a timer is a one-off alarm labeled Timer', () => {
 		expect(timerFields(25)).toMatchObject({ in_minutes: 25, label: 'Timer', repeat: 'none' });
+	});
+});
+
+describe('durationChoices', () => {
+	test('the usual durations include the 5 minute default', () => {
+		expect(durationChoices(5)).toEqual([1, 5, 10, 15, 30]);
+	});
+
+	test('a duration set elsewhere gets its own chip in order', () => {
+		expect(durationChoices(12)).toEqual([1, 5, 10, 12, 15, 30]);
 	});
 });
 

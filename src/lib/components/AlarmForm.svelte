@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { editAlarm } from '#lib/alarms.js';
+	import { durationChoices } from '#lib/alarmview.js';
 	import { showToast } from '#lib';
 	import { tasker, type Alarm } from '#lib/app.svelte.js';
 	import { formatClock24 } from '#lib/format.js';
@@ -35,6 +36,7 @@
 		{ text: 'Mon to Fri', days: [1, 2, 3, 4, 5] }
 	];
 	let tone = $state<ToneName | null>(null);
+	let durationMin = $state<number>(SCHEDULE_LIMITS.defaultAlarmMinutes);
 	let failure = $state('');
 	let saving = $state(false);
 
@@ -48,6 +50,7 @@
 		time = formatClock24(localMoment(alarm.fireAt, timezone).minutes);
 		days = repeatDays(alarm.repeat) ?? [];
 		tone = isToneName(alarm.tone) ? alarm.tone : null;
+		durationMin = alarm.durationMin;
 		failure = '';
 		saving = false;
 	});
@@ -68,6 +71,7 @@
 			at: time,
 			label: label.trim(),
 			repeat,
+			duration_minutes: durationMin,
 			...(tone ? { tone } : {})
 		});
 		saving = false;
@@ -91,7 +95,9 @@
 	>
 		<Dialog.Header>
 			<Dialog.Title class="sr-only">Edit alarm</Dialog.Title>
-			<Dialog.Description class="sr-only">Name, time, repeat and sound</Dialog.Description>
+			<Dialog.Description class="sr-only"
+				>Name, time, repeat, sound and how long it rings</Dialog.Description
+			>
 		</Dialog.Header>
 
 		<form onsubmit={save} class="space-y-5">
@@ -145,6 +151,20 @@
 						onclick={() => (tone = name)}>{TONE_TEXT[name].split(':')[0]}</button
 					>
 				{/each}
+			</div>
+
+			<div class="space-y-2">
+				<p class="text-muted-foreground text-sm">Rings for</p>
+				<div class="flex flex-wrap gap-2" role="group" aria-label="Rings for">
+					{#each durationChoices(alarm?.durationMin ?? durationMin) as minutes (minutes)}
+						<button
+							type="button"
+							class="{chip} {durationMin === minutes ? lit : unlit}"
+							aria-pressed={durationMin === minutes}
+							onclick={() => (durationMin = minutes)}>{minutes} min</button
+						>
+					{/each}
+				</div>
 			</div>
 
 			{#if failure}
