@@ -6,6 +6,7 @@ import {
 	endLine,
 	isChipDuration,
 	parseClock,
+	parseClockInput,
 	joinHeard,
 	stepClock,
 	stepNumber
@@ -51,6 +52,23 @@ describe('parseClock', () => {
 
 	test.each(['', '24:00', '12:60', 'abc', '1405'])('"%s" is not a time', (value) => {
 		expect(parseClock(value)).toBeNull();
+	});
+});
+
+describe('parseClockInput', () => {
+	test.each([
+		['14:05', 845],
+		['2:05 pm', 845],
+		['2:05PM', 845],
+		['12:00 AM', 0],
+		['12:30 pm', 750],
+		['11:59 pm', 1439]
+	])('%s is %d minutes', (value, expected) => {
+		expect(parseClockInput(value)).toBe(expected);
+	});
+
+	test.each(['', '24:00', '13:00 pm', '0:30 am', '12:60', 'abc'])('"%s" is not a time', (value) => {
+		expect(parseClockInput(value)).toBeNull();
 	});
 });
 

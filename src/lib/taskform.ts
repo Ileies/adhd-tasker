@@ -32,6 +32,19 @@ export function parseClock(value: string): number | null {
 	return hours * 60 + minutes;
 }
 
+/** A typed time in either format: `14:05`, `2:05 pm`, `2:05PM`. 12 AM is 0:00. Null when it is not a time. */
+export function parseClockInput(value: string): number | null {
+	const match = /^(\d{1,2}):(\d{2})\s*(am|pm)?$/i.exec(value.trim());
+	if (!match) return null;
+	const hours = Number(match[1]);
+	const minutes = Number(match[2]);
+	const meridiem = match[3]?.toLowerCase();
+	if (minutes > 59) return null;
+	if (!meridiem) return hours > 23 ? null : hours * 60 + minutes;
+	if (hours < 1 || hours > 12) return null;
+	return ((hours % 12) + (meridiem === 'pm' ? 12 : 0)) * 60 + minutes;
+}
+
 /** True when the duration is one of the chips, false when it needs the free field. */
 export function isChipDuration(duration: number): boolean {
 	return DURATION_CHIPS.includes(duration);
