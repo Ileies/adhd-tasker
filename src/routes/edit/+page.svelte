@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { Check, Plus, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
 	import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
-	import { addAlarm } from '#lib/alarms.js';
+	import { addAlarm, loadSchedule } from '#lib/alarms.js';
+	import { dayPanelAlarms } from '#lib/alarmview.js';
 	import { quickAlarmFields, quickAlarmPreview } from '#lib/quickalarm.js';
 	import SegmentedControl from '#lib/components/SegmentedControl.svelte';
 	import MicButton from '#lib/components/MicButton.svelte';
@@ -49,6 +50,15 @@
 		if (value) setFlag('compactPlan');
 		else clearFlag('compactPlan');
 	}
+	onMount(() => void loadSchedule().catch(() => {}));
+	// The alarms stand in the day at their clock time
+	const alarmMarkers = $derived(
+		dayPanelAlarms(
+			tasker.schedule.alarms,
+			selected,
+			tasker.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+		).map(({ alarm, state, minutes }) => ({ id: alarm.id, label: alarm.label, minutes, state }))
+	);
 	let quick = $state('');
 	let quickInput: HTMLInputElement | null = $state(null);
 	/** The block that was just added: scrolled into view and outlined for a moment. */
@@ -357,6 +367,7 @@
 					tasks={dayTasks}
 					{now}
 					showNow={selected === today}
+					alarms={alarmMarkers}
 					{highlight}
 					{compact}
 					day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { Check, ChevronDown, ChevronUp, TriangleAlert } from '@lucide/svelte';
+	import { Bell, BellOff, Check, ChevronDown, ChevronUp, TriangleAlert } from '@lucide/svelte';
+	import type { AlarmDayState } from '#lib/alarmview.js';
 	import { TaskStatus, type Task } from '#lib/types.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import {
@@ -30,12 +31,24 @@
 	const COMPACT_MIN_BLOCK_PX = 18;
 	/** Height of the thin row that holds the hours outside the day. */
 	const ROW_PX = 32;
+	/** Line and chip per alarm state. The words say it too: the chip of an alarm that is off ends in ", off". */
+	const ALARM_LINE: Record<AlarmDayState, string> = {
+		'on-day': 'border-primary',
+		'other-day': 'border-primary/40 border-dashed',
+		off: 'border-muted-foreground/40 border-dashed'
+	};
+	const ALARM_CHIP: Record<AlarmDayState, string> = {
+		'on-day': 'bg-primary text-primary-foreground',
+		'other-day': 'border border-primary/40 bg-background text-foreground/75',
+		off: 'border bg-muted text-muted-foreground'
+	};
 
 	let {
 		date,
 		tasks,
 		now,
 		showNow,
+		alarms = [],
 		highlight = null,
 		compact = false,
 		day = MY_DAY,
@@ -50,6 +63,8 @@
 		/** Minutes since midnight, drawn as a line when `showNow` is set. */
 		now: number;
 		showNow: boolean;
+		/** Alarms drawn as lines at their clock time (minutes since midnight). */
+		alarms?: { id: number; label: string; minutes: number; state: AlarmDayState }[];
 		/** A task that was just added: scrolled into view and outlined. */
 		highlight?: number | null;
 		/** Fit the whole shown day on the screen when it can, otherwise the usual hour height. */
@@ -499,6 +514,29 @@
 					</div>
 				</div>
 			{/if}
+
+			<!-- Alarms at their clock time: strong when they ring this day, dashed and soft on other days, grey when off -->
+			{#each alarms as { id, label, minutes, state } (id)}
+				{#if off(minutes) >= from && off(minutes) <= to}
+					<div
+						class="pointer-events-none absolute inset-x-0 z-10 flex items-center"
+						style="top: {px(off(minutes))}px"
+					>
+						<div class="h-0 flex-1 border-t-2 {ALARM_LINE[state]}" aria-hidden="true"></div>
+						<span
+							class="mr-1 flex max-w-[45%] items-center gap-1 rounded-full px-2 py-0.5 text-xs {ALARM_CHIP[
+								state
+							]}"
+						>
+							{#if state === 'off'}<BellOff class="size-3 shrink-0" />{:else}<Bell
+									class="size-3 shrink-0"
+								/>{/if}
+							<span class="tabular shrink-0">{formatClock(minutes)}</span>
+							<span class="truncate">{label}{state === 'off' ? ', off' : ''}</span>
+						</span>
+					</div>
+				{/if}
+			{/each}
 
 			<!-- What is past on today is dimmed, so what is left of the day shows at a glance -->
 			{#each past as { a, b } (a)}
