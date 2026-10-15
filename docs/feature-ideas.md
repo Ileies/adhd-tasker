@@ -50,9 +50,6 @@ The ideas that look like the strongest return on a small investment. Details are
 - **Variable completion reward** `6/10`
   Rotate between a few completion chimes instead of always the same one, occasionally a slightly "bigger" one. Variable rewards keep dopamine feedback from going stale. Still calm, no confetti.
 
-- **Keyboard shortcuts on Now** `6/10` **(ux plan, `F` for fullscreen is built)**
-  `D` done, `S` stuck, `P` push, `F` focus mode, `?` shows them. Fewer clicks between intention and action on the desktop display.
-
 - **Shame-free wording audit** `6/10`
   Go through every string and remove guilt words ("overdue", "failed", "missed" as a judgement). "This did not happen. Where should it go?" Rejection sensitivity is real and shame is a strong reason people abandon planners.
 
@@ -67,9 +64,6 @@ The ideas that look like the strongest return on a small investment. Details are
 
 - **Verb-first placeholder** `4/10`
   Quick add placeholder nudges toward action phrasing ("Call dentist", not "Dentist"). A task that starts with a verb is easier to start.
-
-- ! **Dyslexia-friendly / larger font option** `4/10`
-  Comorbidity is common. A font and size toggle in settings.
 
 ---
 
@@ -280,9 +274,6 @@ The ideas that look like the strongest return on a small investment. Details are
 
 - **Coach view** `6/10`
   A read-only weekly summary the user can share with an ADHD coach or therapist. Turns the planner into material for real support.
-
-- **On-device model** `6/10`
-  A small local model (WebGPU) for breakdown, stuck hints and quick add so basic AI works without a key, offline and privately. Guest mode already keeps the key in the browser and calls OpenAI directly, so this would be the only AI path with no key at all.
 
 - **Full Crisis Mode** `6/10` **(parked)**
   A complete overwhelm protocol: reduce the day, contact a chosen person, grounding steps, recovery plan for tomorrow.
