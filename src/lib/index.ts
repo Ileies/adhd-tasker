@@ -1,6 +1,14 @@
 import { tasker } from '#lib/app.svelte.js';
 import { browser } from '$app/env';
-import { readTone, ringTimeline, toneLength, toneNotes, type Note, type Tone } from '#lib/tones.js';
+import {
+	DEFAULT_TONE,
+	readTone,
+	repeatTimeline,
+	toneLength,
+	toneNotes,
+	type Note,
+	type Tone
+} from '#lib/tones.js';
 import { duckSpeech } from '#lib/speech.js';
 import { audioContext as sharedAudio, runningAudio } from '#lib/audio.js';
 import { customBuffer } from '#lib/custom-sounds.js';
@@ -8,6 +16,8 @@ import type { SoundSlot } from '#lib/sounds.js';
 
 export function playSound(type: SoundSlot) {
 	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
+	// Alarms are tones: without a file, the preview is the default tone
+	if (type === 'alarm' && !customBuffer('alarm')) return playTone(DEFAULT_TONE);
 	// A browser that has not unlocked audio yet stays silent, the silence line says so
 	const audioContext = runningAudio();
 	if (!audioContext) return;
@@ -31,6 +41,9 @@ export function playSound(type: SoundSlot) {
 	}
 
 	switch (type) {
+		case 'alarm':
+			// Only reached with a file, which played above
+			break;
 		case 'task-started': {
 			// Energizing upward sweep to signal task start - helps with motivation
 			// Quick, punchy "power-on" sound with bright harmonics for immediate focus activation
@@ -189,8 +202,11 @@ const RING_LOOKAHEAD_MS = 6000;
  */
 export function startRinging(tone: Tone, durationMs: number): () => void {
 	if (!browser) return () => {};
+	// The user's own alarm file rings for every alarm, whatever tone the alarm has
+	const file = customBuffer('alarm');
 	const { wave, notes } = toneNotes(readTone(tone));
-	const timeline = ringTimeline({ wave, notes }, durationMs);
+	const phraseMs = file ? file.duration * 1000 : toneLength({ wave, notes });
+	const timeline = repeatTimeline(phraseMs, durationMs);
 	if (timeline.length === 0) return () => {};
 
 	// Not `runningAudio`: a ring that waits on a locked context starts at the first tap, while its banner still shows
@@ -199,7 +215,6 @@ export function startRinging(tone: Tone, durationMs: number): () => void {
 	const master = audioContext.createGain();
 	master.connect(audioContext.destination);
 	const startedAt = audioContext.currentTime + 0.05;
-	const phraseMs = toneLength({ wave, notes });
 
 	let next = 0;
 	let stopped = false;
@@ -222,7 +237,12 @@ export function startRinging(tone: Tone, durationMs: number): () => void {
 			const repeat = audioContext.createGain();
 			repeat.gain.value = gain;
 			repeat.connect(master);
-			scheduleNotes(audioContext, repeat, wave, notes, startedAt + atMs / 1000);
+			if (file) {
+				const source = audioContext.createBufferSource();
+				source.buffer = file;
+				source.connect(repeat);
+				source.start(startedAt + atMs / 1000);
+			} else scheduleNotes(audioContext, repeat, wave, notes, startedAt + atMs / 1000);
 			duckSpeech(atMs - elapsedMs + phraseMs);
 		}
 		if (next >= timeline.length && elapsedMs > timeline[timeline.length - 1].atMs + phraseMs)

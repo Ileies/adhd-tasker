@@ -3,13 +3,14 @@
  * The files live on the device (`local/sounds.ts`), they are never uploaded to the server. The caps match the
  * synthesized tones: nothing longer than 5 s, and the user's volume stays the ceiling (the player multiplies by it).
  */
-export const SOUND_SLOTS = ['task-started', 'reminder', 'wrap-up', 'done'] as const;
+export const SOUND_SLOTS = ['alarm', 'task-started', 'reminder', 'wrap-up', 'done'] as const;
 export type SoundSlot = (typeof SOUND_SLOTS)[number];
 
 export const isSoundSlot = (value: unknown): value is SoundSlot =>
 	SOUND_SLOTS.includes(value as SoundSlot);
 
 export const SOUND_TEXT: Record<SoundSlot, { label: string; hint: string }> = {
+	alarm: { label: 'Alarms', hint: 'Rings for every alarm, whatever tone it has' },
 	'task-started': { label: 'Task starts', hint: 'When the current task changes' },
 	reminder: { label: 'Check-in and heads-up', hint: 'The soft chime while a task runs' },
 	'wrap-up': { label: 'Wrapping up', hint: 'When a task enters its last minutes' },

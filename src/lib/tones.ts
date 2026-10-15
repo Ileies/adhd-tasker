@@ -130,7 +130,15 @@ export function ringTimeline(
 	tone: CustomTone,
 	durationMs: number
 ): { atMs: number; gain: number }[] {
-	const step = toneLength(tone) + RING.gapMs;
+	return repeatTimeline(toneLength(tone), durationMs);
+}
+
+/** The same for any sound that plays for `phraseMs`, such as an uploaded file. */
+export function repeatTimeline(
+	phraseMs: number,
+	durationMs: number
+): { atMs: number; gain: number }[] {
+	const step = phraseMs + RING.gapMs;
 	const repeats: { atMs: number; gain: number }[] = [];
 	for (let atMs = 0; atMs < durationMs; atMs += step) repeats.push({ atMs, gain: ringGain(atMs) });
 	return repeats;

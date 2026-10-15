@@ -26,8 +26,8 @@
 	<div>
 		<p class="font-medium">Your own sounds</p>
 		<p class="text-muted-foreground text-sm">
-			Replace a built-in sound with an audio file, up to {SOUND_LIMITS.maxMs / 1000} seconds. Kept on
-			this device only, never uploaded.
+			Replace a built-in sound with an audio file, up to {SOUND_LIMITS.maxMs / 1000} seconds. One file
+			for Alarms rings for every alarm. Kept on this device only, never uploaded.
 		</p>
 	</div>
 
