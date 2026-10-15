@@ -274,7 +274,7 @@
 		</div>
 	</header>
 
-	<main class="min-h-0 flex-1 overflow-auto">
+	<main class="relative min-h-0 flex-1 overflow-auto">
 		<!-- A plan on this device waits for the visitor's choice before anything else is shown -->
 		{#if tasker.move.comparison}
 			<MoveScreen onCancel={logout} />
