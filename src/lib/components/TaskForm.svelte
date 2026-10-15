@@ -1,57 +1,76 @@
 <script lang="ts">
 	import { createTask, errorText, showToast, updateTask } from '#lib';
 	import { tasker } from '#lib/app.svelte.js';
-	import { Priority, type Task, type TaskForm } from '#lib/types.js';
-	import { Edit, Plus, Trash2 } from '@lucide/svelte';
+	import { Priority, TaskStatus, type Task, type TaskForm } from '#lib/types.js';
+	import { formatClock } from '#lib/format.js';
+	import { todayIn, addDays } from '#lib/time.js';
+	import {
+		DURATION_CHIPS,
+		dateChoice,
+		endLine,
+		isChipDuration,
+		parseClock
+	} from '#lib/taskform.js';
+	import { priorityStyle } from '#lib/urgency.js';
+	import { Check, Plus, RotateCcw, Trash2 } from '@lucide/svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
-	import { Label } from '#lib/components/ui/label/index.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
-	import * as Select from '#lib/components/ui/select/index.js';
 
 	const { form = $bindable(), onDelete }: { form: TaskForm; onDelete?: (task: Task) => void } =
 		$props();
 
-	const priorityOptions = [
-		{ value: Priority.Low, label: 'Low' },
-		{ value: Priority.Medium, label: 'Medium' },
-		{ value: Priority.High, label: 'High' },
-		{ value: Priority.Urgent, label: 'Urgent' },
-		{ value: Priority.Critical, label: 'Critical' }
+	const priorities = [
+		Priority.Low,
+		Priority.Medium,
+		Priority.High,
+		Priority.Urgent,
+		Priority.Critical
 	];
-
-	const quickDurations = [
-		{ label: '15m', minutes: 15 },
-		{ label: '30m', minutes: 30 },
-		{ label: '1h', minutes: 60 },
-		{ label: '2h', minutes: 120 },
-		{ label: '4h', minutes: 240 }
-	];
-
-	const priorityLabel = $derived(
-		priorityOptions.find((o) => o.value === form.priority)?.label ?? 'Select priority'
-	);
 
 	// The reason a save failed, shown above the buttons because the eye is in the dialog
 	let failure = $state('');
+	let today = $state(todayIn(tasker.timezone));
+	// The extra fields stay folded until they are asked for or already hold something
+	let pickingDate = $state(false);
+	let freeDuration = $state(false);
+	let noteOpen = $state(false);
 
 	$effect(() => {
-		if (form.showTaskForm) failure = '';
+		if (!form.showTaskForm) return;
+		failure = '';
+		today = todayIn(tasker.timezone);
+		pickingDate = false;
+		freeDuration = !isChipDuration(form.duration);
+		noteOpen = form.description.trim() !== '';
 	});
+
+	const choice = $derived(dateChoice(form.date, today));
+	const end = $derived(endLine(form.startTime, form.duration));
+	const done = $derived(form.selectedTask?.status === TaskStatus.Completed);
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
 		failure = '';
 
 		const taskData = {
-			title: form.title,
+			title: form.title.trim(),
 			description: form.description,
 			date: form.date,
 			duration: form.duration,
 			startTime: form.startTime,
 			priority: form.priority
 		};
+
+		if (!taskData.title) {
+			failure = 'Give the task a title';
+			return;
+		}
+		if (end.over) {
+			failure = end.text;
+			return;
+		}
 
 		try {
 			if (form.isEditing && form.selectedTask) {
@@ -70,146 +89,205 @@
 			showToast(failure);
 		}
 	}
+
+	/** Done or Reopen from the sheet, with an Undo like everywhere else. */
+	async function toggleDone() {
+		const task = form.selectedTask;
+		if (!task) return;
+		const before = task.status;
+		const status = done ? TaskStatus.Pending : TaskStatus.Completed;
+		form.showTaskForm = false;
+		await updateTask({ ...task, status });
+		showToast(
+			status === TaskStatus.Completed ? `Done: ${task.title}` : `Reopened: ${task.title}`,
+			() => updateTask({ ...task, status: before })
+		);
+	}
+
+	const chip =
+		'min-h-11 cursor-pointer rounded-full border px-3 text-sm transition-colors md:min-h-8';
+	const lit = 'bg-primary text-primary-foreground border-primary';
+	const unlit = 'bg-background hover:bg-muted';
 </script>
 
 <Dialog.Root bind:open={form.showTaskForm}>
-	<Dialog.Content class="sm:max-w-lg">
+	<!-- A centered dialog on wide screens, a sheet from the bottom on phones -->
+	<Dialog.Content
+		class="max-h-[92dvh] overflow-y-auto max-sm:top-auto max-sm:bottom-0 max-sm:max-w-full max-sm:translate-y-0 max-sm:rounded-b-none sm:max-w-lg"
+	>
 		<Dialog.Header>
-			<Dialog.Title class="text-xl">{form.isEditing ? 'Edit Task' : 'New Task'}</Dialog.Title>
-			<Dialog.Description class="sr-only">Fill in the task details and save</Dialog.Description>
+			<Dialog.Title class="sr-only">{form.isEditing ? 'Edit task' : 'New task'}</Dialog.Title>
+			<Dialog.Description class="sr-only">Title, time, priority and a note</Dialog.Description>
 		</Dialog.Header>
 
 		<form onsubmit={handleSubmit} class="space-y-5">
-			<div class="grid gap-2">
-				<Label for="title">Title *</Label>
-				<Input
-					id="title"
-					type="text"
-					bind:value={form.title}
-					placeholder="Enter task title..."
-					required
-				/>
-			</div>
+			<Input
+				type="text"
+				class="h-12 pr-10 text-xl md:text-xl"
+				bind:value={form.title}
+				placeholder="What needs doing? (required)"
+				aria-label="Title"
+				required
+			/>
 
-			<div class="grid gap-2">
-				<Label for="description">Description</Label>
-				<Textarea
-					id="description"
-					class="resize-none"
-					rows={3}
-					bind:value={form.description}
-					placeholder="Add a description (optional)..."
-				/>
-			</div>
-
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-				<div class="grid gap-2">
-					<Label for="date">Date *</Label>
-					<Input id="date" type="date" bind:value={form.date} required />
-				</div>
-
-				<div class="grid gap-2">
-					<Label for="startTime">Start Time *</Label>
+			<div class="flex flex-wrap gap-2" role="group" aria-label="Day">
+				<button
+					type="button"
+					class="{chip} {choice === 'today' && !pickingDate ? lit : unlit}"
+					aria-pressed={choice === 'today' && !pickingDate}
+					onclick={() => {
+						form.date = today;
+						pickingDate = false;
+					}}>Today</button
+				>
+				<button
+					type="button"
+					class="{chip} {choice === 'tomorrow' && !pickingDate ? lit : unlit}"
+					aria-pressed={choice === 'tomorrow' && !pickingDate}
+					onclick={() => {
+						form.date = addDays(today, 1);
+						pickingDate = false;
+					}}>Tomorrow</button
+				>
+				<button
+					type="button"
+					class="{chip} {choice === 'other' || pickingDate ? lit : unlit}"
+					aria-pressed={choice === 'other' || pickingDate}
+					onclick={() => (pickingDate = true)}>Pick date</button
+				>
+				{#if choice === 'other' || pickingDate}
 					<Input
-						id="startTime"
-						type="time"
-						value={Math.floor(form.startTime / 60)
-							.toString()
-							.padStart(2, '0') +
-							':' +
-							(form.startTime % 60).toString().padStart(2, '0')}
-						onchange={(e) =>
-							(form.startTime =
-								parseInt(e.currentTarget.value.split(':')[0], 10) * 60 +
-								parseInt(e.currentTarget.value.split(':')[1], 10))}
+						type="date"
+						class="h-11 w-auto md:h-8"
+						bind:value={form.date}
+						aria-label="Date"
 						required
 					/>
-				</div>
+				{/if}
+			</div>
 
-				<div class="grid gap-2">
-					<Label for="duration">Duration *</Label>
-					<div class="relative">
+			<div class="grid gap-2">
+				<div class="flex flex-wrap items-center gap-2">
+					<label class="flex items-center gap-2 text-sm">
+						<span class="text-muted-foreground">Start</span>
 						<Input
-							id="duration"
+							type="time"
+							class="h-11 w-auto md:h-8"
+							value={formatClock(form.startTime)}
+							onchange={(e) => {
+								const minutes = parseClock(e.currentTarget.value);
+								if (minutes !== null) form.startTime = minutes;
+							}}
+							required
+						/>
+					</label>
+					<div class="flex flex-wrap gap-2" role="group" aria-label="Duration">
+						{#each DURATION_CHIPS as minutes (minutes)}
+							<button
+								type="button"
+								class="{chip} {form.duration === minutes && !freeDuration ? lit : unlit}"
+								aria-pressed={form.duration === minutes && !freeDuration}
+								onclick={() => {
+									form.duration = minutes;
+									freeDuration = false;
+								}}>{minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}</button
+							>
+						{/each}
+						<button
+							type="button"
+							class="{chip} {freeDuration ? lit : unlit}"
+							aria-pressed={freeDuration}
+							aria-label="Other duration"
+							onclick={() => (freeDuration = true)}>..</button
+						>
+					</div>
+				</div>
+				{#if freeDuration}
+					<div class="relative w-40">
+						<Input
 							type="number"
-							class="pr-12"
+							class="h-11 pr-12 md:h-8"
 							min={5}
 							max={1440}
 							bind:value={form.duration}
-							placeholder="60"
+							aria-label="Duration in minutes"
 							required
 						/>
 						<span
 							class="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm"
+							>min</span
 						>
-							min
-						</span>
 					</div>
-				</div>
+				{/if}
+				<p class="text-sm {end.over ? 'text-destructive' : 'text-muted-foreground'}">{end.text}</p>
 			</div>
 
 			<div class="grid gap-2">
-				<Label for="priority">Priority</Label>
-				<Select.Root
-					type="single"
-					value={String(form.priority)}
-					onValueChange={(v) => (form.priority = Number(v) as Priority)}
-				>
-					<Select.Trigger id="priority" class="w-full">{priorityLabel}</Select.Trigger>
-					<Select.Content>
-						{#each priorityOptions as option (option.value)}
-							<Select.Item value={String(option.value)} label={option.label}
-								>{option.label}</Select.Item
-							>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>
-
-			<div class="grid gap-2">
-				<Label>Quick duration</Label>
-				<div class="flex flex-wrap gap-2">
-					{#each quickDurations as quick (quick.minutes)}
-						<Button
-							variant={form.duration === quick.minutes ? 'default' : 'outline'}
-							size="sm"
-							onclick={() => (form.duration = quick.minutes)}
+				<span class="text-sm" id="priority-label">Priority</span>
+				<div class="flex gap-1" role="radiogroup" aria-labelledby="priority-label">
+					{#each priorities as priority (priority)}
+						{@const style = priorityStyle[priority]}
+						<button
+							type="button"
+							role="radio"
+							aria-checked={form.priority === priority}
+							class="min-h-11 flex-1 cursor-pointer rounded-md border px-1 text-sm transition-colors md:min-h-9 {form.priority ===
+							priority
+								? `${style.block} font-semibold`
+								: style.chip}"
+							onclick={() => (form.priority = priority)}>{style.label}</button
 						>
-							{quick.label}
-						</Button>
 					{/each}
 				</div>
 			</div>
+
+			{#if noteOpen}
+				<Textarea
+					class="resize-none"
+					rows={3}
+					bind:value={form.description}
+					placeholder="Note"
+					aria-label="Note"
+				/>
+			{:else}
+				<Button variant="ghost" size="sm" type="button" onclick={() => (noteOpen = true)}>
+					<Plus />
+					Add a note
+				</Button>
+			{/if}
 
 			{#if failure}
 				<p class="text-destructive text-sm" role="alert">{failure}</p>
 			{/if}
 
 			<Dialog.Footer>
-				{#if form.isEditing && form.selectedTask && onDelete}
-					{@const task = form.selectedTask}
-					<Button
-						variant="ghost"
-						class="text-destructive sm:mr-auto"
-						onclick={() => {
-							form.showTaskForm = false;
-							onDelete(task);
-						}}
-					>
-						<Trash2 />
-						Delete
+				{#if form.isEditing && form.selectedTask}
+					{#if onDelete}
+						{@const task = form.selectedTask}
+						<Button
+							variant="ghost"
+							type="button"
+							class="text-muted-foreground sm:mr-auto"
+							onclick={() => {
+								form.showTaskForm = false;
+								onDelete(task);
+							}}
+						>
+							<Trash2 />
+							Delete
+						</Button>
+					{/if}
+					<Button variant="outline" type="button" onclick={toggleDone}>
+						{#if done}
+							<RotateCcw />
+							Reopen
+						{:else}
+							<Check />
+							Done
+						{/if}
 					</Button>
 				{/if}
-				<Button variant="ghost" onclick={() => (form.showTaskForm = false)}>Cancel</Button>
-				<Button type="submit">
-					{#if form.isEditing}
-						<Edit />
-						Update Task
-					{:else}
-						<Plus />
-						Create Task
-					{/if}
-				</Button>
+				<Button type="submit">{form.isEditing ? 'Save' : 'Add'}</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>
