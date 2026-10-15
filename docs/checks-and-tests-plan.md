@@ -39,7 +39,6 @@ Now (2026-10-15): `bun run verify` is green and gates deploy, the test infrastru
 
 Still untested, as the allowlist in `src/test/architecture.test.ts` says:
 
-- Core: `core/agent.ts`, `core/assistant.ts`, `core/usage.ts`, `core/voice.ts`. `core/schedule.ts` has a test, but its server side (`server/schedule.ts`, the 15 s `fireAllDue`) and the server wrappers `server/agent.ts`, `server/assistant.ts`, `server/voice.ts` do not
 - Route modules without a test: `/agent` (and `cards`, `stuck`), `/assistant` (and `undo`, `speak`, `transcribe`), `/schedule` (and `display`) and `/stream`. The `/settings/timezone` action has no test either. No login or ownership matrix exists yet (`src/routes/auth.test.ts`, `ownership.test.ts`)
 - Client wiring: `alarms.ts`, `agent.ts`, `assistant.ts`, `stream.ts` (including the `calendar` hint). `theme.ts` waits for the daylight theme (`daylight-theme.md`). `speech.ts`, `display.ts`, `audio.ts` and `index.ts` stay permanent entries (browser API wiring, their rules live in tested pure modules such as `silence.ts` and `tones.ts`)
 - No e2e, no CI, no `playwright.config.ts` (phases 7 and 8)
@@ -59,49 +58,17 @@ Re-measure the coverage floor before phase 6: the threshold is still 0.90.
 
 Each numbered item is one commit unless noted. Commits stay small and thematic, as `CLAUDE.md` asks.
 
-### Phase 4: Core and server integration
+### Phase 4: Core and server integration (done)
 
-The rules now live in `src/lib/core/` and take a `Ctx` (repo, clock, `Model`, hint, react). So most of this phase is a core test with `testCtx()` from `src/test/ctx.ts` (the local repo on a fake IndexedDB, a set clock, recorded hints) and a fake `Model`, one file next to each core module (`core/agent.test.ts`, `core/assistant.test.ts`, `core/usage.test.ts`, `core/voice.test.ts`). That one test serves the account and the guest. Where a rule depends on the database (ownership scoping, foreign keys, the `db-repo` mapping) the same case also runs through `db-repo` (real Drizzle, in-memory SQLite, fake `fetch`), as the contract suite already does for the repo. The server wrappers (`server/agent.ts`, `server/schedule.ts`, `server/assistant.ts`, `server/voice.ts`) get thin tests for what only they do: the ticks, publishing to the stream, the user's key. `core/events.ts` and the events side of `emit` are already tested (`core/events.test.ts`), so the former 4.2 is done.
+Built on 2026-10-15, one commit per theme (git history from `d740e28`). The rules live in `src/lib/core/` and take a `Ctx`, so each core module has its test next to it, run on `testCtx()` with a fake `Model`, and that one test serves the account and the guest. The server wrappers have thin tests for what only they do.
 
-**4.0 Prerequisites:**
+- **Fakes** (`src/test/fakes.ts`): `fakeModel(...answers)` (a queue of `text(...)`, `toolCalls([...])` or an `Error`, every call recorded with a copy of its input), `forbiddenModel()` (records the call and fails the test), `expectEveryRequestValid()`, `FakeWebSocket` and `fakeConnect()` for `speak`. `testCtx().state.screens` sets how many screens a hint reaches (0 for "no screen is open").
+- **`core/agent.test.ts`:** every guardrail (observe, event type off, quiet hours, budget, hourly limit, minimum gap, no key) ends in `silent: <reason>` with the model never called, and the same matrix runs through the guest loop (`local/agent-loop.test.ts`). `stuck.pressed` skips quiet hours, budget and gap but not `observe` or the hourly limit. `suggest` offers no editing tool and refuses a forged one, `act` edits with reason and event id, at most 4 tool calls, one card, a failing model still records usage, a second `react()` while the first waits finds nothing (claimed before the call), `watch` and `prune`.
+- **`core/assistant.test.ts`:** `parseMessages`, every `runTool` branch (undo log, overlaps, agent event never wakes the agent), `runAssistant` with tool rounds, the 6 round stop and usage on failure, `undoAction` for add, update and delete, the second undo (409) and the pinned case of undoing an update whose task is gone. The adapter errors (401, 429 retry, network) were already in `openai.test.ts`.
+- **`core/usage.test.ts`, `core/voice.test.ts`, `core/schedule.test.ts`** (the missing cases: quiet hours for wakeups, the 10 wakeup and 30 alarm caps, custom tones counted per day, `play_tone` without a screen, a daily alarm across the end of daylight saving, a failing announcement never makes an alarm ring twice).
+- **Server wrappers:** `server/schedule.test.ts` (`fireAllDue` per account and timezone, `announceDisplay`), `server/assistant.test.ts` (the saved key, the 20 per 5 minutes limit per account), `server/voice.test.ts` (30 per 5 minutes shared by `transcribe` and `speak`), `server/agent.test.ts` (`tick` is exported for this: due alarms, `watch` per account, the safety net for events left behind, hourly pruning, the coalescing timer behind `startAgent`).
 
-- **Seams.** `watch`, `tick` and the pruning are now core functions that take a `Ctx`, so the former export-for-tests seam is only needed for the thin server loop (`server/agent.ts`: the tick over all users). No behavior change.
-- **More fakes in `src/test/fakes.ts`:** `fakeModel()`, a `Model` with a queue of Responses API answers (`text('...')`, `toolCalls([...])`, `status(429)`, `networkError()`) and the recorded requests, so core tests never need `fetch`. `fakeOpenAI()` on top of `fakeFetch` for the one adapter (`openai.ts`, `local/openai-direct.ts`) with `expectEveryRequestValid()`, which checks each body against the fixed rules: model, `store: false`, `service_tier: 'flex'`, reasoning effort per use, encrypted reasoning included. `FakeWebSocket` for `speak()`.
-- **Guest agent loop:** `local/agent-loop.test.ts` exists. Add one case that runs the guardrail matrix of 4.5 through it, so the guest path is proven silent too and not only the account path.
-
-**4.2 Done** (`core/events.test.ts`). Keep as a check that `emit` never throws and that agent-origin events never wake the agent, in both repos.
-
-**4.3 `core/schedule.test.ts` (14 cases exist), then `server/schedule.test.ts`:** the core test already covers the alarm and wakeup basics (one-off, late, daily, five minute rule, custom tone cap, unknown tool). What is missing is listed below: write only those, and put the stream and tick parts in the server wrapper test.
-
-- `runScheduleTool`: invalid JSON; a wakeup in quiet hours is refused unless `fromChat`; at most 10 pending wakeups and 30 alarms; 3 custom tones per day, counted through `ai_usage`, available again the next day; `play_tone` reports `played: false` when no screen is connected; `cancel_schedule` with another user's id gives "no such pending entry"; unknown tool.
-- `fireDue(nowMs)`: a one-off alarm becomes `done`, emits `alarm.fired` with its key and publishes `alarm` and `schedule`; a daily alarm moves to the same local time the next day, also across a daylight saving change, and stays pending; an entry more than 10 minutes late is retired without ringing; a wakeup emits `wakeup.fired` with its note; a second call at the same moment rings nothing.
-- **Never rings twice:** make `publish` throw during the first `fireDue`, call it again, assert the alarm was not rung again because it had already moved on.
-- `pruneSchedule` removes only finished and cancelled entries older than the cutoff.
-
-**4.4 `core/assistant.test.ts` (the model loop through a fake `Model`, `local/backend.test.ts` already has a happy path) and `server/assistant.test.ts` (the OpenAI adapter errors):**
-
-- `parseMessages`: not an array, wrong roles, empty content, only the last 20, content capped at 2000.
-- `runTool` add, update, delete: the row changes; `agent_actions` holds before, after, reason and event id; the event is logged with origin `agent` and handled (it never wakes the agent); the change is reported with summary and dates; `overlaps_with` lists only unfinished tasks of the same day.
-- Update and delete of another user's task id answer "no such task" and leave that row untouched. `list_tasks` sees only the caller's tasks. Schedule tools through `runTool` run as `fromChat`.
-- `undoAction`: add is reverted by deleting, update by restoring (a moved task reports both dates), delete by re-inserting with the same id; a second undo is 409; another user's action is 404; the undo is emitted with origin `user` and `undoOfAgentChange`. Pin, then decide: undoing an update whose task was deleted meanwhile currently marks it undone and restores nothing.
-- `runAssistant` with `fakeOpenAI`: the last message must be the user's (400); no key, or a key encrypted with another secret, gives 400 "Add your OpenAI key"; a tool round followed by a reply returns the reply and the changes, and the second request carries the `function_call_output` and the previous output items; the loop stops after 6 rounds with the fallback reply; usage is recorded even when OpenAI fails; the 21st request in 5 minutes is 429 and is allowed again after the window. Every request passes `expectEveryRequestValid()`.
-- `complete`: 401 becomes a 400 with the Settings hint; 429 then 200 retries once after 3 s (fake timers); 429 twice is 429; network error and other failures are 502.
-
-**4.5 `core/agent.test.ts`,** the most important file of the plan (the guest loop runs the same code, see 4.0):
-
-- Nothing pending: returns without a model call. Events older than 10 minutes: "dropped, too old to react to". Unknown user: "dropped, no such user".
-- **Every guardrail end to end, each with a fake OpenAI that fails on any call:** `observe`, no key, event type switched off, quiet hours (system time 23:00 in the user's zone), daily budget used up, 6 reactions in the last hour, a reaction 2 minutes ago. Each outcome reads `silent: <reason>` and `fetch` was never called. This proves no path reaches the model past the guardrails.
-- `stuck.pressed` in quiet hours with the budget used up still calls the model; with `observe` it stays silent.
-- `suggest`: the offered tools contain no edit tool and no `set_alarm` (asserted on the request body); a forged `update_task` call is refused and the task is unchanged.
-- `act`: an edit with a reason changes the task, logs the action with event id and reason, and leaves no unhandled event behind (the agent's own event never wakes it).
-- At most 4 tool calls: a round with 6 calls executes 4 and answers the rest with an error. At most one card: say then ask, the second is refused. A new card resolves older open cards.
-- A failing model call: outcome "failed, the model could not be reached", usage still recorded, no event left in `reacting`.
-- **Claimed before the call:** while the first `react()` waits on a deferred model answer, a second `react()` finds nothing to do, so the model is called once.
-- `react()` publishes `agent` when it is done.
-- `watch()`: the first tick ever stores the current task and reports nothing; a switch is logged with origin `system`; a switch within 60 s of an agent edit is logged with origin `agent` and wakes nothing; a missed task is logged once across many ticks; a user without a timezone is skipped; free time is stored as 0.
-- `prune(nowMs)`: handled events and usage older than 30 days go, unhandled events stay, resolved cards go after 7 days.
-
-**4.7 `core/voice.test.ts`:** `transcribe` rejects empty (400), too large (413) and non-audio (415) recordings before any network call, needs a key, sends the model and a file name with the right extension, trims the text, maps 401, 429 and 500, rate limits at 30 per 5 minutes. `speak` with `FakeWebSocket`: sends the events on open with the key in the headers, collects audio and returns a WAV on `done`, and answers 502 for an error event, a close before `done`, no audio, and the 30 s timeout.
+What stays for later phases: the ownership of `agent_actions`, cards and schedule rows through `db-repo` belongs to the ownership matrix (5.2). The guest backend has its own chat and voice limits (`local/backend.ts`): the chat limit is tested in `local/backend.test.ts`, the voice limit is not yet.
 
 ### Phase 5: Route contracts
 
@@ -190,13 +157,13 @@ Playwright, deliberately small: only what no other layer can see. Specs are name
 
 ## 10. Order and definition of done
 
-| Phase                 | Commits        | Effort   | Exit criterion                                     |
-| --------------------- | -------------- | -------- | -------------------------------------------------- |
-| 4 Server integration  | one per module | 1.5 days | Every guardrail proven silent without a model call |
-| 5 Route contracts     | 4 to 6         | 1 day    | Login and ownership matrices cover every route     |
-| 6 Client wiring       | one per module | 4 h      | Coverage threshold raised to the measured floor    |
-| 7 E2E smoke           | 3              | 4 h      | Six specs green locally (Nix shell) and in CI      |
-| 8 CI and dependencies | 2              | 2 h      | CI green on `master`, audit job scheduled          |
+| Phase                 | Commits        | Effort | Exit criterion                                     |
+| --------------------- | -------------- | ------ | -------------------------------------------------- |
+| 4 Server integration  | done           | done   | Every guardrail proven silent without a model call |
+| 5 Route contracts     | 4 to 6         | 1 day  | Login and ownership matrices cover every route     |
+| 6 Client wiring       | one per module | 4 h    | Coverage threshold raised to the measured floor    |
+| 7 E2E smoke           | 3              | 4 h    | Six specs green locally (Nix shell) and in CI      |
+| 8 CI and dependencies | 2              | 2 h    | CI green on `master`, audit job scheduled          |
 
 4 and 5 carry the most value and do not depend on the UX work. 6 and 7 touch client code the UX plan changes, so they come after the UX phases they overlap with. 8 comes last.
 
