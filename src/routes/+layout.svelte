@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { CalendarDays, Menu, MessageSquare, Target } from '@lucide/svelte';
+	import { CalendarDays, Maximize, Menu, MessageSquare, Minimize, Target } from '@lucide/svelte';
 	import AssistantDrawer from '#lib/components/AssistantDrawer.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { initAudio } from '#lib/audio.js';
@@ -222,6 +222,15 @@
 				</Button>
 			{/if}
 			<SoundMenu />
+			<Button
+				variant="ghost"
+				size="icon-lg"
+				onclick={toggleFullscreen}
+				aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+				title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+			>
+				{#if isFullscreen}<Minimize class="size-5" />{:else}<Maximize class="size-5" />{/if}
+			</Button>
 
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
@@ -237,10 +246,6 @@
 						Assistant activity
 					</DropdownMenu.Item>
 					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
-					<DropdownMenu.Separator />
-					<DropdownMenu.Item onSelect={toggleFullscreen}>
-						{isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-					</DropdownMenu.Item>
 					<DropdownMenu.Separator />
 					{#if data.user}
 						<DropdownMenu.Label class="truncate">{data.user.email}</DropdownMenu.Label>
