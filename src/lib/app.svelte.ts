@@ -72,7 +72,7 @@ export const tasker: {
 	schedule: {
 		alarms: Alarm[];
 		wakeups: Wakeup[];
-		ringing: { id: number; label: string } | null;
+		ringing: { id: number; label: string; canSnooze: boolean } | null;
 		loaded: boolean;
 	};
 	device: { id: string; display: string | null; streaming: boolean; audioBlocked: boolean }; // display: the device that plays sound, null means every device. audioBlocked: the browser has not unlocked audio yet

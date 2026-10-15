@@ -1,6 +1,7 @@
 import { tasker, type Alarm } from '#lib/app.svelte.js';
-import { startRinging } from '#lib';
+import { showToast, startRinging } from '#lib';
 import { SCHEDULE_LIMITS } from '#lib/schedule.js';
+import { SNOOZE_MINUTES, restoreFields } from '#lib/alarmview.js';
 import type { AlarmFields } from '#lib/backend.js';
 
 const DEVICE_KEY = 'tasker.device';
@@ -27,6 +28,8 @@ export const playsSound = () =>
 	tasker.device.display === null || tasker.device.display === tasker.device.id;
 
 const rung = new Set<string>();
+/** Labels of alarms that are snoozed and ring again: that second ring has no snooze. */
+const snoozed = new Set<string>();
 let timers: ReturnType<typeof setTimeout>[] = [];
 let stopRinging: (() => void) | undefined;
 
@@ -41,7 +44,11 @@ export function ring(
 	if (rung.has(key)) return;
 	rung.add(key);
 
-	tasker.schedule.ringing = { id: alarm.id, label: alarm.label };
+	tasker.schedule.ringing = {
+		id: alarm.id,
+		label: alarm.label,
+		canSnooze: !snoozed.delete(alarm.label)
+	};
 	stopRinging?.();
 	stopRinging = playsSound()
 		? startRinging(alarm.tone, (alarm.durationMin ?? SCHEDULE_LIMITS.defaultAlarmMinutes) * 60_000)
@@ -96,3 +103,28 @@ export async function removeEntry(id: number) {
 /** `null` lets every device play again. */
 export const chooseDisplay = (device: string | null) =>
 	tasker.backend.schedule.chooseDisplay(device);
+
+/** Rings the same alarm again in a few minutes, once: the ring after it offers no snooze. */
+export async function snoozeAlarm(): Promise<string | null> {
+	const current = tasker.schedule.ringing;
+	if (!current?.canSnooze) return null;
+	const message = await addAlarm({
+		in_minutes: SNOOZE_MINUTES,
+		label: current.label,
+		tone: 'wake',
+		repeat: 'none'
+	});
+	if (message) return message;
+	snoozed.add(current.label);
+	dismissAlarm();
+	return null;
+}
+
+/** Cancels an alarm and offers it back, so nothing needs a confirm dialog. */
+export async function cancelAlarm(alarm: Alarm) {
+	await removeEntry(alarm.id);
+	showToast(`Cancelled "${alarm.label}"`, async () => {
+		const timezone = tasker.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+		await addAlarm(restoreFields(alarm, Date.now(), timezone));
+	});
+}

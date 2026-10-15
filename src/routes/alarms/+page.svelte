@@ -1,36 +1,41 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { Play } from '@lucide/svelte';
 	import { tasker } from '#lib/app.svelte.js';
-	import { addAlarm, loadSchedule, removeEntry } from '#lib/alarms.js';
+	import { addAlarm, cancelAlarm, loadSchedule } from '#lib/alarms.js';
+	import { QUICK_TIMERS, groupAlarms, timerFields, toneLabel } from '#lib/alarmview.js';
 	import { playTone } from '#lib';
 	import { REPEATS, REPEAT_TEXT, SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
-	import { TONE_NAMES, TONE_TEXT, type ToneName } from '#lib/tones.js';
+	import { TONE_NAMES, type ToneName } from '#lib/tones.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
-	import * as Card from '#lib/components/ui/card/index.js';
+	import OptionSelect from '#lib/components/OptionSelect.svelte';
 	import PageFrame from '#lib/components/PageFrame.svelte';
 
-	const sections = $derived([
-		{ id: 'alarms', label: 'Alarms' },
-		...(tasker.schedule.wakeups.length ? [{ id: 'wakeups', label: 'Assistant wakeups' }] : [])
-	]);
-
-	const select =
-		'h-8 rounded-lg border border-input bg-transparent px-2 text-base md:text-sm dark:bg-input/30';
+	const DURATIONS = [1, 2, 5, 10, 15, SCHEDULE_LIMITS.maxAlarmMinutes];
 
 	let at = $state('');
 	let label = $state('');
-	const DURATIONS = [1, 2, 5, 10, 15, SCHEDULE_LIMITS.maxAlarmMinutes];
-
 	let tone = $state<ToneName>('wake');
 	let repeat = $state<Repeat>('none');
-	let duration = $state<number>(SCHEDULE_LIMITS.defaultAlarmMinutes);
+	let duration = $state(String(SCHEDULE_LIMITS.defaultAlarmMinutes));
 	let message = $state('');
 	let busy = $state(false);
 
 	onMount(() => void loadSchedule().catch(() => {}));
 
-	const clock = $derived(
+	const timezone = $derived(tasker.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
+	const groups = $derived(groupAlarms(tasker.schedule.alarms, Date.now(), timezone));
+
+	const time = $derived(
+		new Intl.DateTimeFormat(undefined, {
+			hour: '2-digit',
+			minute: '2-digit',
+			hourCycle: 'h23',
+			timeZone: timezone
+		})
+	);
+	const dayTime = $derived(
 		new Intl.DateTimeFormat(undefined, {
 			weekday: 'short',
 			day: 'numeric',
@@ -38,19 +43,24 @@
 			hour: '2-digit',
 			minute: '2-digit',
 			hourCycle: 'h23',
-			timeZone: tasker.timezone ?? undefined
+			timeZone: timezone
 		})
 	);
 
+	async function start(fields: Parameters<typeof addAlarm>[0]) {
+		busy = true;
+		message = (await addAlarm(fields)) ?? '';
+		busy = false;
+		return !message;
+	}
+
 	async function add(event: SubmitEvent) {
 		event.preventDefault();
-		busy = true;
-		message = (await addAlarm({ at, label, tone, repeat, duration_minutes: duration })) ?? '';
-		if (!message) {
+		const ok = await start({ at, label, tone, repeat, duration_minutes: Number(duration) });
+		if (ok) {
 			label = '';
 			at = '';
 		}
-		busy = false;
 	}
 </script>
 
@@ -58,98 +68,105 @@
 	<title>Alarms - ADHD Tasker</title>
 </svelte:head>
 
-<PageFrame title="Alarms" {sections}>
-	<Card.Root id="alarms" class="scroll-mt-6">
-		<Card.Header>
-			<Card.Title>Alarms</Card.Title>
-			<Card.Description
-				>They ring on the Now screen while the app is open. The assistant can set alarms too, you
-				can cancel any of them here.</Card.Description
-			>
-		</Card.Header>
-		<Card.Content class="space-y-5">
-			{#if tasker.schedule.alarms.length === 0}
-				<p class="text-muted-foreground">No alarms.</p>
-			{:else}
-				<ul class="flex flex-col gap-3">
-					{#each tasker.schedule.alarms as alarm (alarm.id)}
-						<li class="flex items-start justify-between gap-3">
-							<div class="min-w-0">
-								<div class="break-words">{alarm.label}</div>
-								<div class="text-muted-foreground text-sm">
-									{clock.format(alarm.fireAt)}{alarm.repeat === 'none'
-										? ''
-										: `, ${REPEAT_TEXT[alarm.repeat]}`}, set by {alarm.createdBy === 'agent'
-										? 'the assistant'
-										: 'you'}
-								</div>
+{#snippet list(title: string, alarms: typeof tasker.schedule.alarms, format: Intl.DateTimeFormat)}
+	{#if alarms.length}
+		<section aria-label={title} class="space-y-2">
+			<h2 class="text-muted-foreground text-sm font-medium">{title}</h2>
+			<ul class="flex flex-col gap-3">
+				{#each alarms as alarm (alarm.id)}
+					<li class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<div class="break-words">{alarm.label}</div>
+							<div class="text-muted-foreground text-sm">
+								{format.format(alarm.fireAt)}{alarm.repeat === 'none'
+									? ''
+									: `, ${REPEAT_TEXT[alarm.repeat]}`}{alarm.createdBy === 'agent'
+									? ', by the assistant'
+									: ''}
 							</div>
-							<Button variant="ghost" size="sm" onclick={() => removeEntry(alarm.id)}>Cancel</Button
-							>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+						</div>
+						<Button variant="ghost" size="sm" onclick={() => cancelAlarm(alarm)}>Cancel</Button>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
+{/snippet}
 
-			<form class="space-y-3" onsubmit={add}>
-				<div class="flex flex-wrap items-center gap-2">
-					<Input type="time" bind:value={at} required class="w-32" aria-label="Time" />
-					<Input
-						bind:value={label}
-						required
-						maxlength={60}
-						placeholder="What is it for"
-						class="min-w-40 flex-1"
-						aria-label="Label"
+<PageFrame title="Alarms" subtitle="They ring on the Now screen while the app is open.">
+	<div class="space-y-6">
+		<section aria-label="Timers" class="space-y-2">
+			<h2 class="font-medium">Timer</h2>
+			<div class="flex flex-wrap gap-2">
+				{#each QUICK_TIMERS as timer (timer.minutes)}
+					<Button
+						variant="secondary"
+						class="min-h-11 md:min-h-8"
+						disabled={busy}
+						onclick={() => start(timerFields(timer.minutes))}>{timer.label}</Button
+					>
+				{/each}
+			</div>
+		</section>
+
+		<form class="space-y-3" onsubmit={add}>
+			<h2 class="font-medium">Alarm</h2>
+			<div class="flex flex-wrap items-center gap-2">
+				<Input type="time" bind:value={at} required class="h-11 w-32 md:h-8" aria-label="Time" />
+				<Input
+					bind:value={label}
+					required
+					maxlength={SCHEDULE_LIMITS.maxLabel}
+					placeholder="What is it for"
+					class="h-11 min-w-40 flex-1 md:h-8"
+					aria-label="Label"
+				/>
+				<Button type="submit" disabled={busy} class="min-h-11 md:min-h-8">Add</Button>
+			</div>
+			<details class="text-sm">
+				<summary class="text-muted-foreground cursor-pointer py-2"
+					>Options: {toneLabel(tone)}, {REPEAT_TEXT[repeat]}, rings {duration} min</summary
+				>
+				<div class="flex flex-wrap items-center gap-2 pt-2">
+					<OptionSelect
+						bind:value={tone}
+						label="Tone"
+						class="w-36"
+						options={TONE_NAMES.map((name) => ({ value: name, label: toneLabel(name) }))}
+					/>
+					<Button
+						type="button"
+						variant="secondary"
+						size="icon"
+						aria-label="Play the tone"
+						title="Play the tone"
+						onclick={() => playTone(tone)}><Play /></Button
+					>
+					<OptionSelect
+						bind:value={repeat}
+						label="Repeat"
+						class="w-36"
+						options={REPEATS.map((option) => ({ value: option, label: REPEAT_TEXT[option] }))}
+					/>
+					<OptionSelect
+						bind:value={duration}
+						label="Rings for"
+						class="w-40"
+						options={DURATIONS.map((minutes) => ({
+							value: String(minutes),
+							label: `Rings ${minutes} min`
+						}))}
 					/>
 				</div>
-				<div class="flex flex-wrap items-center gap-2">
-					<select bind:value={tone} class={select} aria-label="Tone">
-						{#each TONE_NAMES as name (name)}<option value={name}>{TONE_TEXT[name]}</option>{/each}
-					</select>
-					<Button type="button" variant="secondary" size="sm" onclick={() => playTone(tone)}
-						>Preview</Button
-					>
-					<select bind:value={repeat} class={select} aria-label="Repeat">
-						{#each REPEATS as option (option)}<option value={option}>{REPEAT_TEXT[option]}</option
-							>{/each}
-					</select>
-					<select bind:value={duration} class={select} aria-label="Rings for">
-						{#each DURATIONS as minutes (minutes)}<option value={minutes}
-								>Rings for {minutes} min</option
-							>{/each}
-					</select>
-				</div>
-				{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
-				<Button type="submit" disabled={busy}>Add alarm</Button>
-			</form>
-		</Card.Content>
-	</Card.Root>
+			</details>
+			{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
+		</form>
 
-	{#if tasker.schedule.wakeups.length}
-		<Card.Root id="wakeups" class="mt-4 scroll-mt-6">
-			<Card.Header>
-				<Card.Title>Assistant wakeups</Card.Title>
-				<Card.Description
-					>Times the assistant chose to look at your plan again. Nothing rings, it only reacts
-					within its usual limits.</Card.Description
-				>
-			</Card.Header>
-			<Card.Content>
-				<ul class="flex flex-col gap-3">
-					{#each tasker.schedule.wakeups as wakeup (wakeup.id)}
-						<li class="flex items-start justify-between gap-3">
-							<div class="min-w-0">
-								<div class="break-words">{wakeup.note}</div>
-								<div class="text-muted-foreground text-sm">{clock.format(wakeup.fireAt)}</div>
-							</div>
-							<Button variant="ghost" size="sm" onclick={() => removeEntry(wakeup.id)}
-								>Cancel</Button
-							>
-						</li>
-					{/each}
-				</ul>
-			</Card.Content>
-		</Card.Root>
-	{/if}
+		{#if tasker.schedule.alarms.length === 0}
+			<p class="text-muted-foreground">No alarms.</p>
+		{:else}
+			{@render list('Today', groups.today, time)}
+			{@render list('Later', groups.later, dayTime)}
+		{/if}
+	</div>
 </PageFrame>
