@@ -11,7 +11,9 @@ export type StoreName =
 	| 'cards'
 	| 'schedule'
 	| 'usage'
-	| 'settings';
+	| 'settings'
+	/** In the separate sounds database (`sounds.ts`), not in the plan's. */
+	| 'sounds';
 
 /** One step takes the database from version n to n + 1. Steps are only ever appended, never edited. */
 export type UpgradeStep = (db: IDBDatabase, tx: IDBTransaction) => void;
