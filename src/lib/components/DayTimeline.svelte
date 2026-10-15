@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { Bell, BellOff, Check, ChevronDown, ChevronUp, TriangleAlert } from '@lucide/svelte';
-	import type { AlarmDayState } from '#lib/alarmview.js';
+	import { Check, ChevronDown, ChevronUp, TriangleAlert, X } from '@lucide/svelte';
+	import { tasker, type Alarm } from '#lib/app.svelte.js';
+	import { alarmStatus, stackCards, type AlarmDayState, type DayAlarm } from '#lib/alarmview.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
 	import { TaskStatus, type Task } from '#lib/types.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import {
@@ -31,16 +33,23 @@
 	const COMPACT_MIN_BLOCK_PX = 18;
 	/** Height of the thin row that holds the hours outside the day. */
 	const ROW_PX = 32;
-	/** Line and chip per alarm state. The words say it too: the chip of an alarm that is off ends in ", off". */
+	/** Height of one alarm card in the lane beside the grid. */
+	const CARD_PX = 48;
+	/** Strong when the alarm rings this day, dashed and soft on other days, grey when off. The card says it in words too. */
 	const ALARM_LINE: Record<AlarmDayState, string> = {
 		'on-day': 'border-primary',
 		'other-day': 'border-primary/40 border-dashed',
 		off: 'border-muted-foreground/40 border-dashed'
 	};
-	const ALARM_CHIP: Record<AlarmDayState, string> = {
-		'on-day': 'bg-primary text-primary-foreground',
-		'other-day': 'border border-primary/40 bg-background text-foreground/75',
-		off: 'border bg-muted text-muted-foreground'
+	const ALARM_CARD: Record<AlarmDayState, string> = {
+		'on-day': 'border-l-primary bg-primary/15',
+		'other-day': 'border-l-primary/35 bg-background text-foreground/75',
+		off: 'border-l-muted-foreground/30 bg-muted text-muted-foreground'
+	};
+	const CONNECTOR: Record<AlarmDayState, string> = {
+		'on-day': 'stroke-primary',
+		'other-day': 'stroke-primary/40',
+		off: 'stroke-muted-foreground/40'
 	};
 
 	let {
@@ -49,6 +58,8 @@
 		now,
 		showNow,
 		alarms = [],
+		onAlarmSwitch,
+		onAlarmCancel,
 		highlight = null,
 		compact = false,
 		day = MY_DAY,
@@ -63,8 +74,10 @@
 		/** Minutes since midnight, drawn as a line when `showNow` is set. */
 		now: number;
 		showNow: boolean;
-		/** Alarms drawn as lines at their clock time (minutes since midnight). */
-		alarms?: { id: number; label: string; minutes: number; state: AlarmDayState }[];
+		/** The alarms with how they relate to this day (`dayPanelAlarms`). With `onAlarmSwitch` they get a lane beside the grid. */
+		alarms?: DayAlarm[];
+		onAlarmSwitch?: (alarm: Alarm, enabled: boolean) => void;
+		onAlarmCancel?: (alarm: Alarm) => void;
 		/** A task that was just added: scrolled into view and outlined. */
 		highlight?: number | null;
 		/** Fit the whole shown day on the screen when it can, otherwise the usual hour height. */
@@ -134,6 +147,27 @@
 	});
 	const MIN_BLOCK_PX = $derived(compact ? COMPACT_MIN_BLOCK_PX : COMFY_MIN_BLOCK_PX);
 	const px = (offset: number) => ((offset - from) / 60) * hourPx;
+	// An alarm in the folded night stays at the top edge until the night is opened
+	const cards = $derived.by(() => {
+		const sorted = alarms
+			.map((row) => ({ row, y: px(Math.min(Math.max(off(row.minutes), from), to)) }))
+			.sort((a, b) => a.y - b.y || a.row.alarm.id - b.row.alarm.id);
+		const tops = stackCards(
+			sorted.map((card) => card.y),
+			CARD_PX
+		);
+		return sorted.map((card, i) => ({ ...card, top: tops[i] }));
+	});
+	/** The lane may need more height than the hours when many alarms are close together. */
+	const bodyPx = $derived(Math.max(px(to), ...cards.map((card) => card.top + CARD_PX + 4), 0));
+	const dayName = $derived(
+		new Intl.DateTimeFormat(undefined, {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			timeZone: tasker.timezone ?? undefined
+		})
+	);
 	/** Where the day ends on this side of midnight: a block drawn there stays on its side. */
 	const sideEnd = (offset: number) => (offset < midnight ? midnight : DAY_MINUTES);
 	const sideStart = (offset: number) => (offset < midnight ? 0 : midnight);
@@ -358,7 +392,12 @@
 		</button>
 	{/if}
 
-	<div class="grid grid-cols-[3.5rem_1fr]" style="height: {px(to)}px">
+	<div
+		class="grid {onAlarmSwitch
+			? 'grid-cols-[3.5rem_1fr_13rem] xl:grid-cols-[3.5rem_1fr_17rem]'
+			: 'grid-cols-[3.5rem_1fr]'}"
+		style="height: {bodyPx}px"
+	>
 		<div class="relative border-r">
 			{#each hours as hour (hour)}
 				<span
@@ -399,6 +438,17 @@
 				<div
 					class="border-border/30 pointer-events-none absolute inset-x-0 border-t border-dashed"
 					style="top: {px(hour * 60 + 30)}px"
+				></div>
+			{/each}
+
+			{#each cards as card (card.row.alarm.id)}
+				<!-- One hairline across the whole width, over the tasks so it never disappears behind one, thin and see-through so their text stays readable -->
+				<div
+					class="pointer-events-none absolute inset-x-0 z-10 border-t opacity-70 {ALARM_LINE[
+						card.row.state
+					]}"
+					style="top: {card.y}px"
+					aria-hidden="true"
 				></div>
 			{/each}
 
@@ -515,29 +565,6 @@
 				</div>
 			{/if}
 
-			<!-- Alarms at their clock time: strong when they ring this day, dashed and soft on other days, grey when off -->
-			{#each alarms as { id, label, minutes, state } (id)}
-				{#if off(minutes) >= from && off(minutes) <= to}
-					<div
-						class="pointer-events-none absolute inset-x-0 z-10 flex items-center"
-						style="top: {px(off(minutes))}px"
-					>
-						<div class="h-0 flex-1 border-t-2 {ALARM_LINE[state]}" aria-hidden="true"></div>
-						<span
-							class="mr-1 flex max-w-[45%] items-center gap-1 rounded-full px-2 py-0.5 text-xs {ALARM_CHIP[
-								state
-							]}"
-						>
-							{#if state === 'off'}<BellOff class="size-3 shrink-0" />{:else}<Bell
-									class="size-3 shrink-0"
-								/>{/if}
-							<span class="tabular shrink-0">{formatClock(minutes)}</span>
-							<span class="truncate">{label}{state === 'off' ? ', off' : ''}</span>
-						</span>
-					</div>
-				{/if}
-			{/each}
-
 			<!-- What is past on today is dimmed, so what is left of the day shows at a glance -->
 			{#each past as { a, b } (a)}
 				<div
@@ -556,5 +583,58 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- The alarms of this day in a lane that scrolls with the plan, each joined to its line by a connector -->
+		{#if onAlarmSwitch}
+			<div class="relative border-l" aria-label="Alarms">
+				<svg
+					class="pointer-events-none absolute top-0 left-0 w-3"
+					height={bodyPx}
+					aria-hidden="true"
+				>
+					{#each cards as card (card.row.alarm.id)}
+						<path
+							d="M0 {card.y} L12 {card.top + CARD_PX / 2}"
+							fill="none"
+							stroke-width="2"
+							class={CONNECTOR[card.row.state]}
+						/>
+					{/each}
+				</svg>
+				{#each cards as { row, top } (row.alarm.id)}
+					<div
+						class="absolute right-1 left-3 flex items-center gap-2 rounded-lg border border-l-4 px-2 {ALARM_CARD[
+							row.state
+						]}"
+						style="top: {top}px; height: {CARD_PX}px"
+					>
+						<div class="min-w-0 flex-1">
+							<div class="flex items-baseline gap-2">
+								<span class="tabular text-sm font-semibold">{formatClock(row.minutes)}</span>
+								<span class="truncate text-sm">{row.alarm.label}</span>
+							</div>
+							<div class="text-muted-foreground truncate text-xs">
+								{alarmStatus(row.alarm, row.state, dayName.format(row.alarm.fireAt))}
+							</div>
+						</div>
+						<Switch
+							size="sm"
+							checked={row.alarm.enabled}
+							onCheckedChange={(value) => onAlarmSwitch(row.alarm, value)}
+							aria-label="{row.alarm.label} on or off"
+						/>
+						<button
+							type="button"
+							class="text-muted-foreground hover:text-foreground -mr-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-md"
+							aria-label="Cancel {row.alarm.label}"
+							title="Cancel"
+							onclick={() => onAlarmCancel?.(row.alarm)}
+						>
+							<X class="size-4" />
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
 </div>

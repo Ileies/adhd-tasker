@@ -83,7 +83,6 @@ src/
 ├── routes/
 │   ├── +page.svelte            Now screen
 │   ├── edit/                   Plan screen and task CRUD API
-│   ├── alarms/                 Alarms, tone preview, display device
 │   ├── activity/               What the assistant changed and saw
 │   ├── settings/               Theme, timezone, OpenAI key, agent, Google services, Calendar, your data
 │   ├── calendar/, account/     Calendar and account move API

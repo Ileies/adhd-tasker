@@ -100,3 +100,27 @@ export function dayPanelAlarms(
 				a.alarm.id - b.alarm.id
 		);
 }
+
+/**
+ * Where cards that each want the vertical middle `wanted[i]` (px, ascending) are put so they do not overlap:
+ * a card that would cover the one above is pushed down. Returns the top of every card.
+ */
+export function stackCards(wanted: number[], height: number, gap = 4): number[] {
+	let free = 0;
+	return wanted.map((middle) => {
+		const top = Math.max(free, middle - height / 2);
+		free = top + height + gap;
+		return top;
+	});
+}
+
+/** The words that say the state of an alarm for one day, so color is never the only cue. `dayLabel` names the next ring. */
+export function alarmStatus(alarm: Alarm, state: AlarmDayState, dayLabel: string): string {
+	if (state === 'off') return 'Off';
+	if (state === 'on-day')
+		return alarm.repeat === 'none' ? 'Rings this day' : 'Rings this day, repeats';
+	return alarm.repeat === 'weekdays' ? 'Not on weekends' : `Next ${dayLabel}`;
+}
+
+/** One alarm and how it relates to the day shown. */
+export type DayAlarm = ReturnType<typeof dayPanelAlarms>[number];

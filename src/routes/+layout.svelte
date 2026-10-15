@@ -252,7 +252,6 @@
 					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content align="end" class="w-64">
-					<DropdownMenu.Item onSelect={() => goto('/alarms')}>Alarms</DropdownMenu.Item>
 					<DropdownMenu.Item onSelect={() => goto('/activity')}>
 						Assistant activity
 					</DropdownMenu.Item>

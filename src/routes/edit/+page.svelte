@@ -2,7 +2,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { Check, Plus, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
 	import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
-	import { addAlarm, loadSchedule } from '#lib/alarms.js';
+	import { addAlarm, cancelAlarm, loadSchedule, switchAlarm } from '#lib/alarms.js';
 	import { dayPanelAlarms } from '#lib/alarmview.js';
 	import { quickAlarmFields, quickAlarmPreview } from '#lib/quickalarm.js';
 	import SegmentedControl from '#lib/components/SegmentedControl.svelte';
@@ -17,7 +17,7 @@
 		showToast,
 		updateTask
 	} from '#lib';
-	import { tasker } from '#lib/app.svelte.js';
+	import { tasker, type Alarm } from '#lib/app.svelte.js';
 	import { minutesNow, todayIn } from '#lib/time.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import { DAY_MINUTES, SNAP, overlapLine, phoneGroups } from '#lib/plan.js';
@@ -29,7 +29,6 @@
 	import { joinHeard } from '#lib/taskform.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
-	import AlarmPanel from '#lib/components/AlarmPanel.svelte';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -51,14 +50,19 @@
 		else clearFlag('compactPlan');
 	}
 	onMount(() => void loadSchedule().catch(() => {}));
-	// The alarms stand in the day at their clock time
-	const alarmMarkers = $derived(
+	// The alarms stand in the day: a line at their time and a card in the lane beside it
+	const alarmRows = $derived(
 		dayPanelAlarms(
 			tasker.schedule.alarms,
 			selected,
 			tasker.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
-		).map(({ alarm, state, minutes }) => ({ id: alarm.id, label: alarm.label, minutes, state }))
+		)
 	);
+
+	async function switchAlarmFor(alarm: Alarm, enabled: boolean) {
+		const failure = await switchAlarm(alarm, enabled);
+		if (failure) showToast(failure);
+	}
 	let quick = $state('');
 	let quickInput: HTMLInputElement | null = $state(null);
 	/** The block that was just added: scrolled into view and outlined for a moment. */
@@ -176,9 +180,12 @@
 		event.preventDefault();
 		if (mode === 'alarm') {
 			if (!alarmFields) return;
+			// Read the preview before the field is cleared, it is derived from the field
+			const when = alarmPreview?.replace(/^Rings /, '');
+			const label = alarmFields.label;
 			const failure = await addAlarm(alarmFields);
 			if (!failure) quick = '';
-			showToast(failure ?? `Alarm set: ${alarmPreview?.replace(/^Rings /, '')}`);
+			showToast(failure ?? `Alarm set: ${label} ${when}`);
 			return;
 		}
 		const text = quick;
@@ -360,28 +367,24 @@
 
 	<div class="min-h-0 flex-1">
 		<!-- Wide screens: timeline with drag and resize -->
-		<div class="hidden h-full md:flex">
-			<div class="h-full min-w-0 flex-1">
-				<DayTimeline
-					date={selected}
-					tasks={dayTasks}
-					{now}
-					showNow={selected === today}
-					alarms={alarmMarkers}
-					{highlight}
-					{compact}
-					day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
-					onEdit={openEditForm}
-					onAdd={addBlock}
-					onMove={move}
-					onResize={resize}
-					onToggle={toggle}
-				/>
-			</div>
-			<!-- Wide screens only: the alarms of this day beside the plan -->
-			<div class="hidden h-full w-80 shrink-0 border-l xl:block 2xl:w-96">
-				<AlarmPanel date={selected} />
-			</div>
+		<div class="hidden h-full md:block">
+			<DayTimeline
+				date={selected}
+				tasks={dayTasks}
+				{now}
+				showNow={selected === today}
+				alarms={alarmRows}
+				onAlarmSwitch={switchAlarmFor}
+				onAlarmCancel={cancelAlarm}
+				{highlight}
+				{compact}
+				day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
+				onEdit={openEditForm}
+				onAdd={addBlock}
+				onMove={move}
+				onResize={resize}
+				onToggle={toggle}
+			/>
 		</div>
 
 		<!-- Phones: the same day as a plain list -->

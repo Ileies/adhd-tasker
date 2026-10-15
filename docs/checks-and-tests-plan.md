@@ -115,7 +115,7 @@ Playwright, deliberately small: only what no other layer can see. Specs are name
 2. Done gives feedback and is undoable: Done moves the hero on and shows the Undo toast; Undo brings the task back; after a reload the screen matches (catches the D4 class).
 3. Quick add on Plan: "Call mom at 14:00 for 30m" lands at 14:00 and survives a reload.
 4. Guest: on a clean browser `/` shows the first run and no task data, the page sends no request to a task API, a task added through quick add is kept in IndexedDB across a reload, and `/edit?date=` answers 401 to a plain request.
-5. Hydration smoke: `/`, `/edit`, `/alarms`, `/activity`, `/settings`, `/about`, `/privacy` and `/terms` load with no console error and no failed request.
+5. Hydration smoke: `/`, `/edit`, `/activity`, `/settings`, `/about`, `/privacy` and `/terms` load with no console error and no failed request.
 6. Accessibility: `@axe-core/playwright` on Now in light and dark reports no serious or critical violation, which guards the WCAG AA contrast goal of the urgency colors.
 
 **NixOS.** Browsers downloaded by Playwright do not run on NixOS. Locally the browsers come from nixpkgs `playwright-driver.browsers` through a project `flake.nix` dev shell, loaded by `.envrc` with `use flake` (add `!.envrc` to `.gitignore`), which sets `PLAYWRIGHT_BROWSERS_PATH` and `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true`. `@playwright/test` must be pinned to the exact version of nixpkgs' `playwright-driver`; bump both together. The e2e run is not part of `verify` (it needs browsers and takes 30 to 60 s): it runs in CI on every push and locally with `bun run test:e2e` (`"test:e2e": "playwright test"`).

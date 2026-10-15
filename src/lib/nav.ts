@@ -2,7 +2,6 @@
 
 const TITLES: [string, string][] = [
 	['/edit', 'Plan'],
-	['/alarms', 'Alarms'],
 	['/activity', 'Assistant activity'],
 	['/settings', 'Settings'],
 	['/about', 'About'],

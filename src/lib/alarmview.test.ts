@@ -4,6 +4,8 @@ import type { Alarm } from '#lib/app.svelte.js';
 import {
 	QUICK_TIMERS,
 	alarmDayState,
+	alarmStatus,
+	stackCards,
 	dayPanelAlarms,
 	groupAlarms,
 	restoreFields,
@@ -156,5 +158,31 @@ describe('dayPanelAlarms', () => {
 			[1, 'off']
 		]);
 		expect(listed[0].minutes).toBe(450);
+	});
+});
+
+describe('stackCards', () => {
+	test('a card sits centered on its time when there is room', () => {
+		expect(stackCards([100, 300], 40)).toEqual([80, 280]);
+	});
+
+	test('cards that would overlap are pushed down in order', () => {
+		expect(stackCards([100, 105, 110], 40, 4)).toEqual([80, 124, 168]);
+	});
+
+	test('the first card never goes above the top', () => {
+		expect(stackCards([5], 40)).toEqual([0]);
+	});
+});
+
+describe('alarmStatus', () => {
+	test.each([
+		['on-day', 'none', 'Rings this day'],
+		['on-day', 'daily', 'Rings this day, repeats'],
+		['off', 'daily', 'Off'],
+		['other-day', 'weekdays', 'Not on weekends'],
+		['other-day', 'none', 'Next Fri, Oct 16']
+	] as const)('%s with repeat %s says "%s"', (state, repeat, text) => {
+		expect(alarmStatus(alarm(0, { repeat }), state, 'Fri, Oct 16')).toBe(text);
 	});
 });
