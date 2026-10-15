@@ -1,5 +1,6 @@
 import { Priority, TaskStatus } from '#lib/types.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
+import type { ExportFile } from '#lib/core/export.js';
 import type { EventOrigin, EventType } from '#lib/events.js';
 import type { Autonomy } from '#lib/guardrails.js';
 import type { Repeat, ScheduleKind } from '#lib/schedule.js';
@@ -128,6 +129,21 @@ export const aiUsage = sqliteTable('ai_usage', {
 	use: text('use').notNull(), // chat | reaction | replan
 	tokens: integer('tokens').notNull(),
 	createdAt: integer('created_at').notNull()
+});
+
+/**
+ * The account's plan as it was before a move from a device or a restore replaced it, in the export format,
+ * so it can be brought back for 30 days. The counts are kept beside the file to list snapshots cheaply.
+ */
+export const planSnapshots = sqliteTable('plan_snapshots', {
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+	email: text('email')
+		.references(() => users.email, { onDelete: 'cascade' })
+		.notNull(),
+	createdAt: integer('created_at').notNull(), // ms since epoch
+	taskCount: integer('task_count').notNull(),
+	alarmCount: integer('alarm_count').notNull(),
+	file: text('file', { mode: 'json' }).$type<ExportFile>().notNull()
 });
 
 // Only for Google Calendar
