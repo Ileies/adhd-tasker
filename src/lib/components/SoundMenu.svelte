@@ -45,8 +45,8 @@
 
 		<Separator class="-mx-1 my-1 w-auto" />
 
-		<div class="space-y-2 px-1.5 py-1">
-			<span class="text-sm" id="volume-label">Volume</span>
+		<div class="text-muted-foreground flex items-center gap-2 px-1.5 py-2">
+			<VolumeX class="size-4 shrink-0" aria-hidden="true" />
 			<Slider
 				type="single"
 				min={0}
@@ -54,8 +54,9 @@
 				step={5}
 				value={tasker.isMuted ? 0 : tasker.volume}
 				onValueChange={setVolume}
-				aria-labelledby="volume-label"
+				aria-label="Volume"
 			/>
+			<Volume2 class="size-4 shrink-0" aria-hidden="true" />
 		</div>
 	</Popover.Content>
 </Popover.Root>
