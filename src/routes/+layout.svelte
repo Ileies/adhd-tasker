@@ -15,11 +15,8 @@
 	import MoveScreen from '#lib/components/MoveScreen.svelte';
 	import { beginGuest, useAccount } from '#lib/mode.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
-	import { shortcutFor } from '#lib/shortcuts.js';
 	import { pageTitle, place } from '#lib/nav.js';
-	import { muteFor, setMuted } from '#lib/theme.js';
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
-	import KeyboardHelp from '#lib/components/KeyboardHelp.svelte';
 	import DaySwitcher from '#lib/components/DaySwitcher.svelte';
 	import { loadFlags } from '#lib/welcome.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
@@ -164,32 +161,12 @@
 
 	const current = $derived(place(page.url.pathname));
 	const title = $derived(pageTitle(page.url.pathname));
-	let helpOpen = $state(false);
-
-	function shortcut(event: KeyboardEvent) {
-		const action = shortcutFor(event);
-		if (action === 'now') void goto('/');
-		else if (action === 'plan') void goto('/edit');
-		else if (action === 'assistant' && tasker.settings.hasOpenaiKey) tasker.assistant.open = true;
-		else if (action === 'mute') {
-			if (tasker.isMuted) setMuted(false);
-			else muteFor(null);
-		} else if (action === 'fullscreen') void toggleFullscreen();
-	}
 </script>
 
-<svelte:window
-	onpointermove={activity}
-	onpointerdown={activity}
-	onkeydown={(event) => {
-		activity();
-		shortcut(event);
-	}}
-/>
+<svelte:window onpointermove={activity} onpointerdown={activity} onkeydown={activity} />
 <svelte:document onfullscreenchange={() => (isFullscreen = !!document.fullscreenElement)} />
 
 <TimezoneDialog />
-<KeyboardHelp bind:open={helpOpen} />
 <UndoToast />
 <AlarmBanner />
 <AssistantDrawer hasKey={tasker.settings.hasOpenaiKey} />
@@ -259,11 +236,7 @@
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item onSelect={toggleFullscreen}>
 						{isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-						<DropdownMenu.Shortcut>F</DropdownMenu.Shortcut>
 					</DropdownMenu.Item>
-					<DropdownMenu.Item onSelect={() => (helpOpen = true)}
-						>Keyboard shortcuts</DropdownMenu.Item
-					>
 					<DropdownMenu.Separator />
 					{#if data.user}
 						<DropdownMenu.Label class="truncate">{data.user.email}</DropdownMenu.Label>

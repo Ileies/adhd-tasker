@@ -7,7 +7,7 @@ Status: decided, ready to implement, re-read against the code on 2026-10-15 afte
 - a shared page frame (`PageFrame.svelte`), a title on every page, failure toasts above dialogs, an error page
 - **phase 10, first run** (`Welcome.svelte`, `welcome.ts`, `firstrun.ts`, `core/sample.ts`): no theme question, a welcome with a live example and a sample day, an empty day that asks for the first task, the one time second screen hint, `/about`
 - **auto-save in settings** (`autosave.ts`, `PUT /settings`, "Saved." next to the control): the per-card Save buttons are gone, only the OpenAI key keeps an explicit Save
-- **phase 3, navigation** (`SoundMenu.svelte`, `KeyboardHelp.svelte`, `shortcuts.ts`, `mute.ts`, `nav.ts`): the Now/Plan switch, the context slot, the sound popover with timed mute, Fullscreen and Keyboard shortcuts in the menu, the assistant icon only with a key. Keys `1`, `2`, `A`, `M`, `F` work, the page keys and the Plan day switcher came with phase 6
+- **phase 3, navigation** (`SoundMenu.svelte`, `mute.ts`, `nav.ts`): the Now/Plan switch, the context slot, the sound popover with timed mute, Fullscreen and Keyboard shortcuts in the menu, the assistant icon only with a key. the Plan day switcher came with phase 6
 - **phase 4, rail and phone Now** (`rail.ts`, `UpcomingRail.svelte`, `MissedTriage.svelte`): "3 done today" under the clock, tappable next items with their time range, the next alarm line, one "N tasks need a decision" line that opens a triage sheet (Done, Later today, Tomorrow, Drop), sticky actions and an "assistant note" link in the hero on phones
 - **phase 6, Plan** (`DaySwitcher.svelte`, `DayTimeline.svelte`, `plan.ts`, `quickadd.ts`): the day switcher in the bar (`tasker.plan.date`), a full width quick add line with a live preview and a new block outlined for 2 s, 30 min everywhere, past time dimmed, hours outside 07:00 to 23:00 folded (the My day setting comes with phase 8), drag on empty space to draw a block titled in place, focusable blocks (Enter opens, Up and Down move, Shift resizes), named overlaps, a grouped phone list with quick add at the bottom, keys `D`, `N`, `/`, Left, Right, `T`. Not built: the agent marker on blocks, a calendar grid in the day popover
 - **phase 5, colors and system** (`urgency.ts`, `ui/button`): one priority ramp on the urgency tokens for chips, timeline blocks and the meter (High and Urgent share orange and differ by label and bars), buttons and icon buttons at least 44 px on phones, sentence case
@@ -77,20 +77,9 @@ Two primary places and one tool, everything else is secondary:
 - **Fullscreen** leaves the bar (tier 4: once per session). Menu item plus the `F` key.
 - The bar keeps auto-hiding on Now after 5 s. Logged out is guest mode: the bar is the same, nothing redirects. Today a guest sees the same menu entries as an account, and Activity opens for a guest too (the guest agent runs in the leading tab and logs to the device), so nothing is hidden. Keep it that way unless a page turns out to have nothing to show a guest.
 
-### Keyboard (desktop, shown under Menu > Keyboard shortcuts)
+### Keyboard
 
-| Key                   | Action                                          |
-| --------------------- | ----------------------------------------------- |
-| `1` / `2`             | Now / Plan                                      |
-| `D`                   | Done (Now)                                      |
-| `N` or `/`            | Focus quick add (Plan, and Now on an empty day) |
-| `Left` / `Right`, `T` | Previous / next day, today (Plan)               |
-| `A`                   | Open the assistant                              |
-| `M`                   | Mute or unmute                                  |
-| `F`                   | Fullscreen                                      |
-| `Esc`                 | Close whatever is open                          |
-
-Shortcuts are ignored while typing in a field. Pure key map in `src/lib/shortcuts.ts` (tested), wired once in the layout.
+No global shortcuts: the app is used with a mouse or on a phone. They were built in phase 3 and removed again (`shortcuts.ts`, `KeyboardHelp.svelte`). Arrow keys on a Plan block and Esc in dialogs stay.
 
 ## 4. Now screen
 

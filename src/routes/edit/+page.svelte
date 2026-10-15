@@ -12,7 +12,7 @@
 		updateTask
 	} from '#lib';
 	import { tasker } from '#lib/app.svelte.js';
-	import { addDays, minutesNow, todayIn } from '#lib/time.js';
+	import { minutesNow, todayIn } from '#lib/time.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import { DAY_MINUTES, SNAP, overlapLine, phoneGroups } from '#lib/plan.js';
 	import {
@@ -20,7 +20,6 @@
 		QUICK_START as DEFAULT_START,
 		quickPreview
 	} from '#lib/quickadd.js';
-	import { shortcutFor } from '#lib/shortcuts.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
@@ -172,25 +171,11 @@
 		void deleteTask(task);
 		showToast(`Deleted: ${task.title}`, () => createTask(rest));
 	}
-
-	// N or / go to the quick add line, the arrows and T change the day
-	function pageKey(event: KeyboardEvent) {
-		if (document.querySelector('[role="dialog"]')) return;
-		const action = shortcutFor(event);
-		if (action === 'quick') {
-			event.preventDefault();
-			quickInput?.focus();
-		} else if (action === 'previous') tasker.plan.date = addDays(selected, -1);
-		else if (action === 'next') tasker.plan.date = addDays(selected, 1);
-		else if (action === 'today') tasker.plan.date = today;
-	}
 </script>
 
 <svelte:head>
 	<title>Plan - ADHD Tasker</title>
 </svelte:head>
-
-<svelte:window onkeydown={pageKey} />
 
 {#snippet row(task: Task, current = false)}
 	{@const done = task.status === TaskStatus.Completed}
