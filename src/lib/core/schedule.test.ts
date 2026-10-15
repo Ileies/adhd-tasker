@@ -280,3 +280,156 @@ describe('runScheduleTool', () => {
 		});
 	});
 });
+
+describe('runScheduleTool limits', () => {
+	const run = async (
+		made: Awaited<ReturnType<typeof testCtx>>,
+		name: string,
+		args: unknown,
+		fromChat = false
+	) =>
+		runScheduleTool(made.ctx, await made.repo.settings.get(), name, JSON.stringify(args), fromChat);
+	const wakeup = (made: Awaited<ReturnType<typeof testCtx>>, at: number) =>
+		made.repo.schedule.insert({
+			kind: 'wakeup',
+			fireAt: at,
+			note: 'later',
+			createdBy: 'agent',
+			createdAt: NOW
+		});
+
+	test('a wakeup in quiet hours is refused unless the user asked in the chat', async () => {
+		const made = await testCtx();
+		const late = { in_minutes: 14 * 60, note: 'check in' }; // 23:00, inside 22:00 to 07:00
+		expect(await run(made, 'schedule_wakeup', late)).toMatchObject({
+			error: expect.stringContaining('quiet hours')
+		});
+		expect(await made.repo.schedule.pending()).toEqual([]);
+		expect(await run(made, 'schedule_wakeup', late, true)).toMatchObject({
+			scheduled: expect.any(String)
+		});
+	});
+
+	test('at most ten pending wakeups, the answer lists them', async () => {
+		const made = await testCtx();
+		for (let i = 0; i < SCHEDULE_LIMITS.maxWakeups; i++) await wakeup(made, NOW + (10 + i) * MIN);
+		const result = await run(made, 'schedule_wakeup', { in_minutes: 60, note: 'one more' });
+		expect(result).toMatchObject({ error: expect.stringContaining('at most 10') });
+		expect((result as { pending: string[] }).pending).toHaveLength(SCHEDULE_LIMITS.maxWakeups);
+	});
+
+	test('at most thirty alarms for the agent too', async () => {
+		const made = await testCtx();
+		for (let i = 0; i < SCHEDULE_LIMITS.maxAlarms; i++) await addUserAlarm(made.ctx, alarm, 'UTC');
+		expect(await run(made, 'set_alarm', alarm)).toMatchObject({
+			error: expect.stringContaining('at most 30 alarms')
+		});
+	});
+
+	test('custom tones are counted through usage and come back the next day', async () => {
+		const made = await testCtx();
+		const custom = { tone: { wave: 'sine', notes: [{ hz: 440, ms: 200, rest: null }] } };
+		for (let i = 0; i < 3; i++)
+			expect(await run(made, 'play_tone', custom)).toEqual({ played: true });
+		expect(await made.repo.usage.countSince('tone', 0)).toBe(3);
+		expect(await run(made, 'play_tone', custom)).toMatchObject({
+			error: expect.stringContaining('custom tones')
+		});
+		made.state.now = NOW + 24 * 60 * MIN;
+		expect(await run(made, 'play_tone', custom)).toEqual({ played: true });
+	});
+
+	test('a named tone never counts against the custom limit', async () => {
+		const made = await testCtx();
+		for (let i = 0; i < 5; i++)
+			expect(await run(made, 'play_tone', { tone: 'chime' })).toEqual({ played: true });
+		expect(await made.repo.usage.countSince('tone', 0)).toBe(0);
+	});
+
+	test('play_tone says so when no screen is open', async () => {
+		const made = await testCtx();
+		made.state.screens = 0;
+		expect(await run(made, 'play_tone', { tone: 'chime' })).toMatchObject({ played: false });
+	});
+
+	test('cancel_schedule of an entry that is not pending is "no such pending entry"', async () => {
+		const made = await testCtx();
+		expect(await run(made, 'cancel_schedule', { id: 999 })).toEqual({
+			error: 'no such pending entry'
+		});
+		const row = await addUserAlarm(made.ctx, alarm, 'UTC');
+		expect(await run(made, 'cancel_schedule', { id: row.id })).toMatchObject({
+			cancelled: expect.any(String)
+		});
+		expect(await run(made, 'cancel_schedule', { id: row.id })).toEqual({
+			error: 'no such pending entry'
+		});
+	});
+
+	test('broken arguments answer with an error for every tool', async () => {
+		const made = await testCtx();
+		const settings = await made.repo.settings.get();
+		for (const name of ['schedule_wakeup', 'set_alarm', 'play_tone', 'cancel_schedule'])
+			expect(await runScheduleTool(made.ctx, settings, name, '{', true)).toEqual({
+				error: 'arguments were not valid JSON'
+			});
+	});
+});
+
+describe('fireDue guarantees', () => {
+	test('a second call at the same moment rings nothing', async () => {
+		const { ctx, hints, state } = await testCtx();
+		await addUserAlarm(ctx, alarm, 'UTC');
+		state.now = NOW + 10 * MIN;
+		await fireDue(ctx, 'UTC');
+		hints.length = 0;
+		await fireDue(ctx, 'UTC');
+		expect(hints).toEqual([]);
+	});
+
+	test('a daily alarm keeps its local time across the end of daylight saving', async () => {
+		const start = Date.parse('2026-10-24T06:00:00Z'); // 08:00 in Berlin, the clocks go back that night
+		const { ctx, repo, state } = await testCtx({ now: start });
+		await addUserAlarm(
+			ctx,
+			{ at: '09:30', label: 'Meds', tone: 'chime', repeat: 'daily' },
+			'Europe/Berlin'
+		);
+		const [first] = await repo.schedule.pending();
+		expect(first.fireAt).toBe(Date.parse('2026-10-24T07:30:00Z'));
+		state.now = first.fireAt;
+		await fireDue(ctx, 'Europe/Berlin');
+		const [next] = await repo.schedule.pending();
+		expect(next.fireAt).toBe(Date.parse('2026-10-25T08:30:00Z')); // 09:30 again, 25 hours later
+	});
+
+	test('a failing announcement the first time does not make the alarm ring again', async () => {
+		const { ctx, repo, hints, state } = await testCtx();
+		await addUserAlarm(ctx, alarm, 'UTC');
+		state.now = NOW + 10 * MIN;
+		const original = ctx.hint;
+		ctx.hint = () => {
+			throw new Error('stream broke');
+		};
+		await fireDue(ctx, 'UTC').catch(() => {});
+		ctx.hint = original;
+		hints.length = 0;
+		await fireDue(ctx, 'UTC');
+		expect(hints.filter((hint) => hint.type === 'alarm')).toEqual([]);
+		expect(await repo.schedule.pending()).toEqual([]);
+	});
+
+	test('a wakeup is logged once under its own key', async () => {
+		const { ctx, repo, state } = await testCtx();
+		const row = await repo.schedule.insert({
+			kind: 'wakeup',
+			fireAt: NOW + MIN,
+			note: 'n',
+			createdBy: 'agent',
+			createdAt: NOW
+		});
+		state.now = NOW + MIN;
+		await fireDue(ctx, 'UTC');
+		expect((await repo.events.recent(5)).map((event) => event.key)).toEqual([`wakeup:${row.id}`]);
+	});
+});
