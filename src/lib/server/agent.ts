@@ -4,6 +4,7 @@ import { events, users } from '#lib/server/db/schema.js';
 import { prune, react, watch } from '#lib/core/agent.js';
 import { LIMITS } from '#lib/guardrails.js';
 import { serverCtx, setReactor } from '#lib/server/ctx.js';
+import { syncCalendars, syncedUsers } from '#lib/server/calendar.js';
 import { fireAllDue } from '#lib/server/schedule.js';
 
 const TICK_MS = 15_000;
@@ -31,6 +32,16 @@ function reactSoon(email: string) {
 }
 
 let lastPrune = 0;
+let lastCalendar = 0;
+const CALENDAR_SYNC_MS = 5 * 60_000;
+
+/** Follows the calendars of everyone who imported one. A user whose grant was dropped is unlinked by the sync. */
+async function syncCalendarsOfEveryone() {
+	for (const email of syncedUsers())
+		await syncCalendars(email, Date.now()).catch((error) =>
+			console.error('[agent] calendar sync failed for a user', error)
+		);
+}
 
 async function tick() {
 	await fireAllDue().catch((error) => console.error('[agent] firing the schedule failed', error));
@@ -48,6 +59,12 @@ async function tick() {
 	for (const { email } of stuck)
 		if (!waiting.has(email))
 			await reactFor(email).catch((error) => console.error('[agent] reaction failed', error));
+
+	// Not awaited: a slow Google must not hold up alarms and reactions
+	if (Date.now() - lastCalendar > CALENDAR_SYNC_MS) {
+		lastCalendar = Date.now();
+		void syncCalendarsOfEveryone();
+	}
 
 	if (Date.now() - lastPrune > 3_600_000) {
 		lastPrune = Date.now();
