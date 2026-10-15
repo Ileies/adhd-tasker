@@ -43,9 +43,6 @@
 		<Card.Root id="reminders" class="scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Reminders and sound</Card.Title>
-				<Card.Description
-					>Sounds that pull you back to the plan. They work without an OpenAI key.</Card.Description
-				>
 			</Card.Header>
 			<Card.Content>
 				<ReminderSettingsForm
@@ -63,9 +60,6 @@
 	<Card.Root id="appearance" class="mt-4 scroll-mt-6">
 		<Card.Header>
 			<Card.Title>Appearance</Card.Title>
-			<Card.Description
-				>Choose one theme, or switch automatically based on your local time.</Card.Description
-			>
 		</Card.Header>
 		<Card.Content>
 			<ThemePicker />
@@ -75,7 +69,6 @@
 	<Card.Root id="time" class="mt-4 scroll-mt-6">
 		<Card.Header>
 			<Card.Title>Time</Card.Title>
-			<Card.Description>Task times and the active task follow your timezone.</Card.Description>
 		</Card.Header>
 		<Card.Content class="space-y-6">
 			<TimezonePicker />
@@ -89,10 +82,6 @@
 		<Card.Root id="assistant" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Assistant</Card.Title>
-				<Card.Description>
-					Chat about your plan and let it notice what happens. It uses your own OpenAI key, and
-					everything else works without it.
-				</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-6">
 				<OpenAiKeyForm hasKey={settings.hasOpenaiKey} signedIn={!!data.user} />
@@ -123,11 +112,6 @@
 		<Card.Root id="account" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>{data.user ? 'Account and data' : 'Your data and sync'}</Card.Title>
-				<Card.Description>
-					{data.user
-						? 'Your account, Google Calendar and a copy of your data.'
-						: 'Sign in with Google to add sync and calendar. You do not need an account to use the app.'}
-				</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-6">
 				{#if data.user}

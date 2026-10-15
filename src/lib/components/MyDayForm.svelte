@@ -43,10 +43,6 @@
 			aria-label="My day ends"
 		/>
 	</div>
-	<p class="text-muted-foreground text-sm">
-		The hours Plan shows in full. The rest folds away, and a task placed there opens it. It is not
-		the same as the theme hours.
-	</p>
 	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 	{#if saved}<p class="text-success text-sm" role="status">Saved.</p>{/if}
 </form>

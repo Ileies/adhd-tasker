@@ -22,16 +22,9 @@
 			checked={replies}
 			onchange={save}
 		/>
-		<span>
-			<span class="font-medium">Speak replies and notes</span>
-			<span class="text-muted-foreground block text-sm">
-				Replies in the chat are read aloud in a short form. Notes the assistant puts on the Now
-				screen are spoken only on the display device. Muting silences it.
-			</span>
-		</span>
+		<span class="font-medium">Speak replies and notes</span>
 	</label>
 	<p class="text-muted-foreground text-sm">
-		Talking works in the assistant: hold the microphone button (or Space on it) and release to send.
 		Recordings and spoken text go to OpenAI with your key and are not kept.
 	</p>
 

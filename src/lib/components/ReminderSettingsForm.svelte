@@ -42,7 +42,6 @@
 <div class="space-y-6">
 	<div class="space-y-2">
 		<p class="font-medium">Check-in chime</p>
-		<p class="text-muted-foreground text-sm">A soft chime while a task is running.</p>
 		<PresetChips
 			label="Check-in chime interval"
 			options={chips(CHECK_IN_PRESETS, checkIn).map((o) => ({
@@ -62,12 +61,7 @@
 				checked={reminders}
 				onchange={(e) => put({ enableReminders: e.currentTarget.checked })}
 			/>
-			<span>
-				<span class="font-medium">Heads-up before the next task</span>
-				<span class="text-muted-foreground block text-sm"
-					>A soft chime and a note, so you can wrap up before it starts.</span
-				>
-			</span>
+			<span class="font-medium">Heads-up before the next task</span>
 		</label>
 		<div class="pl-7">
 			<PresetChips
@@ -88,13 +82,7 @@
 				checked={hyperfocus}
 				onchange={(e) => put({ hyperfocusAlarm: e.currentTarget.checked })}
 			/>
-			<span>
-				<span class="font-medium">Tap when a task runs over</span>
-				<span class="text-muted-foreground block text-sm"
-					>Two short taps when you are still on a task after its end. The assistant reacts after the
-					same time.</span
-				>
-			</span>
+			<span class="font-medium">Tap when a task runs over</span>
 		</label>
 		<div class="pl-7">
 			<PresetChips
@@ -114,18 +102,8 @@
 			checked={showClock}
 			onchange={(e) => put({ showClock: e.currentTarget.checked })}
 		/>
-		<span>
-			<span class="font-medium">Show the current time</span>
-			<span class="text-muted-foreground block text-sm"
-				>The time of day in the corner of the Now screen.</span
-			>
-		</span>
+		<span class="font-medium">Show the current time in the corner of the Now screen</span>
 	</label>
-
-	<p class="text-muted-foreground text-sm">
-		Sounds play on the display device and follow mute. Volume, mute and which screen plays sound are
-		in the sound menu in the top bar.
-	</p>
 
 	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 	{#if saved}<p class="text-success text-sm" role="status">Saved.</p>{/if}
