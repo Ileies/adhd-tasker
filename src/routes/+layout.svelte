@@ -16,7 +16,6 @@
 	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
 	import VolumeMenu from '#lib/components/VolumeMenu.svelte';
-	import SetupDialog from '#lib/components/SetupDialog.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
 	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -50,7 +49,7 @@
 		};
 	});
 
-	// Legal pages are read-only and public: no welcome dialog and no One Tap prompt in the way
+	// Legal pages are read-only and public: no One Tap prompt in the way
 	const legal = $derived(['/privacy', '/terms'].includes(page.url.pathname));
 
 	// The GSI script can scan the DOM before hydration, so close a prompt that is already showing
@@ -149,7 +148,6 @@
 <svelte:window onpointermove={activity} onpointerdown={activity} onkeydown={activity} />
 <svelte:document onfullscreenchange={() => (isFullscreen = !!document.fullscreenElement)} />
 
-{#if !legal}<SetupDialog />{/if}
 <TimezoneDialog />
 <UndoToast />
 <AlarmBanner />

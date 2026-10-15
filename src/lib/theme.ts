@@ -71,18 +71,6 @@ export function setMuted(muted: boolean) {
 	save('muted', String(muted));
 }
 
-export function isSetupDone(): boolean {
-	try {
-		return localStorage.getItem('setupDone') === 'true';
-	} catch {
-		return true;
-	}
-}
-
-export function finishSetup() {
-	save('setupDone', 'true');
-}
-
 /** Loads saved preferences into `tasker`, applies the theme and keeps daytime mode current. Returns a cleanup. */
 export function initPreferences() {
 	try {
