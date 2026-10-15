@@ -8,7 +8,14 @@ import {
 	type ExportedTask,
 	type ExportFile
 } from '#lib/core/export.js';
-import { comparePlans, isEmptyPlan, summarize } from '#lib/core/merge.js';
+import {
+	comparePlans,
+	describeBackup,
+	describeMove,
+	describeSnapshot,
+	isEmptyPlan,
+	summarize
+} from '#lib/core/merge.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
 const task = (date: string, startTime: number, duration: number, title = 'Task'): ExportedTask => ({
@@ -54,6 +61,38 @@ describe('isEmptyPlan', () => {
 		expect(isEmptyPlan(file([]))).toBe(true);
 		expect(isEmptyPlan(file([], [alarm]))).toBe(false);
 		expect(isEmptyPlan(file([task('2026-10-14', 540, 60)]))).toBe(false);
+	});
+});
+
+describe('describeMove', () => {
+	test('says what moved and what was already there', () => {
+		expect(describeMove({ tasks: 12, skipped: 0, alarms: 2, snapshotId: 1 })).toBe(
+			'Your plan is now in your account: 12 tasks and 2 alarms.'
+		);
+		expect(describeMove({ tasks: 1, skipped: 3, alarms: 0, snapshotId: 1 })).toBe(
+			'Your plan is now in your account: 1 task. 3 tasks already there, left alone.'
+		);
+	});
+});
+
+describe('describeSnapshot', () => {
+	test('names the day in the timezone given, and what the plan holds', () => {
+		const at = Date.UTC(2026, 9, 14, 23, 30);
+		expect(describeSnapshot({ id: 1, createdAt: at, tasks: 48, alarms: 3 }, 'UTC')).toBe(
+			'Restore the plan from before 14 Oct (48 tasks, 3 alarms)'
+		);
+		expect(describeSnapshot({ id: 1, createdAt: at, tasks: 1, alarms: 0 }, 'Asia/Tokyo')).toBe(
+			'Restore the plan from before 15 Oct (1 task)'
+		);
+	});
+});
+
+describe('describeBackup', () => {
+	test('names the day of the move and what the copy holds', () => {
+		const at = Date.UTC(2026, 9, 14, 12);
+		expect(describeBackup(file([task('2026-10-14', 540, 60)], [alarm]), at, 'UTC')).toBe(
+			'Restore the plan that moved into your account on 14 Oct (1 task, 1 alarm)'
+		);
 	});
 });
 

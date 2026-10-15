@@ -103,3 +103,30 @@ export function comparePlans(device: ExportFile, account: ExportFile): Compariso
 		clashingTasks: days.reduce((sum, [, day]) => sum + day.device.size + day.account.size, 0)
 	};
 }
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** The sentence that tells what a move did. */
+export function describeMove({ tasks, skipped, alarms }: MoveResult): string {
+	const moved = [plural(tasks, 'task'), ...(alarms ? [plural(alarms, 'alarm')] : [])].join(' and ');
+	const base = `Your plan is now in your account: ${moved}.`;
+	return skipped ? `${base} ${plural(skipped, 'task')} already there, left alone.` : base;
+}
+
+/** What a plan holds, in words: alarms are only named when there are some. */
+export function describeCounts(tasks: number, alarms: number): string {
+	return [plural(tasks, 'task'), ...(alarms ? [plural(alarms, 'alarm')] : [])].join(', ');
+}
+
+const shortDay = (at: number, timezone: string) =>
+	new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: timezone });
+
+/** The label of a snapshot in the list, in the day the account's timezone has. */
+export function describeSnapshot(snapshot: SnapshotInfo, timezone: string): string {
+	return `Restore the plan from before ${shortDay(snapshot.createdAt, timezone)} (${describeCounts(snapshot.tasks, snapshot.alarms)})`;
+}
+
+/** The label of the copy a device keeps after its plan moved into an account. */
+export function describeBackup(file: ExportFile, at: number, timezone: string): string {
+	return `Restore the plan that moved into your account on ${shortDay(at, timezone)} (${describeCounts(file.tasks.length, file.alarms.length)})`;
+}
