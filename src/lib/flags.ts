@@ -37,3 +37,11 @@ export function setFlag(flag: Flag) {
 		// Blocked storage: the flag only lasts for this page
 	}
 }
+
+export function clearFlag(flag: Flag) {
+	try {
+		localStorage.removeItem(key(flag));
+	} catch {
+		// Blocked storage: nothing was remembered
+	}
+}

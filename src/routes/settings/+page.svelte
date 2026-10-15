@@ -8,6 +8,7 @@
 	import ClockSettingsForm from '#lib/components/ClockSettingsForm.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
 	import DataSettings from '#lib/components/DataSettings.svelte';
+	import SyncSettings from '#lib/components/SyncSettings.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import PageFrame from '#lib/components/PageFrame.svelte';
 	import { browser } from '$app/env';
@@ -29,7 +30,9 @@
 		{ id: 'voice', label: 'Voice' },
 		{ id: 'agent', label: 'Assistant on its own' },
 		{ id: 'data', label: 'Your data' },
-		...(data.user ? [{ id: 'google', label: 'Google Workspace' }] : [])
+		...(data.user
+			? [{ id: 'google', label: 'Google Workspace' }]
+			: [{ id: 'sync', label: 'Sync across devices' }])
 	]);
 </script>
 
@@ -147,7 +150,20 @@
 			</Card.Content>
 		</Card.Root>
 
-		{#if data.user}
+		{#if !data.user}
+			<Card.Root id="sync" class="mt-4 scroll-mt-6">
+				<Card.Header>
+					<Card.Title>Sync across devices</Card.Title>
+					<Card.Description>
+						Sign in with Google to add what an account gives you. You do not need one to use the
+						app.
+					</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<SyncSettings />
+				</Card.Content>
+			</Card.Root>
+		{:else}
 			<Card.Root id="google" class="mt-4 scroll-mt-6">
 				<Card.Header>
 					<Card.Title>Google Workspace</Card.Title>

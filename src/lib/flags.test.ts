@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { readFlags, setFlag } from '#lib/flags.js';
+import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
 
 const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 
@@ -9,7 +9,8 @@ function fakeStorage(values: Record<string, string> = {}) {
 		configurable: true,
 		value: {
 			getItem: (key: string) => values[key] ?? null,
-			setItem: (key: string, value: string) => void (values[key] = value)
+			setItem: (key: string, value: string) => void (values[key] = value),
+			removeItem: (key: string) => void delete values[key]
 		}
 	});
 	return values;
@@ -31,6 +32,13 @@ describe('flags', () => {
 		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false, signedInBefore: false });
 	});
 
+	test('a cleared flag is unset again, the others stay', () => {
+		setFlag('signedInBefore');
+		setFlag('welcomed');
+		clearFlag('signedInBefore');
+		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false, signedInBefore: false });
+	});
+
 	test('a blocked storage silences the hints but never loads a third party script', () => {
 		Object.defineProperty(globalThis, 'localStorage', {
 			configurable: true,
@@ -40,5 +48,6 @@ describe('flags', () => {
 		});
 		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: true, signedInBefore: false });
 		expect(() => setFlag('welcomed')).not.toThrow();
+		expect(() => clearFlag('welcomed')).not.toThrow();
 	});
 });
