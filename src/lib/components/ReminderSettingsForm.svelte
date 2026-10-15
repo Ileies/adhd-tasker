@@ -40,7 +40,7 @@
 </script>
 
 <div class="space-y-6">
-	<div class="space-y-2">
+	<div class="space-y-3">
 		<p class="font-medium">Check-in chime</p>
 		<PresetChips
 			label="Check-in chime interval"
@@ -53,7 +53,7 @@
 		/>
 	</div>
 
-	<div class="space-y-2">
+	<div class="space-y-3">
 		<label class="flex cursor-pointer items-start gap-3">
 			<input
 				type="checkbox"
@@ -63,18 +63,16 @@
 			/>
 			<span class="font-medium">Heads-up before the next task</span>
 		</label>
-		<div class="pl-7">
-			<PresetChips
-				label="Minutes before the task starts"
-				options={chips(HEADS_UP_PRESETS, advance)}
-				value={advance}
-				disabled={!reminders}
-				onselect={(reminderAdvanceTime) => put({ reminderAdvanceTime })}
-			/>
-		</div>
+		<PresetChips
+			label="Minutes before the task starts"
+			options={chips(HEADS_UP_PRESETS, advance)}
+			value={advance}
+			disabled={!reminders}
+			onselect={(reminderAdvanceTime) => put({ reminderAdvanceTime })}
+		/>
 	</div>
 
-	<div class="space-y-2">
+	<div class="space-y-3">
 		<label class="flex cursor-pointer items-start gap-3">
 			<input
 				type="checkbox"
@@ -84,15 +82,13 @@
 			/>
 			<span class="font-medium">Tap when a task runs over</span>
 		</label>
-		<div class="pl-7">
-			<PresetChips
-				label="Minutes after the task ends"
-				options={chips(OVERRUN_PRESETS, overrun)}
-				value={overrun}
-				disabled={!hyperfocus}
-				onselect={(overrunMinutes) => put({ overrunMinutes })}
-			/>
-		</div>
+		<PresetChips
+			label="Minutes after the task ends"
+			options={chips(OVERRUN_PRESETS, overrun)}
+			value={overrun}
+			disabled={!hyperfocus}
+			onselect={(overrunMinutes) => put({ overrunMinutes })}
+		/>
 	</div>
 
 	<label class="flex cursor-pointer items-start gap-3">
