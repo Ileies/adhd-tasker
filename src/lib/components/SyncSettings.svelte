@@ -5,7 +5,7 @@
 <div class="space-y-4">
 	<ul class="list-disc space-y-1 pl-5">
 		<li>Your plan on every device.</li>
-		<li>The assistant and your alarms keep working with the app closed.</li>
+		<li>The assistant keeps watching your plan on the server, also while the app is closed.</li>
 	</ul>
 	<p class="text-sm">
 		The cost: your plan is then stored on this server. Everything on this device comes with you. If

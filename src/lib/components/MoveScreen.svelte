@@ -44,7 +44,9 @@
 </script>
 
 {#if comparison}
-	<div class="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center gap-6 px-6 py-10">
+	<div
+		class="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center gap-6 px-6 pt-20 pb-10 md:py-16"
+	>
 		<h1 class="text-3xl leading-tight font-bold md:text-4xl">Your account already has a plan.</h1>
 
 		<dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-lg">
