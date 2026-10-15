@@ -95,6 +95,8 @@ export const tasker: {
 	};
 	/** All-day events of the day Plan shows, one line each (Calendar is read for an account only). */
 	calendar: { allDay: AllDayLine[] };
+	/** The day Plan shows, null until Plan opens. The bar holds the day switcher, so the state is shared. */
+	plan: { date: string | null };
 } = $state({
 	backend: remoteBackend,
 	account: { email: null, ready: false, problem: null },
@@ -116,5 +118,6 @@ export const tasker: {
 	firstRun: { welcomed: true, screenHintSeen: true },
 	sample: [],
 	move: { comparison: null, hasKey: false, busy: false, error: null },
-	calendar: { allDay: [] }
+	calendar: { allDay: [] },
+	plan: { date: null }
 });

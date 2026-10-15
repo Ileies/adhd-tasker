@@ -20,6 +20,7 @@
 	import { muteFor, setMuted } from '#lib/theme.js';
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import KeyboardHelp from '#lib/components/KeyboardHelp.svelte';
+	import DaySwitcher from '#lib/components/DaySwitcher.svelte';
 	import { loadFlags } from '#lib/welcome.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { goto } from '$app/navigation';
@@ -220,6 +221,8 @@
 		<div class="min-w-0 truncate px-2 text-center">
 			{#if current === 'now'}
 				<div class="sm:hidden"><ClockReadout timezone={tasker.timezone} /></div>
+			{:else if current === 'plan'}
+				<DaySwitcher />
 			{:else if title}
 				<span class="text-lg font-semibold">{title}</span>
 			{/if}
