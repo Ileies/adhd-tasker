@@ -7,7 +7,7 @@
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import { tasker } from '#lib/app.svelte.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
-	import { doneLine, laterLine, missedLine, nextAlarmLine, timeRange } from '#lib/rail.js';
+	import { doneLine, laterLine, missedLine, alarmLines, timeRange } from '#lib/rail.js';
 	import { deviceTimezone, type DateKey } from '#lib/time.js';
 
 	const NEXT_COUNT = 4;
@@ -46,10 +46,10 @@
 	const later = $derived(laterLine(upcoming.length - shown.length));
 	const doneText = $derived(doneLine(done));
 	const missedText = $derived(missedLine(missedCount));
-	const alarm = $derived.by(() => {
+	const alarms = $derived.by(() => {
 		// The clock prop ticks every second, so an alarm that rang leaves the line
 		void now;
-		return nextAlarmLine(tasker.schedule.alarms, Date.now(), today, timezone ?? deviceTimezone());
+		return alarmLines(tasker.schedule.alarms, Date.now(), today, timezone ?? deviceTimezone());
 	});
 </script>
 
@@ -122,8 +122,12 @@
 		{/if}
 	</section>
 
-	{#if alarm}
-		<p class="text-muted-foreground">{alarm}</p>
+	{#if alarms.length > 0}
+		<div class="text-muted-foreground flex flex-col gap-1">
+			{#each alarms as line, index (index)}
+				<p>{line}</p>
+			{/each}
+		</div>
 	{/if}
 
 	{#if missedText}

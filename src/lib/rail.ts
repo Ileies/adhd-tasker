@@ -17,23 +17,25 @@ export function timeRange(task: { startTime: number; duration: number }): string
 	return `${formatClock(task.startTime)} - ${formatClock(task.startTime + task.duration)}`;
 }
 
-/** The first alarm still to ring today, as `Alarm 15:40 Leave`, or `null`. */
-export function nextAlarmLine(
-	alarms: { fireAt: number; label: string }[],
+/** How many alarm lines the rail shows, so many timers cannot crowd the tasks. */
+export const ALARM_LINES = 4;
+
+/** The alarms still to ring today in time order, each as `Alarm 15:40 Leave` (at most `ALARM_LINES`). */
+export function alarmLines(
+	alarms: { fireAt: number; label: string; enabled?: boolean }[],
 	now: number,
 	today: DateKey,
 	timezone: string
-): string | null {
-	let best: { minutes: number; label: string; fireAt: number } | null = null;
-	for (const alarm of alarms) {
-		if (alarm.fireAt <= now) continue;
-		const at = localMoment(alarm.fireAt, timezone);
-		if (at.date !== today) continue;
-		if (best === null || alarm.fireAt < best.fireAt)
-			best = { minutes: at.minutes, label: alarm.label, fireAt: alarm.fireAt };
-	}
-	if (best === null) return null;
-	return `Alarm ${formatClock(best.minutes)}${best.label ? ` ${best.label}` : ''}`;
+): string[] {
+	return alarms
+		.filter((alarm) => alarm.enabled !== false && alarm.fireAt > now)
+		.sort((a, b) => a.fireAt - b.fireAt)
+		.flatMap((alarm) => {
+			const at = localMoment(alarm.fireAt, timezone);
+			if (at.date !== today) return [];
+			return [`Alarm ${formatClock(at.minutes)}${alarm.label ? ` ${alarm.label}` : ''}`];
+		})
+		.slice(0, ALARM_LINES);
 }
 
 /** The link under Next, `+3 later today`, or `null` when everything shows. */

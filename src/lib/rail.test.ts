@@ -5,7 +5,7 @@ import {
 	doneToday,
 	laterLine,
 	missedLine,
-	nextAlarmLine,
+	alarmLines,
 	noteLine,
 	timeRange
 } from '#lib/rail.js';
@@ -42,28 +42,40 @@ describe('timeRange', () => {
 	});
 });
 
-describe('nextAlarmLine', () => {
+describe('alarmLines', () => {
 	const now = at('2026-10-15', 14 * 60);
 
-	test('names the first alarm still to ring today', () => {
+	test('lists the alarms still to ring today in time order', () => {
 		const alarms = [
 			{ fireAt: at('2026-10-15', 17 * 60), label: 'Dinner' },
 			{ fireAt: at('2026-10-15', 15 * 60 + 40), label: 'Leave' }
 		];
-		expect(nextAlarmLine(alarms, now, '2026-10-15', TZ)).toBe('Alarm 15:40 Leave');
+		expect(alarmLines(alarms, now, '2026-10-15', TZ)).toEqual([
+			'Alarm 15:40 Leave',
+			'Alarm 17:00 Dinner'
+		]);
 	});
 
-	test('skips alarms that rang and alarms on other days', () => {
+	test('skips alarms that rang, are off, or are on other days', () => {
 		const alarms = [
 			{ fireAt: at('2026-10-15', 13 * 60), label: 'Past' },
+			{ fireAt: at('2026-10-15', 16 * 60), label: 'Off', enabled: false },
 			{ fireAt: at('2026-10-16', 8 * 60), label: 'Tomorrow' }
 		];
-		expect(nextAlarmLine(alarms, now, '2026-10-15', TZ)).toBeNull();
+		expect(alarmLines(alarms, now, '2026-10-15', TZ)).toEqual([]);
 	});
 
 	test('an alarm without a label shows only the time', () => {
 		const alarms = [{ fireAt: at('2026-10-15', 16 * 60), label: '' }];
-		expect(nextAlarmLine(alarms, now, '2026-10-15', TZ)).toBe('Alarm 16:00');
+		expect(alarmLines(alarms, now, '2026-10-15', TZ)).toEqual(['Alarm 16:00']);
+	});
+
+	test('shows at most four lines', () => {
+		const alarms = [1, 2, 3, 4, 5].map((n) => ({
+			fireAt: at('2026-10-15', 14 * 60 + n * 5),
+			label: 'Timer'
+		}));
+		expect(alarmLines(alarms, now, '2026-10-15', TZ)).toHaveLength(4);
 	});
 });
 
