@@ -319,8 +319,18 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				repeat: 'none',
 				minutes: null,
 				note: null,
-				durationMin: 5
+				durationMin: 5,
+				enabled: true
 			});
+		});
+
+		test('an entry that is off stays pending but is never due', async () => {
+			const off = await repo.schedule.insert({ ...alarm(1000), enabled: false });
+			const on = await repo.schedule.insert(alarm(1000));
+			expect((await repo.schedule.pending()).map((entry) => entry.id)).toEqual([off.id, on.id]);
+			expect((await repo.schedule.due(2000)).map((entry) => entry.id)).toEqual([on.id]);
+			await repo.schedule.update(off.id, { enabled: true });
+			expect(await repo.schedule.due(2000)).toHaveLength(2);
 		});
 
 		test('pending is soonest first and leaves out ended entries', async () => {

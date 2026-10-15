@@ -122,6 +122,7 @@ export const schedule = sqliteTable('schedule', {
 	note: text('note'), // wakeup: the agent's note to itself
 	tone: text('tone', { mode: 'json' }).$type<Tone>(), // alarm, stored so it replays identically
 	durationMin: integer('duration_min').default(5).notNull(), // alarm: minutes it rings before it stops by itself
+	enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(), // alarm: off keeps it in the list without ringing
 	createdBy: text('created_by').$type<'user' | 'agent'>().notNull(),
 	status: text('status').$type<'pending' | 'done' | 'cancelled'>().default('pending').notNull(),
 	createdAt: integer('created_at').notNull()

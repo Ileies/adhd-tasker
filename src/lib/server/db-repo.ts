@@ -252,7 +252,14 @@ export function dbRepo(email: string): Repo {
 				return db
 					.select()
 					.from(schedule)
-					.where(and(mine.schedule, eq(schedule.status, 'pending'), lte(schedule.fireAt, nowMs)))
+					.where(
+						and(
+							mine.schedule,
+							eq(schedule.status, 'pending'),
+							eq(schedule.enabled, true),
+							lte(schedule.fireAt, nowMs)
+						)
+					)
 					.orderBy(asc(schedule.fireAt));
 			},
 			async insert(entry) {

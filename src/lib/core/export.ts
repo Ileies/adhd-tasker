@@ -27,6 +27,7 @@ export interface ExportedAlarm {
 	label: string;
 	tone: Tone;
 	durationMin: number;
+	enabled?: boolean;
 }
 
 export interface ExportFile {
@@ -96,7 +97,8 @@ export function assembleExport(rows: {
 				repeat: entry.repeat,
 				label: entry.label ?? '',
 				tone: readTone(entry.tone),
-				durationMin: entry.durationMin
+				durationMin: entry.durationMin,
+				enabled: entry.enabled
 			}))
 	};
 }
@@ -142,7 +144,9 @@ function parseAlarmEntry(raw: unknown): ExportedAlarm | null {
 		repeat: repeat as Repeat,
 		label: label.trim(),
 		tone: readTone(raw.tone),
-		durationMin
+		durationMin,
+		// A file from before the switch has no `enabled`: those alarms were on
+		enabled: raw.enabled !== false
 	};
 }
 
@@ -280,6 +284,7 @@ export async function importExport(
 			label: alarm.label,
 			tone: alarm.tone,
 			durationMin: alarm.durationMin,
+			enabled: alarm.enabled ?? true,
 			createdBy: 'user',
 			createdAt: now
 		});

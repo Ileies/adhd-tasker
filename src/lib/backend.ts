@@ -58,6 +58,8 @@ export interface Backend {
 		load(): Promise<{ alarms: Alarm[]; wakeups: Wakeup[] } | null>;
 		addAlarm(fields: AlarmFields): Promise<void>;
 		remove(id: number): Promise<void>;
+		/** Turns an alarm on or off, it stays listed. Rejects with the reason (a timer that ran out cannot come back). */
+		setEnabled(id: number, enabled: boolean): Promise<void>;
 		/** `null` lets every device play again. */
 		chooseDisplay(device: string | null): Promise<void>;
 	};

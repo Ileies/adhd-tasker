@@ -31,7 +31,8 @@ const alarm = {
 	repeat: 'none' as const,
 	label: 'Stretch',
 	tone: 'chime' as const,
-	durationMin: 5
+	durationMin: 5,
+	enabled: true
 };
 const file = (overrides: Partial<ExportFile> = {}): ExportFile => ({
 	app: 'adhd-tasker',
@@ -356,6 +357,7 @@ describe('export then import', () => {
 			label: 'Standup',
 			tone: 'soft',
 			durationMin: 2,
+			enabled: false,
 			createdBy: 'user',
 			createdAt: NOW
 		});
@@ -374,7 +376,8 @@ describe('export then import', () => {
 			label: 'Standup',
 			repeat: 'weekdays',
 			minutes: 600,
-			durationMin: 2
+			durationMin: 2,
+			enabled: false
 		});
 	});
 });

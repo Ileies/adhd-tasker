@@ -120,6 +120,19 @@ describe('schedule', () => {
 	});
 });
 
+describe('alarm switch', () => {
+	test('turns a clock alarm off and on and rejects an unknown id', async () => {
+		const { backend } = await setup();
+		await backend.schedule.addAlarm({ label: 'Meds', tone: 'chime', repeat: 'daily', at: '09:30' });
+		const [meds] = (await backend.schedule.load())!.alarms;
+		await backend.schedule.setEnabled(meds.id, false);
+		expect((await backend.schedule.load())!.alarms[0].enabled).toBe(false);
+		await backend.schedule.setEnabled(meds.id, true);
+		expect((await backend.schedule.load())!.alarms[0].enabled).toBe(true);
+		await expect(backend.schedule.setEnabled(999, false)).rejects.toThrow('No such alarm');
+	});
+});
+
 describe('assistant', () => {
 	test('without a key it says to add one and calls nothing', async () => {
 		const { backend } = await setup();

@@ -120,6 +120,7 @@ function writeFile(
 				label: alarm.label,
 				tone: alarm.tone,
 				durationMin: alarm.durationMin,
+				enabled: alarm.enabled ?? true,
 				createdBy: 'user',
 				createdAt: now
 			})

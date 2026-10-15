@@ -69,6 +69,7 @@ function arm() {
 	timers = [];
 	const now = Date.now();
 	for (const alarm of tasker.schedule.alarms) {
+		if (!alarm.enabled) continue;
 		const wait = alarm.fireAt - now;
 		if (wait <= 0 && wait > -CATCH_UP_MS) ring(alarm);
 		else if (wait > 0 && wait < MAX_WAIT_MS) timers.push(setTimeout(() => ring(alarm), wait));
@@ -98,6 +99,17 @@ export async function addAlarm(fields: AlarmFields): Promise<string | null> {
 export async function removeEntry(id: number) {
 	await tasker.backend.schedule.remove(id);
 	await loadSchedule();
+}
+
+/** Turns an alarm on or off. Returns why it failed. */
+export async function switchAlarm(alarm: Alarm, enabled: boolean): Promise<string | null> {
+	try {
+		await tasker.backend.schedule.setEnabled(alarm.id, enabled);
+	} catch (error) {
+		return error instanceof Error ? error.message : 'Could not change the alarm';
+	}
+	await loadSchedule();
+	return null;
 }
 
 /** `null` lets every device play again. */

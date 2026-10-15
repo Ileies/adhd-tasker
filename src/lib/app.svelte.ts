@@ -41,6 +41,8 @@ export interface Alarm {
 	repeat: Repeat;
 	/** Minutes it rings before it stops by itself. */
 	durationMin: number;
+	/** Off: it stays in the list and never rings. */
+	enabled: boolean;
 	createdBy: 'user' | 'agent';
 }
 

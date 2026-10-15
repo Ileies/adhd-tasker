@@ -6,7 +6,8 @@ import {
 	cancelEntry,
 	fireDue,
 	runScheduleTool,
-	scheduleOverview
+	scheduleOverview,
+	setAlarmEnabled
 } from '#lib/core/schedule.js';
 import { SCHEDULE_LIMITS } from '#lib/schedule.js';
 import { NOW, testCtx } from '#test/ctx.js';
@@ -84,6 +85,68 @@ describe('cancelEntry', () => {
 		expect(await cancelEntry(ctx, row.id)).not.toBeNull();
 		expect(await cancelEntry(ctx, row.id)).toBeNull();
 		expect(hints).toEqual([{ type: 'schedule' }]);
+	});
+});
+
+describe('setAlarmEnabled', () => {
+	const daily = { at: '09:30', label: 'Meds', tone: 'chime', repeat: 'daily' };
+
+	test('an alarm that is off stays listed, shows as off and never rings', async () => {
+		const { ctx, repo, hints, state } = await testCtx();
+		const row = await addUserAlarm(ctx, daily, 'UTC');
+		await setAlarmEnabled(ctx, row.id, false, 'UTC');
+		expect(alarmsOf(await repo.schedule.pending())[0]).toMatchObject({
+			id: row.id,
+			enabled: false
+		});
+		state.now = row.fireAt;
+		hints.length = 0;
+		await fireDue(ctx, 'UTC');
+		expect(hints).toEqual([]);
+	});
+
+	test('turning it on again rings it at its time and tells the screens', async () => {
+		const { ctx, hints, state } = await testCtx();
+		const row = await addUserAlarm(ctx, daily, 'UTC');
+		await setAlarmEnabled(ctx, row.id, false, 'UTC');
+		hints.length = 0;
+		await setAlarmEnabled(ctx, row.id, true, 'UTC');
+		expect(hints).toEqual([{ type: 'schedule' }]);
+		state.now = row.fireAt;
+		await fireDue(ctx, 'UTC');
+		expect(hints.map((hint) => hint.type)).toContain('alarm');
+	});
+
+	test('a clock alarm whose time passed while it was off waits for its next time', async () => {
+		const { ctx, repo, state } = await testCtx();
+		const row = await addUserAlarm(ctx, daily, 'UTC');
+		await setAlarmEnabled(ctx, row.id, false, 'UTC');
+		state.now = row.fireAt + 3 * 60 * MIN;
+		await setAlarmEnabled(ctx, row.id, true, 'UTC');
+		expect((await repo.schedule.pending())[0].fireAt).toBe(row.fireAt + 24 * 60 * MIN);
+	});
+
+	test('a timer that ran out while it was off cannot be turned on', async () => {
+		const { ctx, state } = await testCtx();
+		const row = await addUserAlarm(ctx, alarm, 'UTC');
+		await setAlarmEnabled(ctx, row.id, false, 'UTC');
+		state.now = row.fireAt + MIN;
+		expect(await failureOf(setAlarmEnabled(ctx, row.id, true, 'UTC'))).toMatchObject({
+			status: 400
+		});
+	});
+
+	test('answers null for a wakeup or an id that is not pending', async () => {
+		const { ctx, repo } = await testCtx();
+		const wakeup = await repo.schedule.insert({
+			kind: 'wakeup',
+			fireAt: NOW + 30 * MIN,
+			note: 'x',
+			createdBy: 'agent',
+			createdAt: NOW
+		});
+		expect(await setAlarmEnabled(ctx, wakeup.id, false, 'UTC')).toBeNull();
+		expect(await setAlarmEnabled(ctx, 999, false, 'UTC')).toBeNull();
 	});
 });
 

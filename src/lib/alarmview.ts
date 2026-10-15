@@ -62,3 +62,19 @@ export function restoreFields(alarm: Alarm, nowMs: number, timezone: string): Al
 
 /** `Wake` for "Wake: a rising and falling melody": the name alone fits a menu. */
 export const toneLabel = (name: ToneName) => TONE_TEXT[name].split(':')[0];
+
+/** How an alarm relates to one day of the plan: rings that day, rings on other days only, or is switched off. */
+export type AlarmDayState = 'on-day' | 'other-day' | 'off';
+
+/**
+ * `fireAt` is the next ring, so a repeating alarm rings on every matching day from that one on. A weekday alarm
+ * skips Saturday and Sunday.
+ */
+export function alarmDayState(alarm: Alarm, date: string, timezone: string): AlarmDayState {
+	if (!alarm.enabled) return 'off';
+	const first = localMoment(alarm.fireAt, timezone).date;
+	if (alarm.repeat === 'none') return first === date ? 'on-day' : 'other-day';
+	if (date < first) return 'other-day';
+	const day = new Date(date + 'T00:00:00Z').getUTCDay();
+	return alarm.repeat === 'weekdays' && (day === 0 || day === 6) ? 'other-day' : 'on-day';
+}

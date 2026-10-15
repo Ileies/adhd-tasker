@@ -66,6 +66,13 @@ export const remoteBackend: Backend = {
 		async remove(id) {
 			await send(`/schedule/${id}`, { method: 'DELETE' });
 		},
+		async setEnabled(id, enabled) {
+			await request(`/schedule/${id}`, {
+				method: 'PATCH',
+				headers: JSON_HEADERS,
+				body: JSON.stringify({ enabled })
+			});
+		},
 		async chooseDisplay(device) {
 			await send('/schedule/display', {
 				method: 'POST',

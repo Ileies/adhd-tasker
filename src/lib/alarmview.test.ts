@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import type { Alarm } from '#lib/app.svelte.js';
 import {
 	QUICK_TIMERS,
+	alarmDayState,
 	groupAlarms,
 	restoreFields,
 	timerFields,
@@ -16,6 +17,7 @@ const alarm = (fireAt: number, extra: Partial<Alarm> = {}): Alarm => ({
 	tone: 'wake',
 	repeat: 'none',
 	durationMin: 5,
+	enabled: true,
 	createdBy: 'user',
 	...extra
 });
@@ -76,5 +78,59 @@ describe('restoreFields', () => {
 describe('toneLabel', () => {
 	test('is the name without the description', () => {
 		expect(toneLabel('wake')).toBe('Wake');
+	});
+});
+
+describe('alarmDayState', () => {
+	// 2026-10-15 is a Thursday, 2026-10-17 a Saturday
+	const at = (date: string) => Date.parse(`${date}T07:00:00Z`);
+
+	test.each([
+		['a one-off on its own day', alarm(at('2026-10-15')), '2026-10-15', 'on-day'],
+		['a one-off on another day', alarm(at('2026-10-15')), '2026-10-16', 'other-day'],
+		[
+			'a daily alarm on a later day',
+			alarm(at('2026-10-15'), { repeat: 'daily' }),
+			'2026-10-20',
+			'on-day'
+		],
+		[
+			'a daily alarm before its next ring',
+			alarm(at('2026-10-15'), { repeat: 'daily' }),
+			'2026-10-14',
+			'other-day'
+		],
+		[
+			'a weekday alarm on a weekday',
+			alarm(at('2026-10-15'), { repeat: 'weekdays' }),
+			'2026-10-16',
+			'on-day'
+		],
+		[
+			'a weekday alarm on a Saturday',
+			alarm(at('2026-10-15'), { repeat: 'weekdays' }),
+			'2026-10-17',
+			'other-day'
+		],
+		[
+			'an alarm that is off on its own day',
+			alarm(at('2026-10-15'), { enabled: false }),
+			'2026-10-15',
+			'off'
+		],
+		[
+			'a daily alarm that is off',
+			alarm(at('2026-10-15'), { repeat: 'daily', enabled: false }),
+			'2026-10-16',
+			'off'
+		]
+	] as const)('%s is %s', (_name, entry, date, expected) => {
+		expect(alarmDayState(entry, date, 'UTC')).toBe(expected);
+	});
+
+	test('follows the user timezone, not UTC', () => {
+		// 23:30 UTC on the 15th is already the 16th in Berlin
+		const late = alarm(Date.parse('2026-10-15T23:30:00Z'));
+		expect(alarmDayState(late, '2026-10-16', 'Europe/Berlin')).toBe('on-day');
 	});
 });

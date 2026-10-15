@@ -15,7 +15,12 @@ import { rateLimit } from '#lib/core/rate.js';
 import type { Repo, Task } from '#lib/core/repo.js';
 import { sampleDay } from '#lib/core/sample.js';
 import type { SampleMarks } from '#lib/local/marks.js';
-import { addUserAlarm, cancelEntry, scheduleOverview } from '#lib/core/schedule.js';
+import {
+	addUserAlarm,
+	cancelEntry,
+	scheduleOverview,
+	setAlarmEnabled
+} from '#lib/core/schedule.js';
 import { speak as speakWith, transcribe as transcribeWith } from '#lib/core/voice.js';
 import { openaiModel } from '#lib/openai.js';
 import { clientSettings, parseSettingsPatch } from '#lib/settings.js';
@@ -123,6 +128,11 @@ export function localBackend(deps: LocalDeps): Backend {
 			addAlarm: (fields) =>
 				guarded(async () => void (await addUserAlarm(ctx(), fields, await timezone()))),
 			remove: async (id) => void (await cancelEntry(ctx(), id)),
+			setEnabled: (id, enabled) =>
+				guarded(async () => {
+					if (!(await setAlarmEnabled(ctx(), id, enabled, await timezone())))
+						throw new AssistantError('No such alarm', 404);
+				}),
 			// A guest has one device, so there is no display device to choose
 			chooseDisplay: async () => {}
 		},

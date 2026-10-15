@@ -112,12 +112,18 @@ export interface ScheduleEntry {
 	note: string | null;
 	tone: Tone | null;
 	durationMin: number; // minutes an alarm rings
+	enabled: boolean; // an alarm that is off stays listed and never rings
 	createdBy: 'user' | 'agent';
 	status: 'pending' | 'done' | 'cancelled';
 	createdAt: number;
 }
 export type NewEntry = Pick<ScheduleEntry, 'kind' | 'fireAt' | 'createdBy' | 'createdAt'> &
-	Partial<Pick<ScheduleEntry, 'minutes' | 'repeat' | 'label' | 'note' | 'tone' | 'durationMin'>>;
+	Partial<
+		Pick<
+			ScheduleEntry,
+			'minutes' | 'repeat' | 'label' | 'note' | 'tone' | 'durationMin' | 'enabled'
+		>
+	>;
 
 export interface Repo {
 	readonly email: string;
@@ -176,10 +182,13 @@ export interface Repo {
 	schedule: {
 		/** Pending entries, soonest first. */
 		pending(): Promise<ScheduleEntry[]>;
-		/** Pending entries due at `nowMs`, soonest first. */
+		/** Pending entries that are on and due at `nowMs`, soonest first. */
 		due(nowMs: number): Promise<ScheduleEntry[]>;
 		insert(entry: NewEntry): Promise<ScheduleEntry>;
-		update(id: number, patch: Partial<Pick<ScheduleEntry, 'fireAt' | 'status'>>): Promise<void>;
+		update(
+			id: number,
+			patch: Partial<Pick<ScheduleEntry, 'fireAt' | 'status' | 'enabled'>>
+		): Promise<void>;
 		/** The entry when it was pending, `null` otherwise. */
 		cancel(id: number): Promise<ScheduleEntry | null>;
 		/** Done and cancelled entries that fired before `before` are removed. */

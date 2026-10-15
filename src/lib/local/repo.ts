@@ -18,6 +18,11 @@ import { done, removeWhere, scan, transact, type StoreName } from '#lib/local/db
 
 const SETTINGS_KEY = 'settings';
 
+const switchedOn = (row: ScheduleEntry): ScheduleEntry => ({
+	...row,
+	enabled: row.enabled !== false
+});
+
 /** The repo of this device's guest. `email` is only a label, nothing is scoped by it. */
 export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 	const read = <T>(store: StoreName, body: (store: IDBObjectStore) => Promise<T>) =>
@@ -189,19 +194,23 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 		},
 
 		schedule: {
+			// A row saved before the switch existed has no `enabled`, it is on
 			pending: () =>
 				read('schedule', async (store) =>
-					(await scan<ScheduleEntry>(store, { where: (row) => row.status === 'pending' })).sort(
-						(a, b) => a.fireAt - b.fireAt || a.id - b.id
-					)
+					(await scan<ScheduleEntry>(store, { where: (row) => row.status === 'pending' }))
+						.map(switchedOn)
+						.sort((a, b) => a.fireAt - b.fireAt || a.id - b.id)
 				),
 			due: (nowMs) =>
 				read('schedule', async (store) =>
 					(
 						await scan<ScheduleEntry>(store, {
-							where: (row) => row.status === 'pending' && row.fireAt <= nowMs
+							where: (row) =>
+								row.status === 'pending' && row.enabled !== false && row.fireAt <= nowMs
 						})
-					).sort((a, b) => a.fireAt - b.fireAt || a.id - b.id)
+					)
+						.map(switchedOn)
+						.sort((a, b) => a.fireAt - b.fireAt || a.id - b.id)
 				),
 			insert: (entry) =>
 				write('schedule', async (store) => {
@@ -214,6 +223,7 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 						note: entry.note ?? null,
 						tone: entry.tone ?? null,
 						durationMin: entry.durationMin ?? SCHEDULE_LIMITS.defaultAlarmMinutes,
+						enabled: entry.enabled ?? true,
 						createdBy: entry.createdBy,
 						status: 'pending',
 						createdAt: entry.createdAt
@@ -227,7 +237,7 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 				write('schedule', async (store) => {
 					const row = await getById<ScheduleEntry>(store, id);
 					if (!row || row.status !== 'pending') return null;
-					const next = { ...row, status: 'cancelled' } as const;
+					const next = { ...switchedOn(row), status: 'cancelled' } as const;
 					await done(store.put(next));
 					return next;
 				}),

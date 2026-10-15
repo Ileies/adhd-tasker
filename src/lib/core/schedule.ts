@@ -27,6 +27,7 @@ export const alarmsOf = (rows: ScheduleEntry[]) =>
 			tone: readTone(row.tone),
 			repeat: row.repeat,
 			durationMin: row.durationMin,
+			enabled: row.enabled,
 			createdBy: row.createdBy
 		}));
 
@@ -80,6 +81,35 @@ export async function cancelEntry(ctx: Ctx, id: number): Promise<ScheduleEntry |
 	const row = await ctx.repo.schedule.cancel(id);
 	if (row) ctx.hint({ type: 'schedule' });
 	return row;
+}
+
+/**
+ * Turns an alarm on or off, it stays in the list either way. While it was off its time may have passed: a clock
+ * alarm then waits for its next time, a timer has run out and cannot come back. `null` when it is not a pending alarm.
+ */
+export async function setAlarmEnabled(
+	ctx: Ctx,
+	id: number,
+	enabled: boolean,
+	timezone: string
+): Promise<ScheduleEntry | null> {
+	const row = (await ctx.repo.schedule.pending()).find(
+		(entry) => entry.id === id && entry.kind === 'alarm'
+	);
+	if (!row) return null;
+	const patch: { enabled: boolean; fireAt?: number } = { enabled };
+	const now = ctx.now();
+	if (enabled && row.fireAt <= now) {
+		const next =
+			row.minutes === null
+				? null
+				: nextRepeat(row.repeat === 'none' ? 'daily' : row.repeat, row.minutes, now, timezone);
+		if (next === null) throw new AssistantError('That timer has run out, set a new one', 400);
+		patch.fireAt = next;
+	}
+	await ctx.repo.schedule.update(id, patch);
+	ctx.hint({ type: 'schedule' });
+	return { ...row, ...patch };
 }
 
 async function customTonesLeft(ctx: Ctx, settings: Settings) {
