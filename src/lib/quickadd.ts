@@ -1,3 +1,7 @@
+import type { NewTask } from '#lib/core/repo.js';
+import { DAY_MINUTES, SNAP } from '#lib/plan.js';
+import { Priority } from '#lib/types.js';
+
 export interface QuickTask {
 	title: string;
 	/** Minutes since midnight, null when the text names no time. */
@@ -58,4 +62,31 @@ export function parseQuickTask(text: string): QuickTask {
 		.replace(/\s+/g, ' ')
 		.trim();
 	return { title, startTime, duration: duration !== null && duration > 0 ? duration : null };
+}
+
+/** A task from the quick add line starts in the morning on another day, and without a duration it lasts this long. */
+export const QUICK_START = 9 * 60;
+export const QUICK_DURATION = 30;
+
+/**
+ * The task a quick add line makes for `date`, `null` when the text has no title. A task without a time
+ * starts at the next free quarter hour when `now` is given (planning today), in the morning otherwise.
+ * It never crosses midnight.
+ */
+export function quickTask(text: string, date: string, now: number | null): NewTask | null {
+	const parsed = parseQuickTask(text);
+	if (!parsed.title) return null;
+	const duration = Math.min(parsed.duration ?? QUICK_DURATION, DAY_MINUTES);
+	const fallback =
+		now === null
+			? QUICK_START
+			: Math.min(DAY_MINUTES - QUICK_DURATION, Math.ceil(now / SNAP) * SNAP);
+	return {
+		title: parsed.title,
+		description: '',
+		date,
+		startTime: Math.min(parsed.startTime ?? fallback, DAY_MINUTES - duration),
+		duration,
+		priority: Priority.Medium
+	};
 }

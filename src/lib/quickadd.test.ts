@@ -1,7 +1,40 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { parseQuickTask } from '#lib/quickadd.js';
+import { parseQuickTask, quickTask } from '#lib/quickadd.js';
+
+describe('quickTask', () => {
+	const DAY = '2026-10-14';
+
+	test('a line without a title makes no task', () => {
+		expect(quickTask('  14:30 45m ', DAY, 600)).toBeNull();
+	});
+
+	test('uses the time and the duration the line names', () => {
+		expect(quickTask('Call dentist 14:30 45m', DAY, 600)).toMatchObject({
+			title: 'Call dentist',
+			date: DAY,
+			startTime: 14 * 60 + 30,
+			duration: 45
+		});
+	});
+
+	test('today a task without a time starts at the next free quarter hour', () => {
+		expect(quickTask('Buy milk', DAY, 9 * 60 + 1)?.startTime).toBe(9 * 60 + 15);
+		expect(quickTask('Buy milk', DAY, 9 * 60)?.startTime).toBe(9 * 60);
+	});
+
+	test('on another day a task without a time starts at 09:00 and lasts 30 minutes', () => {
+		expect(quickTask('Buy milk', DAY, null)).toMatchObject({ startTime: 540, duration: 30 });
+	});
+
+	test('late in the evening the task still ends before midnight', () => {
+		const late = quickTask('Buy milk', DAY, 23 * 60 + 50)!;
+		expect(late.startTime + late.duration).toBeLessThanOrEqual(1440);
+		const long = quickTask('Plan 23:30 2h', DAY, null)!;
+		expect(long.startTime + long.duration).toBeLessThanOrEqual(1440);
+	});
+});
 
 describe('parseQuickTask', () => {
 	test('title only', () => {

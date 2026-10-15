@@ -220,4 +220,4 @@ export function startRinging(tone: Tone, durationMs: number): () => void {
 }
 
 export { showToast, dismissToast, errorText } from '#lib/toast.js';
-export { createTask, updateTask, deleteTask, loadDay } from '#lib/tasks.js';
+export { addQuickTask, createTask, updateTask, deleteTask, loadDay } from '#lib/tasks.js';

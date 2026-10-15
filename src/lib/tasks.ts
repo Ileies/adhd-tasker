@@ -1,7 +1,9 @@
 import type { NewTask, Task } from '#lib/core/repo.js';
 import { BackendError } from '#lib/backend.js';
 import { tasker } from '#lib/app.svelte.js';
-import { showToast } from '#lib/toast.js';
+import { formatClock } from '#lib/format.js';
+import { quickTask } from '#lib/quickadd.js';
+import { errorText, showToast } from '#lib/toast.js';
 
 /** What the backend said was wrong, or the plain reason when it could not be reached. */
 const reasonOf = (error: unknown) =>
@@ -16,6 +18,23 @@ export async function createTask(taskData: NewTask) {
 		tasker.tasks = [...tasker.tasks, await tasker.backend.tasks.create(taskData)];
 	} catch (error) {
 		throw new Error(`Could not add the task: ${reasonOf(error)}`, { cause: error });
+	}
+}
+
+/**
+ * Adds what the quick add line says to `date` and tells the user how it went. `now` is the minute of the day
+ * when planning today. Answers whether a task was added, a line without a title adds nothing and says nothing.
+ */
+export async function addQuickTask(text: string, date: string, now: number | null) {
+	const task = quickTask(text, date, now);
+	if (!task) return false;
+	try {
+		await createTask(task);
+		showToast(`Added ${task.title} at ${formatClock(task.startTime)}`);
+		return true;
+	} catch (error) {
+		showToast(errorText(error, 'Could not add the task'));
+		return false;
 	}
 }
 

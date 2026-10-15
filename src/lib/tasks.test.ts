@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { createTask, deleteTask, loadDay, updateTask } from '#lib/tasks.js';
+import { addQuickTask, createTask, deleteTask, loadDay, updateTask } from '#lib/tasks.js';
 import { dismissToast } from '#lib/toast.js';
 import { tasker } from '#lib/app.svelte.js';
 import { fakeFetch } from '#test/fakes.js';
@@ -99,6 +99,30 @@ describe('createTask', () => {
 		const failure = await createTask(input).catch((error: Error) => error);
 		expect((failure as Error).message).toContain('title is required');
 		expect(tasker.tasks).toHaveLength(3);
+	});
+});
+
+describe('addQuickTask', () => {
+	test('adds the task and says what was added and when', async () => {
+		fakeFetch({
+			'POST http://localhost:5173/edit': async (request) =>
+				Response.json({ ...(await request.json()), id: 9, status: 'pending' })
+		});
+		expect(await addQuickTask('Call dentist 14:30', '2026-10-14', null)).toBe(true);
+		expect(tasker.tasks.at(-1)).toMatchObject({ id: 9, title: 'Call dentist', startTime: 870 });
+		expect(tasker.toast?.message).toBe('Added Call dentist at 14:30');
+	});
+
+	test('says why when the task could not be added', async () => {
+		fakeFetch({ 'POST http://localhost:5173/edit': rejected(400, 'title is required') });
+		expect(await addQuickTask('Call dentist', '2026-10-14', null)).toBe(false);
+		expect(tasker.toast?.message).toContain('title is required');
+		expect(tasker.tasks).toHaveLength(3);
+	});
+
+	test('a line without a title adds nothing and shows nothing', async () => {
+		expect(await addQuickTask('  ', '2026-10-14', null)).toBe(false);
+		expect(tasker.toast).toBeNull();
 	});
 });
 

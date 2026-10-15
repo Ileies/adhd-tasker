@@ -2,21 +2,29 @@
 	import { untrack } from 'svelte';
 	import { Check, ChevronLeft, ChevronRight, Plus, TriangleAlert } from '@lucide/svelte';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
-	import { createTask, deleteTask, errorText, loadDay, showToast, updateTask } from '#lib';
+	import {
+		addQuickTask,
+		createTask,
+		deleteTask,
+		errorText,
+		loadDay,
+		showToast,
+		updateTask
+	} from '#lib';
 	import { goto } from '$app/navigation';
 	import { tasker } from '#lib/app.svelte.js';
 	import { addDays, formatDay, isDateKey, minutesNow, todayIn } from '#lib/time.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import { DAY_MINUTES, SNAP, layoutDay } from '#lib/plan.js';
-	import { parseQuickTask } from '#lib/quickadd.js';
+	import {
+		QUICK_DURATION as DEFAULT_DURATION,
+		QUICK_START as DEFAULT_START
+	} from '#lib/quickadd.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
-
-	const DEFAULT_DURATION = 30;
-	const DEFAULT_START = 9 * 60;
 
 	let now = $state(minutesNow(tasker.timezone));
 	let today = $state(todayIn(tasker.timezone));
@@ -87,22 +95,9 @@
 
 	function addQuick(event: Event) {
 		event.preventDefault();
-		const parsed = parseQuickTask(quick);
-		if (!parsed.title) return;
-		const duration = Math.min(parsed.duration ?? DEFAULT_DURATION, DAY_MINUTES);
-		const startTime = Math.min(parsed.startTime ?? defaultStart(), DAY_MINUTES - duration);
+		const text = quick;
 		quick = '';
-		createTask({
-			title: parsed.title,
-			description: '',
-			date: selected,
-			startTime,
-			duration,
-			priority: Priority.Medium
-		}).then(
-			() => showToast(`Added ${parsed.title} at ${formatClock(startTime)}`),
-			(error) => showToast(errorText(error, 'Could not add the task'))
-		);
+		void addQuickTask(text, selected, selected === today ? now : null);
 	}
 
 	function toggle(task: Task) {
