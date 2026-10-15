@@ -205,6 +205,6 @@ Everything is synthesized with the Web Audio API on one shared `AudioContext` (`
 - Task data in `localStorage` or anywhere in the browser except `src/lib/local/` (IndexedDB, the guest's data by design). The architecture test enforces it
 - A component that calls `fetch`, or a Backend method that only one backend implements
 - Animation, emoji, decoration or flashing that competes with the current task
-- Stat tiles, marketing copy or footers on the main views
+- Stat tiles, marketing copy or footers on the main views. The one exception is the plain line "3 done today" under the rail clock (done count only, never "of 7", hidden at 0)
 - Model calls that bypass `buildRequest`, or agent logic that skips the guardrails
 - Touching the DB schema without applying it afterwards
