@@ -131,7 +131,9 @@ describe('alarm switch', () => {
 		expect((await backend.schedule.load())!.alarms[0].enabled).toBe(false);
 		await backend.schedule.setEnabled(meds.id, true);
 		expect((await backend.schedule.load())!.alarms[0].enabled).toBe(true);
-		await expect(backend.schedule.setEnabled(999, false)).rejects.toThrow('No such alarm');
+		expect(await failure(backend.schedule.setEnabled(999, false))).toMatchObject({
+			message: 'No such alarm'
+		});
 	});
 });
 
