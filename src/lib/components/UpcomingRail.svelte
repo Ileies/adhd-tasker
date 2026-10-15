@@ -4,6 +4,7 @@
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import AgentStrip from '#lib/components/AgentStrip.svelte';
 	import SilenceLine from '#lib/components/SilenceLine.svelte';
+	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import { tasker } from '#lib/app.svelte.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import { doneLine, laterLine, missedLine, nextAlarmLine, timeRange } from '#lib/rail.js';
@@ -56,7 +57,9 @@
 	class="bg-background flex flex-col gap-8 border-t p-6 pt-8 sm:px-10 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:pt-20"
 >
 	<div>
-		<div class="tabular text-5xl font-semibold" aria-label="Current time">{formatClock(now)}</div>
+		{#if tasker.settings.showClock}
+			<ClockReadout {timezone} seconds class="text-5xl font-semibold" />
+		{/if}
 		{#if doneText}
 			<p class="text-muted-foreground mt-2">{doneText}</p>
 		{/if}

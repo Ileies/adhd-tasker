@@ -102,7 +102,7 @@
 			checked={showClock}
 			onchange={(e) => put({ showClock: e.currentTarget.checked })}
 		/>
-		<span class="font-medium">Show the current time in the corner of the Now screen</span>
+		<span class="font-medium">Show the current time on the Now screen</span>
 	</label>
 
 	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}

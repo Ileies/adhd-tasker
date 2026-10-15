@@ -6,7 +6,6 @@
 	import { Input } from '#lib/components/ui/input/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import HeroMenu from '#lib/components/HeroMenu.svelte';
-	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import SilenceLine from '#lib/components/SilenceLine.svelte';
 	import { fade } from 'svelte/transition';
 	import { formatClock, formatLeft, formatMinutes } from '#lib/format.js';
@@ -30,8 +29,6 @@
 		onDrop,
 		onTimer,
 		concurrent,
-		showClock = false,
-		timezone = null,
 		compact = false,
 		planned = 1,
 		onQuickAdd,
@@ -53,8 +50,6 @@
 		onDrop: (task: Task) => void;
 		onTimer: (action: StuckAction) => void;
 		concurrent: number;
-		showClock?: boolean;
-		timezone?: string | null;
 		/** A smaller hero without the page's height, for the example in the welcome. */
 		compact?: boolean;
 		/** How many tasks today has. With none, the empty state asks for the first one. */
@@ -134,12 +129,6 @@
 		: 'min-h-svh px-6 pt-20 pb-10 sm:px-12 md:min-h-[60svh] lg:min-h-full'} {surface}"
 	aria-live={compact ? 'off' : 'polite'}
 >
-	{#if showClock}
-		<div class="absolute right-6 bottom-4 sm:right-12">
-			<ClockReadout {timezone} />
-		</div>
-	{/if}
-
 	{#if done !== null}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6" in:fade={{ duration: 400 }}>
 			<div class="flex items-center gap-3 text-lg opacity-90">

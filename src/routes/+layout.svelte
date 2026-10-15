@@ -210,7 +210,9 @@
 		<!-- Wide screens show the clock in the rail, on a phone the rail is below the fold -->
 		<div class="min-w-0 px-2 text-center">
 			{#if current === 'now'}
-				<div class="sm:hidden"><ClockReadout timezone={tasker.timezone} /></div>
+				{#if tasker.settings.showClock}
+					<div class="sm:hidden"><ClockReadout timezone={tasker.timezone} /></div>
+				{/if}
 			{:else if current === 'plan'}
 				<DaySwitcher />
 			{:else if title}

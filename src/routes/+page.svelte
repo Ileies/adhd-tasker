@@ -328,8 +328,6 @@
 			onDrop={drop}
 			onTimer={startTimer}
 			concurrent={ranking.concurrent}
-			showClock={settings.showClock}
-			{timezone}
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
 			planned={tasks.filter((task) => task.date === today).length}
 			onQuickAdd={(text) => void addQuickTask(text, today, now)}
