@@ -23,7 +23,6 @@
 	} from '#lib/quickadd.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
-	import AlarmQuick from '#lib/components/AlarmQuick.svelte';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -316,10 +315,6 @@
 			{#if voice.recording}Listening, release to fill in{:else if voice.transcribing}Understanding...{:else if micMessage}{micMessage}{:else}{preview ??
 					''}{/if}
 		</p>
-		<!-- Big screens only: phones keep timers and alarms on their own page -->
-		<div class="hidden md:block">
-			<AlarmQuick />
-		</div>
 	</form>
 
 	{#if tasker.calendar.allDay.length > 0}
