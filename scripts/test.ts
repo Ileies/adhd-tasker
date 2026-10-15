@@ -9,9 +9,11 @@
  */
 const args = process.argv.slice(2);
 const verbose = args.includes('--verbose') || args.includes('-v');
-// Every file in its own module registry and database, in a random order, so no test leans on another
+// Every file in its own module registry and database, in a random order, so no test leans on another.
+// `--parallel` spreads the files over one worker per core (11 s serial, about 2 s parallel)
 const passthrough = [
 	'--isolate',
+	'--parallel',
 	'--randomize',
 	...args.filter((a) => a !== '--verbose' && a !== '-v')
 ];

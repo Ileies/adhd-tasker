@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 /**
  * `bun run verify`: everything that must pass before a commit or a deploy, cheapest and most likely
- * failure first. Stops at the first failing step and prints its output, otherwise one line per step.
+ * failure first. The steps run side by side (the machine has the cores, and 10 s of tests would otherwise
+ * wait behind 40 s of lint) and are reported in this order. The first failure stops the rest and prints its
+ * output, otherwise one line per step.
  *
  * 1. format       prettier --check .
  * 2. tests        TZ=UTC bun test --isolate --randomize --coverage, at least 90 % of all lines and
@@ -25,13 +27,15 @@ type Step = {
 	name: string;
 	cmd: string[];
 	env?: Record<string, string>;
+	/** Starts only once this step has passed: build and types both write `.svelte-kit`. */
+	needs?: string;
 	/** Runs after a passing command and can still fail the step. */
 	after?: () => Promise<Outcome>;
 };
 
 const quick = process.argv.includes('--quick');
 const bun = process.execPath;
-const tests = ['test', '--isolate', '--randomize', '--only-failures'];
+const tests = ['test', '--isolate', '--parallel', '--randomize', '--only-failures'];
 const coverageDir = await mkdtemp(join(tmpdir(), 'tasker-coverage-'));
 
 const steps: Step[] = [
@@ -54,9 +58,11 @@ const steps: Step[] = [
 		? []
 		: [
 				{ name: 'lint', cmd: [bun, 'x', 'eslint', '.'] },
-				{ name: 'build', cmd: [bun, 'run', 'build'] }
+				{ name: 'build', cmd: [bun, 'run', 'build'], needs: 'types' }
 			])
 ];
+
+const running = new Set<Bun.Subprocess>();
 
 async function run(step: Step): Promise<Outcome> {
 	const proc = Bun.spawn(step.cmd, {
@@ -64,11 +70,13 @@ async function run(step: Step): Promise<Outcome> {
 		stdout: 'pipe',
 		stderr: 'pipe'
 	});
+	running.add(proc);
 	const [out, err, code] = await Promise.all([
 		new Response(proc.stdout).text(),
 		new Response(proc.stderr).text(),
 		proc.exited
 	]);
+	running.delete(proc);
 	if (code !== 0) return { ok: false, detail: `${out}${err}`.trimEnd() };
 	return step.after ? step.after() : { ok: true };
 }
@@ -77,11 +85,26 @@ const started = performance.now();
 const seconds = (since: number) => `${((performance.now() - since) / 1000).toFixed(1)}s`;
 let failed = false;
 
+// Every step starts at once (after the step it needs), the results are read in order
+const runs = new Map<string, Promise<Outcome & { took: string }>>();
+for (const step of steps) {
+	const gate = step.needs ? runs.get(step.needs) : undefined;
+	runs.set(
+		step.name,
+		(async () => {
+			if (gate && !(await gate).ok)
+				return { ok: false, detail: `needs ${step.needs}`, took: '0.0s' };
+			const stepStarted = performance.now();
+			const outcome = await run(step);
+			return { ...outcome, took: seconds(stepStarted) };
+		})()
+	);
+}
+
 try {
 	for (const step of steps) {
-		const stepStarted = performance.now();
-		const outcome = await run(step);
-		const line = `${outcome.ok ? 'ok  ' : 'FAIL'} ${step.name} (${seconds(stepStarted)})`;
+		const outcome = await runs.get(step.name)!;
+		const line = `${outcome.ok ? 'ok  ' : 'FAIL'} ${step.name} (${outcome.took})`;
 		if (outcome.ok) {
 			console.log(outcome.detail ? `${line}: ${outcome.detail}` : line);
 			continue;
@@ -91,6 +114,7 @@ try {
 		break;
 	}
 } finally {
+	for (const proc of running) proc.kill();
 	await rm(coverageDir, { recursive: true, force: true });
 }
 
