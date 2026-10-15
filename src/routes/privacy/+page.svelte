@@ -21,7 +21,8 @@
 <PageFrame title="Privacy" subtitle="Last updated October 14, 2026" {sections} prose>
 	<p>
 		ADHD Tasker is a small, privately run planner. It stores what it needs to show you your plan and
-		nothing more. There is no advertising, no analytics, no tracking and no selling of data.
+		nothing more. There is no advertising, no analytics, no tracking and no selling of data. How the
+		app works is described on the <a class="underline" href="/about">About</a> page.
 	</p>
 
 	<h2 id="who-is-responsible" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
