@@ -150,7 +150,21 @@ export const remoteBackend: Backend = {
 			return (await post('/import', raw, 'Could not import the file')).json();
 		},
 		async erase() {
-			throw new BackendError('Deleting an account is not possible here yet', 501);
+			await request('/account', { method: 'DELETE' }, 'Could not delete the account');
+		}
+	},
+
+	account: {
+		async move(file, mode, today) {
+			return (
+				await post('/account/import', { file, mode, today }, 'Could not move the plan')
+			).json();
+		},
+		async snapshots() {
+			return (await request('/account/snapshots')).json();
+		},
+		async restore(id) {
+			return (await post('/account/restore', { id }, 'Could not restore the plan')).json();
 		}
 	},
 

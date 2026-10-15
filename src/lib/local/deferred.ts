@@ -13,6 +13,7 @@ export const BACKEND_METHODS = {
 	activity: ['load'],
 	settings: ['load', 'saveTimezone', 'saveKey', 'removeKey', 'save'],
 	data: ['export', 'import', 'erase'],
+	account: ['move', 'snapshots', 'restore'],
 	sample: ['ids', 'start', 'clear'],
 	voice: ['transcribe', 'speak']
 } as const satisfies { [Area in keyof Backend]: readonly (keyof Backend[Area])[] };

@@ -1,12 +1,8 @@
 /// <reference types="bun" />
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { EXPORT_APP, EXPORT_VERSION, buildExport, type ExportFile } from '#lib/core/export.js';
-import {
-	SNAPSHOT_DAYS,
-	listSnapshots,
-	moveIntoAccount,
-	restoreSnapshot
-} from '#lib/server/account.js';
+import { SNAPSHOT_DAYS } from '#lib/core/merge.js';
+import { listSnapshots, moveIntoAccount, restoreSnapshot } from '#lib/server/account.js';
 import { dbRepo } from '#lib/server/db-repo.js';
 import { db } from '#lib/server/db/index.js';
 import { planSnapshots } from '#lib/server/db/schema.js';

@@ -13,27 +13,16 @@ import {
 	type ExportFile,
 	type ImportResult
 } from '#lib/core/export.js';
+import {
+	SNAPSHOT_DAYS,
+	type MoveMode,
+	type MoveResult,
+	type SnapshotInfo
+} from '#lib/core/merge.js';
 import { db } from '#lib/server/db/index.js';
 import { planSnapshots, schedule, tasks, users } from '#lib/server/db/schema.js';
 
-export const SNAPSHOT_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** `both` adds the device's plan to the account's, `replace` puts it in place of the account's plan from today on. */
-export type MoveMode = 'both' | 'replace';
-export const MOVE_MODES: readonly MoveMode[] = ['both', 'replace'];
-
-export interface MoveResult extends ImportResult {
-	/** The account's plan as it was before, to bring back with `restoreSnapshot`. */
-	snapshotId: number;
-}
-
-export interface SnapshotInfo {
-	id: number;
-	createdAt: number;
-	tasks: number;
-	alarms: number;
-}
 
 /** A transaction handle or the database itself: both answer the same queries. */
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

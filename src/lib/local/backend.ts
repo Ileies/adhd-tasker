@@ -59,6 +59,10 @@ async function guarded<T>(work: () => Promise<T>): Promise<T> {
 	}
 }
 
+const signInFirst = async (): Promise<never> => {
+	throw new BackendError('Sign in first', 401);
+};
+
 export function localBackend(deps: LocalDeps): Backend {
 	const { repo } = deps;
 	const now = deps.now ?? Date.now;
@@ -186,6 +190,13 @@ export function localBackend(deps: LocalDeps): Backend {
 					if (!deps.erase) throw new AssistantError('Nothing to delete on this device', 400);
 					await deps.erase();
 				})
+		},
+
+		// A device has no account to move into: signing in does that, with the account's own backend
+		account: {
+			move: signInFirst,
+			snapshots: async () => [],
+			restore: signInFirst
 		},
 
 		sample: {

@@ -156,7 +156,7 @@ describe('remoteBackend requests', () => {
 		expect(await requests[1].json()).toEqual({ app: 'adhd-tasker' });
 	});
 
-	test('data: a refused import carries the reason, deleting an account is not offered yet', async () => {
+	test('data: a refused import carries the reason', async () => {
 		fakeFetch({
 			'POST http://localhost:5173/import': refuse(400, 'This is not an ADHD Tasker export file')
 		});
@@ -164,7 +164,64 @@ describe('remoteBackend requests', () => {
 			status: 400,
 			message: 'This is not an ADHD Tasker export file'
 		});
-		expect(await failure(() => remoteBackend.data.erase())).toMatchObject({ status: 501 });
+	});
+
+	test('data: erasing is a DELETE of the account, a refusal carries the reason', async () => {
+		const { requests } = fakeFetch({
+			'DELETE http://localhost:5173/account': () => new Response(null, { status: 204 })
+		});
+		await remoteBackend.data.erase();
+		expect(requests[0].method).toBe('DELETE');
+
+		fakeFetch({ 'DELETE http://localhost:5173/account': refuse(401, 'Login required') });
+		expect(await failure(() => remoteBackend.data.erase())).toMatchObject({
+			status: 401,
+			message: 'Login required'
+		});
+	});
+
+	test('account: a move is a POST of the file, the mode and the day, with the result back', async () => {
+		const { requests } = fakeFetch({
+			'POST http://localhost:5173/account/import': json({
+				tasks: 2,
+				skipped: 0,
+				alarms: 0,
+				snapshotId: 4
+			})
+		});
+		const file = { app: 'adhd-tasker' } as never;
+		expect(await remoteBackend.account.move(file, 'both', '2026-10-14')).toMatchObject({
+			snapshotId: 4
+		});
+		expect(await requests[0].json()).toEqual({ file, mode: 'both', today: '2026-10-14' });
+	});
+
+	test('account: a refused move carries the reason', async () => {
+		fakeFetch({
+			'POST http://localhost:5173/account/import': refuse(400, 'Task 2 is not valid: bad')
+		});
+		expect(
+			await failure(() => remoteBackend.account.move({} as never, 'replace', '2026-10-14'))
+		).toMatchObject({ status: 400, message: 'Task 2 is not valid: bad' });
+	});
+
+	test('account: snapshots are a GET, a restore a POST of the id', async () => {
+		const { requests } = fakeFetch({
+			'GET http://localhost:5173/account/snapshots': json([
+				{ id: 3, createdAt: 1, tasks: 4, alarms: 0 }
+			]),
+			'POST http://localhost:5173/account/restore': json({
+				tasks: 4,
+				skipped: 0,
+				alarms: 0,
+				snapshotId: 5
+			})
+		});
+		expect(await remoteBackend.account.snapshots()).toEqual([
+			{ id: 3, createdAt: 1, tasks: 4, alarms: 0 }
+		]);
+		expect(await remoteBackend.account.restore(3)).toMatchObject({ snapshotId: 5 });
+		expect(await requests[1].json()).toEqual({ id: 3 });
 	});
 
 	test('activity: the view is a GET of /activity', async () => {

@@ -1,7 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { parseExport } from '#lib/core/export.js';
-import { MOVE_MODES, moveIntoAccount } from '#lib/server/account.js';
+import { MOVE_MODES } from '#lib/core/merge.js';
+import { moveIntoAccount } from '#lib/server/account.js';
 import { serverCtx } from '#lib/server/ctx.js';
 import { isDateKey } from '#lib/time.js';
 

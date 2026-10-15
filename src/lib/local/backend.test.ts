@@ -266,6 +266,21 @@ describe('data', () => {
 	});
 });
 
+describe('account', () => {
+	test('a device has no account to move into and no snapshots to restore, it says to sign in', async () => {
+		const { backend } = await setup();
+		expect(await backend.account.snapshots()).toEqual([]);
+		for (const attempt of [
+			() => backend.account.move({} as never, 'both', '2026-10-14'),
+			() => backend.account.restore(1)
+		])
+			expect(await attempt().catch((error) => error)).toMatchObject({
+				status: 401,
+				message: 'Sign in first'
+			});
+	});
+});
+
 describe('sample day', () => {
 	test('starting adds the sample tasks, marks them and tells the other tabs', async () => {
 		const { backend, planChanges } = await setup();

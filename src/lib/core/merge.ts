@@ -2,7 +2,31 @@
  * What a guest's plan and an account's plan have in common, so the move screen can warn before anything is
  * written (local first plan 5.3). Pure: both plans come as export files, the device's without the sample day.
  */
-import { sameTask, type ExportedTask, type ExportFile } from '#lib/core/export.js';
+import {
+	sameTask,
+	type ExportedTask,
+	type ExportFile,
+	type ImportResult
+} from '#lib/core/export.js';
+
+/** How long the account's plan from before a move is kept. */
+export const SNAPSHOT_DAYS = 30;
+
+/** `both` adds the device's plan to the account's, `replace` puts it in place of the account's plan from today on. */
+export type MoveMode = 'both' | 'replace';
+export const MOVE_MODES: readonly MoveMode[] = ['both', 'replace'];
+
+export interface MoveResult extends ImportResult {
+	/** The account's plan as it was before, to bring back with a restore. */
+	snapshotId: number;
+}
+
+export interface SnapshotInfo {
+	id: number;
+	createdAt: number;
+	tasks: number;
+	alarms: number;
+}
 
 export interface PlanSummary {
 	tasks: number;

@@ -10,6 +10,7 @@ import type { ChatMessage, Change } from '#lib/core/assistant.js';
 import type { ActivityView } from '#lib/core/activity.js';
 import type { ExportFile, ImportResult } from '#lib/core/export.js';
 import type { AgentFeed } from '#lib/core/feed.js';
+import type { MoveMode, MoveResult, SnapshotInfo } from '#lib/core/merge.js';
 import type { Repeat } from '#lib/schedule.js';
 import type { ClientSettings, SettingsPatch } from '#lib/settings.js';
 import type { ToneName } from '#lib/tones.js';
@@ -83,8 +84,19 @@ export interface Backend {
 		export(): Promise<ExportFile>;
 		/** Adds what an export file holds. Rejects with the reason when it is not a valid file. */
 		import(raw: unknown): Promise<ImportResult>;
-		/** Deletes everything stored on this device. Only a guest has data on a device. */
+		/** Deletes everything stored on this device, or for an account the account itself with every row of it. */
 		erase(): Promise<void>;
+	};
+	account: {
+		/**
+		 * Moves a device's plan, as the export file, into the account (`today` is the day in the account's timezone).
+		 * Rejects with the reason when a row is invalid, then nothing was changed.
+		 */
+		move(file: ExportFile, mode: MoveMode, today: string): Promise<MoveResult>;
+		/** The plans of the account that can be brought back, newest first. */
+		snapshots(): Promise<SnapshotInfo[]>;
+		/** Brings a snapshot back. What is there now becomes a snapshot itself. */
+		restore(id: number): Promise<MoveResult>;
 	};
 	sample: {
 		/** The sample tasks still in the plan. Only a guest's device makes a sample day, so an account has none. */
