@@ -27,6 +27,7 @@
 	import SoundMenu from '#lib/components/SoundMenu.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
 	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
+	import QuickAlarmBar from '#lib/components/QuickAlarmBar.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { browser } from '$app/env';
@@ -140,14 +141,13 @@
 	let barVisible = $state(true);
 	let isFullscreen = $state(false);
 	let loginForm = $state<HTMLFormElement>();
-	let headerEl: HTMLElement | undefined = $state();
 	let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
 	function scheduleHide() {
 		clearTimeout(hideTimer);
 		hideTimer = setTimeout(() => {
-			// Keep the bar while it holds keyboard focus
-			if (headerEl?.matches(':focus-within')) scheduleHide();
+			// Keep the bars while one holds keyboard focus
+			if (document.querySelector('[data-bar]:focus-within')) scheduleHide();
 			else barVisible = false;
 		}, HIDE_AFTER_MS);
 	}
@@ -185,7 +185,7 @@
 
 <div class="relative flex h-dvh flex-col {barHidden ? 'cursor-none' : ''}">
 	<header
-		bind:this={headerEl}
+		data-bar
 		class="z-(--z-bar) grid shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2 py-1 transition-opacity duration-500
 			{overlay ? 'bg-background/70 absolute inset-x-0 top-0 backdrop-blur-md' : 'bg-background border-b'}
 			{barHidden ? 'pointer-events-none opacity-0' : ''}"
@@ -294,4 +294,8 @@
 			{/key}
 		{/if}
 	</main>
+
+	{#if overlay && !tasker.move.comparison}
+		<QuickAlarmBar hidden={barHidden} />
+	{/if}
 </div>
