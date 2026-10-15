@@ -1,11 +1,12 @@
 <script lang="ts">
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import TimezonePicker from '#lib/components/TimezonePicker.svelte';
-	import AnchoringSettingsForm from '#lib/components/AnchoringSettingsForm.svelte';
+	import MyDayForm from '#lib/components/MyDayForm.svelte';
+	import ReminderSettingsForm from '#lib/components/ReminderSettingsForm.svelte';
 	import OpenAiKeyForm from '#lib/components/OpenAiKeyForm.svelte';
 	import AgentSettingsForm from '#lib/components/AgentSettingsForm.svelte';
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
-	import ClockSettingsForm from '#lib/components/ClockSettingsForm.svelte';
+	import AccountCard from '#lib/components/AccountCard.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
 	import CalendarSettings from '#lib/components/CalendarSettings.svelte';
 	import { parseServices } from '#lib/google.js';
@@ -23,18 +24,13 @@
 	// A guest's settings are on the device: the forms wait until they were read, so they never show defaults that are not theirs
 	const ready = $derived(!!data.user || tasker.account.ready);
 
+	// Ordered by how much a section shapes the day
 	const sections = $derived([
-		{ id: 'theme', label: 'Theme' },
-		{ id: 'timezone', label: 'Timezone' },
-		{ id: 'clock', label: 'Clock' },
-		{ id: 'reminders', label: 'Reminders and overruns' },
+		{ id: 'reminders', label: 'Reminders and sound' },
+		{ id: 'appearance', label: 'Appearance' },
+		{ id: 'time', label: 'Time' },
 		{ id: 'assistant', label: 'Assistant' },
-		{ id: 'voice', label: 'Voice' },
-		{ id: 'agent', label: 'Assistant on its own' },
-		{ id: 'data', label: 'Your data' },
-		...(data.user
-			? [{ id: 'google', label: 'Google Workspace' }]
-			: [{ id: 'sync', label: 'Sync across devices' }])
+		{ id: 'account', label: data.user ? 'Account and data' : 'Your data and sync' }
 	]);
 </script>
 
@@ -43,9 +39,30 @@
 </svelte:head>
 
 <PageFrame title="Settings" {sections}>
-	<Card.Root id="theme" class="scroll-mt-6">
+	{#if ready}
+		<Card.Root id="reminders" class="scroll-mt-6">
+			<Card.Header>
+				<Card.Title>Reminders and sound</Card.Title>
+				<Card.Description
+					>Sounds that pull you back to the plan. They work without an OpenAI key.</Card.Description
+				>
+			</Card.Header>
+			<Card.Content>
+				<ReminderSettingsForm
+					checkIn={settings.checkInMinutes}
+					reminders={settings.enableReminders}
+					advance={settings.reminderAdvanceTime}
+					hyperfocus={settings.hyperfocusAlarm}
+					overrun={settings.overrunMinutes}
+					showClock={settings.showClock}
+				/>
+			</Card.Content>
+		</Card.Root>
+	{/if}
+
+	<Card.Root id="appearance" class="mt-4 scroll-mt-6">
 		<Card.Header>
-			<Card.Title>Theme</Card.Title>
+			<Card.Title>Appearance</Card.Title>
 			<Card.Description
 				>Choose one theme, or switch automatically based on your local time.</Card.Description
 			>
@@ -55,134 +72,83 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root id="timezone" class="mt-4 scroll-mt-6">
+	<Card.Root id="time" class="mt-4 scroll-mt-6">
 		<Card.Header>
-			<Card.Title>Timezone</Card.Title>
-			<Card.Description>Task times and the active task follow this timezone.</Card.Description>
+			<Card.Title>Time</Card.Title>
+			<Card.Description>Task times and the active task follow your timezone.</Card.Description>
 		</Card.Header>
-		<Card.Content>
+		<Card.Content class="space-y-6">
 			<TimezonePicker />
+			{#if ready}
+				<MyDayForm start={settings.myDayStart} end={settings.myDayEnd} />
+			{/if}
 		</Card.Content>
 	</Card.Root>
 
 	{#if ready}
-		<Card.Root id="clock" class="mt-4 scroll-mt-6">
-			<Card.Header>
-				<Card.Title>Clock</Card.Title>
-				<Card.Description>Show the time of day on the Now screen.</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<ClockSettingsForm show={settings.showClock} />
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root id="reminders" class="mt-4 scroll-mt-6">
-			<Card.Header>
-				<Card.Title>Reminders and overruns</Card.Title>
-				<Card.Description
-					>Sounds that pull you back to the plan. They work without an OpenAI key.</Card.Description
-				>
-			</Card.Header>
-			<Card.Content>
-				<AnchoringSettingsForm
-					reminders={settings.enableReminders}
-					advance={settings.reminderAdvanceTime}
-					hyperfocus={settings.hyperfocusAlarm}
-					overrun={settings.overrunMinutes}
-				/>
-			</Card.Content>
-		</Card.Root>
-
 		<Card.Root id="assistant" class="mt-4 scroll-mt-6">
 			<Card.Header>
 				<Card.Title>Assistant</Card.Title>
-				<Card.Description
-					>Bring your own OpenAI key to chat with the assistant about your plan.</Card.Description
-				>
-			</Card.Header>
-			<Card.Content>
-				<OpenAiKeyForm hasKey={settings.hasOpenaiKey} signedIn={!!data.user} />
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root id="voice" class="mt-4 scroll-mt-6">
-			<Card.Header>
-				<Card.Title>Voice</Card.Title>
-				<Card.Description
-					>Talk to the assistant and let it talk back. Off by default.</Card.Description
-				>
-			</Card.Header>
-			<Card.Content>
-				<VoiceSettingsForm replies={settings.voiceReplies} />
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root id="agent" class="mt-4 scroll-mt-6">
-			<Card.Header>
-				<Card.Title>Assistant on its own</Card.Title>
 				<Card.Description>
-					The assistant can notice what happens in your plan. By default it stays quiet and only
-					offers a note or a question. See what it did on the <a class="underline" href="/activity"
-						>Activity</a
-					>
-					page.
-					{#if !data.user}
-						Without an account it only works while this app is open.
-					{/if}
+					Chat about your plan and let it notice what happens. It uses your own OpenAI key, and
+					everything else works without it.
 				</Card.Description>
 			</Card.Header>
-			<Card.Content>
-				<AgentSettingsForm
-					autonomy={settings.aiAutonomy}
-					events={settings.aiEvents}
-					quietStart={settings.quietStart}
-					quietEnd={settings.quietEnd}
-					budget={settings.dailyTokenBudget}
-				/>
+			<Card.Content class="space-y-6">
+				<OpenAiKeyForm hasKey={settings.hasOpenaiKey} signedIn={!!data.user} />
+				{#if settings.hasOpenaiKey}
+					<div class="space-y-3 border-t pt-6">
+						<p class="text-muted-foreground text-sm">
+							By default it stays quiet and only offers a note or a question. See what it did on the
+							<a class="underline" href="/activity">Activity</a> page.
+							{#if !data.user}
+								Without an account it only works while this app is open.
+							{/if}
+						</p>
+						<AgentSettingsForm
+							autonomy={settings.aiAutonomy}
+							events={settings.aiEvents}
+							quietStart={settings.quietStart}
+							quietEnd={settings.quietEnd}
+							budget={settings.dailyTokenBudget}
+						/>
+					</div>
+					<div class="border-t pt-6">
+						<VoiceSettingsForm replies={settings.voiceReplies} />
+					</div>
+				{/if}
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root id="data" class="mt-4 scroll-mt-6">
+		<Card.Root id="account" class="mt-4 scroll-mt-6">
 			<Card.Header>
-				<Card.Title>Your data</Card.Title>
-				<Card.Description>Take a copy with you, or bring one back.</Card.Description>
+				<Card.Title>{data.user ? 'Account and data' : 'Your data and sync'}</Card.Title>
+				<Card.Description>
+					{data.user
+						? 'Your account, Google Calendar and a copy of your data.'
+						: 'Sign in with Google to add sync and calendar. You do not need an account to use the app.'}
+				</Card.Description>
 			</Card.Header>
-			<Card.Content>
-				<DataSettings signedIn={!!data.user} />
+			<Card.Content class="space-y-6">
+				{#if data.user}
+					<AccountCard email={data.user.email} />
+					<div class="space-y-4 border-t pt-6">
+						<p class="font-medium">Google Calendar</p>
+						<GoogleLinkPicker linked={data.user.googleServices} />
+						{#if parseServices(data.user.googleServices).includes('calendar')}
+							<div class="border-t pt-6">
+								<CalendarSettings />
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<SyncSettings />
+				{/if}
+				<div class="space-y-3 border-t pt-6">
+					<p class="font-medium">Your data</p>
+					<DataSettings signedIn={!!data.user} />
+				</div>
 			</Card.Content>
 		</Card.Root>
-
-		{#if !data.user}
-			<Card.Root id="sync" class="mt-4 scroll-mt-6">
-				<Card.Header>
-					<Card.Title>Sync across devices</Card.Title>
-					<Card.Description>
-						Sign in with Google to add what an account gives you. You do not need one to use the
-						app.
-					</Card.Description>
-				</Card.Header>
-				<Card.Content>
-					<SyncSettings />
-				</Card.Content>
-			</Card.Root>
-		{:else}
-			<Card.Root id="google" class="mt-4 scroll-mt-6">
-				<Card.Header>
-					<Card.Title>Google Workspace</Card.Title>
-					<Card.Description
-						>Ask your Google account for more permissions. Nothing is read or changed until a
-						feature uses them.</Card.Description
-					>
-				</Card.Header>
-				<Card.Content>
-					<GoogleLinkPicker linked={data.user.googleServices} />
-					{#if parseServices(data.user.googleServices).includes('calendar')}
-						<div class="mt-6 border-t pt-6">
-							<CalendarSettings />
-						</div>
-					{/if}
-				</Card.Content>
-			</Card.Root>
-		{/if}
 	{/if}
 </PageFrame>
