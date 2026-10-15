@@ -242,7 +242,7 @@ describe('eraseSoon', () => {
 		tasker.account.email = 'ada@example.com';
 		useBackend({ erase: async () => void erased++ });
 		eraseSoon();
-		expect(tasker.toast?.message).toBe('Your account and everything in it will be deleted');
+		expect(tasker.toasts.at(-1)?.message).toBe('Your account and everything in it will be deleted');
 		jest.advanceTimersByTime(ERASE_WINDOW_MS);
 		await Promise.resolve();
 		await Promise.resolve();
@@ -258,7 +258,7 @@ describe('eraseSoon', () => {
 		let erased = 0;
 		useBackend({ erase: async () => void erased++ });
 		eraseSoon();
-		expect(tasker.toast?.message).toBe('Everything on this device will be deleted');
+		expect(tasker.toasts.at(-1)?.message).toBe('Everything on this device will be deleted');
 		jest.advanceTimersByTime(ERASE_WINDOW_MS - 1);
 		expect(erased).toBe(0);
 		jest.advanceTimersByTime(1);
@@ -273,7 +273,7 @@ describe('eraseSoon', () => {
 		let erased = 0;
 		useBackend({ erase: async () => void erased++ });
 		eraseSoon();
-		tasker.toast?.undo?.();
+		tasker.toasts.at(-1)?.undo?.();
 		jest.advanceTimersByTime(ERASE_WINDOW_MS * 2);
 		await Promise.resolve();
 		expect(erased).toBe(0);
@@ -304,7 +304,9 @@ describe('eraseSoon', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		await Promise.resolve();
-		expect(tasker.toast?.message).toBe('Could not delete: Nothing to delete on this device');
+		expect(tasker.toasts.at(-1)?.message).toBe(
+			'Could not delete: Nothing to delete on this device'
+		);
 		expect(reloads).toBe(0);
 	});
 });

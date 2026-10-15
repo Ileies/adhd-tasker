@@ -116,8 +116,8 @@ describe('checkMove', () => {
 		await checkMove();
 		expect(calls.move).toEqual([['both', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)]]);
 		expect(tasker.move.comparison).toBeNull();
-		expect(tasker.toast?.message).toBe('Your plan is now in your account: 2 tasks.');
-		expect(tasker.toast?.undo).toBeFunction();
+		expect(tasker.toasts.at(-1)?.message).toBe('Your plan is now in your account: 2 tasks.');
+		expect(tasker.toasts.at(-1)?.undo).toBeFunction();
 		// The account has it, so the device no longer holds it, but keeps a copy
 		expect(await deviceTitles()).toEqual([]);
 		expect((await readBackup(Date.now()))?.file.tasks).toHaveLength(2);
@@ -181,8 +181,8 @@ describe('checkMove', () => {
 		await guestDevice(['Write intro']);
 		account(file(), { refuse: 'Task 1 is not valid: broken' });
 		await checkMove();
-		expect(tasker.toast?.message).toContain('Task 1 is not valid: broken');
-		expect(tasker.toast?.message).toContain('still on this device');
+		expect(tasker.toasts.at(-1)?.message).toContain('Task 1 is not valid: broken');
+		expect(tasker.toasts.at(-1)?.message).toContain('still on this device');
 		expect(await deviceTitles()).toEqual(['Write intro']);
 	});
 });
@@ -201,7 +201,7 @@ describe('chooseMove', () => {
 		expect(calls.move.map(([mode]) => mode)).toEqual(['both']);
 		expect(tasker.move.comparison).toBeNull();
 		expect(await deviceTitles()).toEqual([]);
-		expect(tasker.toast?.message).toContain('Your plan is now in your account');
+		expect(tasker.toasts.at(-1)?.message).toContain('Your plan is now in your account');
 	});
 
 	test("keep this device's replaces the plan of the account", async () => {
@@ -217,7 +217,7 @@ describe('chooseMove', () => {
 		expect(await deviceTitles()).toEqual(['Write intro']);
 		expect((await readDevice(Date.now()))?.declinedFor).toBe(EMAIL);
 		expect(tasker.move.comparison).toBeNull();
-		expect(tasker.toast?.message).toContain('stays on this device');
+		expect(tasker.toasts.at(-1)?.message).toContain('stays on this device');
 	});
 
 	test('the OpenAI key goes to the account only when it is ticked', async () => {
@@ -257,11 +257,11 @@ describe('undoing a move', () => {
 		await checkMove();
 		expect(await deviceTitles()).toEqual([]);
 
-		await tasker.toast!.undo!();
+		await tasker.toasts.at(-1)!.undo!();
 		expect(calls.restore).toEqual([9]);
 		expect(await deviceTitles()).toEqual(['Write intro']);
 		expect((await readDevice(Date.now()))?.declinedFor).toBe(EMAIL);
-		expect(tasker.toast?.message).toContain('The move is undone');
+		expect(tasker.toasts.at(-1)?.message).toContain('The move is undone');
 
 		// The next load does not move it again
 		await checkMove();

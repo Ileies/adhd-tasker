@@ -69,7 +69,7 @@ describe('syncCalendar', () => {
 			}
 		});
 		await syncCalendar();
-		expect(tasker.toast).toBeNull();
+		expect(tasker.toasts).toEqual([]);
 	});
 
 	test('starts at once and stops when told', async () => {
@@ -92,7 +92,7 @@ describe('importCalendar', () => {
 		const asked = backendWith({ import: async () => ({ tasks: 2, left: 0, allDay: 0 }) });
 		expect(await importCalendar('all')).toBeNull();
 		expect(asked.reload).toBe(1);
-		expect(tasker.toast?.message).toBe('2 tasks added to your plan.');
+		expect(tasker.toasts.at(-1)?.message).toBe('2 tasks added to your plan.');
 	});
 
 	test('answers why it failed and changes nothing', async () => {

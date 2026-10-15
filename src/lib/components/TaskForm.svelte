@@ -81,7 +81,7 @@
 			if (form.isEditing && form.selectedTask) {
 				// A refused change shows its toast and leaves the dialog open
 				if (!(await updateTask({ ...form.selectedTask, ...taskData }))) {
-					failure = tasker.toast?.message ?? 'Could not save the task';
+					failure = tasker.toasts.at(-1)?.message ?? 'Could not save the task';
 					return;
 				}
 			} else {

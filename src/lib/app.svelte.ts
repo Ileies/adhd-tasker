@@ -12,6 +12,7 @@ import { clientSettings, type ClientSettings } from '#lib/settings.js';
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
 export interface Toast {
+	id: number;
 	message: string;
 	/** Reverts the action the toast reports, the toast offers an Undo button when set. */
 	undo?: () => unknown;
@@ -67,7 +68,7 @@ export const tasker: {
 	volume: number; // 0-100
 	themeMode: ThemeMode;
 	timezone: string | null; // IANA name from the user's settings, null until set
-	toast: Toast | null;
+	toasts: Toast[]; // oldest first, the newest sits at the bottom
 	assistant: { open: boolean; busy: boolean; messages: ChatEntry[] }; // the chat lives for this page session only
 	agent: { cards: AgentCard[]; cursor: number | null }; // cursor: last agent action id seen, null before the first poll
 	schedule: {
@@ -110,7 +111,7 @@ export const tasker: {
 	volume: 100,
 	themeMode: 'auto',
 	timezone: null,
-	toast: null,
+	toasts: [],
 	assistant: { open: false, busy: false, messages: [] },
 	agent: { cards: [], cursor: null },
 	schedule: { alarms: [], wakeups: [], ringing: null, loaded: false },

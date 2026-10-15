@@ -1,20 +1,31 @@
 import { tasker } from '#lib/app.svelte.js';
 
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
+const timers = new Map<number, ReturnType<typeof setTimeout>>();
+let nextId = 1;
 
 /** How long a toast stays, unless the caller needs the undo window to be longer. */
 export const TOAST_MS = 8000;
 
-/** Shows a short confirmation. With `undo` it offers a way back, so no action needs a confirm dialog. */
+/** At most this many toasts show at once, the oldest makes room (its undo window ends with it). */
+export const MAX_TOASTS = 4;
+
+/** Shows a short confirmation under the ones already showing. With `undo` it offers a way back, so no action needs a confirm dialog. */
 export function showToast(message: string, undo?: () => unknown, durationMs = TOAST_MS) {
-	clearTimeout(toastTimer);
-	tasker.toast = { message, undo };
-	toastTimer = setTimeout(dismissToast, durationMs);
+	const id = nextId++;
+	tasker.toasts = [...tasker.toasts, { id, message, undo }];
+	timers.set(
+		id,
+		setTimeout(() => dismissToast(id), durationMs)
+	);
+	for (const old of tasker.toasts.slice(0, -MAX_TOASTS)) dismissToast(old.id);
 }
 
-export function dismissToast() {
-	clearTimeout(toastTimer);
-	tasker.toast = null;
+/** Closes one toast, or all of them without an id. */
+export function dismissToast(id?: number) {
+	for (const toast of tasker.toasts) {
+		if (id === undefined || toast.id === id) clearTimeout(timers.get(toast.id));
+	}
+	tasker.toasts = id === undefined ? [] : tasker.toasts.filter((toast) => toast.id !== id);
 }
 
 /** The reason carried by a thrown error, or the plain fallback when it carries none. */

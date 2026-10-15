@@ -27,7 +27,7 @@ beforeEach(() => {
 	tasker.tasks = [task(1), task(2), task(3)];
 	dismissToast();
 });
-afterEach(dismissToast);
+afterEach(() => dismissToast());
 
 describe('updateTask', () => {
 	test('shows the change at once and keeps it when the server accepts', async () => {
@@ -36,7 +36,7 @@ describe('updateTask', () => {
 		expect(tasker.tasks[1].title).toBe('Renamed');
 		expect(await pending).toBe(true);
 		expect(tasker.tasks[1].title).toBe('Renamed');
-		expect(tasker.toast).toBeNull();
+		expect(tasker.toasts).toEqual([]);
 		expect(await requests[0].json()).toMatchObject({ id: 2, title: 'Renamed' });
 	});
 
@@ -44,14 +44,14 @@ describe('updateTask', () => {
 		fakeFetch({ 'PUT http://localhost:5173/edit': rejected(400, 'priority must be 1 to 5') });
 		expect(await updateTask(task(2, { priority: 9 as Priority }))).toBe(false);
 		expect(tasker.tasks[1]).toEqual(task(2));
-		expect(tasker.toast?.message).toContain('priority must be 1 to 5');
+		expect(tasker.toasts.at(-1)?.message).toContain('priority must be 1 to 5');
 	});
 
 	test('puts the task back when the network fails (D4)', async () => {
 		fakeFetch({ 'PUT http://localhost:5173/edit': offline });
 		expect(await updateTask(task(2, { startTime: 0 }))).toBe(false);
 		expect(tasker.tasks[1]).toEqual(task(2));
-		expect(tasker.toast?.message).toContain('Could not');
+		expect(tasker.toasts.at(-1)?.message).toContain('Could not');
 	});
 
 	test('a task the client does not hold is left alone', async () => {
@@ -75,7 +75,7 @@ describe('deleteTask', () => {
 		fakeFetch({ 'DELETE http://localhost:5173/edit': rejected(404, 'Task not found') });
 		expect(await deleteTask(task(2))).toBe(false);
 		expect(tasker.tasks.map((t) => t.id)).toEqual([1, 2, 3]);
-		expect(tasker.toast?.message).toContain('Task not found');
+		expect(tasker.toasts.at(-1)?.message).toContain('Task not found');
 	});
 
 	test('brings the task back when the network fails (D4)', async () => {
@@ -110,19 +110,19 @@ describe('addQuickTask', () => {
 		});
 		expect(await addQuickTask('Call dentist 14:30', '2026-10-14', null)).toBe(true);
 		expect(tasker.tasks.at(-1)).toMatchObject({ id: 9, title: 'Call dentist', startTime: 870 });
-		expect(tasker.toast?.message).toBe('Added Call dentist at 14:30');
+		expect(tasker.toasts.at(-1)?.message).toBe('Added Call dentist at 14:30');
 	});
 
 	test('says why when the task could not be added', async () => {
 		fakeFetch({ 'POST http://localhost:5173/edit': rejected(400, 'title is required') });
 		expect(await addQuickTask('Call dentist', '2026-10-14', null)).toBe(false);
-		expect(tasker.toast?.message).toContain('title is required');
+		expect(tasker.toasts.at(-1)?.message).toContain('title is required');
 		expect(tasker.tasks).toHaveLength(3);
 	});
 
 	test('a line without a title adds nothing and shows nothing', async () => {
 		expect(await addQuickTask('  ', '2026-10-14', null)).toBe(false);
-		expect(tasker.toast).toBeNull();
+		expect(tasker.toasts).toEqual([]);
 	});
 });
 

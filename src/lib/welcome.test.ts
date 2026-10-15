@@ -61,7 +61,7 @@ describe('trySampleDay', () => {
 	test('says why when the device cannot add it', async () => {
 		tasker.backend = remoteBackend;
 		await trySampleDay('2026-10-14', 12 * 60);
-		expect(tasker.toast?.message).toContain('Could not add the sample day');
+		expect(tasker.toasts.at(-1)?.message).toContain('Could not add the sample day');
 		expect(tasker.tasks).toEqual([]);
 		expect(tasker.firstRun.welcomed).toBe(true);
 	});
@@ -83,7 +83,7 @@ describe('clearSampleDay', () => {
 		await clearSampleDay();
 		expect(tasker.tasks.map((task) => task.id)).toEqual([mine.id]);
 		expect(tasker.sample).toEqual([]);
-		expect(tasker.toast?.message).toBe('Sample day cleared');
+		expect(tasker.toasts.at(-1)?.message).toBe('Sample day cleared');
 	});
 
 	test('keeps the sample and says why when the device refuses', async () => {
@@ -99,6 +99,6 @@ describe('clearSampleDay', () => {
 		await clearSampleDay();
 		expect(tasker.sample).toEqual([1, 2]);
 		expect(tasker.tasks).toHaveLength(2);
-		expect(tasker.toast?.message).toBe('Could not clear the sample day: Storage is full');
+		expect(tasker.toasts.at(-1)?.message).toBe('Could not clear the sample day: Storage is full');
 	});
 });
