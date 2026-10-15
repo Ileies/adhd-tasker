@@ -5,7 +5,12 @@
 	import { muteFor, setMuted, setVolume } from '#lib/theme.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Popover from '#lib/components/ui/popover/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
 	import { Slider } from '#lib/components/ui/slider/index.js';
+
+	// Matches DropdownMenu.Item so the sound and main menus read as one family
+	const ROW =
+		'hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent flex w-full cursor-default items-center rounded-md px-1.5 py-1 text-left text-sm outline-hidden select-none';
 
 	const silent = $derived(tasker.isMuted || tasker.volume === 0);
 </script>
@@ -24,27 +29,24 @@
 			</Button>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content align="end" class="w-72 space-y-4">
-		<div class="space-y-1">
+	<!-- Same panel as the main menu: w-64, p-1, compact rows, overlay layer -->
+	<Popover.Content align="end" class="z-(--z-overlay) w-64 gap-0 p-1">
+		<div>
 			{#if tasker.isMuted}
-				<Button class="w-full justify-start" variant="secondary" onclick={() => setMuted(false)}>
-					Unmute
-				</Button>
+				<button type="button" class={ROW} onclick={() => setMuted(false)}>Unmute</button>
 			{:else}
 				{#each MUTE_OPTIONS as option (option.text)}
-					<Button
-						class="w-full justify-start"
-						variant="ghost"
-						onclick={() => muteFor(option.minutes)}
-					>
+					<button type="button" class={ROW} onclick={() => muteFor(option.minutes)}>
 						{option.text}
-					</Button>
+					</button>
 				{/each}
 			{/if}
 		</div>
 
-		<div class="space-y-2 px-1">
-			<span class="text-sm font-medium" id="volume-label">Volume</span>
+		<Separator class="-mx-1 my-1 w-auto" />
+
+		<div class="space-y-2 px-1.5 py-1">
+			<span class="text-sm" id="volume-label">Volume</span>
 			<Slider
 				type="single"
 				min={0}
