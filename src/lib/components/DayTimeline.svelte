@@ -261,6 +261,49 @@
 		scroller.scrollTop = Math.max(0, top + px(Math.max(from, focus)) - HOUR_PX * 1.5);
 	});
 
+	let scrollFrame = 0;
+
+	/** Eases the scroll position, instantly for people who asked for less motion. */
+	function scrollTo(target: number, ms = 350) {
+		cancelAnimationFrame(scrollFrame);
+		return new Promise<void>((resolve) => {
+			if (!scroller) return resolve();
+			const startAt = scroller.scrollTop;
+			const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+			if (reduced || startAt === target) {
+				scroller.scrollTop = target;
+				return resolve();
+			}
+			const began = performance.now();
+			const step = (time: number) => {
+				const t = Math.min(1, (time - began) / ms);
+				scroller!.scrollTop = startAt + (target - startAt) * (1 - (1 - t) ** 3);
+				if (t < 1) scrollFrame = requestAnimationFrame(step);
+				else resolve();
+			};
+			scrollFrame = requestAnimationFrame(step);
+		});
+	}
+
+	/** Opening keeps the view where it is, then scrolls up through the night. Closing scrolls down
+	 * to the end of the night first, then folds it. */
+	async function toggleNight() {
+		if (!scroller) return;
+		const shift = (range.from / 60) * HOUR_PX;
+		if (!nightOpen) {
+			const before = scroller.scrollTop;
+			nightOpen = true;
+			await tick();
+			scroller.scrollTop = before + shift;
+			await scrollTo(0);
+			return;
+		}
+		if (scroller.scrollTop < shift) await scrollTo(shift);
+		nightOpen = false;
+		await tick();
+		if (scroller) scroller.scrollTop = Math.max(0, scroller.scrollTop - shift);
+	}
+
 	// A new block comes into view
 	$effect(() => {
 		const id = highlight;
@@ -275,10 +318,10 @@
 	{#if range.night > 0}
 		<button
 			type="button"
-			class="bg-background text-muted-foreground hover:bg-muted/60 focus-visible:ring-ring tabular sticky top-0 z-30 flex w-full cursor-pointer items-center justify-between border-b border-dashed px-4 text-xs select-none focus-visible:ring-2 focus-visible:outline-none"
+			class="bg-background text-muted-foreground hover:bg-muted/60 focus-visible:ring-ring tabular flex w-full cursor-pointer items-center justify-between border-b border-dashed px-4 text-xs select-none focus-visible:ring-2 focus-visible:outline-none"
 			style="height: {ROW_PX}px"
 			aria-expanded={nightOpen}
-			onclick={() => (nightOpen = !nightOpen)}
+			onclick={toggleNight}
 		>
 			<span>Night, {formatClock(origin % DAY_MINUTES)} - {formatClock(day.start)}</span>
 			{#if nightOpen}<ChevronUp class="size-4" />{:else}<ChevronDown class="size-4" />{/if}
