@@ -43,7 +43,7 @@ async function syncCalendarsOfEveryone() {
 		);
 }
 
-async function tick() {
+export async function tick() {
 	await fireAllDue().catch((error) => console.error('[agent] firing the schedule failed', error));
 	const everyone = await db.select().from(users);
 	for (const { email, ...settings } of everyone)

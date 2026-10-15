@@ -160,3 +160,61 @@ describe('reactions', () => {
 		expect((await repo.events.recent(1))[0].outcome).toStartWith('failed');
 	});
 });
+
+describe('guardrails on the device', () => {
+	const NIGHT = Date.parse('2026-10-14T23:00:00Z');
+
+	const cases: [
+		string,
+		string,
+		(made: Awaited<ReturnType<typeof setup>>) => Promise<void>,
+		number?
+	][] = [
+		[
+			'autonomy observe',
+			'silent: autonomy is observe',
+			async ({ repo }) => void (await repo.settings.update({ aiAutonomy: 'observe' }))
+		],
+		[
+			'the event type is switched off',
+			'silent: event type is switched off',
+			async ({ repo }) => void (await repo.settings.update({ aiEvents: 'task.missed' }))
+		],
+		['quiet hours', 'silent: quiet hours', async () => {}, NIGHT],
+		[
+			'the daily token budget is used up',
+			'silent: daily token budget used up',
+			async ({ repo }) => {
+				await repo.settings.update({ dailyTokenBudget: 1000 });
+				await repo.usage.record('chat', 1000, NOW - 1000);
+			}
+		],
+		[
+			'six reactions in the last hour',
+			'silent: hourly limit reached',
+			async ({ repo }) => {
+				for (let i = 0; i < 6; i++) await repo.usage.record('reaction', 0, NOW - (10 + i) * MIN);
+			}
+		],
+		[
+			'a reaction two minutes ago',
+			'silent: too soon after the last reaction',
+			({ repo }) => repo.usage.record('reaction', 0, NOW - 2 * MIN)
+		]
+	];
+
+	test.each(cases)(
+		'%s keeps the model out, same as for an account',
+		async (_name, outcome, prepare, now = NOW) => {
+			const { model, state: calls } = fakeModel(say('x'));
+			const made = await setup({ key: 'sk-test', model });
+			made.state.now = now;
+			await prepare(made);
+			await logCompleted(made.repo, now);
+			await made.loop.reactNow();
+			expect(calls.calls).toBe(0);
+			expect((await made.repo.events.recent(1))[0].outcome).toBe(outcome);
+			expect(await made.repo.cards.open()).toBeNull();
+		}
+	);
+});
