@@ -12,7 +12,16 @@
 			muted: tasker.isMuted,
 			volume: tasker.volume,
 			blocked: tasker.device.audioBlocked,
-			plays: playsSound()
+			plays: playsSound(),
+			mutedUntil:
+				tasker.mutedUntil === null
+					? null
+					: new Intl.DateTimeFormat(undefined, {
+							hour: '2-digit',
+							minute: '2-digit',
+							hourCycle: 'h23',
+							timeZone: tasker.timezone ?? undefined
+						}).format(tasker.mutedUntil)
 		})
 	);
 </script>

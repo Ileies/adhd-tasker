@@ -59,6 +59,8 @@ export const tasker: {
 	settings: ClientSettings;
 	tasks: Task[];
 	isMuted: boolean;
+	/** Epoch ms when a timed mute ends and sound returns on its own, null while muted without an end. */
+	mutedUntil: number | null;
 	volume: number; // 0-100
 	themeMode: ThemeMode;
 	dayStart: number; // minutes since midnight, daytime theme starts
@@ -99,6 +101,7 @@ export const tasker: {
 	settings: clientSettings(DEFAULT_SETTINGS),
 	tasks: [],
 	isMuted: false,
+	mutedUntil: null,
 	volume: 100,
 	themeMode: 'auto',
 	dayStart: 420,

@@ -1,6 +1,7 @@
 import { flushSync } from 'svelte';
 import { tasker, type ThemeMode } from '#lib/app.svelte.js';
 import { minutesNow } from '#lib/time.js';
+import { muteEnd, restoreMute } from '#lib/mute.js';
 
 function save(key: string, value: string) {
 	try {
@@ -66,9 +67,26 @@ export function setVolume(value: number) {
 	if (value > 0 && tasker.isMuted) setMuted(false);
 }
 
-export function setMuted(muted: boolean) {
+let unmuteTimer: ReturnType<typeof setTimeout> | undefined;
+
+function applyMute(muted: boolean, until: number | null) {
+	clearTimeout(unmuteTimer);
 	tasker.isMuted = muted;
+	tasker.mutedUntil = muted ? until : null;
 	save('muted', String(muted));
+	save('mutedUntil', tasker.mutedUntil === null ? '' : String(tasker.mutedUntil));
+	// Sound returns on its own
+	if (muted && until !== null)
+		unmuteTimer = setTimeout(() => applyMute(false, null), until - Date.now());
+}
+
+export function setMuted(muted: boolean) {
+	applyMute(muted, null);
+}
+
+/** Mutes for a while (`null` minutes: until the user unmutes). */
+export function muteFor(minutes: number | null) {
+	applyMute(true, muteEnd(Date.now(), minutes));
 }
 
 /** Loads saved preferences into `tasker`, applies the theme and keeps daytime mode current. Returns a cleanup. */
@@ -81,7 +99,13 @@ export function initPreferences() {
 		if (volume !== null && Number(volume) >= 0 && Number(volume) <= 100)
 			tasker.volume = Number(volume);
 
-		tasker.isMuted = localStorage.getItem('muted') === 'true';
+		const until = Number(localStorage.getItem('mutedUntil'));
+		const mute = restoreMute(
+			localStorage.getItem('muted') === 'true',
+			until > 0 ? until : null,
+			Date.now()
+		);
+		applyMute(mute.muted, mute.until);
 
 		for (const key of ['dayStart', 'dayEnd'] as const) {
 			const raw = localStorage.getItem(key);

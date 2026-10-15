@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { CalendarDays, Maximize, Minimize, MessageSquare, User } from '@lucide/svelte';
+	import { Menu, MessageSquare } from '@lucide/svelte';
 	import AssistantDrawer from '#lib/components/AssistantDrawer.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { initAudio } from '#lib/audio.js';
@@ -15,13 +15,17 @@
 	import MoveScreen from '#lib/components/MoveScreen.svelte';
 	import { beginGuest, useAccount } from '#lib/mode.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
-	import { isFullscreenKey } from '#lib/shortcuts.js';
+	import { shortcutFor } from '#lib/shortcuts.js';
+	import { pageTitle, place } from '#lib/nav.js';
+	import { muteFor, setMuted } from '#lib/theme.js';
+	import ClockReadout from '#lib/components/ClockReadout.svelte';
+	import KeyboardHelp from '#lib/components/KeyboardHelp.svelte';
 	import { loadFlags } from '#lib/welcome.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
-	import VolumeMenu from '#lib/components/VolumeMenu.svelte';
+	import SoundMenu from '#lib/components/SoundMenu.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
 	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -156,6 +160,21 @@
 	});
 
 	const barHidden = $derived(overlay && !barVisible);
+
+	const current = $derived(place(page.url.pathname));
+	const title = $derived(pageTitle(page.url.pathname));
+	let helpOpen = $state(false);
+
+	function shortcut(event: KeyboardEvent) {
+		const action = shortcutFor(event);
+		if (action === 'now') void goto('/');
+		else if (action === 'plan') void goto('/edit');
+		else if (action === 'assistant' && tasker.settings.hasOpenaiKey) tasker.assistant.open = true;
+		else if (action === 'mute') {
+			if (tasker.isMuted) setMuted(false);
+			else muteFor(null);
+		} else if (action === 'fullscreen') void toggleFullscreen();
+	}
 </script>
 
 <svelte:window
@@ -163,12 +182,13 @@
 	onpointerdown={activity}
 	onkeydown={(event) => {
 		activity();
-		if (isFullscreenKey(event)) void toggleFullscreen();
+		shortcut(event);
 	}}
 />
 <svelte:document onfullscreenchange={() => (isFullscreen = !!document.fullscreenElement)} />
 
 <TimezoneDialog />
+<KeyboardHelp bind:open={helpOpen} />
 <UndoToast />
 <AlarmBanner />
 <AssistantDrawer hasKey={tasker.settings.hasOpenaiKey} />
@@ -183,54 +203,65 @@
 			{overlay ? 'bg-background/70 absolute inset-x-0 top-0 backdrop-blur-md' : 'bg-background border-b'}
 			{barHidden ? 'pointer-events-none opacity-0' : ''}"
 	>
-		<div class="flex">
-			<Button variant="ghost" size="lg" onclick={() => goto('/edit')} aria-label="Plan">
-				<CalendarDays class="size-5" />
-				<span class="hidden sm:inline">Plan</span>
-			</Button>
+		<div class="flex gap-1" role="group" aria-label="Places">
+			{#each [{ id: 'now', label: 'Now', href: '/' }, { id: 'plan', label: 'Plan', href: '/edit' }] as item (item.id)}
+				<Button
+					variant={current === item.id ? 'secondary' : 'ghost'}
+					size="lg"
+					onclick={() => goto(item.href)}
+					aria-current={current === item.id ? 'page' : undefined}
+				>
+					{item.label}
+				</Button>
+			{/each}
 		</div>
 
-		<button class="flex cursor-pointer items-center" onclick={() => goto('/')}>
-			<img src="/logo.svg" alt="Logo" class="mr-1 h-9" /><span
-				class="hidden text-xl font-bold sm:inline">ADHD Tasker</span
-			>
-		</button>
+		<!-- Wide screens show the clock in the rail, on a phone the rail is below the fold -->
+		<div class="min-w-0 truncate px-2 text-center">
+			{#if current === 'now'}
+				<div class="sm:hidden"><ClockReadout timezone={tasker.timezone} /></div>
+			{:else if title}
+				<span class="text-lg font-semibold">{title}</span>
+			{/if}
+		</div>
 
 		<div class="flex items-center justify-end gap-1">
-			<Button
-				variant="ghost"
-				size="icon-lg"
-				onclick={() => (tasker.assistant.open = true)}
-				aria-label="Assistant"
-				title="Assistant"
-			>
-				<MessageSquare class="size-5" />
-			</Button>
-			<VolumeMenu />
-
-			<Button
-				variant="ghost"
-				size="icon-lg"
-				onclick={toggleFullscreen}
-				aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-				title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-			>
-				{#if isFullscreen}
-					<Minimize class="size-5" />
-				{:else}
-					<Maximize class="size-5" />
-				{/if}
-			</Button>
+			{#if tasker.settings.hasOpenaiKey}
+				<Button
+					variant="ghost"
+					size="icon-lg"
+					onclick={() => (tasker.assistant.open = true)}
+					aria-label="Assistant"
+					title="Assistant"
+				>
+					<MessageSquare class="size-5" />
+				</Button>
+			{/if}
+			<SoundMenu />
 
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
-						<Button {...props} variant="ghost" size="icon-lg" aria-label="Profile menu">
-							<User class="size-5" />
+						<Button {...props} variant="ghost" size="icon-lg" aria-label="Menu">
+							<Menu class="size-5" />
 						</Button>
 					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content align="end" class="w-64">
+					<DropdownMenu.Item onSelect={() => goto('/alarms')}>Alarms</DropdownMenu.Item>
+					<DropdownMenu.Item onSelect={() => goto('/activity')}>
+						Assistant activity
+					</DropdownMenu.Item>
+					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
+					<DropdownMenu.Separator />
+					<DropdownMenu.Item onSelect={toggleFullscreen}>
+						{isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+						<DropdownMenu.Shortcut>F</DropdownMenu.Shortcut>
+					</DropdownMenu.Item>
+					<DropdownMenu.Item onSelect={() => (helpOpen = true)}
+						>Keyboard shortcuts</DropdownMenu.Item
+					>
+					<DropdownMenu.Separator />
 					{#if data.user}
 						<DropdownMenu.Label class="truncate">{data.user.email}</DropdownMenu.Label>
 					{:else}
@@ -238,10 +269,6 @@
 							Sync across devices
 						</DropdownMenu.Item>
 					{/if}
-					<DropdownMenu.Separator />
-					<DropdownMenu.Item onSelect={() => goto('/alarms')}>Alarms</DropdownMenu.Item>
-					<DropdownMenu.Item onSelect={() => goto('/activity')}>Activity</DropdownMenu.Item>
-					<DropdownMenu.Item onSelect={() => goto('/settings')}>Settings</DropdownMenu.Item>
 					{#if data.user}
 						<DropdownMenu.Separator />
 						<DropdownMenu.Item onSelect={logout} class="flex-col items-start gap-0.5">

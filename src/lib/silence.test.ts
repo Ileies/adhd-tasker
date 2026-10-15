@@ -19,6 +19,10 @@ describe('silenceLine', () => {
 		expect(silenceLine(sound({ muted: true }))).toBe('Sound off');
 	});
 
+	test('a timed mute says when sound returns', () => {
+		expect(silenceLine(sound({ muted: true, mutedUntil: '15:30' }))).toBe('Sound off until 15:30');
+	});
+
 	test('volume at zero says sound is off', () => {
 		expect(silenceLine(sound({ volume: 0 }))).toBe('Sound off');
 	});

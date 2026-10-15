@@ -6,6 +6,8 @@ export interface SoundState {
 	blocked: boolean;
 	/** This device is the one that plays sound. A device that stays quiet on purpose says nothing. */
 	plays: boolean;
+	/** When a timed mute ends, as the clock shows it (`15:30`). */
+	mutedUntil?: string | null;
 }
 
 /**
@@ -14,6 +16,7 @@ export interface SoundState {
  */
 export function silenceLine(sound: SoundState): string | null {
 	if (!sound.plays) return null;
+	if (sound.muted && sound.mutedUntil) return `Sound off until ${sound.mutedUntil}`;
 	if (sound.muted || sound.volume <= 0) return 'Sound off';
 	if (sound.blocked) return 'Tap anywhere to turn sound on';
 	return null;

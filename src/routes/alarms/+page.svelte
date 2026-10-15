@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { tasker } from '#lib/app.svelte.js';
-	import { addAlarm, chooseDisplay, loadSchedule, removeEntry } from '#lib/alarms.js';
+	import { addAlarm, loadSchedule, removeEntry } from '#lib/alarms.js';
 	import { playTone } from '#lib';
 	import { REPEATS, REPEAT_TEXT, SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
 	import { TONE_NAMES, TONE_TEXT, type ToneName } from '#lib/tones.js';
@@ -12,7 +12,6 @@
 
 	const sections = $derived([
 		{ id: 'alarms', label: 'Alarms' },
-		{ id: 'sound', label: 'Sound' },
 		...(tasker.schedule.wakeups.length ? [{ id: 'wakeups', label: 'Assistant wakeups' }] : [])
 	]);
 
@@ -53,9 +52,6 @@
 		}
 		busy = false;
 	}
-
-	const guest = $derived(tasker.account.email === null);
-	const isDisplay = $derived(tasker.device.display === tasker.device.id);
 </script>
 
 <svelte:head>
@@ -127,40 +123,6 @@
 				{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 				<Button type="submit" disabled={busy}>Add alarm</Button>
 			</form>
-		</Card.Content>
-	</Card.Root>
-
-	<Card.Root id="sound" class="mt-4 scroll-mt-6">
-		<Card.Header>
-			<Card.Title>Sound</Card.Title>
-			<Card.Description
-				>{guest
-					? 'With several tabs open, only one makes sound. The others show the alarm silently.'
-					: 'With several screens open, only one should make sound. The others show the alarm silently.'}</Card.Description
-			>
-		</Card.Header>
-		<Card.Content class="space-y-3">
-			<p class="text-sm">
-				{#if guest}
-					{isDisplay ? 'This tab plays them.' : 'Another tab of this browser plays them.'}
-				{:else if tasker.device.display === null}
-					Every open screen plays alarms and assistant tones.
-				{:else if isDisplay}
-					This device plays them.
-				{:else}
-					Another device plays them.
-				{/if}
-			</p>
-			<!-- A guest's tabs elect the one that plays by themselves, only an account chooses a device -->
-			{#if guest}{:else if isDisplay}
-				<Button variant="secondary" onclick={() => chooseDisplay(null)}
-					>Let every device play</Button
-				>
-			{:else}
-				<Button variant="secondary" onclick={() => chooseDisplay(tasker.device.id)}
-					>Use this device for sound</Button
-				>
-			{/if}
 		</Card.Content>
 	</Card.Root>
 
