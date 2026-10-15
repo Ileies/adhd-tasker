@@ -19,7 +19,9 @@ People with ADHD struggle less with _doing_ things than with _knowing what comes
 - **Event-driven agent (optional):** it can react to completed, missed or overrunning tasks with a short note or a question, schedule its own wakeups and set alarms. You control autonomy (observe, suggest, act), which events it may react to, quiet hours and a daily token budget. It never wakes itself with its own edits. See `/activity` for what it saw and did.
 - **Forgiving by design:** destructive actions show an Undo toast instead of a confirm dialog.
 - **PWA:** installable, fullscreen, with a service worker that only caches static assets so your plan is never stale.
-- **Google sign-in:** one login, data lives server side and follows you across devices.
+- **Two ways to use it:** without an account your plan, settings and OpenAI key live in your browser and nothing reaches the server. Signing in with Google is optional and adds sync across devices, the agent and alarms running on the server, and Google Calendar. The first sign in moves the device's plan into the account, with an Undo.
+- **Google Calendar (with an account):** events of the next 14 days become tasks after a preview. Moving a task moves its event, Done adds a line to it, nothing is deleted, and Google wins when both changed. Your own tasks can be added to a calendar, off by default.
+- **Your data:** export, import and delete everything from Settings, in both modes.
 
 The app works fully without AI. Without a key the agent stays silent.
 
@@ -83,7 +85,8 @@ src/
 │   ├── edit/                   Plan screen and task CRUD API
 │   ├── alarms/                 Alarms, tone preview, display device
 │   ├── activity/               What the assistant changed and saw
-│   ├── settings/               Theme, timezone, OpenAI key, agent, Google services
+│   ├── settings/               Theme, timezone, OpenAI key, agent, Google services, Calendar, your data
+│   ├── calendar/, account/     Calendar and account move API
 │   ├── assistant/              Chat turn and undo API
 │   ├── agent/                  Agent feed and card API
 │   ├── schedule/               Alarm and wakeup API
@@ -94,6 +97,8 @@ src/
 │   ├── priority.ts, urgency.ts Ranking and urgency colors (pure)
 │   ├── events.ts, guardrails.ts, assistant-tools.ts, schedule.ts, tones.ts   Agent logic (pure, tested)
 │   ├── openai.ts               Request builder for every model call
+│   ├── core/                   Rules shared by the server and the device, on a Repo
+│   ├── local/                  A guest's backend: IndexedDB, tick, leader tab
 │   ├── components/             App components, ui/ is shadcn-svelte
 │   └── server/                 DB, auth session, agent scheduler, events, crypto, stream
 ├── service-worker/             PWA asset cache
@@ -110,4 +115,4 @@ Times are stored as minutes since midnight, each task belongs to a dated day (`Y
 
 ## Roadmap
 
-Done: priority engine, Now and Plan screens, PWA, assistant, event-driven agent, scheduler, alarms and tones. Next: voice assistant (push-to-talk), "I'm stuck", hyperfocus alarm and reminders. Later: Google Calendar sync, recurring tasks, capture inbox, end-of-day summary. Scope and order to 1.0 in `docs/roadmap-1.0.md`, open items in `TODO.md`.
+Done: priority engine, Now and Plan screens, PWA, assistant, voice, event-driven agent, scheduler, alarms and tones, "I'm stuck", hyperfocus alarm and reminders, guest mode, first run, the account move, Google Calendar read and write. Next: Google app verification, then recurring tasks, capture inbox, end-of-day summary. Scope and order to 1.0 in `docs/roadmap-1.0.md`, open items in `TODO.md`.

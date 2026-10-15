@@ -3,16 +3,16 @@
 Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
-- `local-first-plan.md`: current work
-- `ux-plan.md`, `checks-and-tests-plan.md`, `feature-ideas.md`: waiting for the local first plan
+- `local-first-plan.md`: done except the real Google run and the Google verification (kept until the other plans are re-read)
+- `ux-plan.md`, `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code
 
 ## Now
 
-- `docs/local-first-plan.md`: first impression fixes, login optional with guest mode on the device, first run, moving into an account without losing data, Google Calendar, privacy and terms. The soon plan (gate, tests, D1 to D8, transitions, feedback and silence) is done and deleted, the other plans wait until this one is done and then get updated against the new code
+- Re-read `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` against the code after the local first plan, update them once, pick the next plan
 
 ## Later
 
-- Google Calendar sync (needs dated days)
+- Google verification and a real Google run of Calendar (`docs/google-verification.md`), then assistant edits written to Google
 - Recurring tasks (core: sleep, food, water, hygiene by cadence, with a floor the AI cannot trade below without asking)
 - Capture inbox (`Shift+Space`)
 - End-of-day summary

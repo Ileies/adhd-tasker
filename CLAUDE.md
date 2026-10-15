@@ -2,7 +2,7 @@
 
 ## What This App Is
 
-A planner for people with ADHD that is always open and always shows what to do _right now_. It is an external anchor: it holds the plan so the user's working memory does not have to. It runs fullscreen on an always-on second screen (desktop first, responsive down to phone, installable as a PWA).
+A planner for people with ADHD that is always open and always shows what to do _right now_. It is an external anchor: it holds the plan so the user's working memory does not have to. It runs fullscreen on an always-on second screen (desktop first, responsive down to phone, installable as a PWA). It works without an account: a guest's plan, settings and OpenAI key live in the browser. Signing in is optional and adds sync across devices, alarms from the server and Google Calendar.
 
 Judge every design and implementation decision against this: does it reduce cognitive load, minimize decisions, and keep the user anchored to the present task? When in doubt, do less and do it better.
 
@@ -49,6 +49,7 @@ Run `bun run verify --quick` before committing. While working, prefer `bun run t
 - **Imports:** use the `#lib/...` alias (declared in `package.json` `imports`, e.g. `#lib/time.js`, `#lib/server/db/index.js`), not relative paths up to `src/`. Server-only code lives in `src/lib/server/`.
 - **Logic goes in pure modules.** Anything with rules (ranking, events, guardrails, tools validation, schedule math, tones, quick add parsing, time helpers) is a pure function in `src/lib/*.ts` with a test next to it. Components and routes only render or wire.
 - **Single state object.** All client state is one `tasker` object in `src/lib/app.svelte.ts`. Do not split it into multiple stores.
+- **Components never call `fetch`.** They go through `tasker.backend` (the `Backend` interface in `src/lib/backend.ts`). Rules shared by server and device live in `src/lib/core/` and run against a `Repo`, so the same code serves an account and a guest. A new `Backend` method must be added to `remote-backend.ts`, `local/backend.ts` and `BACKEND_METHODS` in `local/deferred.ts`.
 - **Time:** times are minutes since midnight (0 to 1440), durations in minutes. A task belongs to `task.date` (`YYYY-MM-DD` in the user's timezone, helpers in `src/lib/time.ts`). Tasks never cross midnight, split them. Convert carefully around JS `Date`.
 - **Schema changes** must be applied afterwards: `bun run db:push`, or a one-off script in `scripts/` (like `scripts/add-schedule.ts`) when drizzle-kit cannot run. Production uses `bun run deploy --db-push`.
 - **No em dashes** in code, comments, docs or replies.
@@ -84,6 +85,9 @@ Run `bun run verify --quick` before committing. While working, prefer `bun run t
 | `/agent` (API)       | `GET` what the agent did on its own (open card, changes since `?since=<action id>`). `POST /agent/cards/[id]` dismisses or answers a card. `POST /agent/stuck` (`{ taskId, reason }`) logs `stuck.pressed`                                                                                                                                                                    |
 | `/stream` (API)      | Server-Sent Events (`?device=<id>`) with hints `agent`, `schedule`, `alarm`, `tone`, `display`. Hints only: the client fetches the data itself, a missed push costs nothing                                                                                                                                                                                                   |
 | `/schedule` (API)    | `GET` pending alarms and wakeups, `POST` a user alarm, `DELETE /schedule/[id]`, `POST /schedule/display` chooses the display device                                                                                                                                                                                                                                           |
+| `/calendar` (API)    | Google Calendar: `GET` overview, `/calendar/preview`, `/calendar/import`, `/calendar/sync`, `/calendar/all-day`, `PUT /calendar/write` (where own tasks go), `DELETE` stops following                                                                                                                                                                                         |
+| `/account` (API)     | Move a device's plan in (`/account/import`), list and restore snapshots, delete the account. `/export` and `/import` serve the data file                                                                                                                                                                                                                                      |
+| `/about`             | What the app is for and what each mode stores where, public                                                                                                                                                                                                                                                                                                                   |
 
 ### Core principle: nothing stored for "current"
 
@@ -91,7 +95,7 @@ There is no stored active task. What is current is derived on every tick by the 
 
 ### State
 
-`tasker` in `src/lib/app.svelte.ts`: `tasks`, `isMuted`, `volume`, `themeMode`, `dayStart`, `dayEnd`, `timezone`, `toast` (message plus optional Undo), `assistant` (`open`, `busy`, `messages`), `agent` (`cards`, `cursor`), `schedule` (`alarms`, `wakeups`, `ringing`, `loaded`), `device` (`id`, `display`, `streaming`). Hydrated by the layout load, updated optimistically on mutations. Day data comes from `loadDay(date)`; the layout preloads from yesterday on. Toasts via `showToast` in `src/lib/index.ts`.
+`tasker` in `src/lib/app.svelte.ts`: `backend` (the remote or the local `Backend`, chosen by the layout), `tasks`, `isMuted`, `volume`, `themeMode`, `dayStart`, `dayEnd`, `timezone`, `toast` (message plus optional Undo), `assistant` (`open`, `busy`, `messages`), `agent` (`cards`, `cursor`), `schedule` (`alarms`, `wakeups`, `ringing`, `loaded`), `device` (`id`, `display`, `streaming`). Hydrated by the layout load, updated optimistically on mutations. Day data comes from `loadDay(date)`; the layout preloads from yesterday on. Toasts via `showToast` in `src/lib/index.ts`.
 
 ### Database (`src/lib/server/db/schema.ts`)
 
@@ -102,15 +106,28 @@ There is no stored active task. What is current is derived on every tick by the 
 - `agent_cards`: `say` notes and `ask` questions (with `options`) shown on Now until resolved. A new card resolves older open ones
 - `ai_usage`: tokens per model call (`use`: chat|reaction|replan, plus `tone` rows with 0 tokens counting custom tones per day)
 - `schedule`: alarms and wakeups. `fireAt` epoch ms, `repeat` none|daily|weekdays with local `minutes` (follows daylight saving), `label`/`tone` (tone JSON stored so it replays identically), `note` (agent's note to itself), `createdBy`, `status`. Pruned 7 days after it ended
-- `reminders`: prepared for Calendar sync, not wired up
+- `plan_snapshots`: a copy of an account's plan (tasks, alarms, settings) kept 30 days before a move into the account or a restore
+- `google_tokens`: the Google refresh token per user, encrypted like the OpenAI key, revoked at Google on Unlink and on account deletion
+- `calendar_sync`: per user the followed calendars, status (`preview`, `active`), `write_calendar` (null = off) and the last read
+- `calendar_events`: the link between a Google event and the tasks made from it (`taskIds`, `etag`, `origin` `google` or `app`)
+- `reminders`: unused
 
 ### Auth (`src/hooks.server.ts`, `src/routes/callback/+server.ts`, `src/lib/server/session.ts`)
 
 1. Login generates OAuth state and a PKCE verifier in httpOnly cookies and redirects to Google (`login()` in `src/lib/server/index.ts`). One Tap posts an ID token to `/callback`.
 2. `/callback` validates state, exchanges the code and sets the cookie. A signed `session` cookie (HMAC with `GOOGLE_CLIENT_SECRET`, 7 days) is the primary credential; the Google `token` cookie is the fallback checked against the OIDC userinfo endpoint.
 3. `hooks.server.ts` resolves the email on every request, creates the user on first login and fills `event.locals.user`. It also starts the agent scheduler once (skipped while building).
-4. **Login is required.** There is no unauthenticated or localStorage fallback, by design.
-5. Linking Google services reuses the flow with incremental scopes (`google_oauth_link` cookie) and only records the grant in `users.googleServices`. Tokens are not stored yet.
+4. **Two modes.** Without an account (guest) the plan lives in IndexedDB on the device (`src/lib/local/`), the layout load returns no user and no tasks, `tasker.backend` is the local backend and every server API answers 401 to a guest (the guest never calls it). With an account `tasker.backend` is `remoteBackend`. Never keep task data in `localStorage`: only `src/lib/local/**` may hold the guest's data.
+5. **Sign in is optional.** Google's sign-in script is loaded on demand (never for a guest who does not ask, and not on `/privacy` or `/terms`). On the first sign in the device's plan moves into the account (`moveIntoAccount` in `src/lib/server/account.ts`, `src/lib/core/merge.ts`): a new account takes it at once with an Undo, an account that has a plan asks first, and the account's plan is kept as a `plan_snapshots` row for 30 days.
+6. Linking Google services reuses the flow with incremental scopes (`google_oauth_link` cookie), asks for offline access and stores the refresh token encrypted in `google_tokens` (`src/lib/server/google-tokens.ts`). Unlink and Delete my account revoke it at Google first.
+
+### Google Calendar (`src/lib/core/calendar.ts`, `src/lib/server/calendar*.ts`, `google-calendar.ts`, `CalendarSettings.svelte`)
+
+Scope `calendar.events` only. Read: the user picks calendars, sees a preview (counts and clashes, nothing written), then imports. Events of the next 14 days become tasks (split at midnight, all-day events show as a line on Plan). A sync while a screen is open, every 5 minutes, diffs the window by `etag` (no sync tokens). A deleted task is never recreated. Write: moving, resizing or completing an imported task patches the event (time, and the line "Done in ADHD Tasker" in its description, never a deletion) guarded by `etag`, and when Google changed it meanwhile Google wins and a toast says so (`writeTaskChange` in `calendar-write.ts`, hooked into the `/edit` routes). Events cut at midnight are read only in the app. The setting "Add my own tasks to Google Calendar" (off by default) creates events for the user's own tasks in a writable calendar. Assistant and agent edits are not written to Google yet. Google verification for the sensitive scope is in `docs/google-verification.md`. The Privacy page carries the Limited Use statement: change it together with this code.
+
+### Guest mode (`src/lib/local/`)
+
+`localBackend` runs the `core/` rules on `local/repo.ts` (IndexedDB with a versioned list of upgrade steps). `deferred.ts` stands in until the database is open, so Now shows nothing for one calm frame, never the empty state. A client tick every 15 s (`agent-loop.ts`) does what the server loop does for one user: `detectEvents`, the agent through `decideReaction` (same guardrails), due alarms and wakeups, pruning. It runs only in the leading tab (`leader.ts`, `navigator.locks`). The OpenAI key lives in the local repo and the browser calls `api.openai.com` directly (`openai-direct`, the one extra OpenAI call site). A Content Security Policy limits where the page may send data. Settings has Your data: export, import and delete everything on the device.
 
 ### Assistant (chat)
 
@@ -168,23 +185,25 @@ Everything is synthesized with the Web Audio API on one shared `AudioContext` (`
 
 ## Known Gaps
 
-- Linking Google services only records the grant, no access or refresh tokens are stored. Store them encrypted when the first feature (Calendar sync) needs them. Google Clock has no API
-- Reminders and the overrun tap only reach an open Now screen (no Web Push). The `reminders` table (Calendar sync) and `enableFocusMode`, `enableOverdueNotifications` are unused
+- The refresh token is stored encrypted (`google_tokens`). Only Calendar uses it. Tasks and Keep are still offered in `GOOGLE_SERVICES` but nothing uses them: remove them before submitting the Google verification. Google Clock has no API
+- Calendar write is not tried against real Google yet. Assistant and agent edits are not written to Google, Google-side edits to an event the app made do not flow back, existing tasks are not copied when "Add my own tasks" is turned on, and stopping the sync also ends that setting
+- A guest's agent and alarms run only in a leading, open tab (no Web Push). Reminders and the overrun tap only reach an open Now screen. `reminders`, `enableFocusMode`, `enableOverdueNotifications` are unused
 - Alarms and wakeups reach only open screens (no Web Push for a closed app). Alarms cannot be tied to a task, the agent computes the time
 - Agent-made tasks are not marked in the Plan view (the activity page lists them). Every open device shows the agent card, only sound follows the display device
 - The event `day.started` (morning briefing) is not built yet
 
 ## Roadmap (`TODO.md`, scope and progress to 1.0 in `docs/roadmap-1.0.md`)
 
-**Current work: `docs/local-first-plan.md`** (login optional, guest mode on the device, first run, the account move, Google Calendar). It comes before everything else. The soon plan is done and deleted (git history). `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` wait for it; then they are updated once against the new code. Until Part 8 of the local first plan rewrites them, the Auth section and "What to Avoid" below describe the old login-only model.
+**Done: `docs/local-first-plan.md`** (login optional, guest mode on the device, first run, the account move, Google Calendar read and write, Privacy and Terms). The plan file stays until the other plans are re-read. `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` are next: re-read them against the new code once and pick the next plan. Open from it: the real Google run and the Google verification (`docs/google-verification.md`).
 
-**Planned, do not implement without discussion:** Google Calendar sync (two-way), end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
+**Planned, do not implement without discussion:** end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
 
 ## What to Avoid
 
 - Features that add cognitive load without a clear ADHD-experience justification
 - Splitting state into multiple stores
-- Any unauthenticated or localStorage fallback for task data
+- Task data in `localStorage` or anywhere in the browser except `src/lib/local/` (IndexedDB, the guest's data by design). The architecture test enforces it
+- A component that calls `fetch`, or a Backend method that only one backend implements
 - Animation, emoji, decoration or flashing that competes with the current task
 - Stat tiles, marketing copy or footers on the main views
 - Model calls that bypass `buildRequest`, or agent logic that skips the guardrails

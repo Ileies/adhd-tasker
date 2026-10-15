@@ -1,12 +1,12 @@
 # Roadmap to 1.0
 
-Status: decided scope, 2026-10-14. Progress: **47 of 118 points, 40 %**.
+Status: decided scope, 2026-10-14, updated 2026-10-16 for the local first plan. Progress: **58 of 135 points, 43 %**.
 
 This file owns the definition of 1.0, how progress is measured and the order of the work. It does not replace the detailed plans. Each criterion points to the plan that describes how it is built (`checks-and-tests-plan.md`, `ux-plan.md`, `feature-ideas.md`). When a plan and this file disagree about scope, this file wins. When they disagree about how, the plan wins.
 
 ## 1. What 1.0 is
 
-> A person with ADHD, who is not the author, signs in with Google, plans a day in under five minutes, and from then on the app shows what to do right now on a screen or a phone, and calls them back with sound or a push, without ever being silently wrong. None of it needs an AI key.
+> A person with ADHD, who is not the author, opens the app, with or without an account, plans a day in under five minutes, and from then on the app shows what to do right now on a screen or a phone, and calls them back with sound or a push, without ever being silently wrong. None of it needs an AI key.
 
 Five promises, each one measurable. 1.0 is reached when all five hold:
 
@@ -30,23 +30,23 @@ The principle in `CLAUDE.md` stays the filter: anything that adds cognitive load
 | D. Assistant    | Chat, event agent with guardrails, voice (all done), plus the drawer cleanup. Stays optional                                                                   |
 | E. Craft        | UX plan phases 3 to 10 except 8b: navigation, one color ramp, Plan rework, task sheet, settings, secondary pages, first run, accessibility                     |
 | F. Trust        | Gate, tests, D1 to D8, server and route tests, e2e smoke, CI, security review                                                                                  |
+| H. Local first  | Guest mode on the device, first run, optional account and the move into it, Google Calendar read and write (`local-first-plan.md`)                             |
 | G. Launch       | Account deletion and data export, privacy and terms in sync, backup restore drill, uptime check, clean clone setup, dogfood and three outside users            |
 
 ### Not in 1.0 (1.1 and later, in this order)
 
-1. **Google Calendar two-way sync.** Large, stores OAuth tokens, conflict rules. Needs recurring tasks first. The Google card stays hidden until then.
-2. **Daylight theme from location** (UX phase 8b). Adds a third party (IP geolocation) and a Privacy page change for a theme. Until then the existing day hours stay under Appearance and the first run default is still "by daylight" with them.
-3. **Morning briefing** (`day.started`), **Break it down**, **Leave-by alarms**, **Save your place**, **Estimate learning** (needs the actual times recorded in C4 first).
-4. Everything under Parked in `CLAUDE.md` stays parked. Everything in `feature-ideas.md` that is not named here is 1.1 or later.
+1. **Daylight theme from location** (UX phase 8b). Adds a third party (IP geolocation) and a Privacy page change for a theme. Until then the existing day hours stay under Appearance and the first run default is still "by daylight" with them.
+2. **Morning briefing** (`day.started`), **Break it down**, **Leave-by alarms**, **Save your place**, **Estimate learning** (needs the actual times recorded in C4 first).
+3. Everything under Parked in `CLAUDE.md` stays parked. Everything in `feature-ideas.md` that is not named here is 1.1 or later.
 
-These cuts are my call and open to veto. The two I would argue hardest to keep out are Calendar sync (size) and 8b (privacy surface for a cosmetic gain).
+These cuts are my call and open to veto. The one I would argue hardest to keep out is 8b (privacy surface for a cosmetic gain). Calendar sync moved into 1.0 with the local first plan (H4).
 
 ## 3. How progress is measured
 
 - Every criterion has **points** (1 is about half a dev day, 2 about a day, 3 about two days, 5 about a week) and a **proof**: a command, a test or a thing to look at. A criterion counts only when its proof passes, never when "most of it is done".
 - Shipped work counts too, scored on the same scale, so the percentage is a share of the whole of 1.0 and not of what is left.
-- Progress = points done / 118. Update the checkboxes and the number at the top in the same commit that lands a criterion.
-- Remaining estimate: 71 points, about 35 dev days, 7 weeks full time. Re-estimate at each milestone, not in between.
+- Progress = points done / 135. Update the checkboxes and the number at the top in the same commit that lands a criterion.
+- Remaining estimate: 77 points, about 38 dev days, 8 weeks full time. Re-estimate at each milestone, not in between.
 
 ## 4. Scorecard
 
@@ -134,7 +134,16 @@ These cuts are my call and open to veto. The two I would argue hardest to keep o
 | G5  | Dogfood: the author uses it as the only planner for 14 days, then three outside users for 7 days                          | 3   | At most one incident in the 14 days where the screen was wrong or silent, no blocking issue from the three | new    |     |
 | G6  | Docs match the code: `CLAUDE.md`, `README.md` rewritten, finished plans deleted, `TODO.md` empty of 1.0 items             | 1   | `grep` for removed concepts finds nothing                                                                  | new    |     |
 
-Totals: A 29, B 11, C 13, D 14, E 20, F 21, G 10 = 118. Done: A 23, B 4, D 12, F 8 = 47.
+### H. Local first (11 of 17)
+
+| ID  | Criterion                                                                                                                                          | Pts | Proof                                                                                  | Source                  |     |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --- | -------------------------------------------------------------------------------------- | ----------------------- | --- |
+| H1  | Guest mode: the plan, alarms, settings and key on the device, the agent tick in a leading tab, export, import and delete                           | 5   | Contract suite on both repos; a guest turn sends nothing to this origin                | local first plan 1 to 3 | x   |
+| H2  | First run without a question: welcome, sample day, empty day, second screen hint, `/about`                                                         | 2   | `sample.test.ts`, `flags` tests green; seen on a real screen                           | local first plan 4      | x   |
+| H3  | Optional account: Google's script on demand, the move into the account with Undo, snapshots, sign out, export and delete                           | 4   | `account.test.ts`, `merge.test.ts` green                                               | local first plan 5      | x   |
+| H4  | Google Calendar read and write (preview, import, sync, patch guarded by etag, optional own events), Google verification, tried against real Google | 6   | A real calendar: import, move, done and conflict by hand; Google verification approved | local first plan 6      |     |
+
+Totals: A 29, B 11, C 13, D 14, E 20, F 21, G 10, H 17 = 135. Done: A 23, B 4, D 12, F 8, H 11 = 58.
 
 ## 5. Milestones
 
@@ -142,12 +151,12 @@ Order follows the dependencies: the gate before anything that mutates data (D1 b
 
 | #   | Milestone  | Contains                                                | Points | Cumulative  | Exit                                                                                             |
 | --- | ---------- | ------------------------------------------------------- | ------ | ----------- | ------------------------------------------------------------------------------------------------ |
-| 0   | Baseline   | What exists today                                       | 47     | 47 (40 %)   | Now                                                                                              |
-| 1   | **Solid**  | C4, F4, F5 (the rest is done)                           | 8      | 55 (47 %)   | `verify` gates deploy. A task that runs out is never silent. Every guardrail and route is tested |
-| 2   | **Calm**   | E1, A8, E2, E3, E4, E5, B4, D4, E6, E7, then F6, F7, F8 | 31     | 86 (73 %)   | Every screen reworked, CI and e2e green. Nothing below this line changes the existing screens    |
-| 3   | **Rhythm** | C1, C2, C3, A9, A10                                     | 15     | 101 (86 %)  | A real week can be planned once. Day has a defined end                                           |
-| 4   | **Reach**  | B2                                                      | 5      | 106 (90 %)  | The anchor works with the tab closed                                                             |
-| 5   | **Launch** | F9, G1, G2, G3, G4, G6, G5                              | 12     | 118 (100 %) | The five promises in section 1 hold. Tag `v1.0.0`                                                |
+| 0   | Baseline   | What exists today                                       | 58     | 58 (43 %)   | Now                                                                                              |
+| 1   | **Solid**  | C4, F4, F5 (the rest is done)                           | 8      | 66 (49 %)   | `verify` gates deploy. A task that runs out is never silent. Every guardrail and route is tested |
+| 2   | **Calm**   | E1, A8, E2, E3, E4, E5, B4, D4, E6, E7, then F6, F7, F8 | 31     | 97 (72 %)   | Every screen reworked, CI and e2e green. Nothing below this line changes the existing screens    |
+| 3   | **Rhythm** | C1, C2, C3, A9, A10                                     | 15     | 112 (83 %)  | A real week can be planned once. Day has a defined end                                           |
+| 4   | **Reach**  | B2                                                      | 5      | 117 (87 %)  | The anchor works with the tab closed                                                             |
+| 5   | **Launch** | H4, F9, G1, G2, G3, G4, G6, G5                          | 18     | 135 (100 %) | The five promises in section 1 hold. Tag `v1.0.0`                                                |
 
 Notes on the order:
 
@@ -172,7 +181,7 @@ Notes on the order:
 
 ## 7. Next actions
 
-1. `local-first-plan.md` (the current work, not scored here yet: login optional, guest mode, first run, account move). It rewrites the storage seam under the server logic, so checks plan phase 4 waits for it. Add its points to this scorecard when it is done.
+1. Local first plan: parts 1 to 6 are built (scored as H). Open: the real Google run, the Google verification (`google-verification.md`), the check of E6 against the new welcome flow. Then re-read `ux-plan.md`, `checks-and-tests-plan.md` and `feature-ideas.md` against the code (checks plan phase 4 was waiting for the storage seam, which now exists).
 2. C4 (`startedAt` and `completedAt`, one column), then server integration and route contracts (checks plan 4 and 5). That closes Solid.
 
 The soon plan (gate, pure tests, D1 to D8, transitions, feedback and silence) is finished and deleted. The other plans were re-read against the code on 2026-10-14, and each says at its top what changed.

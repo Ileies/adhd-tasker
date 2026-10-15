@@ -105,7 +105,7 @@ Real modules, real Drizzle, in-memory SQLite, fake `fetch`. One test file next t
 
 Route tests live next to their route (`src/routes/edit/edit.test.ts` exists from the soon plan; SvelteKit ignores files without the `+` prefix). The two matrices live in `src/routes/auth.test.ts` and `src/routes/ownership.test.ts`.
 
-**5.1 Login matrix.** Every exported handler, action and load in every route module, called without a user, gives 401 (handlers), `fail(401)` (actions) or the redirect (`/activity`). Exempt by design: `/callback`. The layout load without a user returns no user and no tasks.
+**5.1 Login matrix (the guest column).** A guest is a request without a user: every API answers 401 to it and the guest never calls it (the local backend answers instead), so the matrix below is also the guest matrix. `/activity` and `/alarms` no longer redirect, they load for a guest from the device. **5.1 continued.** Every exported handler, action and load in every route module, called without a user, gives 401 (handlers), `fail(401)` (actions) or the redirect (`/activity`). Exempt by design: `/callback`. The layout load without a user returns no user and no tasks.
 
 **5.2 Ownership matrix.** Users A and B; A owns a task, an agent action, a card and a schedule entry. B calls `PUT` and `DELETE /edit`, `GET /edit?date=`, `POST /assistant/undo`, `POST /agent/cards/[id]`, `DELETE /schedule/[id]` and `POST /agent/stuck` with A's ids: each answers 404 or returns nothing of A's, and all of A's rows are unchanged afterwards.
 
