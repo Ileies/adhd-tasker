@@ -68,11 +68,32 @@
 			<strong>Linked Google services:</strong> which services you allowed, and the refresh token Google
 			gave for them, stored encrypted so the server can reach them while the app is closed. Unlinking,
 			or deleting your account, tells Google to revoke it and deletes it here. Of the linked services
-			only Calendar is read, and only after you chose calendars and an import: the titles and times of
-			events in the next 14 days become tasks in your plan, all-day events show on Plan. Nothing is written
-			to your calendar, and the events are used for nothing else.
+			only Calendar is used, and only after you chose calendars and an import: the titles and times of
+			events in the next 14 days become tasks in your plan, all-day events show on Plan. The events are
+			used for nothing else.
+		</li>
+		<li>
+			<strong>Changes to your calendar:</strong> moving or resizing a task that came from an event changes
+			that event's time, and marking it done adds the line "Done in ADHD Tasker" to its description. If
+			you also turn on "Add my own tasks to Google Calendar" (off by default), your tasks get events in
+			the calendar you chose, with their title, notes and time, and the event goes when the task goes.
+			The app never deletes an event it did not make.
 		</li>
 	</ul>
+	<p class="mt-2">
+		The use and transfer of information received from Google APIs to any other app by ADHD Tasker
+		adheres to the
+		<a
+			class="underline"
+			href="https://developers.google.com/terms/api-services-user-data-policy"
+			target="_blank"
+			rel="noreferrer">Google API Services User Data Policy</a
+		>, including the Limited Use requirements. Calendar data is used only to show and keep your plan
+		in step with your calendar, it is not used for advertising, it is not sold or passed on, it is
+		not used to train any model, and no person at ADHD Tasker reads it except where needed for
+		security, to follow the law, or when you ask for help with your account. The assistant, when you
+		added your own OpenAI key, sees your plan, which then includes tasks made from events.
+	</p>
 	<p class="mt-2">
 		Chat messages and voice recordings are not stored on the server. They pass through to OpenAI for
 		the answer and are gone afterwards. The app never asks whether you have ADHD or any other
