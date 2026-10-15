@@ -29,7 +29,11 @@
 	{#if subtitle}<p class="text-muted-foreground text-sm">{subtitle}</p>{/if}
 
 	<!-- Wide screens use the space beside the content for the section list -->
-	<div class="{subtitle ? 'mt-6' : ''} lg:grid lg:gap-10 {showNav ? 'lg:grid-cols-[12rem_minmax(0,1fr)]' : ''}">
+	<div
+		class="{subtitle ? 'mt-6' : ''} lg:grid lg:gap-10 {showNav
+			? 'lg:grid-cols-[12rem_minmax(0,1fr)]'
+			: ''}"
+	>
 		{#if showNav}
 			<nav aria-label="Sections" class="sticky top-6 hidden self-start lg:block">
 				<ul class="flex flex-col gap-1 border-l">
@@ -48,7 +52,7 @@
 		<div
 			class="min-w-0 {prose
 				? 'max-w-[70ch] leading-relaxed lg:text-lg xl:max-w-[80ch] 2xl:max-w-[90ch]'
-				: ''} {showNav ? '' : 'mx-auto'}"
+				: ''} {showNav ? '' : 'mx-auto w-full'}"
 		>
 			{@render children()}
 		</div>
