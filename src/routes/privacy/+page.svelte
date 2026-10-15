@@ -70,6 +70,10 @@
 			device plays sound.
 		</li>
 		<li>
+			<strong>Your own sounds</strong>, if you replace a built-in sound with an audio file. The file
+			stays in your browser on that device and is never sent to the server.
+		</li>
+		<li>
 			<strong>Your OpenAI key</strong>, if you add one. It is stored encrypted and never sent back
 			to your browser.
 		</li>

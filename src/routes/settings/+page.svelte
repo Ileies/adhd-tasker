@@ -5,6 +5,7 @@
 	import ClockFormatForm from '#lib/components/ClockFormatForm.svelte';
 	import MyDayForm from '#lib/components/MyDayForm.svelte';
 	import ReminderSettingsForm from '#lib/components/ReminderSettingsForm.svelte';
+	import SoundReplaceForm from '#lib/components/SoundReplaceForm.svelte';
 	import OpenAiKeyForm from '#lib/components/OpenAiKeyForm.svelte';
 	import AgentSettingsForm from '#lib/components/AgentSettingsForm.svelte';
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
@@ -46,7 +47,7 @@
 			<Card.Header>
 				<Card.Title>Reminders and sound</Card.Title>
 			</Card.Header>
-			<Card.Content>
+			<Card.Content class="space-y-6">
 				<ReminderSettingsForm
 					checkIn={settings.checkInMinutes}
 					reminders={settings.enableReminders}
@@ -55,6 +56,7 @@
 					overrun={settings.overrunMinutes}
 					showClock={settings.showClock}
 				/>
+				<SoundReplaceForm />
 			</Card.Content>
 		</Card.Root>
 	{/if}
