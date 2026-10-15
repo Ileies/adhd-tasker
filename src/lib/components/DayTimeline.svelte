@@ -308,6 +308,13 @@
 			onpointercancel={() => (draft = null)}
 			aria-label="Empty time, click or drag to add a task"
 		>
+			{#if range.night > from}
+				<div
+					class="bg-info/10 pointer-events-none absolute inset-x-0 top-0"
+					style="height: {px(range.night)}px"
+				></div>
+			{/if}
+
 			{#each hours as hour (hour)}
 				<div
 					class="border-border/60 pointer-events-none absolute inset-x-0 border-t"
