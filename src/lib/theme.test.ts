@@ -132,6 +132,31 @@ describe('the theme by daylight', () => {
 		expect(isDark()).toBe(false);
 	});
 
+	test('before the timezone is known the window and the clock are both the device', () => {
+		const device = process.env.TZ;
+		process.env.TZ = 'Asia/Tokyo';
+		try {
+			tasker.timezone = null;
+			// 02:00 in Tokyo is 17:00 UTC: Leipzig is still light (sunset 19:50 UTC)
+			setSystemTime(new Date('2026-06-21T02:00:00+09:00'));
+			syncTheme();
+			expect(isDark()).toBe(false);
+		} finally {
+			if (device === undefined) delete process.env.TZ;
+			else process.env.TZ = device;
+		}
+	});
+
+	test('waits for the settings instead of guessing and overwriting the saved window', () => {
+		tasker.account = { email: null, ready: false, problem: null };
+		storage.daylight = '300,1300';
+		dark.add('dark');
+		summer('12:00');
+		syncTheme();
+		expect(isDark()).toBe(true);
+		expect(storage.daylight).toBe('300,1300');
+	});
+
 	test("saves today's light window for the page that loads next", () => {
 		summer('12:00');
 		syncTheme();
