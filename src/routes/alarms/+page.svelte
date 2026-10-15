@@ -10,7 +10,10 @@
 	import { TONE_NAMES, type ToneName } from '#lib/tones.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
+	import MicButton from '#lib/components/MicButton.svelte';
 	import OptionSelect from '#lib/components/OptionSelect.svelte';
+	import TimeInput from '#lib/components/TimeInput.svelte';
+	import { joinHeard } from '#lib/taskform.js';
 	import PageFrame from '#lib/components/PageFrame.svelte';
 
 	const DURATIONS = [1, 2, 5, 10, 15, SCHEDULE_LIMITS.maxAlarmMinutes];
@@ -113,7 +116,7 @@
 		<form class="space-y-3" onsubmit={add}>
 			<h2 class="font-medium">Alarm</h2>
 			<div class="flex flex-wrap items-center gap-2">
-				<Input type="time" bind:value={at} required class="h-11 w-32 md:h-8" aria-label="Time" />
+				<TimeInput bind:value={at} required label="Time" />
 				<Input
 					bind:value={label}
 					required
@@ -121,6 +124,9 @@
 					placeholder="What is it for"
 					class="h-11 min-w-40 flex-1 md:h-8"
 					aria-label="Label"
+				/>
+				<MicButton
+					onheard={(text) => (label = joinHeard(label, text).slice(0, SCHEDULE_LIMITS.maxLabel))}
 				/>
 				<Button type="submit" disabled={busy} class="min-h-11 md:min-h-8">Add</Button>
 			</div>

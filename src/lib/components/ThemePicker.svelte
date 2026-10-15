@@ -3,7 +3,7 @@
 	import { tasker, type ThemeMode } from '#lib/app.svelte.js';
 	import { setDayTime, setTheme } from '#lib/theme.js';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import { Input } from '#lib/components/ui/input/index.js';
+	import TimeInput from '#lib/components/TimeInput.svelte';
 
 	const options: { mode: ThemeMode; label: string; icon: typeof Sun }[] = [
 		{ mode: 'light', label: 'Always light', icon: Sun },
@@ -42,20 +42,18 @@
 	{#if tasker.themeMode === 'auto'}
 		<div class="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
 			<span>Light from</span>
-			<Input
-				type="time"
-				class="h-8 w-28 px-2 text-sm"
+			<TimeInput
+				class="px-2 text-sm"
 				value={toTimeString(tasker.dayStart)}
-				onchange={(e) => onTimeChange('dayStart', e.currentTarget.value)}
-				aria-label="Daytime starts"
+				onchange={(value) => onTimeChange('dayStart', value)}
+				label="Daytime starts"
 			/>
 			<span>to</span>
-			<Input
-				type="time"
-				class="h-8 w-28 px-2 text-sm"
+			<TimeInput
+				class="px-2 text-sm"
 				value={toTimeString(tasker.dayEnd)}
-				onchange={(e) => onTimeChange('dayEnd', e.currentTarget.value)}
-				aria-label="Daytime ends"
+				onchange={(value) => onTimeChange('dayEnd', value)}
+				label="Daytime ends"
 			/>
 			<span class="text-xs">Dark outside these hours.</span>
 		</div>

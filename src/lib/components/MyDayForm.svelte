@@ -2,7 +2,7 @@
 	import { saveSettings } from '#lib/autosave.js';
 	import { formatClock24 } from '#lib/format.js';
 	import { parseClock } from '#lib/taskform.js';
-	import { Input } from '#lib/components/ui/input/index.js';
+	import TimeInput from '#lib/components/TimeInput.svelte';
 
 	const { start, end }: { start: number; end: number } = $props();
 
@@ -26,22 +26,10 @@
 
 <form class="space-y-2" onchange={save} onsubmit={(event) => event.preventDefault()}>
 	<p class="font-medium">My day</p>
-	<div class="flex items-center gap-2">
-		<Input
-			type="time"
-			name="start"
-			value={formatClock24(start)}
-			class="h-11 w-32 md:h-8"
-			aria-label="My day starts"
-		/>
+	<div class="flex flex-wrap items-center gap-2">
+		<TimeInput name="start" value={formatClock24(start)} label="My day starts" />
 		<span>to</span>
-		<Input
-			type="time"
-			name="end"
-			value={formatClock24(end % 1440)}
-			class="h-11 w-32 md:h-8"
-			aria-label="My day ends"
-		/>
+		<TimeInput name="end" value={formatClock24(end % 1440)} label="My day ends" />
 	</div>
 	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 	{#if saved}<p class="text-success text-sm" role="status">Saved.</p>{/if}

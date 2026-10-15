@@ -9,10 +9,14 @@
 		dateChoice,
 		endLine,
 		isChipDuration,
+		joinHeard,
 		parseClock
 	} from '#lib/taskform.js';
 	import { priorityStyle } from '#lib/urgency.js';
-	import { Check, Plus, RotateCcw, Trash2 } from '@lucide/svelte';
+	import { Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2 } from '@lucide/svelte';
+	import MicButton from '#lib/components/MicButton.svelte';
+	import NumberInput from '#lib/components/NumberInput.svelte';
+	import TimeInput from '#lib/components/TimeInput.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
@@ -121,14 +125,17 @@
 		</Dialog.Header>
 
 		<form onsubmit={handleSubmit} class="space-y-5">
-			<Input
-				type="text"
-				class="h-12 pr-10 text-xl md:text-xl"
-				bind:value={form.title}
-				placeholder="What needs doing? (required)"
-				aria-label="Title"
-				required
-			/>
+			<div class="flex items-center gap-1">
+				<Input
+					type="text"
+					class="h-12 flex-1 text-xl md:text-xl"
+					bind:value={form.title}
+					placeholder="What needs doing? (required)"
+					aria-label="Title"
+					required
+				/>
+				<MicButton onheard={(text) => (form.title = joinHeard(form.title, text))} />
+			</div>
 
 			<div class="flex flex-wrap gap-2" role="group" aria-label="Day">
 				<button
@@ -156,13 +163,31 @@
 					onclick={() => (pickingDate = true)}>Pick date</button
 				>
 				{#if choice === 'other' || pickingDate}
-					<Input
-						type="date"
-						class="h-11 w-auto md:h-8"
-						bind:value={form.date}
-						aria-label="Date"
-						required
-					/>
+					<div class="flex items-center gap-1">
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							class="size-11 shrink-0 md:size-8"
+							aria-label="Day before"
+							onclick={() => (form.date = addDays(form.date, -1))}><ChevronLeft /></Button
+						>
+						<Input
+							type="date"
+							class="h-11 w-auto md:h-8"
+							bind:value={form.date}
+							aria-label="Date"
+							required
+						/>
+						<Button
+							type="button"
+							variant="outline"
+							size="icon"
+							class="size-11 shrink-0 md:size-8"
+							aria-label="Day after"
+							onclick={() => (form.date = addDays(form.date, 1))}><ChevronRight /></Button
+						>
+					</div>
 				{/if}
 			</div>
 
@@ -170,12 +195,11 @@
 				<div class="flex flex-wrap items-center gap-2">
 					<label class="flex items-center gap-2 text-sm">
 						<span class="text-muted-foreground">Start</span>
-						<Input
-							type="time"
-							class="h-11 w-auto md:h-8"
+						<TimeInput
+							label="Start"
 							value={formatClock24(form.startTime)}
-							onchange={(e) => {
-								const minutes = parseClock(e.currentTarget.value);
+							onchange={(value) => {
+								const minutes = parseClock(value);
 								if (minutes !== null) form.startTime = minutes;
 							}}
 							required
@@ -203,20 +227,15 @@
 					</div>
 				</div>
 				{#if freeDuration}
-					<div class="relative w-40">
-						<Input
-							type="number"
-							class="h-11 pr-12 md:h-8"
+					<div class="flex items-center gap-2">
+						<NumberInput
+							bind:value={form.duration}
+							label="Duration in minutes"
 							min={5}
 							max={1440}
-							bind:value={form.duration}
-							aria-label="Duration in minutes"
-							required
+							step={5}
 						/>
-						<span
-							class="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm"
-							>min</span
-						>
+						<span class="text-muted-foreground text-sm">min</span>
 					</div>
 				{/if}
 				<p class="text-sm {end.over ? 'text-destructive' : 'text-muted-foreground'}">{end.text}</p>
@@ -242,13 +261,16 @@
 			</div>
 
 			{#if noteOpen}
-				<Textarea
-					class="resize-none"
-					rows={3}
-					bind:value={form.description}
-					placeholder="Note"
-					aria-label="Note"
-				/>
+				<div class="flex items-start gap-1">
+					<Textarea
+						class="flex-1 resize-none"
+						rows={3}
+						bind:value={form.description}
+						placeholder="Note"
+						aria-label="Note"
+					/>
+					<MicButton onheard={(text) => (form.description = joinHeard(form.description, text))} />
+				</div>
 			{:else}
 				<Button variant="ghost" size="sm" type="button" onclick={() => (noteOpen = true)}>
 					<Plus />

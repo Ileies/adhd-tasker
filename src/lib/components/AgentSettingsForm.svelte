@@ -9,7 +9,8 @@
 	import { saveSettings } from '#lib/autosave.js';
 	import { BUDGET_PRESETS, agentPatch, budgetChip } from '#lib/settings.js';
 	import { formatClock24 } from '#lib/format.js';
-	import { Input } from '#lib/components/ui/input/index.js';
+	import NumberInput from '#lib/components/NumberInput.svelte';
+	import TimeInput from '#lib/components/TimeInput.svelte';
 	import PresetChips from '#lib/components/PresetChips.svelte';
 
 	const {
@@ -118,22 +119,14 @@
 
 			<fieldset class="space-y-2">
 				<legend class="mb-1 font-medium">Quiet hours</legend>
-				<div class="flex items-center gap-2">
-					<Input
-						type="time"
+				<div class="flex flex-wrap items-center gap-2">
+					<TimeInput
 						name="quietStart"
 						value={formatClock24(quietStart)}
-						class="h-11 w-32 md:h-8"
-						aria-label="Quiet hours start"
+						label="Quiet hours start"
 					/>
 					<span>to</span>
-					<Input
-						type="time"
-						name="quietEnd"
-						value={formatClock24(quietEnd)}
-						class="h-11 w-32 md:h-8"
-						aria-label="Quiet hours end"
-					/>
+					<TimeInput name="quietEnd" value={formatClock24(quietEnd)} label="Quiet hours end" />
 				</div>
 				<p class="text-muted-foreground text-sm">
 					No unprompted reactions in this window. Your own messages always get an answer.
@@ -153,14 +146,13 @@
 				/>
 				{#if showCustom}
 					<div class="flex items-center gap-2">
-						<Input
-							type="number"
+						<NumberInput
 							name="budget"
-							min="1"
-							step="1"
-							value={budget ? budget / 1000 : ''}
-							class="h-11 w-32 md:h-8"
-							aria-label="Daily budget in thousand tokens"
+							min={1}
+							max={100000}
+							step={10}
+							value={budget ? budget / 1000 : 10}
+							label="Daily budget in thousand tokens"
 						/>
 						<span>thousand tokens</span>
 					</div>
