@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { saveSettings } from '#lib/autosave.js';
-	import { formatClock } from '#lib/format.js';
+	import { formatClock24 } from '#lib/format.js';
 	import { parseClock } from '#lib/taskform.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 
@@ -30,7 +30,7 @@
 		<Input
 			type="time"
 			name="start"
-			value={formatClock(start)}
+			value={formatClock24(start)}
 			class="h-11 w-32 md:h-8"
 			aria-label="My day starts"
 		/>
@@ -38,7 +38,7 @@
 		<Input
 			type="time"
 			name="end"
-			value={formatClock(end % 1440)}
+			value={formatClock24(end % 1440)}
 			class="h-11 w-32 md:h-8"
 			aria-label="My day ends"
 		/>

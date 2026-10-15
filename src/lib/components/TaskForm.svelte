@@ -2,7 +2,7 @@
 	import { createTask, errorText, showToast, updateTask } from '#lib';
 	import { tasker } from '#lib/app.svelte.js';
 	import { Priority, TaskStatus, type Task, type TaskForm } from '#lib/types.js';
-	import { formatClock } from '#lib/format.js';
+	import { formatClock24 } from '#lib/format.js';
 	import { todayIn, addDays } from '#lib/time.js';
 	import {
 		DURATION_CHIPS,
@@ -173,7 +173,7 @@
 						<Input
 							type="time"
 							class="h-11 w-auto md:h-8"
-							value={formatClock(form.startTime)}
+							value={formatClock24(form.startTime)}
 							onchange={(e) => {
 								const minutes = parseClock(e.currentTarget.value);
 								if (minutes !== null) form.startTime = minutes;

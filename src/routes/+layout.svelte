@@ -23,6 +23,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
+	import { setClockHour12 } from '#lib/format.js';
 	import SoundMenu from '#lib/components/SoundMenu.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
 	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
@@ -32,6 +33,13 @@
 	import { PUBLIC_GOOGLE_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$app/env/public';
 
 	let { children, data } = $props();
+
+	// Every time on screen follows this. Setting it in the derived runs before the page below renders, and the key renders the page again when it changes
+	const clock12h = $derived.by(() => {
+		const value = browser ? tasker.settings.clock12h : (data.user?.clock12h ?? false);
+		setClockHour12(value);
+		return value;
+	});
 
 	// Hydrate once: later invalidations must not overwrite optimistic edits or days loaded since.
 	// A signed in visitor's plan and settings came with the page, a guest's are read from the device below
@@ -279,7 +287,9 @@
 		{#if tasker.move.comparison}
 			<MoveScreen onCancel={logout} />
 		{:else}
-			{@render children()}
+			{#key clock12h}
+				{@render children()}
+			{/key}
 		{/if}
 	</main>
 </div>

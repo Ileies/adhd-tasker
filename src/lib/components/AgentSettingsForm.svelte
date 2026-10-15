@@ -8,7 +8,7 @@
 	} from '#lib/guardrails.js';
 	import { saveSettings } from '#lib/autosave.js';
 	import { BUDGET_PRESETS, agentPatch, budgetChip } from '#lib/settings.js';
-	import { formatClock } from '#lib/format.js';
+	import { formatClock24 } from '#lib/format.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import PresetChips from '#lib/components/PresetChips.svelte';
 
@@ -122,7 +122,7 @@
 					<Input
 						type="time"
 						name="quietStart"
-						value={formatClock(quietStart)}
+						value={formatClock24(quietStart)}
 						class="h-11 w-32 md:h-8"
 						aria-label="Quiet hours start"
 					/>
@@ -130,7 +130,7 @@
 					<Input
 						type="time"
 						name="quietEnd"
-						value={formatClock(quietEnd)}
+						value={formatClock24(quietEnd)}
 						class="h-11 w-32 md:h-8"
 						aria-label="Quiet hours end"
 					/>

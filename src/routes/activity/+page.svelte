@@ -38,17 +38,17 @@
 	const timezone = $derived(tasker.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
 	const clock = $derived(
 		new Intl.DateTimeFormat(undefined, {
-			hour: '2-digit',
+			hour: tasker.settings.clock12h ? 'numeric' : '2-digit',
 			minute: '2-digit',
-			hourCycle: 'h23',
+			hourCycle: tasker.settings.clock12h ? 'h12' : 'h23',
 			timeZone: timezone
 		})
 	);
 	const dayClock = $derived(
 		new Intl.DateTimeFormat(undefined, {
-			hour: '2-digit',
+			hour: tasker.settings.clock12h ? 'numeric' : '2-digit',
 			minute: '2-digit',
-			hourCycle: 'h23',
+			hourCycle: tasker.settings.clock12h ? 'h12' : 'h23',
 			day: 'numeric',
 			month: 'short',
 			timeZone: timezone
