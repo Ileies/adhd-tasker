@@ -11,6 +11,16 @@ describe('parseQuickAlarm', () => {
 			{ label: 'Standup', time: 570, inMinutes: null, repeat: 'weekdays' }
 		],
 		['Gym every weekday 6pm', { label: 'Gym', time: 1080, inMinutes: null, repeat: 'weekdays' }],
+		['Run Sat 8:00', { label: 'Run', time: 480, inMinutes: null, repeat: 'days:6' }],
+		['Gym 7am Wed-Fri', { label: 'Gym', time: 420, inMinutes: null, repeat: 'days:3,4,5' }],
+		[
+			'Class 9:00 Tue/Thu/Sun',
+			{ label: 'Class', time: 540, inMinutes: null, repeat: 'days:0,2,4' }
+		],
+		[
+			'Plan 8:00 every monday and friday',
+			{ label: 'Plan', time: 480, inMinutes: null, repeat: 'days:1,5' }
+		],
 		['Tea in 5 min', { label: 'Tea', time: null, inMinutes: 5, repeat: 'none' }],
 		['Oven in 1h30m', { label: 'Oven', time: null, inMinutes: 90, repeat: 'none' }],
 		['Laundry in 1.5h', { label: 'Laundry', time: null, inMinutes: 90, repeat: 'none' }]
@@ -58,7 +68,7 @@ describe('quickAlarmFields', () => {
 describe('quickAlarmPreview', () => {
 	test('says what will ring and when', () => {
 		expect(quickAlarmPreview('Tea in 5 min')).toBe('Rings in 5 min');
-		expect(quickAlarmPreview('Meds 8:00 daily')).toContain('every day');
+		expect(quickAlarmPreview('Meds 8:00 daily')).toBe('Rings at 08:00 (Every day)');
 	});
 
 	test('is empty until the line names a time', () => {

@@ -5,14 +5,61 @@ import { parseTone, type Tone } from '#lib/tones.js';
 export const SCHEDULE_KINDS = ['wakeup', 'alarm'] as const;
 export type ScheduleKind = (typeof SCHEDULE_KINDS)[number];
 
-export const REPEATS = ['none', 'daily', 'weekdays'] as const;
-export type Repeat = (typeof REPEATS)[number];
+/**
+ * How an alarm repeats: `none`, `daily`, `weekdays` (Monday to Friday) or `days:1,3,6`, a list of weekday numbers
+ * (0 Sunday to 6 Saturday, ascending). A stored list is always normalized, so every day is `daily`, Monday to Friday
+ * is `weekdays` and no day is `none`. `parseRepeat` is the one way in.
+ */
+export type Repeat = 'none' | 'daily' | 'weekdays' | `days:${string}`;
 
-export const REPEAT_TEXT: Record<Repeat, string> = {
-	none: 'Once',
-	daily: 'Every day',
-	weekdays: 'Monday to Friday'
-};
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** Monday first, the order the day chips are shown in. */
+export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+export const dayName = (day: number, short = false) =>
+	short ? DAY_NAMES[day].slice(0, 3) : DAY_NAMES[day];
+
+/** The repeat for a set of weekdays (0 Sunday to 6 Saturday), normalized. */
+export function repeatFromDays(days: Iterable<number>): Repeat {
+	const set = [...new Set(days)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6).sort();
+	if (set.length === 0) return 'none';
+	if (set.length === 7) return 'daily';
+	if (set.join() === '1,2,3,4,5') return 'weekdays';
+	return `days:${set.join(',')}`;
+}
+
+/** The weekdays an alarm rings on, `null` for a one-off. */
+export function repeatDays(repeat: Repeat): number[] | null {
+	if (repeat === 'none') return null;
+	if (repeat === 'daily') return [0, 1, 2, 3, 4, 5, 6];
+	if (repeat === 'weekdays') return [1, 2, 3, 4, 5];
+	return repeat.slice(5).split(',').map(Number);
+}
+
+/** A stored or given value as a normalized repeat, `null` when it is none of the forms. */
+export function parseRepeat(value: unknown): Repeat | null {
+	if (value === 'none' || value === 'daily' || value === 'weekdays') return value;
+	if (typeof value !== 'string' || !/^days:[0-6](,[0-6])*$/.test(value)) return null;
+	const repeat = repeatFromDays(repeatDays(value as Repeat)!);
+	return repeat === value ? repeat : null;
+}
+
+/** Whether a repeat rings on a weekday number (0 Sunday to 6 Saturday). */
+export const repeatsOn = (repeat: Repeat, day: number) =>
+	repeat !== 'none' && repeatDays(repeat)!.includes(day);
+
+/** "Once", "Every day", "Monday to Friday", "Saturday", "Wed to Fri", "Tue, Thu, Sun". */
+export function repeatText(repeat: Repeat): string {
+	if (repeat === 'none') return 'Once';
+	if (repeat === 'daily') return 'Every day';
+	if (repeat === 'weekdays') return 'Monday to Friday';
+	const days = repeatDays(repeat)!;
+	if (days.length === 1) return dayName(days[0]);
+	// A run of consecutive days (Monday first, Sunday last) reads as "Wed to Fri"
+	const order = days.map((d) => WEEK_ORDER.indexOf(d as (typeof WEEK_ORDER)[number])).sort();
+	const run = order.length >= 3 && order.at(-1)! - order[0] === order.length - 1;
+	const names = order.map((i) => dayName(WEEK_ORDER[i], true));
+	return run ? `${names[0]} to ${names.at(-1)}` : names.join(', ');
+}
 
 export const SCHEDULE_LIMITS = {
 	maxWakeups: 10,
@@ -51,10 +98,7 @@ export function minutesOf(ms: number, timezone: string): number {
 	return get('hour') * 60 + get('minute');
 }
 
-const isWeekday = (date: string) => {
-	const day = new Date(date + 'T00:00:00Z').getUTCDay();
-	return day !== 0 && day !== 6;
-};
+const weekdayOf = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay();
 
 /**
  * When something fires: `in_minutes` from now, or the clock time `at` on `date`. Without a date it is the next
@@ -107,7 +151,7 @@ export function nextRepeat(
 	const start = todayIn(timezone, new Date(afterMs));
 	for (let offset = 0; offset < 9; offset++) {
 		const date = addDays(start, offset);
-		if (repeat === 'weekdays' && !isWeekday(date)) continue;
+		if (!repeatsOn(repeat, weekdayOf(date))) continue;
 		const at = zonedToEpoch(date, minutes, timezone);
 		if (at > afterMs) return at;
 	}
@@ -134,11 +178,23 @@ export function parseAlarm(args: Args, nowMs: number, timezone: string): Parsed<
 	if (!when.ok) return when;
 	const tone = parseTone(args.tone);
 	if (!tone.ok) return tone;
-	const repeat = args.repeat === undefined ? 'none' : args.repeat;
-	if (!REPEATS.includes(repeat as Repeat))
-		return fail(`repeat must be one of ${REPEATS.join(', ')}`);
+	const repeat = args.repeat === undefined ? 'none' : parseRepeat(args.repeat);
+	if (repeat === null)
+		return fail(
+			'repeat must be none, daily, weekdays or days:1,3,6 (0 Sunday to 6 Saturday, ascending)'
+		);
 	if (repeat !== 'none' && when.value.minutes === null)
 		return fail('a repeating alarm needs a clock time (at), not in_minutes');
+	// The first ring is the first matching day from the asked time on, "Sat only" made on a Monday waits for Saturday
+	const first =
+		repeat !== 'none' && when.value.minutes !== null
+			? nextRepeat(repeat, when.value.minutes, when.value.fireAt - 1, timezone)
+			: null;
+	if (first !== null) {
+		if (first > nowMs + SCHEDULE_LIMITS.maxAheadDays * 86_400_000)
+			return fail(`at most ${SCHEDULE_LIMITS.maxAheadDays} days ahead`);
+		when.value.fireAt = first;
+	}
 	const label = parseText(args.label, SCHEDULE_LIMITS.maxLabel);
 	if (!label) return fail(`label is required (max ${SCHEDULE_LIMITS.maxLabel} characters)`);
 	const durationMin = args.duration_minutes ?? SCHEDULE_LIMITS.defaultAlarmMinutes;
@@ -158,7 +214,7 @@ export function parseAlarm(args: Args, nowMs: number, timezone: string): Parsed<
 			label,
 			tone: tone.value,
 			custom: tone.custom,
-			repeat: repeat as Repeat,
+			repeat,
 			durationMin
 		}
 	};
@@ -208,7 +264,7 @@ export function describeEntry(
 	})
 		.format(new Date(entry.fireAt))
 		.replace(',', '');
-	const repeat = entry.repeat === 'none' ? '' : `, ${REPEAT_TEXT[entry.repeat]}`;
+	const repeat = entry.repeat === 'none' ? '' : `, ${repeatText(entry.repeat)}`;
 	const text = entry.kind === 'alarm' ? `alarm "${entry.label}"` : `wakeup note "${entry.note}"`;
 	return `#${entry.id} ${when} ${text}${repeat} (by ${entry.createdBy})`;
 }

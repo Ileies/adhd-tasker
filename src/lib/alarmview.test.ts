@@ -178,9 +178,10 @@ describe('stackCards', () => {
 describe('alarmStatus', () => {
 	test.each([
 		['on-day', 'none', 'Rings this day'],
-		['on-day', 'daily', 'Rings this day, repeats'],
+		['on-day', 'daily', 'Every day'],
 		['off', 'daily', 'Off'],
-		['other-day', 'weekdays', 'Not on weekends'],
+		['other-day', 'daily', 'Every day'],
+		['other-day', 'weekdays', 'Monday to Friday'],
 		['other-day', 'none', 'Next Fri, Oct 16']
 	] as const)('%s with repeat %s says "%s"', (state, repeat, text) => {
 		expect(alarmStatus(alarm(0, { repeat }), state, 'Fri, Oct 16')).toBe(text);

@@ -4,6 +4,7 @@
  */
 import type { Alarm } from '#lib/app.svelte.js';
 import type { AlarmFields } from '#lib/backend.js';
+import { repeatText, repeatsOn } from '#lib/schedule.js';
 import { localMoment } from '#lib/time.js';
 import { TONE_TEXT, isToneName, type ToneName } from '#lib/tones.js';
 
@@ -76,7 +77,7 @@ export function alarmDayState(alarm: Alarm, date: string, timezone: string): Ala
 	if (alarm.repeat === 'none') return first === date ? 'on-day' : 'other-day';
 	if (date < first) return 'other-day';
 	const day = new Date(date + 'T00:00:00Z').getUTCDay();
-	return alarm.repeat === 'weekdays' && (day === 0 || day === 6) ? 'other-day' : 'on-day';
+	return repeatsOn(alarm.repeat, day) ? 'on-day' : 'other-day';
 }
 
 const STATE_ORDER: Record<AlarmDayState, number> = { 'on-day': 0, 'other-day': 1, off: 2 };
@@ -117,9 +118,9 @@ export function stackCards(wanted: number[], height: number, gap = 4): number[] 
 /** The words that say the state of an alarm for one day, so color is never the only cue. `dayLabel` names the next ring. */
 export function alarmStatus(alarm: Alarm, state: AlarmDayState, dayLabel: string): string {
 	if (state === 'off') return 'Off';
-	if (state === 'on-day')
-		return alarm.repeat === 'none' ? 'Rings this day' : 'Rings this day, repeats';
-	return alarm.repeat === 'weekdays' ? 'Not on weekends' : `Next ${dayLabel}`;
+	// A repeating alarm says how often it rings, never its next date
+	if (alarm.repeat !== 'none') return repeatText(alarm.repeat);
+	return state === 'on-day' ? 'Rings this day' : `Next ${dayLabel}`;
 }
 
 /** One alarm and how it relates to the day shown. */

@@ -5,7 +5,7 @@
  * assistant's log or anything that belongs to one machine (display device, linked Google services).
  */
 import type { NewTask, Repo, ScheduleEntry, Settings, Task } from '#lib/core/repo.js';
-import { REPEATS, SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
+import { SCHEDULE_LIMITS, parseRepeat, type Repeat } from '#lib/schedule.js';
 import { parseSettingsPatch, type SettingsPatch } from '#lib/settings.js';
 import { isValidTimezone } from '#lib/time.js';
 import { parseTaskInput } from '#lib/task-input.js';
@@ -127,7 +127,8 @@ function parseAlarmEntry(raw: unknown): ExportedAlarm | null {
 		(typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 0 || minutes > 1439)
 	)
 		return null;
-	if (!REPEATS.includes(repeat as Repeat)) return null;
+	const parsedRepeat = parseRepeat(repeat);
+	if (parsedRepeat === null) return null;
 	if (typeof label !== 'string' || !label.trim() || label.length > SCHEDULE_LIMITS.maxLabel)
 		return null;
 	if (
@@ -137,11 +138,11 @@ function parseAlarmEntry(raw: unknown): ExportedAlarm | null {
 		durationMin > SCHEDULE_LIMITS.maxAlarmMinutes
 	)
 		return null;
-	if (repeat !== 'none' && minutes === null) return null;
+	if (parsedRepeat !== 'none' && minutes === null) return null;
 	return {
 		fireAt,
 		minutes,
-		repeat: repeat as Repeat,
+		repeat: parsedRepeat,
 		label: label.trim(),
 		tone: readTone(raw.tone),
 		durationMin,

@@ -354,8 +354,8 @@ const DEFINITIONS = [
 					tone: toneProp,
 					repeat: {
 						type: 'string',
-						enum: ['none', 'daily', 'weekdays'],
-						description: 'Repeating needs at, not in_minutes'
+						description:
+							'none, daily, weekdays (Monday to Friday) or days:1,3,6 for chosen weekdays (0 Sunday to 6 Saturday, ascending, for example days:3,4,5 for Wednesday to Friday). Repeating needs at, not in_minutes'
 					},
 					duration_minutes: {
 						type: 'integer',

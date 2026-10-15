@@ -1,13 +1,39 @@
 import type { AlarmFields } from '#lib/backend.js';
 import { formatClock, formatClock24, formatMinutes } from '#lib/format.js';
 import { takeClock } from '#lib/quickadd.js';
-import { REPEAT_TEXT, SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
+import { SCHEDULE_LIMITS, repeatFromDays, repeatText, type Repeat } from '#lib/schedule.js';
 
 /** What an alarm gets when the line does not name a label. */
 export const QUICK_ALARM_LABEL = 'Alarm';
 
 const REPEAT_WEEKDAYS = /\b(?:every\s+weekday|weekdays?|mon(?:day)?\s*(?:to|-)\s*fri(?:day)?)\b/i;
 const REPEAT_DAILY = /\b(?:every\s*day|daily)\b/i;
+const DAY = '(?:mon|tue(?:s)?|wed(?:nes)?|thu(?:r(?:s)?)?|fri|sat(?:ur)?|sun)(?:day)?';
+const DAY_SEPARATOR = '\\s*(?:-|to|through|until|,|/|and|&)\\s*';
+/** "Sat", "Wed-Fri", "Tue/Thu/Sun", "every monday and friday". */
+const REPEAT_DAYS = new RegExp(`\\b(?:every\\s+|on\\s+)?${DAY}(?:${DAY_SEPARATOR}${DAY})*\\b`, 'i');
+const DAY_INDEX = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const RANGE_WORD = /^(?:-|to|through|until)$/i;
+
+/** The weekday numbers (0 Sunday to 6 Saturday) a day phrase names, a range runs on through the week's end. */
+function readDays(phrase: string): number[] {
+	const days: number[] = [];
+	let range = false;
+	for (const token of phrase.match(new RegExp(`${DAY}|-|to|through|until`, 'gi')) ?? []) {
+		if (RANGE_WORD.test(token)) {
+			range = true;
+			continue;
+		}
+		const day = DAY_INDEX.indexOf(token.slice(0, 3).toLowerCase());
+		const last = days.at(-1);
+		if (range && last !== undefined) {
+			for (let d = (last + 1) % 7; d !== day; d = (d + 1) % 7) days.push(d);
+		}
+		days.push(day);
+		range = false;
+	}
+	return days;
+}
 const IN_COMBINED = /\bin\s+(\d+)\s*h(?:ours?|rs?)?\s*(\d+)\s*m(?:in(?:ute)?s?)?\b/i;
 const IN_HOURS = /\bin\s+(\d+(?:[.,]\d+)?)\s*h(?:ours?|rs?)?\b/i;
 const IN_MINUTES = /\bin\s+(\d+)\s*m(?:in(?:ute)?s?)?\b/i;
@@ -36,6 +62,12 @@ export function parseQuickAlarm(text: string): QuickAlarm {
 	} else if (REPEAT_DAILY.test(rest)) {
 		repeat = 'daily';
 		rest = rest.replace(REPEAT_DAILY, ' ');
+	} else {
+		const match = rest.match(REPEAT_DAYS);
+		if (match) {
+			repeat = repeatFromDays(readDays(match[0]));
+			rest = rest.replace(match[0], ' ');
+		}
 	}
 
 	const waits: [RegExp, (m: RegExpMatchArray) => number][] = [
@@ -92,6 +124,6 @@ export function quickAlarmPreview(text: string): string | null {
 	const parsed = parseQuickAlarm(text);
 	if (parsed.inMinutes !== null) return `Rings in ${formatMinutes(parsed.inMinutes)}`;
 	if (parsed.time === null) return null;
-	const repeat = parsed.repeat === 'none' ? '' : `, ${REPEAT_TEXT[parsed.repeat].toLowerCase()}`;
+	const repeat = parsed.repeat === 'none' ? '' : ` (${repeatText(parsed.repeat)})`;
 	return `Rings at ${formatClock(parsed.time)}${repeat}`;
 }

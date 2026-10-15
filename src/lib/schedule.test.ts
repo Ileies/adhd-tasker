@@ -9,7 +9,11 @@ import {
 	parseAlarm,
 	parseId,
 	parseWakeup,
+	parseRepeat,
 	resolveWhen,
+	repeatDays,
+	repeatFromDays,
+	repeatText,
 	type Repeat
 } from '#lib/schedule.js';
 import { todayIn, zonedToEpoch } from '#lib/time.js';
@@ -89,6 +93,18 @@ describe('nextRepeat', () => {
 		const friday = zonedToEpoch('2026-10-16', 480, BERLIN);
 		expect(nextRepeat('weekdays', 480, friday, BERLIN)).toBe(
 			zonedToEpoch('2026-10-19', 480, BERLIN)
+		);
+	});
+
+	test('chosen weekdays skip the others', () => {
+		// 2026-10-16 is a Friday, Wed to Fri rings again the next Wednesday, Saturday only on the next Saturday
+		const friday = zonedToEpoch('2026-10-16', 480, BERLIN);
+		expect(nextRepeat('days:3,4,5', 480, friday, BERLIN)).toBe(
+			zonedToEpoch('2026-10-21', 480, BERLIN)
+		);
+		expect(nextRepeat('days:6', 480, friday, BERLIN)).toBe(zonedToEpoch('2026-10-17', 480, BERLIN));
+		expect(nextRepeat('days:6', 480, zonedToEpoch('2026-10-17', 480, BERLIN), BERLIN)).toBe(
+			zonedToEpoch('2026-10-24', 480, BERLIN)
 		);
 	});
 
@@ -235,5 +251,61 @@ describe('properties', () => {
 				expect(nextRepeat('none', minutes, afterMs, timezone)).toBeNull();
 			})
 		);
+	});
+});
+
+describe('repeat days', () => {
+	test.each([
+		[[], 'none'],
+		[[0, 1, 2, 3, 4, 5, 6], 'daily'],
+		[[5, 4, 3, 2, 1], 'weekdays'],
+		[[6], 'days:6'],
+		[[5, 3, 4, 3], 'days:3,4,5']
+	] as const)('%j is stored as %s', (days, repeat) => {
+		expect(repeatFromDays(days)).toBe(repeat);
+	});
+
+	test.each([
+		['days:3,4,5', 'Wed to Fri'],
+		['days:6', 'Saturday'],
+		['days:2,4,0', 'Tue, Thu, Sun'],
+		['days:6,0', 'Sat, Sun'],
+		['weekdays', 'Monday to Friday'],
+		['daily', 'Every day']
+	] as const)('%s reads %s', (repeat, text) => {
+		expect(repeatText(repeat)).toBe(text);
+	});
+
+	test.each([
+		['days:3,4,5', 'days:3,4,5'],
+		['days:6', 'days:6'],
+		['days:5,3', null],
+		['days:1,2,3,4,5', null],
+		['days:7', null],
+		['days:', null],
+		['monthly', null],
+		[5, null]
+	] as [unknown, Repeat | null][])('parseRepeat(%j) is %j', (value, expected) => {
+		expect(parseRepeat(value)).toBe(expected);
+	});
+
+	test('repeatDays lists the weekdays of every form', () => {
+		expect(repeatDays('none')).toBeNull();
+		expect(repeatDays('weekdays')).toEqual([1, 2, 3, 4, 5]);
+		expect(repeatDays('days:6')).toEqual([6]);
+	});
+
+	test('the first ring of a Saturday alarm made on a Monday waits for Saturday', () => {
+		// 2026-10-12 is a Monday
+		const monday = zonedToEpoch('2026-10-12', 600, BERLIN);
+		const parsed = parseAlarm({ at: '08:00', label: 'Run', repeat: 'days:6' }, monday, BERLIN);
+		expect(parsed).toMatchObject({
+			ok: true,
+			value: { fireAt: zonedToEpoch('2026-10-17', 480, BERLIN), repeat: 'days:6' }
+		});
+	});
+
+	test('a repeat that is not normalized is refused', () => {
+		expect(parseAlarm({ at: '08:00', label: 'x', repeat: 'days:5,3' }, NOW, BERLIN).ok).toBe(false);
 	});
 });
