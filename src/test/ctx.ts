@@ -11,14 +11,15 @@ export const NOW = Date.parse('2026-10-14T09:00:00Z');
 
 export async function testCtx(options: { now?: number; model?: Model | null } = {}) {
 	const hints: Hint[] = [];
-	const state = { now: options.now ?? NOW, reacts: 0 };
+	/** `screens` is how many open screens a hint reaches, 0 for none. */
+	const state = { now: options.now ?? NOW, reacts: 0, screens: 1 };
 	const repo = localRepo(await openLocalDb(freshIndexedDb(), 'test'));
 	await repo.settings.update({ timezone: 'UTC' });
 	const ctx: Ctx = {
 		repo,
 		now: () => state.now,
 		model: options.model ?? null,
-		hint: (message) => hints.push(message),
+		hint: (message) => (hints.push(message), state.screens),
 		react: () => void state.reacts++
 	};
 	return { ctx, repo, hints, state };
