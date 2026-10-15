@@ -99,6 +99,7 @@ export async function updateUserAlarm(
 
 	const args = { ...(body as Record<string, unknown>) };
 	if (args.tone === undefined && row.tone) args.tone = row.tone;
+	if (args.duration_minutes === undefined) args.duration_minutes = row.durationMin;
 	const parsed = parseAlarm(args, ctx.now(), timezone);
 	if (!parsed.ok) throw new AssistantError(parsed.error, 400);
 	const others = (await ctx.repo.schedule.pending()).filter((entry) => entry.kind === 'alarm');
