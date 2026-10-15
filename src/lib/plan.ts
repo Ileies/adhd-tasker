@@ -1,3 +1,4 @@
+import { formatClock } from '#lib/format.js';
 import { addDays, type DateKey } from '#lib/time.js';
 import { TaskStatus, type Task } from '#lib/types.js';
 
@@ -125,4 +126,117 @@ export function conflictsWith<T extends Span & { status: TaskStatus }>(
 	return others.filter(
 		(other) => other.id !== task.id && other.status !== TaskStatus.Completed && overlap(task, other)
 	);
+}
+
+/** The hours Plan shows by default (07:00 to 23:00) until the My day setting exists. */
+export const MY_DAY = { start: 7 * 60, end: 23 * 60 };
+
+/**
+ * The hours the timeline shows in full: `day`, widened to whole hours around every task so that
+ * nothing planned outside it is ever hidden. The rest collapses into one thin row at each end.
+ */
+export function visibleRange(
+	tasks: Pick<Task, 'startTime' | 'duration'>[],
+	day = MY_DAY
+): { start: number; end: number } {
+	let { start, end } = day;
+	for (const task of tasks) {
+		start = Math.min(start, Math.floor(task.startTime / 60) * 60);
+		end = Math.max(end, Math.ceil((task.startTime + task.duration) / 60) * 60);
+	}
+	return { start, end: Math.min(DAY_MINUTES, end) };
+}
+
+/** What arrow keys do to a focused block: up and down move by one step, with Shift they resize. Null for any other key. */
+export function keyAdjust(
+	task: Pick<Task, 'startTime' | 'duration'>,
+	key: string,
+	shift: boolean
+): { startTime: number } | { duration: number } | null {
+	if (key !== 'ArrowUp' && key !== 'ArrowDown') return null;
+	const step = key === 'ArrowUp' ? -SNAP : SNAP;
+	return shift
+		? { duration: resizeTo(task.startTime, task.duration + step) }
+		: { startTime: moveTo(task.startTime + step, task.duration) };
+}
+
+type Named = Span & { title: string; priority: Task['priority']; status: TaskStatus };
+
+/** Open tasks that overlap in a chain, each group at least two tasks, by start time. */
+function overlapGroups<T extends Named>(tasks: T[]): T[][] {
+	const open = tasks
+		.filter((task) => task.status !== TaskStatus.Completed)
+		.sort((a, b) => a.startTime - b.startTime || a.id - b.id);
+	const groups: T[][] = [];
+	let group: T[] = [];
+	let end = -1;
+	for (const task of open) {
+		if (group.length > 0 && task.startTime >= end) {
+			if (group.length > 1) groups.push(group);
+			group = [];
+		}
+		group.push(task);
+		end = Math.max(end, task.startTime + task.duration);
+	}
+	if (group.length > 1) groups.push(group);
+	return groups;
+}
+
+/**
+ * The warning above the timeline, naming the tasks and the winner: "Study and Dinner overlap at 18:00.
+ * Now shows Dinner (higher priority)." Null when nothing overlaps. Done tasks do not count.
+ */
+export function overlapLine<T extends Named>(tasks: T[]): string | null {
+	const groups = overlapGroups(tasks);
+	const [first] = groups;
+	if (!first) return null;
+	const at = first[1].startTime;
+	const running = first.filter(
+		(task) => task.startTime <= at && at < task.startTime + task.duration
+	);
+	const winner = [...running].sort(
+		(a, b) => b.priority - a.priority || a.startTime - b.startTime || a.id - b.id
+	)[0];
+	const names = first.map((task) => task.title);
+	const list =
+		names.length === 2
+			? names.join(' and ')
+			: `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+	const why = running.some((task) => task.priority < winner.priority)
+		? 'higher priority'
+		: 'it starts first';
+	const more =
+		groups.length > 1 ? ` ${groups.length - 1} more overlap${groups.length > 2 ? 's' : ''}.` : '';
+	return `${list} overlap at ${formatClock(at)}. Now shows ${winner.title} (${why}).${more}`;
+}
+
+export interface PhoneGroups<T> {
+	/** Finished tasks, shown as one line. */
+	done: T[];
+	/** Open tasks whose time passed without an answer. */
+	missed: T[];
+	/** Open tasks running now. */
+	current: T[];
+	/** Everything else, or the whole day when it is not today. */
+	later: T[];
+}
+
+/** Splits a day for the phone list. `now` is null for a day that is not today: one plain list. */
+export function phoneGroups<T extends Span & { status: TaskStatus }>(
+	tasks: T[],
+	now: number | null
+): PhoneGroups<T> {
+	const sorted = [...tasks].sort((a, b) => a.startTime - b.startTime || a.id - b.id);
+	const groups: PhoneGroups<T> = { done: [], missed: [], current: [], later: [] };
+	if (now === null) {
+		groups.later = sorted;
+		return groups;
+	}
+	for (const task of sorted) {
+		if (task.status === TaskStatus.Completed) groups.done.push(task);
+		else if (task.startTime + task.duration <= now) groups.missed.push(task);
+		else if (task.startTime <= now) groups.current.push(task);
+		else groups.later.push(task);
+	}
+	return groups;
 }

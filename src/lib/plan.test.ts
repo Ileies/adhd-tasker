@@ -1,19 +1,23 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { TaskStatus } from '#lib/types.js';
+import { Priority, TaskStatus } from '#lib/types.js';
 import {
 	DAY_MINUTES,
 	MIN_DURATION,
 	SNAP,
 	conflictsWith,
 	extendTask,
+	keyAdjust,
 	layoutDay,
 	moveLater,
 	moveTo,
 	nextFreeSlot,
+	overlapLine,
+	phoneGroups,
 	resizeTo,
-	snap
+	snap,
+	visibleRange
 } from '#lib/plan.js';
 
 const span = (id: number, startTime: number, duration: number, status = TaskStatus.Pending) => ({
@@ -254,5 +258,108 @@ describe('moveLater', () => {
 			startTime: h(9),
 			tomorrow: true
 		});
+	});
+});
+
+describe('visibleRange', () => {
+	const h = (hours: number) => hours * 60;
+
+	test('is the day itself when every task is inside it', () => {
+		expect(visibleRange([span(1, h(9), 60)])).toEqual({ start: h(7), end: h(23) });
+	});
+
+	test('widens to whole hours around a task outside the day', () => {
+		expect(visibleRange([span(1, h(5) + 30, 60), span(2, h(23) + 15, 30)])).toEqual({
+			start: h(5),
+			end: h(24)
+		});
+	});
+});
+
+describe('keyAdjust', () => {
+	const task = { startTime: 600, duration: 60 };
+
+	test.each([
+		['ArrowUp', false, { startTime: 585 }],
+		['ArrowDown', false, { startTime: 615 }],
+		['ArrowUp', true, { duration: 45 }],
+		['ArrowDown', true, { duration: 75 }],
+		['ArrowLeft', false, null]
+	])('%s with shift %s', (key, shift, expected) => {
+		expect(keyAdjust(task, key, shift)).toEqual(expected);
+	});
+
+	test('stays inside the day and above the minimum', () => {
+		expect(keyAdjust({ startTime: 0, duration: 60 }, 'ArrowUp', false)).toEqual({ startTime: 0 });
+		expect(keyAdjust({ startTime: 600, duration: MIN_DURATION }, 'ArrowUp', true)).toEqual({
+			duration: MIN_DURATION
+		});
+	});
+});
+
+describe('overlapLine', () => {
+	const named = (
+		id: number,
+		title: string,
+		startTime: number,
+		duration: number,
+		priority = Priority.Medium,
+		status = TaskStatus.Pending
+	) => ({ id, title, startTime, duration, priority, status });
+
+	test('is null without an overlap', () => {
+		expect(overlapLine([named(1, 'A', 600, 60), named(2, 'B', 660, 60)])).toBeNull();
+	});
+
+	test('names both tasks and the higher priority winner', () => {
+		const line = overlapLine([
+			named(1, 'Study', 1020, 120),
+			named(2, 'Dinner', 1080, 60, Priority.High)
+		]);
+		expect(line).toBe('Study and Dinner overlap at 18:00. Now shows Dinner (higher priority).');
+	});
+
+	test('with equal priority the one that starts first wins', () => {
+		expect(overlapLine([named(1, 'A', 600, 60), named(2, 'B', 630, 60)])).toContain(
+			'Now shows A (it starts first)'
+		);
+	});
+
+	test('a done task does not overlap', () => {
+		const done = named(2, 'B', 630, 60, Priority.Medium, TaskStatus.Completed);
+		expect(overlapLine([named(1, 'A', 600, 60), done])).toBeNull();
+	});
+
+	test('counts the other overlaps', () => {
+		const line = overlapLine([
+			named(1, 'A', 600, 60),
+			named(2, 'B', 630, 60),
+			named(3, 'C', 900, 60),
+			named(4, 'D', 930, 60)
+		]);
+		expect(line).toEndWith('1 more overlap.');
+	});
+});
+
+describe('phoneGroups', () => {
+	const day = [
+		span(1, 480, 60, TaskStatus.Completed),
+		span(2, 540, 30),
+		span(3, 600, 60),
+		span(4, 720, 60)
+	];
+
+	test('splits today around now', () => {
+		const groups = phoneGroups(day, 610);
+		expect(groups.done.map((t) => t.id)).toEqual([1]);
+		expect(groups.missed.map((t) => t.id)).toEqual([2]);
+		expect(groups.current.map((t) => t.id)).toEqual([3]);
+		expect(groups.later.map((t) => t.id)).toEqual([4]);
+	});
+
+	test('another day is one plain list by start time', () => {
+		const groups = phoneGroups([...day].reverse(), null);
+		expect(groups.later.map((t) => t.id)).toEqual([1, 2, 3, 4]);
+		expect(groups.done).toEqual([]);
 	});
 });

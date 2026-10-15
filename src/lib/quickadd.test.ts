@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { parseQuickTask, quickTask } from '#lib/quickadd.js';
+import { parseQuickTask, quickPreview, quickTask } from '#lib/quickadd.js';
 
 describe('quickTask', () => {
 	const DAY = '2026-10-14';
@@ -119,5 +119,21 @@ describe('properties', () => {
 				}
 			})
 		);
+	});
+});
+
+describe('quickPreview', () => {
+	test('says what will be created', () => {
+		expect(quickPreview('Call dentist 14:30 45m', '2026-10-14', null)).toBe(
+			'Call dentist, 14:30 to 15:15, 45m'
+		);
+	});
+
+	test('without a time it uses the next free quarter hour today', () => {
+		expect(quickPreview('Groceries', '2026-10-14', 601)).toBe('Groceries, 10:15 to 10:45, 30m');
+	});
+
+	test('is null without a title', () => {
+		expect(quickPreview('14:30 45m', '2026-10-14', null)).toBeNull();
 	});
 });

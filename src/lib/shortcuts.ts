@@ -10,15 +10,30 @@ export interface KeyPress {
 	target: EventTarget | { tagName?: string; isContentEditable?: boolean } | null;
 }
 
-export type Shortcut = 'now' | 'plan' | 'assistant' | 'mute' | 'fullscreen';
+export type Shortcut =
+	| 'now'
+	| 'plan'
+	| 'assistant'
+	| 'mute'
+	| 'fullscreen'
+	| 'done'
+	| 'quick'
+	| 'previous'
+	| 'next'
+	| 'today';
 
-/** The keys the layout handles on every page, in the order the help lists them. */
-export const SHORTCUTS: { key: string; action: Shortcut; text: string }[] = [
-	{ key: '1', action: 'now', text: 'Now' },
-	{ key: '2', action: 'plan', text: 'Plan' },
-	{ key: 'A', action: 'assistant', text: 'Open the assistant' },
-	{ key: 'M', action: 'mute', text: 'Mute or unmute' },
-	{ key: 'F', action: 'fullscreen', text: 'Fullscreen' }
+/** The keys in the order the help lists them. The layout handles the first five, the pages the rest. */
+export const SHORTCUTS: { keys: string[]; label: string; action: Shortcut; text: string }[] = [
+	{ keys: ['1'], label: '1', action: 'now', text: 'Now' },
+	{ keys: ['2'], label: '2', action: 'plan', text: 'Plan' },
+	{ keys: ['d'], label: 'D', action: 'done', text: 'Done (Now)' },
+	{ keys: ['n', '/'], label: 'N or /', action: 'quick', text: 'Add a task (Plan, empty Now)' },
+	{ keys: ['arrowleft'], label: 'Left', action: 'previous', text: 'Previous day (Plan)' },
+	{ keys: ['arrowright'], label: 'Right', action: 'next', text: 'Next day (Plan)' },
+	{ keys: ['t'], label: 'T', action: 'today', text: 'Today (Plan)' },
+	{ keys: ['a'], label: 'A', action: 'assistant', text: 'Open the assistant' },
+	{ keys: ['m'], label: 'M', action: 'mute', text: 'Mute or unmute' },
+	{ keys: ['f'], label: 'F', action: 'fullscreen', text: 'Fullscreen' }
 ];
 
 const TYPING = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
@@ -37,7 +52,7 @@ export function shortcutFor(press: KeyPress): Shortcut | null {
 	if (press.ctrlKey || press.metaKey || press.altKey || press.repeat || typingIn(press.target))
 		return null;
 	const key = press.key.toLowerCase();
-	return SHORTCUTS.find((shortcut) => shortcut.key.toLowerCase() === key)?.action ?? null;
+	return SHORTCUTS.find((shortcut) => shortcut.keys.includes(key))?.action ?? null;
 }
 
 /** `F` toggles fullscreen, unless the user is typing or holds a modifier. */

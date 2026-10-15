@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { isFullscreenKey, shortcutFor, type KeyPress } from '#lib/shortcuts.js';
+import { isFullscreenKey, shortcutFor, type KeyPress, type Shortcut } from '#lib/shortcuts.js';
 
 const press = (change: Partial<KeyPress> = {}): KeyPress => ({
 	key: 'f',
@@ -66,5 +66,18 @@ describe('shortcutFor', () => {
 
 	test('not with a modifier', () => {
 		expect(shortcutFor(press({ key: 'a', ctrlKey: true }))).toBeNull();
+	});
+});
+
+describe('page shortcuts', () => {
+	test.each([
+		['d', 'done'],
+		['n', 'quick'],
+		['/', 'quick'],
+		['ArrowLeft', 'previous'],
+		['ArrowRight', 'next'],
+		['T', 'today']
+	] as [string, Shortcut][])('%s asks for %s', (key, action) => {
+		expect(shortcutFor(press({ key }))).toBe(action);
 	});
 });

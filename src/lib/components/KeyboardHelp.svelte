@@ -12,8 +12,8 @@
 			<Dialog.Description>They do nothing while you type in a field.</Dialog.Description>
 		</Dialog.Header>
 		<dl class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
-			{#each SHORTCUTS as shortcut (shortcut.key)}
-				<dt><kbd class="bg-muted rounded border px-2 py-0.5 font-mono">{shortcut.key}</kbd></dt>
+			{#each SHORTCUTS as shortcut (shortcut.label)}
+				<dt><kbd class="bg-muted rounded border px-2 py-0.5 font-mono">{shortcut.label}</kbd></dt>
 				<dd>{shortcut.text}</dd>
 			{/each}
 			<dt><kbd class="bg-muted rounded border px-2 py-0.5 font-mono">Esc</kbd></dt>

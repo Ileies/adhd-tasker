@@ -1,4 +1,5 @@
 import type { NewTask } from '#lib/core/repo.js';
+import { formatClock, formatDuration } from '#lib/format.js';
 import { DAY_MINUTES, SNAP } from '#lib/plan.js';
 import { Priority } from '#lib/types.js';
 
@@ -89,4 +90,11 @@ export function quickTask(text: string, date: string, now: number | null): NewTa
 		duration,
 		priority: Priority.Medium
 	};
+}
+
+/** What a quick add line will create, as a sentence: "Call dentist, 14:30 to 15:15, 45 min". Null without a title. */
+export function quickPreview(text: string, date: string, now: number | null): string | null {
+	const task = quickTask(text, date, now);
+	if (!task) return null;
+	return `${task.title}, ${formatClock(task.startTime)} to ${formatClock(task.startTime + task.duration)}, ${formatDuration(task.duration)}`;
 }
