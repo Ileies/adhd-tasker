@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { Check, Plus, TriangleAlert } from '@lucide/svelte';
+	import { Check, Plus, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
+	import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
+	import { addAlarm } from '#lib/alarms.js';
+	import { quickAlarmFields, quickAlarmPreview } from '#lib/quickalarm.js';
+	import SegmentedControl from '#lib/components/SegmentedControl.svelte';
 	import MicButton from '#lib/components/MicButton.svelte';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
 	import {
@@ -36,6 +40,14 @@
 	// The day lives in `tasker` because the bar's day switcher changes it. Plan always opens on today
 	const selected = $derived(tasker.plan.date ?? today);
 	untrack(() => (tasker.plan.date = today));
+	// Compact fits the whole day on the screen. A per-device preference, not part of the plan
+	let compact = $state(untrack(() => readFlags().compactPlan));
+
+	function setCompact(value: boolean) {
+		compact = value;
+		if (value) setFlag('compactPlan');
+		else clearFlag('compactPlan');
+	}
 	let quick = $state('');
 	let quickInput: HTMLInputElement | null = $state(null);
 	/** The block that was just added: scrolled into view and outlined for a moment. */
@@ -67,7 +79,18 @@
 	const dayTasks = $derived(tasker.tasks.filter((task) => task.date === selected));
 	const overlap = $derived(overlapLine(dayTasks));
 	const groups = $derived(phoneGroups(dayTasks, selected === today ? now : null));
-	const preview = $derived(quickPreview(quick, selected, selected === today ? now : null));
+	let mode = $state<'task' | 'alarm'>('task');
+	const setMode = (value: 'task' | 'alarm') => {
+		mode = value;
+		quickInput?.focus();
+	};
+	const alarmFields = $derived(quickAlarmFields(quick));
+	const alarmPreview = $derived(quickAlarmPreview(quick));
+	const preview = $derived(
+		mode === 'alarm'
+			? (alarmPreview ?? (quick.trim() ? 'Add a time: 7:00, 8am or in 10 min' : null))
+			: quickPreview(quick, selected, selected === today ? now : null)
+	);
 	let doneOpen = $state(false);
 
 	let form: TaskFormType = $state({
@@ -140,6 +163,13 @@
 
 	async function addQuick(event: Event) {
 		event.preventDefault();
+		if (mode === 'alarm') {
+			if (!alarmFields) return;
+			const failure = await addAlarm(alarmFields);
+			if (!failure) quick = '';
+			showToast(failure ?? `Alarm set: ${alarmPreview?.replace(/^Rings /, '')}`);
+			return;
+		}
 		const text = quick;
 		quick = '';
 		const before = new Set(tasker.tasks.map((task) => task.id));
@@ -240,6 +270,26 @@
 		onsubmit={addQuick}
 	>
 		<div class="flex gap-2">
+			<SegmentedControl
+				label="What to add"
+				value={mode}
+				onselect={setMode}
+				options={[
+					{ value: 'task', label: 'Task' },
+					{ value: 'alarm', label: 'Alarm' }
+				]}
+			/>
+			<!-- The phone shows a list, not a timeline, so there is no layout to choose -->
+			<SegmentedControl
+				class="max-md:hidden"
+				label="Layout"
+				value={compact ? 'compact' : 'comfortable'}
+				onselect={(value) => setCompact(value === 'compact')}
+				options={[
+					{ value: 'comfortable', label: 'Comfortable', icon: Rows2, iconOnly: true },
+					{ value: 'compact', label: 'Compact', icon: Rows4, iconOnly: true }
+				]}
+			/>
 			<!-- One field with its tools inside, so the bar reads as a single control -->
 			<div
 				class="border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-11 min-w-0 flex-1 items-center rounded-lg border pr-1 focus-within:ring-3 md:h-10"
@@ -248,23 +298,31 @@
 					bind:ref={quickInput}
 					bind:value={quick}
 					class="h-full min-w-0 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
-					placeholder="Add a task: Call dentist 14:30 45m"
-					aria-label="Quick add a task"
+					placeholder={mode === 'alarm'
+						? 'Add an alarm: Meds 8:00 daily, Tea in 5 min'
+						: 'Add a task: Call dentist 14:30 45m'}
+					aria-label={mode === 'alarm' ? 'Quick add an alarm' : 'Quick add a task'}
 				/>
 				<MicButton onheard={fillHeard} onmessage={(text) => (micMessage = text)} />
-				<Button
-					variant="ghost"
-					size="icon"
-					class="size-9 shrink-0"
-					type="button"
-					aria-label="More options"
-					title="More options"
-					onclick={() => openTaskForm()}
-				>
-					<Plus />
-				</Button>
+				{#if mode === 'task'}
+					<Button
+						variant="ghost"
+						size="icon"
+						class="size-9 shrink-0"
+						type="button"
+						aria-label="More options"
+						title="More options"
+						onclick={() => openTaskForm()}
+					>
+						<Plus />
+					</Button>
+				{/if}
 			</div>
-			<Button type="submit" class="h-11 px-5 md:h-10" disabled={!quick.trim()}>Add</Button>
+			<Button
+				type="submit"
+				class="h-11 px-5 md:h-10"
+				disabled={mode === 'alarm' ? !alarmFields : !quick.trim()}>Add</Button
+			>
 		</div>
 		{#if hint}
 			<p class="text-muted-foreground h-5 truncate text-sm" role="status" aria-live="polite">
@@ -296,6 +354,7 @@
 				{now}
 				showNow={selected === today}
 				{highlight}
+				{compact}
 				day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
 				onEdit={openEditForm}
 				onAdd={addBlock}

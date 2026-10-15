@@ -21,10 +21,13 @@
 	import { QUICK_DURATION } from '#lib/quickadd.js';
 	import { priorityStyle } from '#lib/urgency.js';
 
-	const HOUR_PX = 64;
+	const COMFY_HOUR_PX = 64;
+	/** Compact never squeezes an hour below this, the day scrolls instead. */
+	const COMPACT_MIN_HOUR_PX = 26;
 	const MOVE_THRESHOLD_PX = 4;
 	/** A 15 minute task is only 16px tall, keep the title readable. */
-	const MIN_BLOCK_PX = 28;
+	const COMFY_MIN_BLOCK_PX = 28;
+	const COMPACT_MIN_BLOCK_PX = 18;
 	/** Height of the thin row that holds the hours outside the day. */
 	const ROW_PX = 32;
 
@@ -34,6 +37,7 @@
 		now,
 		showNow,
 		highlight = null,
+		compact = false,
 		day = MY_DAY,
 		onEdit,
 		onAdd,
@@ -48,6 +52,8 @@
 		showNow: boolean;
 		/** A task that was just added: scrolled into view and outlined. */
 		highlight?: number | null;
+		/** Fit the whole shown day on the screen when it can, otherwise the usual hour height. */
+		compact?: boolean;
 		/** My day: the hours shown in full, the rest folds. */
 		day?: { start: number; end: number };
 		onEdit: (task: Task) => void;
@@ -103,7 +109,16 @@
 			(_, i) => Math.ceil(from / 60) + i
 		)
 	);
-	const px = (offset: number) => ((offset - from) / 60) * HOUR_PX;
+	let viewHeight = $state(0);
+	// Compact stretches the shown hours over the height of the view, but never past the comfortable size
+	const hourPx = $derived.by(() => {
+		if (!compact || viewHeight <= 0) return COMFY_HOUR_PX;
+		const free = viewHeight - (range.night > 0 && !nightOpen ? ROW_PX : 0);
+		const fit = Math.floor((free / (to - from)) * 60);
+		return Math.max(COMPACT_MIN_HOUR_PX, Math.min(COMFY_HOUR_PX, fit));
+	});
+	const MIN_BLOCK_PX = $derived(compact ? COMPACT_MIN_BLOCK_PX : COMFY_MIN_BLOCK_PX);
+	const px = (offset: number) => ((offset - from) / 60) * hourPx;
 	/** Where the day ends on this side of midnight: a block drawn there stays on its side. */
 	const sideEnd = (offset: number) => (offset < midnight ? midnight : DAY_MINUTES);
 	const sideStart = (offset: number) => (offset < midnight ? 0 : midnight);
@@ -111,7 +126,7 @@
 	/** The offset under a pointer, on the grid column. */
 	function minutesAt(clientY: number) {
 		const rect = grid!.getBoundingClientRect();
-		return from + ((clientY - rect.top) / HOUR_PX) * 60;
+		return from + ((clientY - rect.top) / hourPx) * 60;
 	}
 
 	/** Past stretches of today, as offset ranges, so what is left of the day shows at a glance. */
@@ -152,7 +167,7 @@
 	function track(event: PointerEvent) {
 		if (!drag) return;
 		const dy = event.clientY - drag.originY;
-		const delta = (dy / HOUR_PX) * 60;
+		const delta = (dy / hourPx) * 60;
 		if (drag.mode === 'move')
 			drag.startTime = moveOnTimeline(drag.originStart, drag.originDuration, delta, origin);
 		else drag.duration = resizeTo(drag.originStart, drag.originDuration + delta);
@@ -258,7 +273,7 @@
 		positionedFor = date;
 		const focus = showNow ? off(now) : Math.min(off(480), ...tasks.map((t) => off(t.startTime)));
 		const top = range.night > 0 ? ROW_PX : 0;
-		scroller.scrollTop = Math.max(0, top + px(Math.max(from, focus)) - HOUR_PX * 1.5);
+		scroller.scrollTop = Math.max(0, top + px(Math.max(from, focus)) - hourPx * 1.5);
 	});
 
 	let scrollFrame = 0;
@@ -289,7 +304,7 @@
 	 * to the end of the night first, then folds it. */
 	async function toggleNight() {
 		if (!scroller) return;
-		const shift = (range.from / 60) * HOUR_PX;
+		const shift = (range.from / 60) * hourPx;
 		if (!nightOpen) {
 			const before = scroller.scrollTop;
 			nightOpen = true;
@@ -314,7 +329,7 @@
 	});
 </script>
 
-<div bind:this={scroller} class="h-full overflow-y-auto select-none">
+<div bind:this={scroller} bind:clientHeight={viewHeight} class="h-full overflow-y-auto select-none">
 	{#if range.night > 0}
 		<button
 			type="button"

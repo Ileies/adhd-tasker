@@ -6,7 +6,7 @@
  * Each flag with what a browser that blocks storage reads. A flag that silences something reads as set, so
  * nothing nags on a device that cannot remember.
  */
-const WHEN_BLOCKED = { welcomed: true } as const;
+const WHEN_BLOCKED = { welcomed: true, compactPlan: false } as const;
 
 export type Flag = keyof typeof WHEN_BLOCKED;
 
