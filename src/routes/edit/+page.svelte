@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { Check, Mic, Plus, TriangleAlert } from '@lucide/svelte';
-	import { canRecord, finishRecording, startRecording } from '#lib/speech.js';
+	import { Check, Plus, TriangleAlert } from '@lucide/svelte';
+	import MicButton from '#lib/components/MicButton.svelte';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
 	import {
 		addQuickTask,
@@ -21,6 +21,7 @@
 		QUICK_START as DEFAULT_START,
 		quickPreview
 	} from '#lib/quickadd.js';
+	import { joinHeard } from '#lib/taskform.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
@@ -122,42 +123,11 @@
 
 	const voice = tasker.voice;
 	let micMessage = $state('');
-	let pressed = false;
 
 	/** What was said lands in the field, so the preview shows and Add stays one tap. */
-	function fillHeard(text: string | null) {
-		if (!text) {
-			micMessage = 'Did not catch that';
-			return;
-		}
-		quick = quick.trim() ? `${quick.trim()} ${text}` : text;
+	function fillHeard(text: string) {
+		quick = joinHeard(quick, text);
 		quickInput?.focus();
-	}
-
-	// Push-to-talk: speaking lasts exactly as long as the button or Space is held
-	async function press(event: Event) {
-		event.preventDefault();
-		if (pressed) return;
-		pressed = true;
-		micMessage = '';
-		const limited = (text: string | null) => {
-			pressed = false;
-			fillHeard(text);
-		};
-		if (!(await startRecording(limited))) {
-			pressed = false;
-			micMessage = 'The microphone is not available';
-		}
-	}
-
-	async function release() {
-		if (!pressed) return;
-		pressed = false;
-		try {
-			fillHeard(await finishRecording());
-		} catch (e) {
-			micMessage = e instanceof Error ? e.message : 'Could not understand the recording';
-		}
 	}
 
 	async function addQuick(event: Event) {
@@ -271,31 +241,7 @@
 					placeholder="Add a task: Call dentist 14:30 45m"
 					aria-label="Quick add a task"
 				/>
-				{#if canRecord() && tasker.settings.hasOpenaiKey}
-					<Button
-						type="button"
-						variant={voice.recording ? 'default' : 'ghost'}
-						size="icon"
-						class="size-9 shrink-0"
-						aria-label="Hold to talk"
-						title="Hold to talk"
-						aria-pressed={voice.recording}
-						disabled={voice.transcribing}
-						onpointerdown={(e) => {
-							e.currentTarget.setPointerCapture(e.pointerId);
-							void press(e);
-						}}
-						onpointerup={release}
-						onpointercancel={release}
-						onkeydown={(e) => {
-							if (e.key === ' ' && !e.repeat) void press(e);
-						}}
-						onkeyup={(e) => e.key === ' ' && release()}
-						onclick={(e) => e.preventDefault()}
-					>
-						<Mic />
-					</Button>
-				{/if}
+				<MicButton onheard={fillHeard} onmessage={(text) => (micMessage = text)} />
 				<Button
 					variant="ghost"
 					size="icon"
