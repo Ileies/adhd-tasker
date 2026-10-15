@@ -1,0 +1,48 @@
+/**
+ * The first run: when the welcome shows, when the second screen hint shows, and the live example inside
+ * the welcome. Pure, the flags that remember what was dismissed are in `flags.ts`.
+ */
+import type { Task } from '#lib/core/repo.js';
+import { heroState, type HeroState } from '#lib/now.js';
+import { rank } from '#lib/priority.js';
+import { Priority, TaskStatus } from '#lib/types.js';
+
+export interface FirstRun {
+	/** Nobody is signed in: the plan is on this device. */
+	guest: boolean;
+	/** The plan was read, until then nothing is known about it. */
+	ready: boolean;
+	/** The device could not be read. The page says so instead. */
+	problem: boolean;
+	taskCount: number;
+	/** The welcome was answered once on this device. */
+	welcomed: boolean;
+	/** The second screen hint was dismissed once on this device. */
+	hintSeen: boolean;
+}
+
+/** Only on the very first visit: no plan on the device, no account, the welcome never answered. */
+export function showWelcome(state: FirstRun): boolean {
+	return state.guest && state.ready && !state.problem && state.taskCount === 0 && !state.welcomed;
+}
+
+/** Once, after the first task exists. A signed in visitor knows what the app is, but can use it too. */
+export function showScreenHint(state: FirstRun): boolean {
+	return state.ready && !state.problem && state.taskCount > 0 && !state.hintSeen;
+}
+
+/** The live example in the welcome: a task 28 minutes from its end, made into the hero the way Now does. */
+export function welcomeExample(): { hero: HeroState<Task>; now: number } {
+	const task: Task = {
+		id: 1,
+		title: 'Write the report intro',
+		description: '',
+		date: '',
+		startTime: 14 * 60,
+		duration: 60,
+		priority: Priority.High,
+		status: TaskStatus.Pending
+	};
+	const now = 14 * 60 + 32;
+	return { hero: heroState(rank([task], now), now, { overrunMinutes: 15 }), now };
+}

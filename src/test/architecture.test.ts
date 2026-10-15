@@ -177,6 +177,7 @@ describe('client state', () => {
 		expect(appCodeMentioning(/\b(localStorage|sessionStorage)\b/)).toEqual([
 			'src/app.html',
 			'src/lib/alarms.ts',
+			'src/lib/flags.ts',
 			'src/lib/theme.ts'
 		]);
 	});
