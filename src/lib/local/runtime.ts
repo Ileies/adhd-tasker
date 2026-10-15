@@ -11,6 +11,7 @@ import { TICK_MS, createAgentLoop } from '#lib/local/agent-loop.js';
 import { localBackend } from '#lib/local/backend.js';
 import { deleteLocalDb, openLocalDb } from '#lib/local/db.js';
 import { electLeader, type LockApi } from '#lib/local/leader.js';
+import { localMarks } from '#lib/local/marks.js';
 import { localRepo } from '#lib/local/repo.js';
 
 export const DATABASE_NAME = 'tasker-guest';
@@ -85,6 +86,7 @@ export async function startLocalRuntime(
 		planChanged: (dates) => channel?.postMessage({ type: 'plan', dates } satisfies LocalMessage),
 		modelFor: env.modelFor,
 		persist: env.persist,
+		marks: localMarks(db),
 		async erase() {
 			// Stop first, so no tick writes into a database that is going away
 			clearInterval(timer);

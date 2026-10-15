@@ -12,7 +12,9 @@ import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
 import { createPlanTask, deletePlanTask, updatePlanTask } from '#lib/core/plan.js';
 import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
-import type { Repo } from '#lib/core/repo.js';
+import type { Repo, Task } from '#lib/core/repo.js';
+import { sampleDay } from '#lib/core/sample.js';
+import type { SampleMarks } from '#lib/local/marks.js';
 import { addUserAlarm, cancelEntry, scheduleOverview } from '#lib/core/schedule.js';
 import { speak as speakWith, transcribe as transcribeWith } from '#lib/core/voice.js';
 import { openaiModel } from '#lib/openai.js';
@@ -34,6 +36,8 @@ export interface LocalDeps {
 	persist?(): void;
 	/** Deletes the device's database and tells the other tabs. */
 	erase?(): Promise<void>;
+	/** Where the sample day's task ids are kept. Without it they are kept in memory, as in a test. */
+	marks?: SampleMarks;
 }
 
 /** In a browser the key travels as a subprotocol, the server variant sends a header. */
@@ -59,6 +63,11 @@ export function localBackend(deps: LocalDeps): Backend {
 	const { repo } = deps;
 	const now = deps.now ?? Date.now;
 	const modelFor = deps.modelFor ?? openaiModel;
+	let remembered: number[] = [];
+	const marks: SampleMarks = deps.marks ?? {
+		read: async () => remembered,
+		write: async (ids) => void (remembered = ids)
+	};
 	const chatRate = rateLimit(RATE, 'Too many requests, wait a few minutes');
 	const voiceRate = rateLimit(VOICE_RATE, 'Too many voice requests, wait a few minutes');
 
@@ -177,6 +186,39 @@ export function localBackend(deps: LocalDeps): Backend {
 					if (!deps.erase) throw new AssistantError('Nothing to delete on this device', 400);
 					await deps.erase();
 				})
+		},
+
+		sample: {
+			async ids() {
+				const present: number[] = [];
+				for (const id of await marks.read()) if (await repo.tasks.get(id)) present.push(id);
+				return present;
+			},
+			async start(today, minutes) {
+				// A second tap on the same button adds nothing
+				const existing: Task[] = [];
+				for (const id of await marks.read()) {
+					const task = await repo.tasks.get(id);
+					if (task) existing.push(task);
+				}
+				if (existing.length) return existing;
+				// Written straight to the repo, like an import: the user did not plan these, so no event wakes the agent
+				const created: Task[] = [];
+				for (const task of sampleDay(today, minutes)) created.push(await repo.tasks.insert(task));
+				await marks.write(created.map((task) => task.id));
+				deps.planChanged?.([today]);
+				return created;
+			},
+			async clear() {
+				const removed: Task[] = [];
+				for (const id of await marks.read()) {
+					const gone = await repo.tasks.delete(id);
+					if (gone) removed.push(gone);
+				}
+				await marks.write([]);
+				if (removed.length) deps.planChanged?.([...new Set(removed.map((task) => task.date))]);
+				return removed.length;
+			}
 		},
 
 		voice: {

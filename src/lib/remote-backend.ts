@@ -154,6 +154,15 @@ export const remoteBackend: Backend = {
 		}
 	},
 
+	sample: {
+		// An account starts from its own plan, the sample day is for a device that has none
+		ids: async () => [],
+		async start() {
+			throw new BackendError('The sample day is only for this device', 501);
+		},
+		clear: async () => 0
+	},
+
 	voice: {
 		async transcribe(audio) {
 			const form = new FormData();

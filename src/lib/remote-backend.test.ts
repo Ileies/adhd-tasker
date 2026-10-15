@@ -226,3 +226,13 @@ describe('remoteBackend requests', () => {
 		expect(await remoteBackend.voice.speak('hi')).toBeNull();
 	});
 });
+
+describe('remoteBackend sample day', () => {
+	test('an account has no sample tasks and cannot start one', async () => {
+		expect(await remoteBackend.sample.ids()).toEqual([]);
+		expect(await remoteBackend.sample.clear()).toBe(0);
+		expect(await failure(() => remoteBackend.sample.start('2026-10-14', 720))).toMatchObject({
+			status: 501
+		});
+	});
+});

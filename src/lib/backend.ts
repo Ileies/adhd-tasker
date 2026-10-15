@@ -86,6 +86,14 @@ export interface Backend {
 		/** Deletes everything stored on this device. Only a guest has data on a device. */
 		erase(): Promise<void>;
 	};
+	sample: {
+		/** The sample tasks still in the plan. Only a guest's device makes a sample day, so an account has none. */
+		ids(): Promise<number[]>;
+		/** Adds the sample day around `minutes` (since midnight) of `today`, marks what it added and answers it. */
+		start(today: string, minutes: number): Promise<Task[]>;
+		/** Removes exactly the tasks the sample day added, answers how many were still there. */
+		clear(): Promise<number>;
+	};
 	voice: {
 		/** The recognized text. */
 		transcribe(audio: Blob): Promise<string>;

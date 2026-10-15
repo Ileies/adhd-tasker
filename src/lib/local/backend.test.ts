@@ -266,6 +266,49 @@ describe('data', () => {
 	});
 });
 
+describe('sample day', () => {
+	test('starting adds the sample tasks, marks them and tells the other tabs', async () => {
+		const { backend, planChanges } = await setup();
+		const created = await backend.sample.start('2026-10-14', 12 * 60);
+		expect(created.length).toBeGreaterThanOrEqual(4);
+		expect((await backend.sample.ids()).sort()).toEqual(created.map((t) => t.id).sort());
+		expect(await backend.tasks.load('2026-10-14')).toHaveLength(created.length);
+		expect(planChanges).toEqual([['2026-10-14']]);
+	});
+
+	test('starting again adds nothing', async () => {
+		const { backend } = await setup();
+		const first = await backend.sample.start('2026-10-14', 12 * 60);
+		const second = await backend.sample.start('2026-10-14', 12 * 60);
+		expect(second.map((t) => t.id)).toEqual(first.map((t) => t.id));
+		expect(await backend.tasks.since('2000-01-01')).toHaveLength(first.length);
+	});
+
+	test('clearing removes exactly the sample tasks and leaves the tasks the user planned', async () => {
+		const { backend } = await setup();
+		const mine = await backend.tasks.create({ ...task, title: 'Mine' });
+		await backend.sample.start('2026-10-14', 12 * 60);
+		const removed = await backend.sample.clear();
+		expect(removed).toBeGreaterThanOrEqual(4);
+		expect((await backend.tasks.since('2000-01-01')).map((t) => t.id)).toEqual([mine.id]);
+		expect(await backend.sample.ids()).toEqual([]);
+	});
+
+	test('a sample task the user already deleted is no longer counted', async () => {
+		const { backend } = await setup();
+		const [first, ...rest] = await backend.sample.start('2026-10-14', 12 * 60);
+		await backend.tasks.delete(first.id);
+		expect((await backend.sample.ids()).sort()).toEqual(rest.map((t) => t.id).sort());
+		expect(await backend.sample.clear()).toBe(rest.length);
+	});
+
+	test('does not log an event, so the agent is not woken for tasks the user did not plan', async () => {
+		const { backend } = await setup();
+		await backend.sample.start('2026-10-14', 12 * 60);
+		expect((await backend.activity.load()).events).toEqual([]);
+	});
+});
+
 describe('activity', () => {
 	test('shows what an edit logged', async () => {
 		const { backend } = await setup();
