@@ -3,11 +3,15 @@
 Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
-- `ux-plan.md`, `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code (the local first plan is finished and deleted, git history: `docs/local-first-plan.md` at `a419224`)
+- `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code
+- `daylight-theme.md`: design for 1.1
+- Finished and deleted (git history): the local first plan (`docs/local-first-plan.md` at `a419224`) and the UX plan (`docs/ux-plan.md` at `24192b1`)
 
 ## Now
 
-- Pick the next plan: the three plans are re-read. UX phases 3 to 9 are built, what is left in `docs/ux-plan.md` is the visual pass (wide screen, phone, guest) and the production schema deploy (`bun run deploy --db-push`). Suggested by the checks plan: its phases 4 and 5 (core guardrails, route matrices)
+- Pick the next plan. Suggested by the checks plan: its phases 4 and 5 (core guardrails, route matrices)
+- Visual pass, by eye on a wide screen, a phone and as a guest (the UX plan was built from code, not screenshots): one type scale (display, clock, body large, body, small, no one-off sizes), a visible focus ring on every interactive element including timeline blocks and rail items, 44 px targets on phones (rail buttons at `size="sm"`, the timeline done circle), sentence case and no jargon in copy, same section spacing on every page, the page title in the bar
+- Production schema deploy of the UX settings fields (`myDayStart`, `myDayEnd`, `checkInMinutes`): `bun run deploy --db-push`
 
 - Google Calendar, real run: import, move, done and a forced conflict on a real calendar, by hand (only fakes so far)
 - Google verification (`docs/google-verification.md`): remove Tasks and Keep from `GOOGLE_SERVICES` first, record the demo video, submit
@@ -23,7 +27,9 @@ Plans in `docs/`:
 - Capture inbox (`Shift+Space`)
 - End-of-day summary
 - Morning briefing (`day.started` event)
-- Mark agent-made tasks in the Plan view
+- Mark agent-made tasks in the Plan view (a small marker on timeline blocks)
+- Daylight theme from location (`daylight-theme.md`, 1.1)
+- Plan: a calendar grid in the day switcher popover
 - Productivity rating for the day so far (next to the "done today" line). Needs a fair measure of the day's load, including load the app cannot see, before it can be honest
 
 ## Parked

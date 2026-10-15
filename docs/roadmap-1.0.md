@@ -2,7 +2,7 @@
 
 Status: decided scope, 2026-10-14, updated 2026-10-16 for the local first plan. Progress: **58 of 135 points, 43 %**.
 
-This file owns the definition of 1.0, how progress is measured and the order of the work. It does not replace the detailed plans. Each criterion points to the plan that describes how it is built (`checks-and-tests-plan.md`, `ux-plan.md`, `feature-ideas.md`). When a plan and this file disagree about scope, this file wins. When they disagree about how, the plan wins.
+This file owns the definition of 1.0, how progress is measured and the order of the work. It does not replace the detailed plans. Each criterion points to the plan that describes how it is built (`checks-and-tests-plan.md`, `feature-ideas.md`; the UX plan was built and deleted, git history: `docs/ux-plan.md` at `24192b1`, the "ux plan N" references below point to its phases). When a plan and this file disagree about scope, this file wins. When they disagree about how, the plan wins.
 
 ## 1. What 1.0 is
 
@@ -35,7 +35,7 @@ The principle in `CLAUDE.md` stays the filter: anything that adds cognitive load
 
 ### Not in 1.0 (1.1 and later, in this order)
 
-1. **Daylight theme from location** (UX phase 8b). Adds a third party (IP geolocation) and a Privacy page change for a theme. Until then the existing day hours stay under Appearance and the first run default is still "by daylight" with them.
+1. **Daylight theme from location** (UX phase 8b, design in `daylight-theme.md`). Adds a third party (IP geolocation) and a Privacy page change for a theme. Until then the existing day hours stay under Appearance and the first run default is still "by daylight" with them.
 2. **Morning briefing** (`day.started`), **Break it down**, **Leave-by alarms**, **Save your place**, **Estimate learning** (needs the actual times recorded in C4 first).
 3. Everything under Parked in `CLAUDE.md` stays parked. Everything in `feature-ideas.md` that is not named here is 1.1 or later.
 
@@ -181,7 +181,7 @@ Notes on the order:
 
 ## 7. Next actions
 
-1. Local first plan: parts 1 to 6 are built (scored as H). Open: the real Google run, the Google verification (`google-verification.md`), the check of E6 against the new welcome flow. Then re-read `ux-plan.md`, `checks-and-tests-plan.md` and `feature-ideas.md` against the code (checks plan phase 4 was waiting for the storage seam, which now exists).
+1. Local first plan: parts 1 to 6 are built (scored as H). Open: the real Google run, the Google verification (`google-verification.md`), the check of E6 against the new welcome flow. Then re-read `checks-and-tests-plan.md` and `feature-ideas.md` against the code (checks plan phase 4 was waiting for the storage seam, which now exists).
 2. C4 (`startedAt` and `completedAt`, one column), then server integration and route contracts (checks plan 4 and 5). That closes Solid.
 
 The soon plan (gate, pure tests, D1 to D8, transitions, feedback and silence) is finished and deleted. The other plans were re-read against the code on 2026-10-14, and each says at its top what changed.

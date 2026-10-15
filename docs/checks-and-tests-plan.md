@@ -41,7 +41,7 @@ Still untested, as the allowlist in `src/test/architecture.test.ts` says:
 
 - Core: `core/agent.ts`, `core/assistant.ts`, `core/usage.ts`, `core/voice.ts`. `core/schedule.ts` has a test, but its server side (`server/schedule.ts`, the 15 s `fireAllDue`) and the server wrappers `server/agent.ts`, `server/assistant.ts`, `server/voice.ts` do not
 - Route modules without a test: `/agent` (and `cards`, `stuck`), `/assistant` (and `undo`, `speak`, `transcribe`), `/schedule` (and `display`) and `/stream`. The `/settings/timezone` action has no test either. No login or ownership matrix exists yet (`src/routes/auth.test.ts`, `ownership.test.ts`)
-- Client wiring: `alarms.ts`, `agent.ts`, `assistant.ts`, `stream.ts` (including the `calendar` hint). `theme.ts` waits for UX phase 8b. `speech.ts`, `display.ts`, `audio.ts` and `index.ts` stay permanent entries (browser API wiring, their rules live in tested pure modules such as `silence.ts` and `tones.ts`)
+- Client wiring: `alarms.ts`, `agent.ts`, `assistant.ts`, `stream.ts` (including the `calendar` hint). `theme.ts` waits for the daylight theme (`daylight-theme.md`). `speech.ts`, `display.ts`, `audio.ts` and `index.ts` stay permanent entries (browser API wiring, their rules live in tested pure modules such as `silence.ts` and `tones.ts`)
 - No e2e, no CI, no `playwright.config.ts` (phases 7 and 8)
 
 Re-measure the coverage floor before phase 6: the threshold is still 0.90.

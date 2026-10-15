@@ -1,6 +1,6 @@
 # Feature Ideas (Brainstorm)
 
-Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts. Ideas marked **(1.0, ID)** are scoped in `docs/roadmap-1.0.md` under that criterion, **(1.1)** are named there as first after 1.0, and **(ux plan)** are part of `docs/ux-plan.md`. "Wrap-up cue before a task ends" and "Hyperfocus exit ramp" are built (time up, wrapping up, the `wrap-up` sound, 15 more min), and so are Google Calendar read and write, guest mode on the device and the first run. Everything not tagged is open and not on the roadmap.
+Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts. Ideas marked **(1.0, ID)** are scoped in `docs/roadmap-1.0.md` under that criterion, **(1.1)** are named there as first after 1.0, and **(ux plan)** were part of the UX plan, which is built and deleted (git history, `docs/ux-plan.md` at `24192b1`). "Wrap-up cue before a task ends" and "Hyperfocus exit ramp" are built (time up, wrapping up, the `wrap-up` sound, 15 more min), and so are Google Calendar read and write, guest mode on the device and the first run. Everything not tagged is open and not on the roadmap.
 
 **Rating (1 to 10)** = how much this would improve the day of a person with ADHD if done well. It measures impact only, not effort. Effort is the scope section.
 
