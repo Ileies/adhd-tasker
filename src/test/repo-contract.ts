@@ -429,6 +429,7 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				dailyTokenBudget: null,
 				openaiKey: null,
 				voiceReplies: false,
+				openaiTranscribe: true,
 				showClock: false,
 				clock12h: null,
 				checkInMinutes: 5,

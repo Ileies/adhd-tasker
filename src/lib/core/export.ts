@@ -50,6 +50,7 @@ const SETTING_KEYS = [
 	'quietEnd',
 	'dailyTokenBudget',
 	'voiceReplies',
+	'openaiTranscribe',
 	'showClock',
 	'clock12h',
 	'checkInMinutes',

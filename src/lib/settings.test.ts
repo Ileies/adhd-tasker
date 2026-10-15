@@ -26,6 +26,7 @@ describe('parseSettingsPatch', () => {
 			quietEnd: 420,
 			dailyTokenBudget: null,
 			voiceReplies: false,
+			openaiTranscribe: true,
 			showClock: true
 		};
 		expect(parseSettingsPatch(patch)).toEqual({ ok: true, value: patch });

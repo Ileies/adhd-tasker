@@ -43,6 +43,7 @@ export interface Settings {
 	lastCurrentTaskId: number | null;
 	displayDevice: string | null;
 	voiceReplies: boolean;
+	openaiTranscribe: boolean;
 	showClock: boolean;
 	clock12h: boolean | null;
 	checkInMinutes: number;

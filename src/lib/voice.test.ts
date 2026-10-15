@@ -11,7 +11,8 @@ import {
 	pickRecordingType,
 	readSpeechEvent,
 	speakable,
-	speechVolume
+	speechVolume,
+	sttEngine
 } from '#lib/voice.js';
 
 describe('pickRecordingType', () => {
@@ -155,5 +156,24 @@ describe('speechVolume', () => {
 	});
 	test('is lower while ducked', () => {
 		expect(speechVolume(100, true)).toBeLessThan(0.5);
+	});
+});
+
+describe('sttEngine', () => {
+	const base = { hasKey: true, openaiTranscribe: true, canRecord: true, browser: true };
+
+	test.each([
+		['a key and the switch on', base, 'openai'],
+		['a key but the switch off', { ...base, openaiTranscribe: false }, 'browser'],
+		['no key', { ...base, hasKey: false }, 'browser'],
+		['a key but no recorder', { ...base, canRecord: false }, 'browser'],
+		['no key and no browser recognition', { ...base, hasKey: false, browser: false }, null],
+		[
+			'the switch off and no browser recognition',
+			{ ...base, openaiTranscribe: false, browser: false },
+			null
+		]
+	] as const)('%s', (_name, opts, expected) => {
+		expect(sttEngine(opts)).toBe(expected);
 	});
 });

@@ -110,8 +110,10 @@
 	</p>
 	<p class="mt-2">
 		Chat messages and voice recordings are not stored on the server. They pass through to OpenAI for
-		the answer and are gone afterwards. The app never asks whether you have ADHD or any other
-		diagnosis.
+		the answer and are gone afterwards. Without a key, or when you switch off "Understand speech
+		with OpenAI" in Settings, the microphone buttons use your browser's own speech recognition,
+		which may send the audio to the browser's provider (for example Google in Chrome). The app never
+		sees that audio. The app never asks whether you have ADHD or any other diagnosis.
 	</p>
 
 	<h2 id="how-long-it-is-kept" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">

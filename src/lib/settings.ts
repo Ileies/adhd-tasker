@@ -27,6 +27,7 @@ export type SettingsPatch = Partial<
 		| 'quietEnd'
 		| 'dailyTokenBudget'
 		| 'voiceReplies'
+		| 'openaiTranscribe'
 		| 'showClock'
 		| 'clock12h'
 		| 'checkInMinutes'
@@ -62,6 +63,7 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	quietEnd: isClock,
 	dailyTokenBudget: isBudget,
 	voiceReplies: isBool,
+	openaiTranscribe: isBool,
 	showClock: isBool,
 	clock12h: (value) => value === null || isBool(value),
 	checkInMinutes: inRange(0, CHECK_IN_MAX),

@@ -183,3 +183,17 @@ export function speechVolume(volume: number, ducked: boolean): number {
 	const level = Math.min(Math.max(volume, 0), 100) / 100;
 	return ducked ? level * DUCK_VOLUME : level;
 }
+
+/**
+ * Which speech to text a mic uses: OpenAI with a saved key unless the user chose the browser to save cost,
+ * the browser's own without a key. `null` when the device has neither.
+ */
+export function sttEngine(opts: {
+	hasKey: boolean;
+	openaiTranscribe: boolean;
+	canRecord: boolean;
+	browser: boolean;
+}): 'openai' | 'browser' | null {
+	if (opts.hasKey && opts.openaiTranscribe && opts.canRecord) return 'openai';
+	return opts.browser ? 'browser' : null;
+}

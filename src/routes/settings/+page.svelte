@@ -106,7 +106,7 @@
 						/>
 					</div>
 					<div class="border-t pt-6">
-						<VoiceSettingsForm replies={settings.voiceReplies} />
+						<VoiceSettingsForm replies={settings.voiceReplies} openai={settings.openaiTranscribe} />
 					</div>
 				{/if}
 			</Card.Content>

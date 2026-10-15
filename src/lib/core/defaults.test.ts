@@ -17,8 +17,15 @@ describe('DEFAULT_SETTINGS', () => {
 	test('the values that can be patched are valid patches', () => {
 		const { enableReminders, reminderAdvanceTime, hyperfocusAlarm, overrunMinutes } =
 			DEFAULT_SETTINGS;
-		const { aiAutonomy, aiEvents, quietStart, quietEnd, voiceReplies, showClock } =
-			DEFAULT_SETTINGS;
+		const {
+			aiAutonomy,
+			aiEvents,
+			quietStart,
+			quietEnd,
+			voiceReplies,
+			showClock,
+			openaiTranscribe
+		} = DEFAULT_SETTINGS;
 		expect(
 			parseSettingsPatch({
 				enableReminders,
@@ -30,6 +37,7 @@ describe('DEFAULT_SETTINGS', () => {
 				quietStart,
 				quietEnd,
 				voiceReplies,
+				openaiTranscribe,
 				showClock,
 				clock12h: DEFAULT_SETTINGS.clock12h,
 				checkInMinutes: DEFAULT_SETTINGS.checkInMinutes,
