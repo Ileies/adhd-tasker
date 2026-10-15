@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { Menu, MessageSquare } from '@lucide/svelte';
+	import { CalendarDays, Menu, MessageSquare, Target } from '@lucide/svelte';
 	import AssistantDrawer from '#lib/components/AssistantDrawer.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { initAudio } from '#lib/audio.js';
@@ -182,14 +182,16 @@
 			{barHidden ? 'pointer-events-none opacity-0' : ''}"
 	>
 		<div class="flex gap-1" role="group" aria-label="Places">
-			{#each [{ id: 'now', label: 'Now', href: '/' }, { id: 'plan', label: 'Plan', href: '/edit' }] as item (item.id)}
+			{#each [{ id: 'now', label: 'Now', href: '/', icon: Target }, { id: 'plan', label: 'Plan', href: '/edit', icon: CalendarDays }] as item (item.id)}
 				<Button
 					variant={current === item.id ? 'secondary' : 'ghost'}
-					size="lg"
+					size="icon-lg"
 					onclick={() => goto(item.href)}
 					aria-current={current === item.id ? 'page' : undefined}
+					aria-label={item.label}
+					title={item.label}
 				>
-					{item.label}
+					<item.icon class="size-5" />
 				</Button>
 			{/each}
 		</div>
