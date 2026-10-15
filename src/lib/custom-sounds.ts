@@ -39,7 +39,7 @@ export async function loadCustomSounds(): Promise<void> {
 
 /** Replaces a slot with a picked file. Returns why it was refused, or null when it is saved. */
 export async function setCustomSound(slot: SoundSlot, file: File): Promise<string | null> {
-	const refused = checkSoundFile(file);
+	const refused = checkSoundFile(file, slot);
 	if (refused) return refused;
 
 	const data = await file.arrayBuffer();
@@ -49,7 +49,7 @@ export async function setCustomSound(slot: SoundSlot, file: File): Promise<strin
 	} catch {
 		return 'That file could not be read as audio.';
 	}
-	const tooLong = checkSoundLength(buffer.duration);
+	const tooLong = checkSoundLength(buffer.duration, slot);
 	if (tooLong) return tooLong;
 
 	const name = shortFileName(file.name);

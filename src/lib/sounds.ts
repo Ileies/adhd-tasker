@@ -24,6 +24,13 @@ export const SOUND_LIMITS = {
 	maxMs: 5000
 } as const;
 
+/** An alarm rings on repeat until dismissed, so its file may be longer. */
+export const ALARM_LIMITS = { maxBytes: 3_000_000, maxMs: 15_000 } as const;
+
+/** The caps for one slot. */
+export const soundLimits = (slot?: SoundSlot): { maxBytes: number; maxMs: number } =>
+	slot === 'alarm' ? ALARM_LIMITS : SOUND_LIMITS;
+
 /** What is kept per replaced sound. */
 export interface StoredSound {
 	slot: SoundSlot;
@@ -33,20 +40,25 @@ export interface StoredSound {
 }
 
 /** Checks a picked file before it is read. Returns the reason in words, or null when it may be decoded. */
-export function checkSoundFile(file: { type: string; size: number }): string | null {
+export function checkSoundFile(
+	file: { type: string; size: number },
+	slot?: SoundSlot
+): string | null {
+	const limits = soundLimits(slot);
 	if (file.size === 0) return 'That file is empty.';
 	if (file.type && !file.type.startsWith('audio/'))
 		return 'Pick an audio file (mp3, wav, ogg, m4a).';
-	if (file.size > SOUND_LIMITS.maxBytes)
-		return `That file is too large. Keep it under ${SOUND_LIMITS.maxBytes / 1_000_000} MB.`;
+	if (file.size > limits.maxBytes)
+		return `That file is too large. Keep it under ${limits.maxBytes / 1_000_000} MB.`;
 	return null;
 }
 
 /** Checks a decoded sound's length. Returns the reason in words, or null when it may be kept. */
-export function checkSoundLength(seconds: number): string | null {
+export function checkSoundLength(seconds: number, slot?: SoundSlot): string | null {
+	const limits = soundLimits(slot);
 	if (!Number.isFinite(seconds) || seconds <= 0) return 'That sound has no length.';
-	if (seconds * 1000 > SOUND_LIMITS.maxMs)
-		return `That sound is too long. Keep it under ${SOUND_LIMITS.maxMs / 1000} seconds.`;
+	if (seconds * 1000 > limits.maxMs)
+		return `That sound is too long. Keep it under ${limits.maxMs / 1000} seconds.`;
 	return null;
 }
 

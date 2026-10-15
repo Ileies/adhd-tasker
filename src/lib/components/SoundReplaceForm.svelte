@@ -2,7 +2,13 @@
 	import { tasker } from '#lib/app.svelte.js';
 	import { clearCustomSound, setCustomSound } from '#lib/custom-sounds.js';
 	import { playSound } from '#lib/index.js';
-	import { SOUND_LIMITS, SOUND_SLOTS, SOUND_TEXT, type SoundSlot } from '#lib/sounds.js';
+	import {
+		ALARM_LIMITS,
+		SOUND_LIMITS,
+		SOUND_SLOTS,
+		SOUND_TEXT,
+		type SoundSlot
+	} from '#lib/sounds.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 
 	let message = $state<{ slot: SoundSlot; text: string } | null>(null);
@@ -27,7 +33,8 @@
 		<p class="font-medium">Your own sounds</p>
 		<p class="text-muted-foreground text-sm">
 			Replace a built-in sound with an audio file, up to {SOUND_LIMITS.maxMs / 1000} seconds. One file
-			for Alarms rings for every alarm. Kept on this device only, never uploaded.
+			for Alarms, up to {ALARM_LIMITS.maxMs / 1000} seconds, rings for every alarm. Kept on this device
+			only, never uploaded.
 		</p>
 	</div>
 

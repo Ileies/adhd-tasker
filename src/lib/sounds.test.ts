@@ -58,6 +58,23 @@ describe('checkSoundLength', () => {
 	test.each([0, -1, NaN, Infinity])('%p seconds is refused', (seconds) => {
 		expect(checkSoundLength(seconds)).toBe('That sound has no length.');
 	});
+
+	test('an alarm may be 15 seconds, other sounds stay at 5', () => {
+		expect(checkSoundLength(15, 'alarm')).toBeNull();
+		expect(checkSoundLength(15.01, 'alarm')).toBe(
+			'That sound is too long. Keep it under 15 seconds.'
+		);
+		expect(checkSoundLength(6, 'done')).toBe('That sound is too long. Keep it under 5 seconds.');
+	});
+
+	test('an alarm file may be larger than another sound file', () => {
+		const size = SOUND_LIMITS.maxBytes + 1;
+		expect(checkSoundFile({ type: 'audio/wav', size }, 'alarm')).toBeNull();
+		expect(checkSoundFile({ type: 'audio/wav', size }, 'done')).not.toBeNull();
+		expect(checkSoundFile({ type: 'audio/wav', size: 3_000_001 }, 'alarm')).toBe(
+			'That file is too large. Keep it under 3 MB.'
+		);
+	});
 });
 
 describe('shortFileName', () => {
