@@ -28,6 +28,7 @@
 	import { joinHeard } from '#lib/taskform.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
+	import AlarmPanel from '#lib/components/AlarmPanel.svelte';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -279,17 +280,6 @@
 					{ value: 'alarm', label: 'Alarm' }
 				]}
 			/>
-			<!-- The phone shows a list, not a timeline, so there is no layout to choose -->
-			<SegmentedControl
-				class="max-md:hidden"
-				label="Layout"
-				value={compact ? 'compact' : 'comfortable'}
-				onselect={(value) => setCompact(value === 'compact')}
-				options={[
-					{ value: 'comfortable', label: 'Comfortable', icon: Rows2, iconOnly: true },
-					{ value: 'compact', label: 'Compact', icon: Rows4, iconOnly: true }
-				]}
-			/>
 			<!-- One field with its tools inside, so the bar reads as a single control -->
 			<div
 				class="border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-11 min-w-0 flex-1 items-center rounded-lg border pr-1 focus-within:ring-3 md:h-10"
@@ -323,6 +313,19 @@
 				class="h-11 px-5 md:h-10"
 				disabled={mode === 'alarm' ? !alarmFields : !quick.trim()}>Add</Button
 			>
+			<!-- A quiet icon at the far end. The phone shows a list, not a timeline, so it has no layout to choose -->
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				class="text-muted-foreground size-11 shrink-0 max-md:hidden md:size-10"
+				aria-pressed={compact}
+				aria-label={compact ? 'Comfortable layout' : 'Compact layout'}
+				title={compact ? 'Comfortable layout' : 'Compact layout, fits the day on screen'}
+				onclick={() => setCompact(!compact)}
+			>
+				{#if compact}<Rows2 />{:else}<Rows4 />{/if}
+			</Button>
 		</div>
 		{#if hint}
 			<p class="text-muted-foreground h-5 truncate text-sm" role="status" aria-live="polite">
@@ -347,21 +350,27 @@
 
 	<div class="min-h-0 flex-1">
 		<!-- Wide screens: timeline with drag and resize -->
-		<div class="hidden h-full md:block">
-			<DayTimeline
-				date={selected}
-				tasks={dayTasks}
-				{now}
-				showNow={selected === today}
-				{highlight}
-				{compact}
-				day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
-				onEdit={openEditForm}
-				onAdd={addBlock}
-				onMove={move}
-				onResize={resize}
-				onToggle={toggle}
-			/>
+		<div class="hidden h-full md:flex">
+			<div class="h-full min-w-0 flex-1">
+				<DayTimeline
+					date={selected}
+					tasks={dayTasks}
+					{now}
+					showNow={selected === today}
+					{highlight}
+					{compact}
+					day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
+					onEdit={openEditForm}
+					onAdd={addBlock}
+					onMove={move}
+					onResize={resize}
+					onToggle={toggle}
+				/>
+			</div>
+			<!-- Wide screens only: the alarms of this day beside the plan -->
+			<div class="hidden h-full w-80 shrink-0 border-l xl:block 2xl:w-96">
+				<AlarmPanel date={selected} />
+			</div>
 		</div>
 
 		<!-- Phones: the same day as a plain list -->

@@ -78,3 +78,25 @@ export function alarmDayState(alarm: Alarm, date: string, timezone: string): Ala
 	const day = new Date(date + 'T00:00:00Z').getUTCDay();
 	return alarm.repeat === 'weekdays' && (day === 0 || day === 6) ? 'other-day' : 'on-day';
 }
+
+const STATE_ORDER: Record<AlarmDayState, number> = { 'on-day': 0, 'other-day': 1, off: 2 };
+
+/** The alarms for the panel next to one day: those that ring that day first, then the others, the switched off last, each by clock time. */
+export function dayPanelAlarms(
+	alarms: Alarm[],
+	date: string,
+	timezone: string
+): { alarm: Alarm; state: AlarmDayState; minutes: number }[] {
+	return alarms
+		.map((alarm) => ({
+			alarm,
+			state: alarmDayState(alarm, date, timezone),
+			minutes: localMoment(alarm.fireAt, timezone).minutes
+		}))
+		.sort(
+			(a, b) =>
+				STATE_ORDER[a.state] - STATE_ORDER[b.state] ||
+				a.minutes - b.minutes ||
+				a.alarm.id - b.alarm.id
+		);
+}

@@ -4,6 +4,7 @@ import type { Alarm } from '#lib/app.svelte.js';
 import {
 	QUICK_TIMERS,
 	alarmDayState,
+	dayPanelAlarms,
 	groupAlarms,
 	restoreFields,
 	timerFields,
@@ -132,5 +133,28 @@ describe('alarmDayState', () => {
 		// 23:30 UTC on the 15th is already the 16th in Berlin
 		const late = alarm(Date.parse('2026-10-15T23:30:00Z'));
 		expect(alarmDayState(late, '2026-10-16', 'Europe/Berlin')).toBe('on-day');
+	});
+});
+
+describe('dayPanelAlarms', () => {
+	test('rings that day first, then other days, then off, each by clock time', () => {
+		const at = (hhmm: string, date = '2026-10-15') => Date.parse(`${date}T${hhmm}:00Z`);
+		const listed = dayPanelAlarms(
+			[
+				alarm(at('06:00'), { id: 1, enabled: false }),
+				alarm(at('09:00', '2026-10-20'), { id: 2 }),
+				alarm(at('12:00'), { id: 3 }),
+				alarm(at('07:30'), { id: 4 })
+			],
+			'2026-10-15',
+			'UTC'
+		);
+		expect(listed.map((entry) => [entry.alarm.id, entry.state])).toEqual([
+			[4, 'on-day'],
+			[3, 'on-day'],
+			[2, 'other-day'],
+			[1, 'off']
+		]);
+		expect(listed[0].minutes).toBe(450);
 	});
 });

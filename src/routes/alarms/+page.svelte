@@ -2,8 +2,9 @@
 	import { onMount } from 'svelte';
 	import { Play } from '@lucide/svelte';
 	import { effectiveClock12h } from '#lib/format.js';
-	import { tasker } from '#lib/app.svelte.js';
-	import { addAlarm, cancelAlarm, loadSchedule } from '#lib/alarms.js';
+	import { tasker, type Alarm } from '#lib/app.svelte.js';
+	import { addAlarm, cancelAlarm, loadSchedule, switchAlarm } from '#lib/alarms.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
 	import { QUICK_TIMERS, groupAlarms, timerFields, toneLabel } from '#lib/alarmview.js';
 	import { playTone } from '#lib';
 	import { REPEATS, REPEAT_TEXT, SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
@@ -56,6 +57,10 @@
 		return !message;
 	}
 
+	async function toggle(alarm: Alarm, enabled: boolean) {
+		message = (await switchAlarm(alarm, enabled)) ?? '';
+	}
+
 	async function add(event: SubmitEvent) {
 		event.preventDefault();
 		const ok = await start({ at, label, tone, repeat, duration_minutes: Number(duration) });
@@ -83,16 +88,27 @@
 						alarm.repeat === 'none' ? '' : REPEAT_TEXT[alarm.repeat],
 						alarm.createdBy === 'agent' ? 'by the assistant' : ''
 					].filter(Boolean)}
-					<li class="flex items-center gap-4 px-4 py-3">
+					<li
+						class="flex items-center gap-4 px-4 py-3 {alarm.enabled
+							? ''
+							: 'bg-muted text-muted-foreground'}"
+					>
 						<div class="w-20 shrink-0 text-2xl font-semibold tabular-nums">
 							{time.format(alarm.fireAt)}
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="break-words">{alarm.label}</div>
-							{#if meta.length}
-								<div class="text-muted-foreground text-sm">{meta.join(', ')}</div>
+							{#if meta.length || !alarm.enabled}
+								<div class="text-muted-foreground text-sm">
+									{[...(alarm.enabled ? [] : ['Off']), ...meta].join(', ')}
+								</div>
 							{/if}
 						</div>
+						<Switch
+							checked={alarm.enabled}
+							onCheckedChange={(value) => toggle(alarm, value)}
+							aria-label="{alarm.label} on or off"
+						/>
 						<Button
 							variant="ghost"
 							size="sm"
