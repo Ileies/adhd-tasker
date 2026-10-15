@@ -15,6 +15,7 @@
 	import { priorityStyle } from '#lib/urgency.js';
 	import { Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2 } from '@lucide/svelte';
 	import MicButton from '#lib/components/MicButton.svelte';
+	import { canTalk } from '#lib/speech.js';
 	import NumberInput from '#lib/components/NumberInput.svelte';
 	import TimeInput from '#lib/components/TimeInput.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -128,7 +129,7 @@
 			<div class="relative">
 				<Input
 					type="text"
-					class="h-12 pr-12 text-xl md:text-xl"
+					class="h-12 text-xl md:text-xl {canTalk() ? 'pr-12' : ''}"
 					bind:value={form.title}
 					placeholder="What needs doing? (required)"
 					aria-label="Title"
@@ -266,7 +267,7 @@
 			{#if noteOpen}
 				<div class="relative">
 					<Textarea
-						class="resize-none pr-12"
+						class="resize-none {canTalk() ? 'pr-12' : ''}"
 						rows={3}
 						bind:value={form.description}
 						placeholder="Note"

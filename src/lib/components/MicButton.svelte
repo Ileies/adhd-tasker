@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Mic } from '@lucide/svelte';
 	import { tasker } from '#lib/app.svelte.js';
-	import { canRecord, finishRecording, startRecording } from '#lib/speech.js';
+	import { canTalk, finishRecording, startRecording } from '#lib/speech.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 
 	/** Push-to-talk for any text field: what was said goes to `onheard`. Only there when a key is saved. */
@@ -52,7 +52,7 @@
 	}
 </script>
 
-{#if canRecord() && tasker.settings.hasOpenaiKey}
+{#if canTalk()}
 	<Button
 		type="button"
 		variant={voice.recording ? 'default' : 'ghost'}

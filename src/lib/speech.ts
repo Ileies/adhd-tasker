@@ -27,6 +27,9 @@ let speechRun = 0;
 export const canRecord = () =>
 	typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
+/** A mic is only offered when the device can record and a key is saved, otherwise it would lead nowhere. */
+export const canTalk = () => canRecord() && tasker.settings.hasOpenaiKey;
+
 /**
  * Starts recording while the key or button is held. Resolves false when the microphone is not available.
  * `onLimit` receives the text if the recording ended by itself at the time limit.

@@ -11,6 +11,7 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import MicButton from '#lib/components/MicButton.svelte';
+	import { canTalk } from '#lib/speech.js';
 	import OptionSelect from '#lib/components/OptionSelect.svelte';
 	import TimeInput from '#lib/components/TimeInput.svelte';
 	import { joinHeard } from '#lib/taskform.js';
@@ -123,7 +124,7 @@
 						required
 						maxlength={SCHEDULE_LIMITS.maxLabel}
 						placeholder="What is it for"
-						class="h-11 pr-12 md:h-8"
+						class="h-11 md:h-8 {canTalk() ? 'pr-12' : ''}"
 						aria-label="Label"
 					/>
 					<MicButton

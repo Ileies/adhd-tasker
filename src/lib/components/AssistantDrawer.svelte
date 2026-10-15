@@ -3,7 +3,7 @@
 	import { Mic, Send } from '@lucide/svelte';
 	import { tasker } from '#lib/app.svelte.js';
 	import { sendMessage, undoChange } from '#lib/assistant.js';
-	import { canRecord, finishRecording, startRecording } from '#lib/speech.js';
+	import { canTalk, finishRecording, startRecording } from '#lib/speech.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import * as Sheet from '#lib/components/ui/sheet/index.js';
@@ -146,7 +146,7 @@
 				<Textarea
 					bind:value={draft}
 					rows={2}
-					class="resize-none pr-12"
+					class="resize-none {canTalk() ? 'pr-12' : ''}"
 					placeholder="Message"
 					aria-label="Message the assistant"
 					disabled={!hasKey}
@@ -154,7 +154,7 @@
 						if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) void submit(e);
 					}}
 				/>
-				{#if canRecord() && !draft.trim()}
+				{#if canTalk() && !draft.trim()}
 					<Button
 						type="button"
 						size="icon"
