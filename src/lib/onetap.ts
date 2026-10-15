@@ -8,6 +8,35 @@ type GsiWindow = { google?: { accounts?: { id?: Gsi } } };
 const POLL_MS = 200;
 const GIVE_UP_MS = 10_000;
 
+export const GSI_SRC = 'https://accounts.google.com/gsi/client';
+
+/** The part of `document` that adding the script needs. */
+type ScriptHost = {
+	createElement: (tag: 'script') => { src: string; async: boolean };
+	head: { append: (script: never) => void };
+	querySelector: (selector: string) => unknown;
+};
+
+/**
+ * Whether Google's script may be loaded: only for a visitor who is not signed in, on a page that is not a
+ * page to read, and on a device that was signed in before. A first visit contacts no one but this server (D5);
+ * the visitor who presses Sign in is sent to Google by the server and needs no script.
+ */
+export const wantsOneTap = (visit: {
+	signedIn: boolean;
+	legal: boolean;
+	signedInBefore: boolean;
+}) => !visit.signedIn && !visit.legal && visit.signedInBefore;
+
+/** Adds Google's sign in script to the page, once. */
+export function loadGsi(doc: ScriptHost = document as unknown as ScriptHost) {
+	if (doc.querySelector(`script[src="${GSI_SRC}"]`)) return;
+	const script = doc.createElement('script');
+	script.src = GSI_SRC;
+	script.async = true;
+	doc.head.append(script as never);
+}
+
 /**
  * Shows Google One Tap after a client side navigation. The script only scans the page for
  * `g_id_onload` once when it loads, so an element added later is never seen. Waits for the async

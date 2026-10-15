@@ -182,6 +182,11 @@ describe('client state', () => {
 		]);
 	});
 
+	test('no page names a third party script, Google sign in is loaded on demand by onetap.ts', () => {
+		const html = appCode.find(({ path }) => path === 'src/app.html')?.content ?? '';
+		expect(html).not.toMatch(/<script[^>]+src=/);
+	});
+
 	test('a guest plan lives in IndexedDB, and only the local repo code touches it', () => {
 		const owners = appCodeMentioning(/\b(indexedDB|IDBDatabase|IDBFactory)\b/);
 		expect(owners.length).toBeGreaterThan(0);

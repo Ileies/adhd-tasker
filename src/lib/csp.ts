@@ -10,8 +10,9 @@ type CspDirectives = NonNullable<
  * got into the page could send it to matters: `connect-src` names this origin, OpenAI and Google's
  * sign in, nothing else. SvelteKit adds the nonce to its own scripts (`mode: 'auto'`).
  *
- * Google's origins are here because the sign in script is loaded on every page today. When it is only
- * loaded on demand (local first plan 5.2) they belong to the pages that load it.
+ * Google's origins are here for the sign in script, which `onetap.ts` loads only on a device that was
+ * signed in before, and for the redirect of the sign in form. A first visit never contacts them. The policy
+ * is one for all pages, so the origins stay listed.
  */
 export const CSP_DIRECTIVES = {
 	'default-src': ['self'],

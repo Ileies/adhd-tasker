@@ -1,6 +1,36 @@
 /// <reference types="bun" />
 import { describe, expect, jest, test } from 'bun:test';
-import { showOneTap } from '#lib/onetap.js';
+import { GSI_SRC, loadGsi, showOneTap, wantsOneTap } from '#lib/onetap.js';
+
+function fakeDocument() {
+	const added: { src: string; async: boolean }[] = [];
+	return {
+		added,
+		createElement: () => ({ src: '', async: false }),
+		head: { append: (script: never) => void added.push(script) },
+		querySelector: (selector: string) => added.find((s) => selector.includes(s.src)) ?? null
+	};
+}
+
+describe('wantsOneTap', () => {
+	test.each([
+		[{ signedIn: false, legal: false, signedInBefore: true }, true],
+		[{ signedIn: false, legal: false, signedInBefore: false }, false],
+		[{ signedIn: true, legal: false, signedInBefore: true }, false],
+		[{ signedIn: false, legal: true, signedInBefore: true }, false]
+	])('%j is %p', (visit, wanted) => {
+		expect(wantsOneTap(visit)).toBe(wanted);
+	});
+});
+
+describe('loadGsi', () => {
+	test('adds the script from Google once', () => {
+		const doc = fakeDocument();
+		loadGsi(doc);
+		loadGsi(doc);
+		expect(doc.added).toEqual([{ src: GSI_SRC, async: true }]);
+	});
+});
 
 const config = { clientId: 'client', loginUri: 'https://app.test/callback' };
 
