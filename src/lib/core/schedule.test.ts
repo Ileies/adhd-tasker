@@ -493,6 +493,20 @@ describe('updateUserAlarm', () => {
 		expect(hints).toEqual([{ type: 'schedule' }]);
 	});
 
+	test('keeps the ring duration when the body does not name one', async () => {
+		const { ctx, repo } = await testCtx();
+		const row = await addUserAlarm(ctx, { ...daily, duration_minutes: 12 }, 'UTC');
+		await updateUserAlarm(ctx, row.id, { at: '10:15', label: 'Pills', repeat: 'daily' }, 'UTC');
+		expect((await repo.schedule.pending())[0]).toMatchObject({ durationMin: 12 });
+	});
+
+	test('changes the ring duration when the body names one', async () => {
+		const { ctx, repo } = await testCtx();
+		const row = await addUserAlarm(ctx, daily, 'UTC');
+		await updateUserAlarm(ctx, row.id, { ...daily, duration_minutes: 20 }, 'UTC');
+		expect((await repo.schedule.pending())[0]).toMatchObject({ durationMin: 20 });
+	});
+
 	test('answers null for an alarm that is not pending', async () => {
 		const { ctx } = await testCtx();
 		expect(await updateUserAlarm(ctx, 999, daily, 'UTC')).toBeNull();
