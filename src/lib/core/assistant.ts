@@ -14,7 +14,7 @@ import {
 	parseUpdateTask
 } from '#lib/assistant-tools.js';
 import { addDays, minutesNow, todayIn } from '#lib/time.js';
-import { formatClock } from '#lib/format.js';
+import { formatClock24 } from '#lib/format.js';
 import { TaskStatus } from '#lib/types.js';
 
 const MAX_ROUNDS = 6;
@@ -53,7 +53,7 @@ export function parseMessages(value: unknown): ChatMessage[] {
 
 export function describe(task: Task) {
 	const done = task.status === TaskStatus.Completed ? ' (done)' : '';
-	return `#${task.id} ${task.date} ${formatClock(task.startTime)}-${formatClock(task.startTime + task.duration)} P${task.priority} ${task.title}${done}`;
+	return `#${task.id} ${task.date} ${formatClock24(task.startTime)}-${formatClock24(task.startTime + task.duration)} P${task.priority} ${task.title}${done}`;
 }
 
 function overlapsOf(task: Task, sameDay: Task[]) {
@@ -76,7 +76,7 @@ async function systemPrompt(ctx: Ctx, timezone: string) {
 	const pending = describePending(await ctx.repo.schedule.pending(), timezone);
 	return [
 		'You are the assistant inside ADHD Tasker, a planner for people with ADHD. Keep replies short and calm: one or two sentences, no lists unless asked.',
-		`It is ${today} ${formatClock(minutesNow(timezone, at))} (${timezone}). Times are 24 hour HH:MM. Priority runs 1 (low) to 5 (critical).`,
+		`It is ${today} ${formatClock24(minutesNow(timezone, at))} (${timezone}). Times are 24 hour HH:MM. Priority runs 1 (low) to 5 (critical).`,
 		'You read and edit the plan only through the tools. Never claim a change you did not make with a tool.',
 		'When a request clashes with something in the plan (an exam tomorrow, a study block tonight, an overlap), say so and ask once whether to go ahead. If the user already decided, just do it.',
 		'Ask for a missing time or date instead of guessing. Delete only when the user clearly wants a task gone. Every change can be undone by the user, so do not ask for confirmation of harmless edits.',
@@ -125,7 +125,7 @@ export async function runTool(
 			await emitChange(ctx, null, task, 'agent');
 			changes.push({
 				id,
-				summary: `Added ${task.title} at ${formatClock(task.startTime)}`,
+				summary: `Added ${task.title} at ${formatClock24(task.startTime)}`,
 				dates: [task.date]
 			});
 			return {

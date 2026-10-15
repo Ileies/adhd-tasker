@@ -24,20 +24,25 @@ export function minutesNow(timezone?: string | null, at = new Date()): number {
 	return get('hour') * 60 + get('minute');
 }
 
-/** The wall clock in the given timezone as `HH:MM` and `SS`, for the clock on the Now screen. */
+/** The wall clock in the given timezone as `HH:MM`, `SS` and, in 12 hour format, `AM` or `PM`, for the clock on the Now screen. */
 export function clockParts(
 	timezone?: string | null,
-	at = new Date()
-): { time: string; seconds: string } {
+	at = new Date(),
+	hour12 = false
+): { time: string; seconds: string; period: string } {
 	const parts = new Intl.DateTimeFormat('en-US', {
 		timeZone: timezone && isValidTimezone(timezone) ? timezone : undefined,
-		hour: '2-digit',
+		hour: hour12 ? 'numeric' : '2-digit',
 		minute: '2-digit',
 		second: '2-digit',
-		hourCycle: 'h23'
+		hourCycle: hour12 ? 'h12' : 'h23'
 	}).formatToParts(at);
 	const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
-	return { time: `${get('hour')}:${get('minute')}`, seconds: get('second') };
+	return {
+		time: `${get('hour')}:${get('minute')}`,
+		seconds: get('second'),
+		period: hour12 ? get('dayPeriod') : ''
+	};
 }
 
 /** A calendar day as `YYYY-MM-DD`, the format of `task.date`. */

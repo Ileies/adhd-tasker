@@ -44,6 +44,7 @@ export interface Settings {
 	displayDevice: string | null;
 	voiceReplies: boolean;
 	showClock: boolean;
+	clock12h: boolean;
 	checkInMinutes: number;
 	myDayStart: number;
 	myDayEnd: number;

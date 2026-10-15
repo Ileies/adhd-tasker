@@ -1,5 +1,5 @@
-/** Minutes since midnight as `HH:MM`, same unit as `task.startTime`. */
-export function formatClock(minutes: number): string {
+/** Minutes since midnight as `HH:MM`, same unit as `task.startTime`. Always 24 hour: for inputs, prompts and stored values. */
+export function formatClock24(minutes: number): string {
 	return (
 		Math.floor(minutes / 60)
 			.toString()
@@ -7,6 +7,25 @@ export function formatClock(minutes: number): string {
 		':' +
 		(minutes % 60).toString().padStart(2, '0')
 	);
+}
+
+/** Minutes since midnight as `3:05 PM`. 0 and 1440 are 12:00 AM. */
+export function formatClock12(minutes: number): string {
+	const hours = Math.floor(minutes / 60) % 24;
+	const hour = hours % 12 === 0 ? 12 : hours % 12;
+	return `${hour}:${(minutes % 60).toString().padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
+// The user's choice for every time the screens show. Set by the layout, which renders again when it changes
+let hour12 = false;
+
+export function setClockHour12(value: boolean) {
+	hour12 = value;
+}
+
+/** Minutes since midnight for the screen, in the user's 12 or 24 hour format. */
+export function formatClock(minutes: number): string {
+	return hour12 ? formatClock12(minutes) : formatClock24(minutes);
 }
 
 /** A span of minutes as `1h 30m`, `2h` or `45m`. */

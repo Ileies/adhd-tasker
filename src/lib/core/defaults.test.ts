@@ -31,6 +31,7 @@ describe('DEFAULT_SETTINGS', () => {
 				quietEnd,
 				voiceReplies,
 				showClock,
+				clock12h: DEFAULT_SETTINGS.clock12h,
 				checkInMinutes: DEFAULT_SETTINGS.checkInMinutes,
 				myDayStart: DEFAULT_SETTINGS.myDayStart,
 				myDayEnd: DEFAULT_SETTINGS.myDayEnd,

@@ -1,5 +1,5 @@
 import { rank, switchReason, type RankTask } from '#lib/priority.js';
-import { formatClock } from '#lib/format.js';
+import { formatClock24 } from '#lib/format.js';
 import { Priority, TaskStatus, type Task } from '#lib/types.js';
 
 /** Everything the agent can observe. `origin` says who caused it, agent events never wake the agent again. */
@@ -151,7 +151,7 @@ export function describeEvent(type: EventType, payload: Record<string, unknown>)
 function describeBase(type: EventType, payload: Record<string, unknown>): string {
 	const title = typeof payload.title === 'string' ? `"${payload.title}"` : 'a task';
 	const clock =
-		typeof payload.startTime === 'number' ? ` at ${formatClock(payload.startTime)}` : '';
+		typeof payload.startTime === 'number' ? ` at ${formatClock24(payload.startTime)}` : '';
 	switch (type) {
 		case 'task.created':
 			return `Task ${title} was added${clock}`;

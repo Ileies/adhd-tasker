@@ -1,6 +1,14 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { formatClock, formatDuration, formatLeft, formatMinutes } from '#lib/format.js';
+import {
+	formatClock,
+	formatClock12,
+	formatClock24,
+	formatDuration,
+	formatLeft,
+	formatMinutes,
+	setClockHour12
+} from '#lib/format.js';
 
 describe('formatClock', () => {
 	test.each([
@@ -56,5 +64,29 @@ describe('formatLeft', () => {
 
 	test('an end time of midnight still shows', () => {
 		expect(formatLeft(10, 0)).toBe('10 min left, until 00:00');
+	});
+});
+
+describe('formatClock12 and formatClock24', () => {
+	test.each([
+		[0, '12:00 AM'],
+		[5, '12:05 AM'],
+		[720, '12:00 PM'],
+		[905, '3:05 PM'],
+		[1439, '11:59 PM'],
+		[1440, '12:00 AM']
+	])('%d minutes is %s in 12 hour format', (minutes, text) => {
+		expect(formatClock12(minutes)).toBe(text);
+	});
+
+	test('formatClock follows the chosen format and formatClock24 never does', () => {
+		setClockHour12(true);
+		try {
+			expect(formatClock(905)).toBe('3:05 PM');
+			expect(formatClock24(905)).toBe('15:05');
+		} finally {
+			setClockHour12(false);
+		}
+		expect(formatClock(905)).toBe('15:05');
 	});
 });

@@ -28,6 +28,7 @@ export type SettingsPatch = Partial<
 		| 'dailyTokenBudget'
 		| 'voiceReplies'
 		| 'showClock'
+		| 'clock12h'
 		| 'checkInMinutes'
 		| 'myDayStart'
 		| 'myDayEnd'
@@ -62,6 +63,7 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	dailyTokenBudget: isBudget,
 	voiceReplies: isBool,
 	showClock: isBool,
+	clock12h: isBool,
 	checkInMinutes: inRange(0, CHECK_IN_MAX),
 	myDayStart: isClock,
 	myDayEnd: inRange(1, 1440)

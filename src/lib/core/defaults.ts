@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	displayDevice: null, // every device plays
 	voiceReplies: false,
 	showClock: false,
+	clock12h: false, // 12 hour times with AM and PM instead of 24 hour
 	checkInMinutes: 5, // soft chime while a task is current, 0 is off
 	myDayStart: 420, // 07:00, the timeline folds the hours outside My day
 	myDayEnd: 1380 // 23:00

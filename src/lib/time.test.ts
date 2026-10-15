@@ -19,8 +19,8 @@ afterEach(() => setSystemTime());
 describe('clockParts', () => {
 	test('shows the wall clock of the timezone with seconds apart', () => {
 		const at = new Date('2026-10-14T23:05:09Z');
-		expect(clockParts('UTC', at)).toEqual({ time: '23:05', seconds: '09' });
-		expect(clockParts('Asia/Tokyo', at)).toEqual({ time: '08:05', seconds: '09' });
+		expect(clockParts('UTC', at)).toEqual({ time: '23:05', seconds: '09', period: '' });
+		expect(clockParts('Asia/Tokyo', at)).toEqual({ time: '08:05', seconds: '09', period: '' });
 	});
 
 	test('midnight is 00:00, not 24:00', () => {
@@ -224,5 +224,21 @@ describe('localMoment', () => {
 			date: '2026-10-14',
 			minutes: 600
 		});
+	});
+});
+
+describe('clockParts in 12 hour format', () => {
+	test('has no leading zero and names AM or PM', () => {
+		const at = new Date('2026-10-14T23:05:09Z');
+		expect(clockParts('UTC', at, true)).toEqual({ time: '11:05', seconds: '09', period: 'PM' });
+		expect(clockParts('Asia/Tokyo', at, true)).toEqual({
+			time: '8:05',
+			seconds: '09',
+			period: 'AM'
+		});
+	});
+
+	test('midnight is 12:00 AM', () => {
+		expect(clockParts('UTC', new Date('2026-10-14T00:00:00Z'), true).time).toBe('12:00');
 	});
 });

@@ -51,6 +51,7 @@ const SETTING_KEYS = [
 	'dailyTokenBudget',
 	'voiceReplies',
 	'showClock',
+	'clock12h',
 	'checkInMinutes',
 	'myDayStart',
 	'myDayEnd'
