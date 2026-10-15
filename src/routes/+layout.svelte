@@ -23,7 +23,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { tasker } from '#lib/app.svelte.js';
-	import { setClockHour12 } from '#lib/format.js';
+	import { effectiveClock12h, setClockHour12 } from '#lib/format.js';
 	import SoundMenu from '#lib/components/SoundMenu.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
 	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
@@ -36,7 +36,7 @@
 
 	// Every time on screen follows this. Setting it in the derived runs before the page below renders, and the key renders the page again when it changes
 	const clock12h = $derived.by(() => {
-		const value = browser ? tasker.settings.clock12h : (data.user?.clock12h ?? false);
+		const value = effectiveClock12h(browser ? tasker.settings.clock12h : data.user?.clock12h);
 		setClockHour12(value);
 		return value;
 	});

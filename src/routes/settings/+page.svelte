@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import TimezonePicker from '#lib/components/TimezonePicker.svelte';
+	import { effectiveClock12h } from '#lib/format.js';
 	import ClockFormatForm from '#lib/components/ClockFormatForm.svelte';
 	import MyDayForm from '#lib/components/MyDayForm.svelte';
 	import ReminderSettingsForm from '#lib/components/ReminderSettingsForm.svelte';
@@ -74,7 +75,7 @@
 		<Card.Content class="space-y-6">
 			<TimezonePicker />
 			{#if ready}
-				<ClockFormatForm twelve={settings.clock12h} />
+				<ClockFormatForm twelve={effectiveClock12h(settings.clock12h)} />
 				<MyDayForm start={settings.myDayStart} end={settings.myDayEnd} />
 			{/if}
 		</Card.Content>

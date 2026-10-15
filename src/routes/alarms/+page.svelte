@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Play } from '@lucide/svelte';
+	import { effectiveClock12h } from '#lib/format.js';
 	import { tasker } from '#lib/app.svelte.js';
 	import { addAlarm, cancelAlarm, loadSchedule } from '#lib/alarms.js';
 	import { QUICK_TIMERS, groupAlarms, timerFields, toneLabel } from '#lib/alarmview.js';
@@ -29,9 +30,9 @@
 
 	const time = $derived(
 		new Intl.DateTimeFormat(undefined, {
-			hour: tasker.settings.clock12h ? 'numeric' : '2-digit',
+			hour: effectiveClock12h(tasker.settings.clock12h) ? 'numeric' : '2-digit',
 			minute: '2-digit',
-			hourCycle: tasker.settings.clock12h ? 'h12' : 'h23',
+			hourCycle: effectiveClock12h(tasker.settings.clock12h) ? 'h12' : 'h23',
 			timeZone: timezone
 		})
 	);
@@ -40,9 +41,9 @@
 			weekday: 'short',
 			day: 'numeric',
 			month: 'short',
-			hour: tasker.settings.clock12h ? 'numeric' : '2-digit',
+			hour: effectiveClock12h(tasker.settings.clock12h) ? 'numeric' : '2-digit',
 			minute: '2-digit',
-			hourCycle: tasker.settings.clock12h ? 'h12' : 'h23',
+			hourCycle: effectiveClock12h(tasker.settings.clock12h) ? 'h12' : 'h23',
 			timeZone: timezone
 		})
 	);

@@ -50,3 +50,15 @@ export function formatLeft(minutes: number, until?: number): string {
 	const left = minutes < 1 ? 'Less than 1 min left' : `${formatMinutes(minutes)} left`;
 	return until === undefined ? left : `${left}, until ${formatClock(until)}`;
 }
+
+/** The device's own preference: 12 hour when its locale uses AM and PM. 24 hour where that cannot be told (the server, odd values). */
+export function deviceClock12h(): boolean {
+	if (typeof document === 'undefined') return false;
+	const cycle = new Intl.DateTimeFormat().resolvedOptions().hourCycle;
+	return cycle === 'h12' || cycle === 'h11';
+}
+
+/** What the screens use: the saved choice, or the device's preference while none was saved. */
+export function effectiveClock12h(saved: boolean | null | undefined): boolean {
+	return saved ?? deviceClock12h();
+}

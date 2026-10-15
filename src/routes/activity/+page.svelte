@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import { effectiveClock12h } from '#lib/format.js';
 	import { tasker } from '#lib/app.svelte.js';
 	import { loadSchedule, removeEntry } from '#lib/alarms.js';
 	import { undoChange } from '#lib/assistant.js';
@@ -38,17 +39,17 @@
 	const timezone = $derived(tasker.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
 	const clock = $derived(
 		new Intl.DateTimeFormat(undefined, {
-			hour: tasker.settings.clock12h ? 'numeric' : '2-digit',
+			hour: effectiveClock12h(tasker.settings.clock12h) ? 'numeric' : '2-digit',
 			minute: '2-digit',
-			hourCycle: tasker.settings.clock12h ? 'h12' : 'h23',
+			hourCycle: effectiveClock12h(tasker.settings.clock12h) ? 'h12' : 'h23',
 			timeZone: timezone
 		})
 	);
 	const dayClock = $derived(
 		new Intl.DateTimeFormat(undefined, {
-			hour: tasker.settings.clock12h ? 'numeric' : '2-digit',
+			hour: effectiveClock12h(tasker.settings.clock12h) ? 'numeric' : '2-digit',
 			minute: '2-digit',
-			hourCycle: tasker.settings.clock12h ? 'h12' : 'h23',
+			hourCycle: effectiveClock12h(tasker.settings.clock12h) ? 'h12' : 'h23',
 			day: 'numeric',
 			month: 'short',
 			timeZone: timezone

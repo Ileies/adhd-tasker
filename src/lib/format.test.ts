@@ -3,6 +3,8 @@ import { describe, expect, test } from 'bun:test';
 import {
 	formatClock,
 	formatClock12,
+	deviceClock12h,
+	effectiveClock12h,
 	formatClock24,
 	formatDuration,
 	formatLeft,
@@ -88,5 +90,17 @@ describe('formatClock12 and formatClock24', () => {
 			setClockHour12(false);
 		}
 		expect(formatClock(905)).toBe('15:05');
+	});
+});
+
+describe('effectiveClock12h', () => {
+	test('a saved choice wins, either way', () => {
+		expect(effectiveClock12h(true)).toBe(true);
+		expect(effectiveClock12h(false)).toBe(false);
+	});
+
+	test('without a choice and without a browser it is 24 hour', () => {
+		expect(effectiveClock12h(null)).toBe(false);
+		expect(deviceClock12h()).toBe(false);
 	});
 });

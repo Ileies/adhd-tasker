@@ -63,7 +63,7 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	dailyTokenBudget: isBudget,
 	voiceReplies: isBool,
 	showClock: isBool,
-	clock12h: isBool,
+	clock12h: (value) => value === null || isBool(value),
 	checkInMinutes: inRange(0, CHECK_IN_MAX),
 	myDayStart: isClock,
 	myDayEnd: inRange(1, 1440)
