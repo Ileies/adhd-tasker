@@ -93,7 +93,7 @@
 	{/if}
 {/snippet}
 
-<PageFrame title="Alarms" subtitle="They ring on the Now screen while the app is open.">
+<PageFrame title="Alarms">
 	<div class="space-y-6">
 		<section aria-label="Timers" class="space-y-2">
 			<h2 class="font-medium">Timer</h2>
