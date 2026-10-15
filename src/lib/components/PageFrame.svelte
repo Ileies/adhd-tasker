@@ -24,11 +24,12 @@
 
 <!-- The frame gets a little wider on big screens so it is not a thin strip -->
 <div class="mx-auto w-full max-w-4xl px-4 pt-6 pb-12 xl:max-w-5xl 2xl:max-w-6xl">
-	<h1 class="text-2xl font-bold">{title}</h1>
-	{#if subtitle}<p class="text-muted-foreground mt-1 text-sm">{subtitle}</p>{/if}
+	<!-- The visible title is in the top bar (`pageTitle` in nav.ts), this one is for screen readers -->
+	<h1 class="sr-only">{title}</h1>
+	{#if subtitle}<p class="text-muted-foreground text-sm">{subtitle}</p>{/if}
 
 	<!-- Wide screens use the space beside the content for the section list -->
-	<div class="mt-6 lg:grid lg:gap-10 {showNav ? 'lg:grid-cols-[12rem_minmax(0,1fr)]' : ''}">
+	<div class="{subtitle ? 'mt-6' : ''} lg:grid lg:gap-10 {showNav ? 'lg:grid-cols-[12rem_minmax(0,1fr)]' : ''}">
 		{#if showNav}
 			<nav aria-label="Sections" class="sticky top-6 hidden self-start lg:block">
 				<ul class="flex flex-col gap-1 border-l">
