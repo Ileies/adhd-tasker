@@ -123,14 +123,16 @@ describe('properties', () => {
 });
 
 describe('quickPreview', () => {
-	test('says what will be created', () => {
-		expect(quickPreview('Call dentist 14:30 45m', '2026-10-14', null)).toBe(
-			'Call dentist, 14:30 to 15:15, 45m'
-		);
+	test('says the time and duration without repeating the title', () => {
+		expect(quickPreview('Call dentist 14:30 45m', '2026-10-14', null)).toBe('14:30 to 15:15, 45m');
 	});
 
-	test('without a time it uses the next free quarter hour today', () => {
-		expect(quickPreview('Groceries', '2026-10-14', 601)).toBe('Groceries, 10:15 to 10:45, 30m');
+	test('a duration alone uses the next free quarter hour today', () => {
+		expect(quickPreview('Groceries 20m', '2026-10-14', 601)).toBe('10:15 to 10:35, 20m');
+	});
+
+	test('is null when the line names neither a time nor a duration', () => {
+		expect(quickPreview('Groceries', '2026-10-14', 601)).toBeNull();
 	});
 
 	test('is null without a title', () => {

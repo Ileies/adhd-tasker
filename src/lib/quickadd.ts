@@ -92,9 +92,14 @@ export function quickTask(text: string, date: string, now: number | null): NewTa
 	};
 }
 
-/** What a quick add line will create, as a sentence: "Call dentist, 14:30 to 15:15, 45 min". Null without a title. */
+/**
+ * What a quick add line will do with the time it read: "14:30 to 15:15, 45 min". Null without a title and
+ * when the line names neither a time nor a duration (the preview would only repeat what was typed).
+ */
 export function quickPreview(text: string, date: string, now: number | null): string | null {
+	const parsed = parseQuickTask(text);
+	if (parsed.startTime === null && parsed.duration === null) return null;
 	const task = quickTask(text, date, now);
 	if (!task) return null;
-	return `${task.title}, ${formatClock(task.startTime)} to ${formatClock(task.startTime + task.duration)}, ${formatDuration(task.duration)}`;
+	return `${formatClock(task.startTime)} to ${formatClock(task.startTime + task.duration)}, ${formatDuration(task.duration)}`;
 }
