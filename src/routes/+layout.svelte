@@ -190,8 +190,10 @@
 					aria-current={current === item.id ? 'page' : undefined}
 					aria-label={item.label}
 					title={item.label}
+					class="lg:w-auto lg:px-4"
 				>
 					<item.icon class="size-5" />
+					<span class="hidden lg:inline">{item.label}</span>
 				</Button>
 			{/each}
 		</div>
