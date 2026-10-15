@@ -226,13 +226,13 @@
 
 <div class="bg-background flex h-full flex-col">
 	<form
-		class="z-30 flex flex-col gap-1 border-b p-3 max-md:order-last max-md:border-t max-md:border-b-0 sm:px-6"
+		class="z-30 flex flex-col gap-1 border-b p-3 pb-1 max-md:order-last max-md:border-t max-md:border-b-0 sm:px-6"
 		onsubmit={addQuick}
 	>
 		<div class="flex gap-2">
 			<!-- One field with its tools inside, so the bar reads as a single control -->
 			<div
-				class="border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-11 min-w-0 flex-1 items-center rounded-lg border pr-1 focus-within:ring-3"
+				class="border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-11 min-w-0 flex-1 items-center rounded-lg border pr-1 focus-within:ring-3 md:h-10"
 			>
 				<Input
 					bind:ref={quickInput}
@@ -254,7 +254,7 @@
 					<Plus />
 				</Button>
 			</div>
-			<Button type="submit" class="h-11 px-5" disabled={!quick.trim()}>Add</Button>
+			<Button type="submit" class="h-11 px-5 md:h-10" disabled={!quick.trim()}>Add</Button>
 		</div>
 		<!-- Always there, so the line under the field does not jump the page -->
 		<p class="text-muted-foreground h-5 truncate text-sm" role="status" aria-live="polite">
