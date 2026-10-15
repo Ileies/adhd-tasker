@@ -47,6 +47,12 @@
 		browser deletes your plan. Settings has a copy of everything to download, and "Delete everything
 		on this device" removes it yourself.
 	</p>
+	<p class="mt-2">
+		The daylight theme needs a place. Without an account it uses the main city of your timezone,
+		which never leaves your browser. If you search for a city in Settings, the name you typed is
+		sent from your browser to Open-Meteo (see below). If you use the device's location, the position
+		stays in this browser.
+	</p>
 
 	<h2 id="what-is-stored" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		What is stored with an account
@@ -68,6 +74,14 @@
 		<li>
 			<strong>Your settings:</strong> theme, timezone, reminders, assistant and voice settings, and which
 			device plays sound.
+		</li>
+		<li>
+			<strong>Your location for the daylight theme:</strong> a position rounded to about one kilometer
+			and the name of a city, so the theme can follow sunrise and sunset where you are. Unless you chose
+			a place yourself, the server finds it from your IP address when you sign in and when your IP address
+			changes. The IP address itself is not stored, only the place that was found. A place you chose by
+			city search or with the device's location is never replaced by this lookup, and "Detect automatically"
+			in Settings hands it back.
 		</li>
 		<li>
 			<strong>Your own sounds</strong>, if you replace a built-in sound with an audio file. The file
@@ -159,6 +173,22 @@
 				rel="noreferrer">OpenAI's policies</a
 			>. Requests are sent with storage at OpenAI turned off. Without a key nothing goes to OpenAI.
 		</li>
+		<li>
+			<strong>ipwho.is</strong>, an IP geolocation service, only with an account and only until you
+			choose a place yourself. When you sign in and when your IP address changes, the server sends
+			your IP address to
+			<a class="underline" href="https://ipwho.is" target="_blank" rel="noreferrer">ipwho.is</a>
+			over HTTPS and gets back an approximate position and a city name. Nothing else is sent.
+		</li>
+		<li>
+			<strong>Open-Meteo</strong>, only when you search for a city in Settings. The name you typed
+			is sent to its geocoding service
+			<a class="underline" href="https://open-meteo.com" target="_blank" rel="noreferrer"
+				>(open-meteo.com)</a
+			>
+			over HTTPS, by the server for an account and by your browser without one, so Open-Meteo sees the
+			IP address of whoever sends it. Nothing else is sent.
+		</li>
 	</ul>
 	<p class="mt-2">
 		Both companies may process data in the United States. Google and OpenAI take part in the EU-US
@@ -182,9 +212,9 @@
 			in.
 		</li>
 		<li>
-			Local storage: theme, volume, mute, day start and end, a random device id, whether setup was
-			done, and whether this device signed in before. Without an account your plan lives in this
-			browser's own database (IndexedDB) and is not sent to this server.
+			Local storage: theme, volume, mute, today's sunrise and sunset, a random device id, whether
+			setup was done, and whether this device signed in before. Without an account your plan lives
+			in this browser's own database (IndexedDB) and is not sent to this server.
 		</li>
 	</ul>
 	<p class="mt-2">There are no tracking or advertising cookies, so there is no cookie banner.</p>
@@ -201,7 +231,9 @@
 		Storing your account, plan and settings is needed to provide the service you signed up for (Art.
 		6(1)(b) GDPR). Server logs and sign-in protection rest on the legitimate interest in a secure
 		service (Art. 6(1)(f) GDPR). Sending data to OpenAI happens only because you added your key and
-		use the assistant.
+		use the assistant. Finding your approximate place from your IP address rests on the legitimate
+		interest in a theme that fits your day (Art. 6(1)(f) GDPR), and choosing a place yourself stops
+		it. A city search happens only because you start it.
 	</p>
 
 	<h2 id="your-rights" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Your rights</h2>

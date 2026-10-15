@@ -6,12 +6,13 @@ const sources = (directive: keyof typeof CSP_DIRECTIVES): readonly string[] =>
 	CSP_DIRECTIVES[directive];
 
 describe('CSP_DIRECTIVES', () => {
-	test('a script that got into the page can only send data to this origin, OpenAI and Google sign in', () => {
+	test('a script that got into the page can only send data to this origin, OpenAI, Google sign in and the city search', () => {
 		expect(sources('connect-src')).toEqual([
 			'self',
 			'https://api.openai.com',
 			'wss://api.openai.com',
-			'https://accounts.google.com'
+			'https://accounts.google.com',
+			'https://geocoding-api.open-meteo.com'
 		]);
 	});
 

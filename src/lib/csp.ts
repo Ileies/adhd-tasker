@@ -7,8 +7,8 @@ type CspDirectives = NonNullable<
 
 /**
  * The Content Security Policy. A guest's OpenAI key lives in this browser, so what a script that
- * got into the page could send it to matters: `connect-src` names this origin, OpenAI and Google's
- * sign in, nothing else. SvelteKit adds the nonce to its own scripts (`mode: 'auto'`).
+ * got into the page could send it to matters: `connect-src` names this origin, OpenAI, Google's
+ * sign in and the city search of the daylight theme, nothing else. SvelteKit adds the nonce to its own scripts (`mode: 'auto'`).
  *
  * Google's origins are here for the One Tap sign in script, which `onetap.ts` loads for every visitor who is
  * not signed in (not on the privacy and terms pages), and for the redirect of the sign in form.
@@ -25,7 +25,9 @@ export const CSP_DIRECTIVES = {
 		'self',
 		'https://api.openai.com',
 		'wss://api.openai.com',
-		'https://accounts.google.com'
+		'https://accounts.google.com',
+		// A guest's city search for the daylight theme, only the typed name is sent
+		'https://geocoding-api.open-meteo.com'
 	],
 	'frame-src': ['https://accounts.google.com'],
 	// Spoken replies are a blob made from the audio OpenAI sent
