@@ -73,6 +73,10 @@ export const tasker: {
 	};
 	device: { id: string; display: string | null; streaming: boolean; audioBlocked: boolean }; // display: the device that plays sound, null means every device. audioBlocked: the browser has not unlocked audio yet
 	voice: { replies: boolean; recording: boolean; transcribing: boolean; speaking: boolean }; // replies: the user's setting to hear the assistant
+	/** What this device was already told. Both start as told (nothing shows) until the flags are read, so a first paint never flashes the welcome. */
+	firstRun: { welcomed: boolean; screenHintSeen: boolean };
+	/** Ids of the sample day's tasks still in the plan (a guest's device only). */
+	sample: number[];
 } = $state({
 	backend: remoteBackend,
 	account: { email: null, ready: false, problem: null },
@@ -89,5 +93,7 @@ export const tasker: {
 	agent: { cards: [], cursor: null },
 	schedule: { alarms: [], wakeups: [], ringing: null, loaded: false },
 	device: { id: '', display: null, streaming: false, audioBlocked: false },
-	voice: { replies: false, recording: false, transcribing: false, speaking: false }
+	voice: { replies: false, recording: false, transcribing: false, speaking: false },
+	firstRun: { welcomed: true, screenHintSeen: true },
+	sample: []
 });

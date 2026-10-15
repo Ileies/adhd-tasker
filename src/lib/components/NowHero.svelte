@@ -3,6 +3,7 @@
 	import { STUCK_REASONS, type StuckAction, type StuckReason } from '#lib/anchoring.js';
 	import type { Task } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import HeroMenu from '#lib/components/HeroMenu.svelte';
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
@@ -29,7 +30,11 @@
 		onTimer,
 		concurrent,
 		showClock = false,
-		timezone = null
+		timezone = null,
+		compact = false,
+		planned = 1,
+		onQuickAdd,
+		focusQuickAdd = false
 	}: {
 		hero: HeroState<Task>;
 		now: number;
@@ -48,7 +53,28 @@
 		concurrent: number;
 		showClock?: boolean;
 		timezone?: string | null;
+		/** A smaller hero without the page's height, for the example in the welcome. */
+		compact?: boolean;
+		/** How many tasks today has. With none, the empty state asks for the first one. */
+		planned?: number;
+		/** Adds what the empty state's line says. */
+		onQuickAdd?: (text: string) => void;
+		/** Puts the cursor in the empty state's line, when the visitor just said they want to plan. */
+		focusQuickAdd?: boolean;
 	} = $props();
+
+	let quick = $state('');
+	let quickInput: HTMLInputElement | null = $state(null);
+	$effect(() => {
+		if (focusQuickAdd) quickInput?.focus();
+	});
+
+	function addQuick(event: Event) {
+		event.preventDefault();
+		const text = quick;
+		quick = '';
+		onQuickAdd?.(text);
+	}
 
 	// Time up without a current task owns the whole hero, with one it is a bar above that task
 	const timeUp = $derived(hero.kind === 'time-up' && hero.current === null ? hero : null);
@@ -97,8 +123,10 @@
 </script>
 
 <section
-	class="relative flex min-h-svh flex-col justify-center px-6 pt-20 pb-10 transition-colors duration-[1500ms] sm:px-12 md:min-h-[60svh] lg:min-h-full {surface}"
-	aria-live="polite"
+	class="relative flex flex-col justify-center transition-colors duration-[1500ms] {compact
+		? 'rounded-xl px-6 py-8 sm:px-10'
+		: 'min-h-svh px-6 pt-20 pb-10 sm:px-12 md:min-h-[60svh] lg:min-h-full'} {surface}"
+	aria-live={compact ? 'off' : 'polite'}
 >
 	{#if showClock}
 		<div class="absolute right-6 bottom-4 sm:right-12">
@@ -181,7 +209,13 @@
 				{/if}
 			</div>
 
-			<h1 class="text-display line-clamp-3 font-bold break-words">{task.title}</h1>
+			<h1
+				class="line-clamp-3 font-bold break-words {compact
+					? 'text-3xl md:text-4xl'
+					: 'text-display'}"
+			>
+				{task.title}
+			</h1>
 
 			{#if task.description}
 				<p class="line-clamp-4 max-w-3xl text-xl leading-relaxed opacity-90 md:text-2xl">
@@ -190,7 +224,9 @@
 			{/if}
 
 			<div>
-				<div class="tabular text-clock font-bold">{formatMinutes(left)}</div>
+				<div class="tabular font-bold {compact ? 'text-5xl' : 'text-clock'}">
+					{formatMinutes(left)}
+				</div>
 				<div class="mt-1 text-lg opacity-90">
 					left, until {formatClock(task.startTime + task.duration)}
 				</div>
@@ -217,7 +253,8 @@
 				</p>
 			{/if}
 
-			<div class="flex flex-wrap items-center gap-3">
+			<!-- The example in the welcome shows the time, not the buttons -->
+			<div class="flex flex-wrap items-center gap-3 {compact ? 'hidden' : ''}">
 				<Button size="lg" class={doneClass} onclick={() => onDone(task)}>
 					<Check />
 					Done
@@ -313,6 +350,34 @@
 				<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
 			{/if}
 		</div>
+	{:else if planned === 0 && onQuickAdd}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+			<h1 class="text-display font-bold">Nothing planned today</h1>
+			<form class="flex max-w-xl gap-2" onsubmit={addQuick}>
+				<Input
+					bind:ref={quickInput}
+					bind:value={quick}
+					placeholder="What is the first thing?"
+					aria-label="Add a task for today"
+					class="h-14 border-current bg-transparent px-4 text-lg placeholder:text-current/60"
+				/>
+				<Button
+					type="submit"
+					size="lg"
+					class="{doneClass} h-14 px-6 text-lg"
+					disabled={!quick.trim()}>Add</Button
+				>
+			</form>
+			<div>
+				<Button
+					variant="ghost"
+					class="px-0 text-lg hover:bg-transparent hover:underline"
+					href="/edit"
+				>
+					Open Plan
+				</Button>
+			</div>
+		</div>
 	{:else}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
 			<h1 class="text-display font-bold">Nothing left today</h1>
@@ -323,7 +388,9 @@
 	{/if}
 
 	<!-- On wide screens the line sits at the bottom of the rail instead -->
-	<div class="mx-auto mt-8 w-full max-w-5xl lg:hidden">
-		<SilenceLine class="flex" />
-	</div>
+	{#if !compact}
+		<div class="mx-auto mt-8 w-full max-w-5xl lg:hidden">
+			<SilenceLine class="flex" />
+		</div>
+	{/if}
 </section>

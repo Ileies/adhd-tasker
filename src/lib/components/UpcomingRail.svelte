@@ -16,7 +16,11 @@
 		now,
 		onDone,
 		onExtend,
-		onDrop
+		onDrop,
+		sample = false,
+		onClearSample,
+		screenHint = false,
+		onDismissHint
 	}: {
 		upcoming: Task[];
 		missed: Task[];
@@ -24,6 +28,12 @@
 		onDone: (task: Task) => void;
 		onExtend: (task: Task) => void;
 		onDrop: (task: Task) => void;
+		/** The plan holds the sample day: say so and offer to clear it. */
+		sample?: boolean;
+		onClearSample?: () => void;
+		/** Show the one time hint about running this on a second screen. */
+		screenHint?: boolean;
+		onDismissHint?: () => void;
 	} = $props();
 
 	const shown = $derived(upcoming.slice(0, NEXT_COUNT));
@@ -104,6 +114,29 @@
 				<p class="text-muted-foreground mt-3 text-sm">+{missed.length - MISSED_COUNT} more</p>
 			{/if}
 		</section>
+	{/if}
+
+	{#if sample}
+		<p class="text-muted-foreground flex flex-wrap items-center gap-x-3 text-sm">
+			Sample day.
+			<Button
+				variant="link"
+				class="text-foreground h-auto p-0 text-sm"
+				onclick={() => onClearSample?.()}>Clear it</Button
+			>
+		</p>
+	{/if}
+
+	<!-- A second screen means a desktop or a tablet, a phone has nothing to press F on -->
+	{#if screenHint}
+		<p class="text-muted-foreground hidden flex-wrap items-center gap-x-3 text-sm md:flex">
+			Running this on a second screen? Press F for fullscreen.
+			<Button
+				variant="link"
+				class="text-foreground h-auto p-0 text-sm"
+				onclick={() => onDismissHint?.()}>Got it</Button
+			>
+		</p>
 	{/if}
 
 	<!-- On phones the line is in the hero, the rail sits below the fold -->

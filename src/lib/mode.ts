@@ -62,6 +62,7 @@ export function beginGuest(): () => void {
 			// From yesterday on, like the layout load of an account, so the Plan screen has its neighbours
 			const from = addDays(todayIn(tasker.settings.timezone ?? deviceTimezone()), -1);
 			tasker.tasks = await runtime.backend.tasks.since(from);
+			tasker.sample = await runtime.backend.sample.ids();
 			tasker.account.ready = true;
 			void pollAgent().catch(() => {});
 			void loadSchedule().catch(() => {});

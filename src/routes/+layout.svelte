@@ -11,6 +11,8 @@
 	import { showOneTap } from '#lib/onetap.js';
 	import { beginGuest, useAccount } from '#lib/mode.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
+	import { isFullscreenKey } from '#lib/shortcuts.js';
+	import { loadFlags } from '#lib/welcome.js';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -40,6 +42,7 @@
 	onMount(() => stopGuest);
 
 	onMount(() => {
+		loadFlags();
 		const stopPreferences = initPreferences();
 		// One audio context for the page, unlocked by the first tap or key
 		const stopAudio = initAudio();
@@ -49,8 +52,8 @@
 		};
 	});
 
-	// Legal pages are read-only and public: no One Tap prompt in the way
-	const legal = $derived(['/privacy', '/terms'].includes(page.url.pathname));
+	// Pages to read, public: no One Tap prompt in the way
+	const legal = $derived(['/privacy', '/terms', '/about'].includes(page.url.pathname));
 
 	// The GSI script can scan the DOM before hydration, so close a prompt that is already showing
 	$effect(() => {
@@ -145,7 +148,14 @@
 	const barHidden = $derived(overlay && !barVisible);
 </script>
 
-<svelte:window onpointermove={activity} onpointerdown={activity} onkeydown={activity} />
+<svelte:window
+	onpointermove={activity}
+	onpointerdown={activity}
+	onkeydown={(event) => {
+		activity();
+		if (isFullscreenKey(event)) void toggleFullscreen();
+	}}
+/>
 <svelte:document onfullscreenchange={() => (isFullscreen = !!document.fullscreenElement)} />
 
 <TimezoneDialog />
@@ -227,6 +237,7 @@
 						<DropdownMenu.Item onSelect={logout}>Log out</DropdownMenu.Item>
 					{/if}
 					<DropdownMenu.Separator />
+					<DropdownMenu.Item onSelect={() => goto('/about')}>About</DropdownMenu.Item>
 					<DropdownMenu.Item onSelect={() => goto('/privacy')}>Privacy</DropdownMenu.Item>
 					<DropdownMenu.Item onSelect={() => goto('/terms')}>Terms</DropdownMenu.Item>
 				</DropdownMenu.Content>
