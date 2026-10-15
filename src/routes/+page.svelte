@@ -24,7 +24,9 @@
 		DONE_CONFIRM_MS,
 		REASON_MS,
 		heroFocus,
+		heroDark,
 		heroState,
+		isNight,
 		tabTitle,
 		wrapUpStarted
 	} from '#lib/now.js';
@@ -333,6 +335,7 @@
 			onQuickAdd={(text) => void addQuickTask(text, today, now)}
 			focusQuickAdd={focusAdd}
 			noteCount={tasker.agent.cards.length}
+			dark={heroDark(hero, isNight(now, settings.myDayStart, settings.myDayEnd))}
 		/>
 		<UpcomingRail
 			upcoming={ranking.upcoming}

@@ -68,6 +68,16 @@ export function heroFocus<T extends RankTask>(hero: HeroState<T>): T | null {
 	return null;
 }
 
+/** Whether `now` (minutes since midnight) lies outside My day, the user's night. */
+export function isNight(now: number, myDayStart: number, myDayEnd: number): boolean {
+	return now < myDayStart || now >= myDayEnd;
+}
+
+/** The hero goes black at night while nothing is planned for now: no task, no time up, no Done confirmation. */
+export function heroDark<T extends RankTask>(hero: HeroState<T>, night: boolean): boolean {
+	return night && heroFocus(hero) === null;
+}
+
 /** The browser tab title, so a tab in the background is still an anchor: `28 min - Write intro`. */
 export function tabTitle<T extends RankTask>(hero: HeroState<T>): string {
 	switch (hero.kind) {

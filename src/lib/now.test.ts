@@ -8,7 +8,9 @@ import {
 	endedAgo,
 	heroFocus,
 	headsUpLine,
+	heroDark,
 	heroState,
+	isNight,
 	wrapUpStarted,
 	tabTitle,
 	wrapUpWindow
@@ -257,5 +259,34 @@ describe('tabTitle', () => {
 	test('time up under the transition bar still says time is up', () => {
 		const next = task('Review', h(10), 30);
 		expect(tabTitle(stateAt([a, next], h(10, 2)))).toBe('Time is up - Write intro');
+	});
+});
+
+describe('isNight', () => {
+	test('night is outside My day, start inclusive and end exclusive', () => {
+		expect(isNight(h(6, 59), h(7), h(23))).toBe(true);
+		expect(isNight(h(7), h(7), h(23))).toBe(false);
+		expect(isNight(h(22, 59), h(7), h(23))).toBe(false);
+		expect(isNight(h(23), h(7), h(23))).toBe(true);
+	});
+});
+
+describe('heroDark', () => {
+	const a = task('Write intro', h(23, 30), 30);
+
+	test('is dark at night while nothing is planned for now', () => {
+		expect(heroDark(stateAt([], h(23, 10)), true)).toBe(true);
+	});
+
+	test('is dark in free time at night, the next task is not running yet', () => {
+		expect(heroDark(stateAt([a], h(23, 10)), true)).toBe(true);
+	});
+
+	test('stays in color while a task runs, even at night', () => {
+		expect(heroDark(stateAt([a], h(23, 40)), true)).toBe(false);
+	});
+
+	test('stays in color by day', () => {
+		expect(heroDark(stateAt([], h(12)), false)).toBe(false);
 	});
 });

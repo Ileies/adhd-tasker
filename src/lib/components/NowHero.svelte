@@ -33,7 +33,8 @@
 		planned = 1,
 		onQuickAdd,
 		focusQuickAdd = false,
-		noteCount = 0
+		noteCount = 0,
+		dark = false
 	}: {
 		hero: HeroState<Task>;
 		now: number;
@@ -60,6 +61,8 @@
 		focusQuickAdd?: boolean;
 		/** Open assistant cards, shown as one line that jumps to them on phones. */
 		noteCount?: number;
+		/** Black surface: it is night and nothing is planned for now. */
+		dark?: boolean;
 	} = $props();
 
 	const note = $derived(noteLine(noteCount));
@@ -110,11 +113,13 @@
 	const surface = $derived(
 		done !== null
 			? urgencySurface[0]
-			: timeUp
-				? urgencySurface[urgencyLevel(timeUp.ended.priority, -timeUp.over, timeUp.ended.duration)]
-				: task
-					? urgencySurface[urgencyLevel(task.priority, left, task.duration)]
-					: urgencySurface[0]
+			: dark
+				? 'bg-black text-white'
+				: timeUp
+					? urgencySurface[urgencyLevel(timeUp.ended.priority, -timeUp.over, timeUp.ended.duration)]
+					: task
+						? urgencySurface[urgencyLevel(task.priority, left, task.duration)]
+						: urgencySurface[0]
 	);
 
 	const doneClass =
