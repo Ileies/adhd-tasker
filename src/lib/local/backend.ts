@@ -203,13 +203,14 @@ export function localBackend(deps: LocalDeps): Backend {
 		calendar: {
 			overview: async () => ({
 				linked: false,
-				state: { status: 'none', calendars: [], syncedAt: null },
+				state: { status: 'none', calendars: [], syncedAt: null, writeCalendar: null },
 				calendars: []
 			}),
 			preview: signInFirst,
 			import: signInFirst,
 			sync: async () => false,
 			stop: async () => {},
+			setWrite: signInFirst,
 			allDay: async () => []
 		},
 

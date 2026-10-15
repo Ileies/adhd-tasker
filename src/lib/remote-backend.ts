@@ -189,6 +189,13 @@ export const remoteBackend: Backend = {
 		async stop() {
 			await request('/calendar', { method: 'DELETE' }, 'Could not stop following your calendars');
 		},
+		async setWrite(calendarId) {
+			await request(
+				'/calendar/write',
+				{ method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ calendar: calendarId }) },
+				'Could not change where your tasks are added'
+			);
+		},
 		async allDay(from, to) {
 			// Plan shows what it has, a failed read leaves the days without the line
 			const response = await send(`/calendar/all-day?from=${from}&to=${to}`);

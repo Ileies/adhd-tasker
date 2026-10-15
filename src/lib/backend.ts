@@ -116,6 +116,8 @@ export interface Backend {
 		sync(): Promise<boolean>;
 		/** Stops following the calendars. Tasks already imported stay. */
 		stop(): Promise<void>;
+		/** Where the user's own tasks are added too, `null` turns it off. Rejects with the reason when it was not kept. */
+		setWrite(calendarId: string | null): Promise<void>;
 		/** The all-day events from `from` to `to` inclusive, one line each on Plan. */
 		allDay(from: string, to: string): Promise<AllDayLine[]>;
 	};

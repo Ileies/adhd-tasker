@@ -275,7 +275,8 @@ describe('calendar', () => {
 		await backend.calendar.stop();
 		for (const attempt of [
 			() => backend.calendar.preview(['primary']),
-			() => backend.calendar.import('all')
+			() => backend.calendar.import('all'),
+			() => backend.calendar.setWrite('primary')
 		])
 			expect(await attempt().catch((error) => error)).toMatchObject({ status: 401 });
 	});

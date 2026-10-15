@@ -63,6 +63,12 @@
 			await load();
 		});
 
+	const chooseWrite = (calendarId: string) =>
+		run(async () => {
+			await tasker.backend.calendar.setWrite(calendarId === '' ? null : calendarId);
+			await load();
+		});
+
 	const syncNow = () =>
 		run(async () => {
 			await tasker.backend.calendar.sync();
@@ -99,9 +105,30 @@
 			<Button variant="ghost" disabled={busy} onclick={stop}>Stop following</Button>
 		</div>
 		<p class="text-muted-foreground text-sm">
-			Your Google Calendar is only read, nothing there is changed. Stopping keeps the tasks already
-			in your plan.
+			Moving or resizing one of these tasks changes its event in Google Calendar, and Done adds a
+			line to its description. Nothing is ever deleted there. If the event changed in Google in the
+			meantime, Google's version stays. Events that run past midnight are changed in Google only.
+			Stopping keeps the tasks already in your plan.
 		</p>
+		<div class="space-y-1">
+			<label class="text-sm" for="write-calendar">Add my own tasks to Google Calendar</label>
+			<select
+				id="write-calendar"
+				class="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+				value={overview.state.writeCalendar ?? ''}
+				disabled={busy}
+				onchange={(e) => chooseWrite(e.currentTarget.value)}
+			>
+				<option value="">No, keep them in the app</option>
+				{#each overview.calendars.filter((calendar) => calendar.writable) as calendar (calendar.id)}
+					<option value={calendar.id}>{calendar.name}</option>
+				{/each}
+			</select>
+			<p class="text-muted-foreground text-sm">
+				Off by default. Tasks you add or change from now on get an event in the calendar you choose,
+				and it goes when the task does. Tasks you already have stay as they are.
+			</p>
+		</div>
 	{:else if preview}
 		<!-- The first look: nothing is written to the plan or to Google until a choice below -->
 		<p class="text-base">{describePreview(preview)}</p>

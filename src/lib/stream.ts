@@ -2,6 +2,8 @@ import { tasker } from '#lib/app.svelte.js';
 import { loadDay, playTone } from '#lib';
 import { pollAgent } from '#lib/agent.js';
 import { deviceId, loadSchedule, playsSound, ring } from '#lib/alarms.js';
+import { refreshAfterImport } from '#lib/data.js';
+import { showToast } from '#lib/toast.js';
 import type { Tone } from '#lib/tones.js';
 
 /** While the stream is down the agent feed is polled slowly, so the screen still catches up. */
@@ -15,6 +17,8 @@ interface Message {
 	tone?: Tone;
 	durationMin?: number;
 	device?: string | null;
+	/** What to tell the user about Google Calendar. */
+	message?: string;
 	/** The days another tab of a guest's device changed. */
 	dates?: string[];
 }
@@ -43,6 +47,10 @@ export function handleHint(message: Message) {
 		case 'tone':
 			if (playsSound()) playTone(message.tone!);
 			return;
+		case 'calendar':
+			// Google had the last word on a task: the plan is read again, and the user is told why it moved
+			showToast(message.message ?? '');
+			return void refreshAfterImport().catch(() => {});
 		case 'display':
 			tasker.device.display = message.device ?? null;
 	}

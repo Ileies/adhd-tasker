@@ -244,11 +244,14 @@ describe('remoteBackend requests', () => {
 	test('calendar: sync answers whether the plan changed, stop is a DELETE', async () => {
 		const { requests } = fakeFetch({
 			'POST http://localhost:5173/calendar/sync': json({ changed: true }),
-			'DELETE http://localhost:5173/calendar': () => new Response(null, { status: 204 })
+			'DELETE http://localhost:5173/calendar': () => new Response(null, { status: 204 }),
+			'PUT http://localhost:5173/calendar/write': json(true)
 		});
 		expect(await remoteBackend.calendar.sync()).toBe(true);
 		await remoteBackend.calendar.stop();
 		expect(requests[1].method).toBe('DELETE');
+		await remoteBackend.calendar.setWrite('work@group');
+		expect(await requests[2].json()).toEqual({ calendar: 'work@group' });
 	});
 
 	test('calendar: a refused import says why, a failed all-day read leaves the line out', async () => {
