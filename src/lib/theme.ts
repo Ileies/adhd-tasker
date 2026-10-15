@@ -1,6 +1,14 @@
 import { flushSync } from 'svelte';
 import { tasker, type ThemeMode } from '#lib/app.svelte.js';
-import { minutesNow } from '#lib/time.js';
+import { saveSettings } from '#lib/autosave.js';
+import {
+	AUTOMATIC_LOCATION,
+	LOCATION_KEYS,
+	daylight,
+	isLight,
+	type LocationFields
+} from '#lib/location.js';
+import { minutesNow, todayIn } from '#lib/time.js';
 import { muteEnd, restoreMute } from '#lib/mute.js';
 
 function save(key: string, value: string) {
@@ -11,16 +19,17 @@ function save(key: string, value: string) {
 	}
 }
 
-function resolveDark(): boolean {
-	if (tasker.themeMode !== 'auto') return tasker.themeMode === 'dark';
+/** The light window of today where the user is. Today's, so it follows the seasons without anyone setting hours. */
+function todaysDaylight(at = new Date()) {
+	return daylight(tasker.settings, tasker.timezone, todayIn(tasker.timezone, at));
+}
 
-	const minutes = minutesNow(tasker.timezone);
-	const { dayStart, dayEnd } = tasker;
-	const isDay =
-		dayStart <= dayEnd
-			? minutes >= dayStart && minutes < dayEnd
-			: minutes >= dayStart || minutes < dayEnd;
-	return !isDay;
+function resolveDark(): boolean {
+	const light = todaysDaylight();
+	// app.html has no sun math: it reads today's window from here before the app loads
+	save('daylight', `${light.start},${light.end}`);
+	if (tasker.themeMode !== 'auto') return tasker.themeMode === 'dark';
+	return !isLight(light, minutesNow(tasker.timezone));
 }
 
 function applyDark(dark: boolean) {
@@ -28,7 +37,7 @@ function applyDark(dark: boolean) {
 }
 
 /** Re-evaluates the theme and cross-fades the page if it changed. */
-function syncTheme() {
+export function syncTheme() {
 	const dark = resolveDark();
 	if (dark === document.documentElement.classList.contains('dark')) return;
 
@@ -46,10 +55,30 @@ export function setTheme(mode: ThemeMode) {
 	syncTheme();
 }
 
-export function setDayTime(key: 'dayStart' | 'dayEnd', minutes: number) {
-	tasker[key] = minutes;
-	save(key, String(minutes));
-	syncTheme();
+/** Saves where the user is (a place they chose, or none to find it automatically). Answers the reason when it was not saved. */
+export async function setLocation(fields: LocationFields): Promise<string | null> {
+	const message = await saveSettings({ ok: true, value: fields });
+	if (message === null) syncTheme();
+	return message;
+}
+
+/**
+ * Gives the location back to the app. An account finds it again from its internet address (the server does
+ * that when it saves), a guest has none and the theme follows the main city of the timezone.
+ */
+export async function detectLocation(): Promise<string | null> {
+	const message = await setLocation(AUTOMATIC_LOCATION);
+	if (message !== null || !tasker.account.email) return message;
+	try {
+		const found = await tasker.backend.settings.load();
+		const next = { ...tasker.settings };
+		for (const key of LOCATION_KEYS) Object.assign(next, { [key]: found[key] });
+		tasker.settings = next;
+		syncTheme();
+	} catch {
+		// The theme keeps the timezone's city until the next load
+	}
+	return null;
 }
 
 /** Saves the timezone (to the account, or on a guest's device) and applies it right away. */
@@ -107,10 +136,9 @@ export function initPreferences() {
 		);
 		applyMute(mute.muted, mute.until);
 
-		for (const key of ['dayStart', 'dayEnd'] as const) {
-			const raw = localStorage.getItem(key);
-			if (raw !== null && Number(raw) >= 0 && Number(raw) < 1440) tasker[key] = Number(raw);
-		}
+		// The hours the theme used to be set by hand, the sun replaced them
+		localStorage.removeItem('dayStart');
+		localStorage.removeItem('dayEnd');
 	} catch {
 		// Storage can be blocked, the defaults stay in place
 	}

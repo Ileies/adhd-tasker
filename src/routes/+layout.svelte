@@ -5,7 +5,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { initAudio } from '#lib/audio.js';
 	import { loadCustomSounds } from '#lib/custom-sounds.js';
-	import { initPreferences, setTimezone } from '#lib/theme.js';
+	import { initPreferences, setTimezone, syncTheme } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
 	import { keepAwake, toggleFullscreen } from '#lib/display.js';
 	import { startStream } from '#lib/stream.js';
@@ -127,6 +127,13 @@
 		if (tasker.settings.timezone) tasker.timezone = tasker.settings.timezone;
 		// Applied locally at once, a failed save is retried on the next load
 		else setTimezone(deviceTimezone()).catch(() => {});
+	});
+
+	// The theme follows the sun where the user is: a guest's settings arrive after the first paint, and the
+	// place can change. A microtask, because the cross-fade flushes synchronously and that is not allowed in an effect
+	$effect(() => {
+		void [tasker.settings.locationLat, tasker.settings.locationLon, tasker.timezone];
+		queueMicrotask(syncTheme);
 	});
 
 	let logoutForm: HTMLFormElement | undefined = $state();

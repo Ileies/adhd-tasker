@@ -1,27 +1,21 @@
 <script lang="ts">
 	import { Moon, Sun, SunMoon } from '@lucide/svelte';
 	import { tasker, type ThemeMode } from '#lib/app.svelte.js';
-	import { setDayTime, setTheme } from '#lib/theme.js';
+	import { daylight, daylightLine } from '#lib/location.js';
+	import { setTheme } from '#lib/theme.js';
+	import { todayIn } from '#lib/time.js';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import TimeInput from '#lib/components/TimeInput.svelte';
+	import LocationPicker from '#lib/components/LocationPicker.svelte';
 
 	const options: { mode: ThemeMode; label: string; icon: typeof Sun }[] = [
 		{ mode: 'light', label: 'Always light', icon: Sun },
 		{ mode: 'dark', label: 'Always dark', icon: Moon },
-		{ mode: 'auto', label: 'By daytime', icon: SunMoon }
+		{ mode: 'auto', label: 'By daylight', icon: SunMoon }
 	];
 
-	function toTimeString(minutes: number): string {
-		const h = String(Math.floor(minutes / 60)).padStart(2, '0');
-		const m = String(minutes % 60).padStart(2, '0');
-		return `${h}:${m}`;
-	}
-
-	function onTimeChange(key: 'dayStart' | 'dayEnd', value: string) {
-		const [h, m] = value.split(':').map(Number);
-		if (Number.isNaN(h) || Number.isNaN(m)) return;
-		setDayTime(key, h * 60 + m);
-	}
+	const line = $derived(
+		daylightLine(daylight(tasker.settings, tasker.timezone, todayIn(tasker.timezone)))
+	);
 </script>
 
 <div class="space-y-3">
@@ -40,22 +34,7 @@
 	</div>
 
 	{#if tasker.themeMode === 'auto'}
-		<div class="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-			<span>Light from</span>
-			<TimeInput
-				class="px-2 text-sm"
-				value={toTimeString(tasker.dayStart)}
-				onchange={(value) => onTimeChange('dayStart', value)}
-				label="Daytime starts"
-			/>
-			<span>to</span>
-			<TimeInput
-				class="px-2 text-sm"
-				value={toTimeString(tasker.dayEnd)}
-				onchange={(value) => onTimeChange('dayEnd', value)}
-				label="Daytime ends"
-			/>
-			<span class="text-xs">Dark outside these hours.</span>
-		</div>
+		<p class="text-muted-foreground text-sm">{line} Dark outside these hours.</p>
+		<LocationPicker />
 	{/if}
 </div>

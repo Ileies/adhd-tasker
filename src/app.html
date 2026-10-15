@@ -20,8 +20,10 @@
 				const saved = localStorage.getItem('theme');
 				const now = new Date();
 				const minutes = now.getHours() * 60 + now.getMinutes();
-				const start = Number(localStorage.getItem('dayStart') ?? 420);
-				const end = Number(localStorage.getItem('dayEnd') ?? 1140);
+				// Today's light window (sunrise, sunset), saved by the app on its last visit
+				const [start, end] = (localStorage.getItem('daylight') ?? '420,1140')
+					.split(',')
+					.map(Number);
 				const isDay =
 					start <= end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
 				const dark = saved === 'dark' || ((saved === 'auto' || !saved) && !isDay);

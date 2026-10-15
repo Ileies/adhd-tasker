@@ -87,7 +87,6 @@ describe('pairing rule', () => {
 		'server/index.ts': 'covered by the login route tests',
 		'server/db/index.ts': 'used by every integration test',
 		'index.ts': 'audio synthesis, browser API wiring (the task mutations live in tasks.ts)',
-		'theme.ts': 'until UX phase 8b replaces its day window with sun.ts',
 		'core/context.ts': 'types and one error class, covered by the model and route tests',
 		'server/ctx.ts': 'wiring of the server context, used by the route tests',
 		'custom-sounds.ts':
