@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { Check, Plus, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
+	import { Check, CircleHelp, Plus, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
 	import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
 	import { addAlarm, cancelAlarm, loadSchedule, switchAlarm } from '#lib/alarms.js';
 	import { dayPanelAlarms } from '#lib/alarmview.js';
@@ -31,6 +31,8 @@
 	import { loadAllDay } from '#lib/calendar.js';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
+	import QuickAddHelp from '#lib/components/QuickAddHelp.svelte';
+	import AlarmForm from '#lib/components/AlarmForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 
@@ -58,6 +60,9 @@
 			tasker.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
 		)
 	);
+
+	let editing = $state<Alarm | null>(null);
+	let helpOpen = $state(false);
 
 	async function switchAlarmFor(alarm: Alarm, enabled: boolean) {
 		const failure = await switchAlarm(alarm, enabled);
@@ -310,6 +315,17 @@
 						: 'Add a task: Call dentist 14:30 45m'}
 					aria-label={mode === 'alarm' ? 'Quick add an alarm' : 'Quick add a task'}
 				/>
+				<Button
+					variant="ghost"
+					size="icon"
+					class="text-muted-foreground size-9 shrink-0"
+					type="button"
+					aria-label="How quick add works"
+					title="How quick add works"
+					onclick={() => (helpOpen = true)}
+				>
+					<CircleHelp />
+				</Button>
 				<MicButton onheard={fillHeard} onmessage={(text) => (micMessage = text)} />
 				{#if mode === 'task'}
 					<Button
@@ -376,6 +392,7 @@
 				alarms={alarmRows}
 				onAlarmSwitch={switchAlarmFor}
 				onAlarmCancel={cancelAlarm}
+				onAlarmEdit={(alarm) => (editing = alarm)}
 				{highlight}
 				{compact}
 				day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
@@ -435,3 +452,12 @@
 </div>
 
 <TaskForm bind:form onDelete={remove} />
+<AlarmForm bind:alarm={editing} />
+<QuickAddHelp
+	bind:open={helpOpen}
+	{mode}
+	onuse={(text) => {
+		quick = text;
+		quickInput?.focus();
+	}}
+/>
