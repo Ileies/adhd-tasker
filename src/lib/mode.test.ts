@@ -1,16 +1,24 @@
 /// <reference types="bun" />
-import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { tasker } from '#lib/app.svelte.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import { openLocalDb } from '#lib/local/db.js';
 import { declineMove, readDevice } from '#lib/local/device.js';
 import { localRepo } from '#lib/local/repo.js';
 import { DATABASE_NAME } from '#lib/local/runtime.js';
-import { beginGuest, STORAGE_PROBLEM, useAccount } from '#lib/mode.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import { todayIn } from '#lib/time.js';
 import { Priority } from '#lib/types.js';
 import { freshIndexedDb } from '#test/idb.js';
+
+// The page's sound, stream and agent feed are browser only and not what these tests are about
+await mock.module('#lib/agent.js', () => ({ pollAgent: async () => {} }));
+await mock.module('#lib/alarms.js', () => ({
+	deviceId: () => 'device-1',
+	loadSchedule: async () => {}
+}));
+await mock.module('#lib/stream.js', () => ({ handleHint: () => {} }));
+const { beginGuest, STORAGE_PROBLEM, useAccount } = await import('#lib/mode.js');
 
 const original = Object.getOwnPropertyDescriptor(globalThis, 'indexedDB');
 const useFactory = (factory: unknown) =>
