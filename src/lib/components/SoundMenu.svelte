@@ -1,18 +1,13 @@
 <script lang="ts">
 	import { Volume1, Volume2, VolumeX } from '@lucide/svelte';
 	import { tasker } from '#lib/app.svelte.js';
-	import { chooseDisplay } from '#lib/alarms.js';
 	import { MUTE_OPTIONS } from '#lib/mute.js';
 	import { muteFor, setMuted, setVolume } from '#lib/theme.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as Popover from '#lib/components/ui/popover/index.js';
 	import { Slider } from '#lib/components/ui/slider/index.js';
-	import { Switch } from '#lib/components/ui/switch/index.js';
 
 	const silent = $derived(tasker.isMuted || tasker.volume === 0);
-	// A guest's tabs elect the one that plays by themselves, only an account chooses a screen
-	const canChoose = $derived(tasker.account.email !== null);
-	const only = $derived(tasker.device.display === tasker.device.id);
 </script>
 
 <Popover.Root>
@@ -60,15 +55,5 @@
 				aria-labelledby="volume-label"
 			/>
 		</div>
-
-		{#if canChoose}
-			<label class="flex items-center justify-between gap-3 px-1 text-sm">
-				Only this screen plays sound
-				<Switch
-					checked={only}
-					onCheckedChange={(on) => void chooseDisplay(on ? tasker.device.id : null)}
-				/>
-			</label>
-		{/if}
 	</Popover.Content>
 </Popover.Root>
