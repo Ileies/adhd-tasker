@@ -1,6 +1,6 @@
 # Feature Ideas (Brainstorm)
 
-Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts. "Wrap-up cue before a task ends" and "Hyperfocus exit ramp" are built (time up, wrapping up, the `wrap-up` sound, 15 more min).
+Raw inspiration, not a roadmap. Nothing here is decided. Ideas marked **(planned)** or **(parked)** already appear in `TODO.md` / `CLAUDE.md` and need discussion before work starts. Ideas marked **(1.0, ID)** are scoped in `docs/roadmap-1.0.md` under that criterion, **(1.1)** are named there as first after 1.0, and **(ux plan)** are part of `docs/ux-plan.md`. "Wrap-up cue before a task ends" and "Hyperfocus exit ramp" are built (time up, wrapping up, the `wrap-up` sound, 15 more min), and so are Google Calendar read and write, guest mode on the device and the first run. Everything not tagged is open and not on the roadmap.
 
 **Rating (1 to 10)** = how much this would improve the day of a person with ADHD if done well. It measures impact only, not effort. Effort is the scope section.
 
@@ -22,7 +22,7 @@ Within each scope the ideas are sorted by rating, highest first.
 
 ## Start here: best impact per effort
 
-The ideas that look like the strongest return on a small investment. Details are in their scope sections.
+The ideas that look like the strongest return on a small investment. Details are in their scope sections. Push the rest, record actual start and finish, the overbooked warning and missed rehome are already scoped for 1.0 (A8 to A10, C4). The others on this list are open: Save your place, Leave-by and Break it down are the first named for 1.1, Fit the gap and Overwhelmed are not on the roadmap yet.
 
 1. **Push the rest of the day** (S, 9)
 2. **Save your place before a switch** (S, 9)
@@ -38,19 +38,19 @@ The ideas that look like the strongest return on a small investment. Details are
 
 ## XS: an hour to an afternoon
 
-- **Record actual start and finish** `8/10`
+- **Record actual start and finish** `8/10` **(1.0, C4)**
   Store `startedAt` (first moment the task was current with the screen visible, or a Start tap) and `completedAt` on each task. Invisible on its own, but it is the foundation for estimate learning, honest end-of-day summaries and task aging. Time blindness can only be corrected with real data.
 
-- **Overbooked day warning** `8/10`
+- **Overbooked day warning** `8/10` **(1.0, A10)**
   Pure function: sum of unfinished task minutes vs. minutes left until `dayEnd`. When the plan cannot fit, the Plan view says so in one calm line ("About 90 minutes more than fits today"). ADHD planning is chronically optimistic; this catches it at planning time instead of at 9 pm.
 
 - **Wire up focus mode** `7/10`
-  `enableFocusMode` already exists in the schema and is unused. Make it hide the rail, missed strip and card strip so only the current task and its remaining time stay. One thing at a time, taken literally.
+  `enableFocusMode` already exists in the schema and is unused (it is not in the roadmap, and a guest keeps its settings on the device, so a real setting would need both backends). Make it hide the rail, missed strip and card strip so only the current task and its remaining time stay. One thing at a time, taken literally.
 
 - **Variable completion reward** `6/10`
   Rotate between a few completion chimes instead of always the same one, occasionally a slightly "bigger" one. Variable rewards keep dopamine feedback from going stale. Still calm, no confetti.
 
-- **Keyboard shortcuts on Now** `6/10`
+- **Keyboard shortcuts on Now** `6/10` **(ux plan, `F` for fullscreen is built)**
   `D` done, `S` stuck, `P` push, `F` focus mode, `?` shows them. Fewer clicks between intention and action on the desktop display.
 
 - **Shame-free wording audit** `6/10`
@@ -59,10 +59,10 @@ The ideas that look like the strongest return on a small investment. Details are
 - **"Pick for me"** `6/10`
   When the user is choosing between options (inbox, free time suggestions, tied tasks), a button that just decides. Decision paralysis is a bigger blocker than the decision itself.
 
-- **Done today, one line** `5/10`
+- **Done today, one line** `5/10` **(ux plan)**
   A faint "4 done today" under the hero. Not a stat tile, one quiet line. Counters the "I did nothing today" feeling that ADHD brains produce even on productive days.
 
-- **Configurable reminder interval** `5/10`
+- **Configurable reminder interval** `5/10` **(ux plan, settings phase)**
   The 5 minute "still on this" chime is fixed. Some people need 2 minutes, some 15, some never.
 
 - **Verb-first placeholder** `4/10`
@@ -75,25 +75,25 @@ The ideas that look like the strongest return on a small investment. Details are
 
 ## S: one to two days
 
-- **Push the rest of the day** `9/10`
+- **Push the rest of the day** `9/10` **(1.0, A9)**
   One button on Now: "I'm behind by 15 / 30 / 60 min". Shifts every unfinished task from now on, keeps order, shows Undo. Tasks that would cross `dayEnd` land in a "did not fit" list. Running late is the default ADHD state; fixing the plan should take one tap, not ten drags.
 
-- **Save your place before a switch** `9/10`
+- **Save your place before a switch** `9/10` **(1.1)**
   When the current task is about to switch (or the user marks it done or is pulled away), offer a one-line "where am I?" note ("halfway through section 3, next: the chart"). The note is shown on top of the hero the next time that task (or its continuation) becomes current. Cuts the cost of getting back into a task, which for ADHD is often the reason it never gets resumed.
 
 - **Fit the gap / waiting mode helper** `9/10`
   "Waiting mode" is the ADHD state before an appointment where nothing gets done because something is coming. In free time before a task, show "You have 35 min until Dentist" plus up to three short tasks (from inbox or unfinished tasks) that fit, with a hard stop cue built in. Turns dead time into safe time.
 
-- **Leave-by alarms for appointments** `9/10`
-  Tasks can be marked as appointments with a "travel minutes" and "getting ready minutes" field. The app rings at "start getting ready" and "leave now", not at the appointment time. Being late is a top ADHD pain point and almost every calendar gets this wrong.
+- **Leave-by alarms for appointments** `9/10` **(1.1)**
+  Tasks can be marked as appointments with a "travel minutes" and "getting ready minutes" field. The app rings at "start getting ready" and "leave now", not at the appointment time. Being late is a top ADHD pain point and almost every calendar gets this wrong. Imported Calendar events are now the natural source of appointments, so the fields should also work on a task that came from Google.
 
-- **Break it down button** `9/10`
+- **Break it down button** `9/10` **(1.1)**
   Next to Stuck: "Break it down". The assistant returns 3 to 6 tiny physical steps ("open laptop", "open the doc", "write one ugly sentence"), the hero shows only the current step with a checkbox. Falls back to a fixed template without a key. Task initiation is the core ADHD problem; the first step has to look trivially small.
 
 - **Overwhelmed button** `9/10` **(parked as Crisis Mode)**
   A simple version: one tap collapses the day to the next single thing, hides everything else and (with a key, autonomy act) asks the agent to propose what to drop or move. The full Crisis Mode can stay parked; this is the minimal version.
 
-- **Missed tasks: one-tap rehome** `9/10`
+- **Missed tasks: one-tap rehome** `9/10` **(1.0, A8, as the triage sheet)**
   Every item in the missed strip gets three buttons: "Later today" (next free slot that fits), "Tomorrow", "Drop". No drag, no thinking. Missed tasks currently ask for a decision the user is least able to make in that moment.
 
 - **Agent "about me" notes** `8/10`
@@ -102,10 +102,10 @@ The ideas that look like the strongest return on a small investment. Details are
 - **Next tiny step on the hero** `8/10`
   An optional "first step" field per task. When set, the hero shows it bigger than the title ("Open the tax folder" above "Taxes"). The title is the goal, the step is what you actually do now.
 
-- **Morning briefing** `8/10` **(planned)**
+- **Morning briefing** `8/10` **(planned, 1.1)**
   `day.started` event: one card with the shape of the day, the one most important thing, and anything that does not fit. Spoken if voice replies are on.
 
-- **End-of-day shutdown** `8/10` **(planned as end-of-day summary)**
+- **End-of-day shutdown** `8/10` **(planned as end-of-day summary, 1.0, C3)**
   At `dayEnd`: what got done (honest, warm), one tap to move all unfinished tasks to tomorrow or drop them, then the screen goes dark and calm. A defined end prevents the open-loop guilt that keeps ADHD brains awake.
 
 - **Time-timer disc** `8/10`
@@ -133,7 +133,7 @@ The ideas that look like the strongest return on a small investment. Details are
   A synthesized brown or pink noise toggle on the display device (Web Audio, no files). Many people with ADHD focus better with it; having it in the anchor app removes one more thing to set up.
 
 - **Share target capture** `7/10`
-  Register the PWA as a Web Share Target so a link or text shared on the phone lands in the inbox. Capture from wherever the thought happens.
+  Register the PWA as a Web Share Target so a link or text shared on the phone lands in the inbox. Capture from wherever the thought happens. Needs the inbox (C2) first, and for a guest it lands in the device plan.
 
 - **Photo of a paper list** `6/10`
   Snap a handwritten list, a vision model turns it into tasks for the inbox. Paper is still where many plans start.
@@ -148,20 +148,20 @@ The ideas that look like the strongest return on a small investment. Details are
   When no duration is typed, suggest one from history of similar titles (needs actual durations) instead of a fixed default.
 
 - **Printable day** `4/10`
-  One-page print or PDF of today for people who think better on paper or want it on the fridge.
+  One-page print or PDF of today for people who think better on paper or want it on the fridge. The data export (a file for backup and moving between devices) exists but is not a printable view.
 
 ---
 
 ## M: three days to a week
 
-- **Capture inbox** `9/10` **(planned)**
+- **Capture inbox** `9/10` **(planned, 1.0, C2)**
   `Shift+Space` from anywhere in the app, type, Enter, gone. Inbox items have no time. Free time, fit-the-gap, the morning briefing and the agent pull from it. The parking lot for intrusive thoughts during a task.
 
-- **Estimate learning** `9/10`
+- **Estimate learning** `9/10` **(1.1, needs C4)**
   With real start and finish data, learn how long things actually take per kind of task and show it gently while planning: "Emails usually take you 1.7x your estimate". Optionally auto-pad durations. Directly attacks time blindness with the user's own evidence.
 
-- **Web Push** `9/10`
-  Reminders, alarms and wakeups reach a closed app and the phone (with vibration, which also reaches many smartwatches). Currently the biggest gap: the anchor only works while the screen is open and looked at.
+- **Web Push** `9/10` **(1.0, B2)**
+  Reminders, alarms and wakeups reach a closed app and the phone (with vibration, which also reaches many smartwatches). Currently the biggest gap: the anchor only works while the screen is open and looked at. A guest has no server to push from, so for a guest the agent and alarms stay limited to the open leading tab unless a push service is added for guests too.
 
 - **Smart replan: "I lost the afternoon"** `9/10`
   One request: the agent rebuilds the rest of the day by priority, keeps fixed appointments, drops or moves the lowest value tasks, shows it as a proposal with one Accept and Undo. `replan` already exists as a use.
@@ -175,7 +175,7 @@ The ideas that look like the strongest return on a small investment. Details are
 - **Routines as step-through chains** `8/10`
   Morning routine, leaving the house, shutdown: a chain of small steps shown one at a time on the hero, each with its own short duration and a tick. Works with recurring tasks.
 
-- **Recurring tasks** `8/10` **(planned)**
+- **Recurring tasks** `8/10` **(planned, 1.0, C1)**
 
 - **Home Assistant / smart lights** `8/10`
   Webhook on task switch, overrun and alarm. The room light shifts color with urgency, the desk lamp pulses once at a switch. External anchoring that does not require looking at a screen at all.
@@ -184,7 +184,7 @@ The ideas that look like the strongest return on a small investment. Details are
   Mark a task as deep work: reminders and agent cards are held until it ends, and if it overruns the app offers to push the following tasks instead of nagging.
 
 - **Stuck flows per reason** `8/10`
-  Turn each stuck reason into a short tailored path: "too big" leads to break down, "boring" to race the clock or a reward, "don't know how" to a 10 minute research step, "anxious" to the smallest possible first move. Partly exists as fixed hints today.
+  Turn each stuck reason into a short tailored path (the reasons, the fixed hint and the timer exist): "too big" leads to break down, "boring" to race the clock or a reward, "don't know how" to a 10 minute research step, "anxious" to the smallest possible first move. Partly exists as fixed hints today.
 
 - **Clock-face day view** `7/10`
   A 12 or 24 hour dial with tasks as arcs and a hand for now. Many people with ADHD read time spatially much better than as a list.
@@ -214,7 +214,7 @@ The ideas that look like the strongest return on a small investment. Details are
   Start a chosen focus playlist when a deep work task starts, pause it at the switch. A strong sensory transition cue.
 
 - **Offline read-only Now** `5/10`
-  Keep the last loaded day in memory so a short outage does not blank the anchor. Must stay read-only and must not become a localStorage task fallback (explicitly avoided in the project rules).
+  A guest already has the whole plan on the device (IndexedDB), so this only matters for an account: keep the last loaded day in memory so a short outage does not blank the anchor. Must stay read-only and must not become a localStorage task fallback (explicitly avoided in the project rules).
 
 - **E-ink / ultra calm display mode** `5/10`
   High contrast, no animation, minute-level updates, for e-ink panels or very old tablets used as a dedicated anchor screen.
@@ -235,7 +235,8 @@ The ideas that look like the strongest return on a small investment. Details are
 - **Activity awareness (opt-in, local)** `9/10`
   Integrate with ActivityWatch or a small local daemon: knows which app or site is active, compares with the current task, and the agent can notice drift ("20 minutes on YouTube during the report, want to push or come back?"). Also gives true actual durations. Privacy sensitive: local data only, summaries only, strict opt-in.
 
-- **Google Calendar two-way sync** `8/10` **(planned)**
+- **Google Calendar two-way sync** `8/10` **(mostly built)**
+  Read (chosen calendars, preview, import, a sync every 5 minutes) and write (moving, resizing or completing an imported task patches the event, optionally the user's own tasks too) are built. What is left is in `TODO.md` under Later: assistant and agent edits are not written to Google, Google-side edits to an event the app made do not flow back, existing tasks are not copied when "Add my own tasks" is turned on, and a real run on a real calendar is still to do.
 
 - **Resume cards with context** `8/10`
   Extends "save your place": with the desktop companion, also remember the open file, URL or folder when a task was last active, and reopen them with one click when it becomes current again.
@@ -256,7 +257,7 @@ The ideas that look like the strongest return on a small investment. Details are
   Batch similar small tasks (calls, mails, errands) into blocks automatically.
 
 - **Integrations import** `6/10`
-  Pull open items from Todoist, GitHub issues, Notion, mail flags into the inbox. Fewer places to remember.
+  Pull open items from Todoist, GitHub issues, Notion, mail flags into the inbox. Fewer places to remember. Google Calendar import is built and is the pattern to follow: pick the source, preview, then import.
 
 - **Household mode** `5/10`
   Shared chores between people living together, each with their own Now screen. Many ADHD struggles are domestic.
@@ -281,7 +282,7 @@ The ideas that look like the strongest return on a small investment. Details are
   A read-only weekly summary the user can share with an ADHD coach or therapist. Turns the planner into material for real support.
 
 - **On-device model** `6/10`
-  A small local model (WebGPU) for breakdown, stuck hints and quick add so basic AI works without a key, offline and privately.
+  A small local model (WebGPU) for breakdown, stuck hints and quick add so basic AI works without a key, offline and privately. Guest mode already keeps the key in the browser and calls OpenAI directly, so this would be the only AI path with no key at all.
 
 - **Full Crisis Mode** `6/10` **(parked)**
   A complete overwhelm protocol: reduce the day, contact a chosen person, grounding steps, recovery plan for tomorrow.
