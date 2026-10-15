@@ -1,6 +1,7 @@
 import { type Task } from '#lib/types.js';
 import type { Repeat } from '#lib/schedule.js';
 import type { Tone } from '#lib/tones.js';
+import type { SoundSlot } from '#lib/sounds.js';
 import type { Backend } from '#lib/backend.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
@@ -79,6 +80,8 @@ export const tasker: {
 	};
 	device: { id: string; display: string | null; streaming: boolean; audioBlocked: boolean }; // display: the device that plays sound, null means every device. audioBlocked: the browser has not unlocked audio yet
 	voice: { replies: boolean; recording: boolean; transcribing: boolean; speaking: boolean }; // replies: the user's setting to hear the assistant
+	/** The sounds this device replaced with a file of the user's own: slot to file name. The audio itself is in `custom-sounds.ts`. */
+	sounds: Partial<Record<SoundSlot, string>>;
 	/** What this device was already told. Both start as told (nothing shows) until the flags are read, so a first paint never flashes the welcome. */
 	firstRun: { welcomed: boolean };
 	/** Ids of the sample day's tasks still in the plan (a guest's device only). */
@@ -117,6 +120,7 @@ export const tasker: {
 	schedule: { alarms: [], wakeups: [], ringing: null, loaded: false },
 	device: { id: '', display: null, streaming: false, audioBlocked: false },
 	voice: { replies: false, recording: false, transcribing: false, speaking: false },
+	sounds: {},
 	firstRun: { welcomed: true },
 	sample: [],
 	move: { comparison: null, hasKey: false, busy: false, error: null },

@@ -3,8 +3,10 @@ import { browser } from '$app/env';
 import { readTone, ringTimeline, toneLength, toneNotes, type Note, type Tone } from '#lib/tones.js';
 import { duckSpeech } from '#lib/speech.js';
 import { audioContext as sharedAudio, runningAudio } from '#lib/audio.js';
+import { customBuffer } from '#lib/custom-sounds.js';
+import type { SoundSlot } from '#lib/sounds.js';
 
-export function playSound(type: 'task-started' | 'reminder' | 'wrap-up' | 'done') {
+export function playSound(type: SoundSlot) {
 	if (!browser || tasker.isMuted || tasker.volume <= 0) return;
 	// A browser that has not unlocked audio yet stays silent, the silence line says so
 	const audioContext = runningAudio();
@@ -15,6 +17,18 @@ export function playSound(type: 'task-started' | 'reminder' | 'wrap-up' | 'done'
 	const master = audioContext.createGain();
 	master.gain.value = tasker.volume / 100;
 	master.connect(audioContext.destination);
+
+	// The user's own file replaces the built-in sound, same volume ceiling
+	const custom = customBuffer(type);
+	if (custom) {
+		const source = audioContext.createBufferSource();
+		source.buffer = custom;
+		source.connect(master);
+		source.onended = () => master.disconnect();
+		source.start();
+		duckSpeech(Math.max(custom.duration * 1000, type === 'task-started' ? 200 : 1200));
+		return;
+	}
 
 	switch (type) {
 		case 'task-started': {

@@ -4,6 +4,7 @@
 	import AssistantDrawer from '#lib/components/AssistantDrawer.svelte';
 	import { onMount, untrack } from 'svelte';
 	import { initAudio } from '#lib/audio.js';
+	import { loadCustomSounds } from '#lib/custom-sounds.js';
 	import { initPreferences, setTimezone } from '#lib/theme.js';
 	import { deviceTimezone } from '#lib/time.js';
 	import { keepAwake, toggleFullscreen } from '#lib/display.js';
@@ -67,6 +68,8 @@
 		const stopPreferences = initPreferences();
 		// One audio context for the page, unlocked by the first tap or key
 		const stopAudio = initAudio();
+		// Sounds this device replaced with the user's own files
+		void loadCustomSounds();
 		return () => {
 			stopCalendar();
 			stopPreferences();

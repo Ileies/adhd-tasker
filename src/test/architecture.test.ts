@@ -90,6 +90,8 @@ describe('pairing rule', () => {
 		'theme.ts': 'until UX phase 8b replaces its day window with sun.ts',
 		'core/context.ts': 'types and one error class, covered by the model and route tests',
 		'server/ctx.ts': 'wiring of the server context, used by the route tests',
+		'custom-sounds.ts':
+			'decodes audio with the shared AudioContext, browser API wiring (rules in sounds.ts)',
 		'alarms.ts': 'until checks plan phase 6',
 		'agent.ts': 'until checks plan phase 6',
 		'assistant.ts': 'until checks plan phase 6',
