@@ -25,6 +25,10 @@ function todaysDaylight(at = new Date()) {
 }
 
 function resolveDark(): boolean {
+	// Before the settings arrive the location and timezone are unknown: keep what app.html painted from the
+	// last saved window, and do not overwrite that window with a guess
+	if (tasker.themeMode === 'auto' && !tasker.account.ready)
+		return document.documentElement.classList.contains('dark');
 	const light = todaysDaylight();
 	// app.html has no sun math: it reads today's window from here before the app loads
 	save('daylight', `${light.start},${light.end}`);

@@ -132,7 +132,12 @@
 	// The theme follows the sun where the user is: a guest's settings arrive after the first paint, and the
 	// place can change. A microtask, because the cross-fade flushes synchronously and that is not allowed in an effect
 	$effect(() => {
-		void [tasker.settings.locationLat, tasker.settings.locationLon, tasker.timezone];
+		void [
+			tasker.settings.locationLat,
+			tasker.settings.locationLon,
+			tasker.timezone,
+			tasker.account.ready
+		];
 		queueMicrotask(syncTheme);
 	});
 

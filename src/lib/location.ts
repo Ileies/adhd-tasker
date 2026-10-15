@@ -8,7 +8,7 @@ import type { Settings } from '#lib/core/repo.js';
 import { formatClock24 } from '#lib/format.js';
 import { placeForTimezone } from '#lib/places.js';
 import { FALLBACK_DAY, sunTimes, type DayLight } from '#lib/sun.js';
-import type { DateKey } from '#lib/time.js';
+import { deviceTimezone, type DateKey } from '#lib/time.js';
 
 /** Where a saved location came from: the internet address (account only), the browser's position or a city search. */
 export type LocationSource = 'ip' | 'device' | 'city';
@@ -77,7 +77,8 @@ export interface Daylight extends DayLight {
 
 /** The light window of a day: the saved location, else the timezone's main city, else the fixed hours. */
 export function daylight(fields: LocationFields, timezone: string | null, date: DateKey): Daylight {
-	const zone = timezone ?? 'UTC';
+	// Without a timezone the clock is the device's own (`minutesNow`), so the window must be too
+	const zone = timezone ?? deviceTimezone();
 	const saved = savedLocation(fields);
 	if (saved) {
 		return {
