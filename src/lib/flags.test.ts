@@ -24,29 +24,29 @@ afterEach(() => {
 
 describe('flags', () => {
 	test('start unset', () => {
-		expect(readFlags()).toEqual({ welcomed: false, screenHintSeen: false, signedInBefore: false });
+		expect(readFlags()).toEqual({ welcomed: false, screenHintSeen: false });
 	});
 
 	test('a set flag stays set and the others are not touched', () => {
 		setFlag('welcomed');
-		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false, signedInBefore: false });
+		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false });
 	});
 
 	test('a cleared flag is unset again, the others stay', () => {
-		setFlag('signedInBefore');
+		setFlag('screenHintSeen');
 		setFlag('welcomed');
-		clearFlag('signedInBefore');
-		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false, signedInBefore: false });
+		clearFlag('screenHintSeen');
+		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false });
 	});
 
-	test('a blocked storage silences the hints but never loads a third party script', () => {
+	test('a blocked storage silences the hints', () => {
 		Object.defineProperty(globalThis, 'localStorage', {
 			configurable: true,
 			get() {
 				throw new Error('blocked');
 			}
 		});
-		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: true, signedInBefore: false });
+		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: true });
 		expect(() => setFlag('welcomed')).not.toThrow();
 		expect(() => clearFlag('welcomed')).not.toThrow();
 	});

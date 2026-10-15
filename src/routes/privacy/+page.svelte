@@ -97,9 +97,9 @@
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
 		<li>
-			<strong>Google</strong> handles sign-in. The sign-in script is loaded from Google only on a
-			device that has signed in before, so Google sees your IP address and browser there like on any
-			site that offers "Sign in with Google". A first visit loads nothing from Google. Google's
+			<strong>Google</strong> handles sign-in. The sign-in script is loaded from Google while you
+			are not signed in (not on this page or the terms), so Google sees your IP address and browser
+			like on any site that offers "Sign in with Google". Google's
 			<a
 				class="underline"
 				href="https://policies.google.com/privacy"
@@ -137,7 +137,8 @@
 			<code>google_oauth_link</code>: protect the sign-in, 10 minutes.
 		</li>
 		<li>
-			<code>g_csrf_token</code>: set by Google to protect One Tap sign-in, on devices that load it.
+			<code>g_csrf_token</code>: set by Google to protect One Tap sign-in, while you are not signed
+			in.
 		</li>
 		<li>
 			Local storage: theme, volume, mute, day start and end, a random device id, whether setup was

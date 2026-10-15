@@ -13,7 +13,6 @@
 	import { parseServices } from '#lib/google.js';
 	import { checkMove } from '#lib/move.js';
 	import MoveScreen from '#lib/components/MoveScreen.svelte';
-	import { readFlags, setFlag } from '#lib/flags.js';
 	import { beginGuest, useAccount } from '#lib/mode.js';
 	import { syncSpeechVolume } from '#lib/speech.js';
 	import { isFullscreenKey } from '#lib/shortcuts.js';
@@ -79,17 +78,11 @@
 		return () => clearTimeout(timer);
 	});
 
-	// A device that signed in once remembers it, so One Tap still greets a returning user. Kept at sign out.
-	$effect(() => {
-		if (data.user) setFlag('signedInBefore');
-	});
-
-	// One Tap only for a device that was signed in before: Google's script is not loaded for a first visit (D5).
+	// One Tap for everyone who is not signed in, also on a first visit.
 	// Started from code so it also shows after a client side navigation (for example from /privacy to /).
 	// The cleanup closes it again on legal pages.
 	$effect(() => {
-		if (!wantsOneTap({ signedIn: !!data.user, legal, signedInBefore: readFlags().signedInBefore }))
-			return;
+		if (!wantsOneTap({ signedIn: !!data.user, legal })) return;
 		loadGsi();
 		return showOneTap({ clientId: PUBLIC_GOOGLE_CLIENT_ID, loginUri: PUBLIC_REDIRECT_URI });
 	});

@@ -8,7 +8,6 @@ import { tasker } from '#lib/app.svelte.js';
 import { BackendError } from '#lib/backend.js';
 import { describeImport, exportFileName } from '#lib/core/export.js';
 import { describeBackup, describeSnapshot } from '#lib/core/merge.js';
-import { clearFlag } from '#lib/flags.js';
 import { readBackup, restoreBackup } from '#lib/local/device.js';
 import { stopAutoSignIn } from '#lib/onetap.js';
 import { showToast } from '#lib/toast.js';
@@ -82,7 +81,6 @@ async function eraseNow() {
 		await tasker.backend.data.erase();
 		if (account) {
 			// The account is gone, so Google's prompt must not sign the visitor into a new one at once
-			clearFlag('signedInBefore');
 			stopAutoSignIn();
 		}
 		// The database or the account is gone, start again from an empty one

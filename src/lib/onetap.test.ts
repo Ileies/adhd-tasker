@@ -14,10 +14,9 @@ function fakeDocument() {
 
 describe('wantsOneTap', () => {
 	test.each([
-		[{ signedIn: false, legal: false, signedInBefore: true }, true],
-		[{ signedIn: false, legal: false, signedInBefore: false }, false],
-		[{ signedIn: true, legal: false, signedInBefore: true }, false],
-		[{ signedIn: false, legal: true, signedInBefore: true }, false]
+		[{ signedIn: false, legal: false }, true],
+		[{ signedIn: true, legal: false }, false],
+		[{ signedIn: false, legal: true }, false]
 	])('%j is %p', (visit, wanted) => {
 		expect(wantsOneTap(visit)).toBe(wanted);
 	});

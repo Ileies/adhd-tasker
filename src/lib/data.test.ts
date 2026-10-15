@@ -239,15 +239,6 @@ describe('eraseSoon', () => {
 	test('for an account it says what goes, and afterwards Google must not sign the visitor in again', async () => {
 		jest.useFakeTimers();
 		let erased = 0;
-		const stored: Record<string, string> = { 'flag:signedInBefore': 'true' };
-		Object.defineProperty(globalThis, 'localStorage', {
-			configurable: true,
-			value: {
-				getItem: (key: string) => stored[key] ?? null,
-				setItem: (key: string, value: string) => void (stored[key] = value),
-				removeItem: (key: string) => void delete stored[key]
-			}
-		});
 		tasker.account.email = 'ada@example.com';
 		useBackend({ erase: async () => void erased++ });
 		eraseSoon();
@@ -256,9 +247,7 @@ describe('eraseSoon', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		tasker.account.email = null;
-		Reflect.deleteProperty(globalThis, 'localStorage');
 		expect(erased).toBe(1);
-		expect(stored).toEqual({});
 		expect(reloads).toBe(1);
 	});
 });

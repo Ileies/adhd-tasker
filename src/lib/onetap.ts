@@ -19,15 +19,11 @@ type ScriptHost = {
 };
 
 /**
- * Whether Google's script may be loaded: only for a visitor who is not signed in, on a page that is not a
- * page to read, and on a device that was signed in before. A first visit contacts no one but this server (D5);
- * the visitor who presses Sign in is sent to Google by the server and needs no script.
+ * Whether Google's script may be loaded: only for a visitor who is not signed in and on a page that is not a
+ * page to read. That includes a first visit, so someone who wants to sign in right away can do it in one tap.
  */
-export const wantsOneTap = (visit: {
-	signedIn: boolean;
-	legal: boolean;
-	signedInBefore: boolean;
-}) => !visit.signedIn && !visit.legal && visit.signedInBefore;
+export const wantsOneTap = (visit: { signedIn: boolean; legal: boolean }) =>
+	!visit.signedIn && !visit.legal;
 
 /** After signing out, so One Tap's auto select does not sign the visitor straight back in. */
 export function stopAutoSignIn(
