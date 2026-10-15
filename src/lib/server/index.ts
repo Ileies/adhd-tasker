@@ -19,7 +19,12 @@ export function login(event: RequestEvent, services: GoogleServiceId[] = []): ne
 		(service) => service.scope
 	);
 	const url = google.createAuthorizationURL(state, codeVerifier, ['email', ...extra]);
-	if (extra.length) url.searchParams.set('include_granted_scopes', 'true');
+	if (extra.length) {
+		url.searchParams.set('include_granted_scopes', 'true');
+		// The server syncs while the app is closed, so it needs a refresh token, and Google sends one only with consent
+		url.searchParams.set('access_type', 'offline');
+		url.searchParams.set('prompt', 'consent');
+	}
 	const cookie = { path: '/', secure: !dev, httpOnly: true, maxAge: 60 * 10 }; // 10 minutes
 
 	if (extra.length) event.cookies.set('google_oauth_link', '1', cookie);

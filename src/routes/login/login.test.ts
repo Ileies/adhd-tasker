@@ -41,6 +41,17 @@ describe('POST /login', () => {
 		expect(cookieNames(event.cookies)).toContain('google_oauth_link');
 	});
 
+	test('asks for offline access with consent when linking, and not for a plain sign in', async () => {
+		const user = await makeUser();
+		const linking = new URL(
+			(await post({ user, body: form('calendar') }).result).headers.get('location') ?? ''
+		);
+		expect(linking.searchParams.get('access_type')).toBe('offline');
+		expect(linking.searchParams.get('prompt')).toBe('consent');
+		const plain = new URL((await post({ body: form() }).result).headers.get('location') ?? '');
+		expect(plain.searchParams.has('access_type')).toBe(false);
+	});
+
 	test('refuses services without a sign in', async () => {
 		expect((await post({ body: form('calendar') }).result).status).toBe(401);
 	});

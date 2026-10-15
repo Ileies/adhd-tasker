@@ -6,6 +6,7 @@ import { POST as restore } from './restore/+server.js';
 import { GET as snapshots } from './snapshots/+server.js';
 import { EXPORT_APP, EXPORT_VERSION } from '#lib/core/export.js';
 import { db } from '#lib/server/db/index.js';
+import { storeRefreshToken } from '#lib/server/google-tokens.js';
 import * as schema from '#lib/server/db/schema.js';
 import { subscribe, type StreamMessage } from '#lib/server/stream.js';
 import { fakeFetch } from '#test/fakes.js';
@@ -180,7 +181,8 @@ describe('DELETE /account', () => {
 
 	test('no row of the user is left in any table, and other accounts keep theirs', async () => {
 		const user = await makeUser();
-		fakeFetch({ [REVOKE]: () => new Response('{}') });
+		storeRefreshToken(TEST_EMAIL, 'google-refresh', ['email'], 1);
+		const { requests } = fakeFetch({ [REVOKE]: () => new Response('{}') });
 		await makeTask({ title: 'Mine' });
 		await makeTask({ title: 'Theirs', email: 'other@example.com' });
 		const repo = (await import('#lib/server/db-repo.js')).dbRepo(TEST_EMAIL);
@@ -207,6 +209,10 @@ describe('DELETE /account', () => {
 		const result = await callRoute(DELETE, event);
 		expect(result.status).toBe(204);
 		expect(event.cookies.jar.size).toBe(0);
+		// Google is told to drop the grant, the session token is revoked too
+		expect(await Promise.all(requests.map((request) => request.text()))).toContain(
+			'token=google-refresh'
+		);
 
 		// Every table that holds a user's rows has an `email` column
 		const owned = Object.values(schema as Record<string, unknown>)

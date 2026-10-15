@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
+import { revokeGoogle } from '#lib/server/google-tokens.js';
 import { google } from '#lib/server/index.js';
 
 /**
@@ -12,6 +13,7 @@ import { google } from '#lib/server/index.js';
 export const DELETE: RequestHandler = async ({ locals, cookies }) => {
 	if (!locals.user) error(401, 'Login required');
 
+	await revokeGoogle(locals.user.email);
 	const token = cookies.get('token');
 	if (token) await google.revokeToken(token).catch(() => {});
 	db.delete(users).where(eq(users.email, locals.user.email)).run();

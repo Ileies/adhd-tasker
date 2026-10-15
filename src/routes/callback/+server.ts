@@ -5,6 +5,7 @@ import type { RequestHandler } from './$types';
 import { servicesFromScopes } from '#lib/google.js';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
+import { storeRefreshToken } from '#lib/server/google-tokens.js';
 import { google } from '#lib/server/index.js';
 import { createSession, SESSION_MAX_AGE, verifyIdToken } from '#lib/server/session.js';
 
@@ -44,7 +45,10 @@ export const GET: RequestHandler = async ({ url, cookies, locals }) => {
 			if (!locals.user || info?.email !== locals.user.email) {
 				linkMismatch = true;
 			} else {
-				const granted = servicesFromScopes(tokens.hasScopes() ? tokens.scopes() : []);
+				const scopes = tokens.hasScopes() ? tokens.scopes() : [];
+				const granted = servicesFromScopes(scopes);
+				if (tokens.hasRefreshToken())
+					storeRefreshToken(locals.user.email, tokens.refreshToken(), scopes, Date.now());
 				await db
 					.update(users)
 					.set({ googleServices: granted.join(' ') })

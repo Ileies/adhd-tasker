@@ -212,6 +212,7 @@ describe('network access', () => {
 			'src/lib/core/voice.ts',
 			'src/lib/openai.ts',
 			'src/lib/remote-backend.ts',
+			'src/lib/server/google-tokens.ts',
 			'src/lib/server/session.ts',
 			'src/routes/callback/+server.ts',
 			'src/service-worker/index.ts'

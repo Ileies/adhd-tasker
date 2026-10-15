@@ -65,8 +65,10 @@
 			to you, and how many tokens each call used.
 		</li>
 		<li>
-			<strong>Linked Google services:</strong> only which services you allowed. No access to them is stored
-			yet.
+			<strong>Linked Google services:</strong> which services you allowed, and the refresh token Google
+			gave for them, stored encrypted so the server can reach them while the app is closed. Unlinking,
+			or deleting your account, tells Google to revoke it and deletes it here. Nothing is read from these
+			services yet.
 		</li>
 	</ul>
 	<p class="mt-2">
