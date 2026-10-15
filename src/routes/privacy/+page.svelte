@@ -18,7 +18,7 @@
 	<title>Privacy - ADHD Tasker</title>
 </svelte:head>
 
-<PageFrame title="Privacy" subtitle="Last updated October 14, 2026" {sections} prose>
+<PageFrame title="Privacy" subtitle="Last updated October 15, 2026" {sections} prose>
 	<p>
 		ADHD Tasker is a small, privately run planner. It stores what it needs to show you your plan and
 		nothing more. There is no advertising, no analytics, no tracking and no selling of data. How the
@@ -45,6 +45,11 @@
 		<li>
 			<strong>Your plan:</strong> the tasks you create (title, description, date, time, duration, priority,
 			done or not) and your alarms.
+		</li>
+		<li>
+			<strong>Plan snapshots:</strong> when you sign in and your account already has a plan, or you restore
+			an earlier plan, the server first keeps a copy of your account's plan (tasks, alarms and settings),
+			so the change can be undone.
 		</li>
 		<li>
 			<strong>Your settings:</strong> theme, timezone, reminders, assistant and voice settings, and which
@@ -74,9 +79,13 @@
 		How long it is kept
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
-		<li>Events the assistant saw and token counts: 30 days.</li>
+		<li>Events the assistant saw and token counts: 30 days. Plan snapshots: 30 days.</li>
 		<li>Alarms and wakeups: 7 days after they ended. Resolved assistant notes: 7 days.</li>
-		<li>Your account, tasks, settings and the change history: until you ask for deletion.</li>
+		<li>
+			Your account, tasks, settings and the change history: until you delete your account. Settings
+			has "Delete my account", which removes all of it, snapshots included, after ten seconds in
+			which you can undo it.
+		</li>
 	</ul>
 
 	<h2 id="other-services-involved" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
@@ -84,9 +93,9 @@
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
 		<li>
-			<strong>Google</strong> handles sign-in. The sign-in script is loaded from Google on every
-			page, so Google sees your IP address and browser like on any site that offers "Sign in with
-			Google". Google's
+			<strong>Google</strong> handles sign-in. The sign-in script is loaded from Google only on a
+			device that has signed in before, so Google sees your IP address and browser there like on any
+			site that offers "Sign in with Google". A first visit loads nothing from Google. Google's
 			<a
 				class="underline"
 				href="https://policies.google.com/privacy"
@@ -123,10 +132,13 @@
 			<code>google_oauth_state</code>, <code>google_code_verifier</code>,
 			<code>google_oauth_link</code>: protect the sign-in, 10 minutes.
 		</li>
-		<li><code>g_csrf_token</code>: set by Google to protect One Tap sign-in.</li>
 		<li>
-			Local storage: theme, volume, mute, day start and end, a random device id, and whether setup
-			was done.
+			<code>g_csrf_token</code>: set by Google to protect One Tap sign-in, on devices that load it.
+		</li>
+		<li>
+			Local storage: theme, volume, mute, day start and end, a random device id, whether setup was
+			done, and whether this device signed in before. Without an account your plan lives in this
+			browser's own database (IndexedDB) and is not sent to this server.
 		</li>
 	</ul>
 	<p class="mt-2">There are no tracking or advertising cookies, so there is no cookie banner.</p>

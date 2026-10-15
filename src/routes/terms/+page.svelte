@@ -16,12 +16,13 @@
 	<title>Terms - ADHD Tasker</title>
 </svelte:head>
 
-<PageFrame title="Terms of use" subtitle="Last updated October 14, 2026" {sections} prose>
+<PageFrame title="Terms of use" subtitle="Last updated October 15, 2026" {sections} prose>
 	<p>
 		ADHD Tasker is a free planner run privately by Elias Klassen (<a
 			class="underline"
 			href="mailto:admin@ileies.de">admin@ileies.de</a
-		>). By signing in you agree to these terms. How your data is handled is described under
+		>). By using the app, with or without an account, you agree to these terms. How your data is
+		handled is described under
 		<a class="underline" href="/privacy">Privacy</a>.
 	</p>
 
@@ -75,7 +76,8 @@
 		content. Accounts that do so can be blocked.
 	</p>
 	<p class="mt-2">
-		You can stop using the app at any time and ask for your account to be deleted by writing to
+		You can stop using the app at any time and delete your account yourself under Settings, or ask
+		for it by writing to
 		<a class="underline" href="mailto:admin@ileies.de">admin@ileies.de</a>.
 	</p>
 
