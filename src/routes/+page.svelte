@@ -100,10 +100,11 @@
 		loadDay(today).catch(() => {});
 	});
 
-	// Soft chime every 5 minutes while there is something to do, to pull attention back
+	// Soft chime every few minutes (the check-in setting, 0 is off) while there is something to do, to pull attention back
 	$effect(() => {
-		if (!hasCurrent) return;
-		const timer = setInterval(() => playSound('reminder'), 300_000);
+		const minutes = settings.checkInMinutes;
+		if (!hasCurrent || minutes <= 0) return;
+		const timer = setInterval(() => playSound('reminder'), minutes * 60_000);
 		return () => clearInterval(timer);
 	});
 

@@ -12,7 +12,8 @@
 		moveTo,
 		resizeTo,
 		snap,
-		visibleRange
+		visibleRange,
+		MY_DAY
 	} from '#lib/plan.js';
 	import { QUICK_DURATION } from '#lib/quickadd.js';
 	import { priorityStyle } from '#lib/urgency.js';
@@ -30,6 +31,7 @@
 		now,
 		showNow,
 		highlight = null,
+		day = MY_DAY,
 		onEdit,
 		onAdd,
 		onMove,
@@ -43,6 +45,8 @@
 		showNow: boolean;
 		/** A task that was just added: scrolled into view and outlined. */
 		highlight?: number | null;
+		/** My day: the hours shown in full, the rest folds. */
+		day?: { start: number; end: number };
 		onEdit: (task: Task) => void;
 		/** A block drawn on empty space, titled in place. */
 		onAdd: (title: string, startTime: number, duration: number) => void;
@@ -83,7 +87,7 @@
 
 	const placements = $derived(layoutDay(tasks));
 	// Hours outside the day fold into one thin row, unless a task is in them or the row was opened
-	const range = $derived(visibleRange(tasks));
+	const range = $derived(visibleRange(tasks, day));
 	const earlyFolded = $derived(range.start > 0 && !earlyOpen);
 	const lateFolded = $derived(range.end < DAY_MINUTES && !lateOpen);
 	const from = $derived(earlyFolded ? range.start : 0);

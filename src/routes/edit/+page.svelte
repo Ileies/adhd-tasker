@@ -280,6 +280,7 @@
 				{now}
 				showNow={selected === today}
 				{highlight}
+				day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
 				onEdit={openEditForm}
 				onAdd={addBlock}
 				onMove={move}
