@@ -208,9 +208,27 @@ describe('network access', () => {
 			'src/lib/remote-backend.ts',
 			'src/lib/server/google-calendar.ts',
 			'src/lib/server/google-tokens.ts',
+			'src/lib/server/location.ts',
 			'src/lib/server/session.ts',
 			'src/routes/callback/+server.ts',
 			'src/service-worker/index.ts'
 		]);
+	});
+
+	test('only the location modules and the CSP name the location services the Privacy page lists', () => {
+		expect(appCodeMentioning(/geocoding-api\.open-meteo\.com/)).toEqual([
+			'src/lib/core/geocode.ts',
+			'src/lib/csp.ts'
+		]);
+		expect(appCodeMentioning(/ipwho\.is/)).toEqual([
+			'src/lib/server/location.ts',
+			'src/routes/privacy/+page.svelte'
+		]);
+	});
+
+	test('the Privacy page names both location services', () => {
+		const privacy = appCode.find(({ path }) => path === 'src/routes/privacy/+page.svelte');
+		expect(privacy?.content).toContain('ipwho.is');
+		expect(privacy?.content).toContain('Open-Meteo');
 	});
 });
