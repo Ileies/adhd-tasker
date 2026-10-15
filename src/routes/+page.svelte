@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { shortcutFor } from '#lib/shortcuts.js';
 	import { tasker } from '#lib/app.svelte.js';
 	import NowHero from '#lib/components/NowHero.svelte';
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
@@ -34,7 +35,7 @@
 	import MissedTriage from '#lib/components/MissedTriage.svelte';
 	import { formatClock } from '#lib/format.js';
 	import { addDays, minutesNow, todayIn } from '#lib/time.js';
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { browser } from '$app/env';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
 
@@ -288,7 +289,23 @@
 		});
 		showToast(failure ?? `Timer set: ${action.minutes} min`);
 	}
+
+	// D finishes what the hero shows, N or / goes to the quick add line on an empty day
+	async function pageKey(event: KeyboardEvent) {
+		const action = shortcutFor(event);
+		if (action === 'done') {
+			const task = heroFocus(hero);
+			if (task && !document.querySelector('[role="dialog"]')) complete(task);
+		} else if (action === 'quick' && tasks.every((task) => task.date !== today)) {
+			event.preventDefault();
+			focusAdd = false;
+			await tick();
+			focusAdd = true;
+		}
+	}
 </script>
+
+<svelte:window onkeydown={pageKey} />
 
 <svelte:head>
 	<title>{ready ? tabTitle(hero) : 'Now - ADHD Tasker'}</title>
