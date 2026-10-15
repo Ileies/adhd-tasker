@@ -116,8 +116,7 @@
 			<Card.Content class="space-y-6">
 				{#if data.user}
 					<AccountCard email={data.user.email} />
-					<div class="space-y-4 border-t pt-6">
-						<p class="font-medium">Google Calendar</p>
+					<div class="space-y-4">
 						<GoogleLinkPicker linked={data.user.googleServices} />
 						{#if parseServices(data.user.googleServices).includes('calendar')}
 							<div class="border-t pt-6">
