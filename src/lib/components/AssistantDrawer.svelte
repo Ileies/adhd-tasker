@@ -10,6 +10,8 @@
 
 	const { hasKey }: { hasKey: boolean } = $props();
 
+	const SUGGESTIONS = ['Plan the rest of my day', 'Push everything 30 min later', 'What is next?'];
+
 	let draft = $state('');
 	let list: HTMLDivElement | undefined = $state();
 	const chat = tasker.assistant;
@@ -69,6 +71,19 @@
 			<Sheet.Description
 				>Ask it to add, move or clear tasks. Every change can be undone.</Sheet.Description
 			>
+			<div class="flex items-center gap-2">
+				{#if chat.messages.length}
+					<Button
+						variant="ghost"
+						size="sm"
+						disabled={chat.busy}
+						onclick={() => (chat.messages = [])}>New chat</Button
+					>
+				{/if}
+				<Button variant="ghost" size="sm" href="/activity" onclick={() => (chat.open = false)}
+					>What it changed</Button
+				>
+			</div>
 		</Sheet.Header>
 
 		<div bind:this={list} class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4" aria-live="polite">
@@ -81,9 +96,19 @@
 					> to use the assistant.
 				</p>
 			{:else if chat.messages.length === 0}
-				<p class="text-muted-foreground">
-					Try: "Dinner with friends tonight at 19:30 for two hours".
-				</p>
+				<!-- A blank chat box is a decision, a tap is not -->
+				<div class="flex flex-col items-start gap-2">
+					{#each SUGGESTIONS as suggestion (suggestion)}
+						<button
+							type="button"
+							class="bg-muted hover:bg-accent min-h-11 cursor-pointer rounded-2xl px-3 py-2 text-left"
+							disabled={chat.busy}
+							onclick={() => sendMessage(suggestion)}
+						>
+							{suggestion}
+						</button>
+					{/each}
+				</div>
 			{/if}
 
 			{#each chat.messages as message, index (index)}
@@ -128,10 +153,11 @@
 					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) void submit(e);
 				}}
 			/>
-			{#if canRecord()}
+			{#if canRecord() && !draft.trim()}
 				<Button
 					type="button"
 					size="icon"
+					class="size-11"
 					variant={voice.recording ? 'default' : 'secondary'}
 					aria-label="Hold to talk"
 					title="Hold to talk"
@@ -151,15 +177,17 @@
 				>
 					<Mic />
 				</Button>
+			{:else}
+				<Button
+					type="submit"
+					size="icon"
+					class="size-11"
+					aria-label="Send"
+					disabled={!hasKey || chat.busy || !draft.trim()}
+				>
+					<Send />
+				</Button>
 			{/if}
-			<Button
-				type="submit"
-				size="icon"
-				aria-label="Send"
-				disabled={!hasKey || chat.busy || !draft.trim()}
-			>
-				<Send />
-			</Button>
 		</form>
 		<p class="text-muted-foreground px-3 pb-3 text-sm" role="status" aria-live="polite">
 			{#if voice.recording}Listening, release to send{:else if voice.transcribing}Understanding...{:else if micMessage}{micMessage}{/if}
