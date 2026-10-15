@@ -125,9 +125,12 @@
 						[0, at],
 						[midnight, DAY_MINUTES]
 					];
-		return spans
-			.map(([a, b]) => ({ a: Math.max(a, from), b: Math.min(b, to) }))
-			.filter(({ a, b }) => b > a);
+		return (
+			spans
+				// The night keeps one even tint, it is not dimmed
+				.map(([a, b]) => ({ a: Math.max(a, from, range.night), b: Math.min(b, to) }))
+				.filter(({ a, b }) => b > a)
+		);
 	});
 
 	function begin(event: PointerEvent, task: Task, mode: Drag['mode']) {
