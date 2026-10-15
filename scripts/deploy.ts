@@ -42,7 +42,12 @@ const PUBLIC_URL = value('url', 'https://tasker.ileies.de/');
 /** pm2 on pronix runs as root out of a shared home, not out of /root/.pm2. */
 const PM2 = 'PM2_HOME=/etc/.pm2 pm2';
 
-const RUNTIME_ENV: Record<string, string> = { NODE_ENV: 'production', PORT };
+/** `BODY_SIZE_LIMIT` is the adapter's request limit (512 kB by default): a full plan moving into an account is larger. Same as `pm2.config.cjs`. */
+const RUNTIME_ENV: Record<string, string> = {
+	NODE_ENV: 'production',
+	PORT,
+	BODY_SIZE_LIMIT: '8M'
+};
 
 const DRY = flag('dry-run');
 let failed = false;
