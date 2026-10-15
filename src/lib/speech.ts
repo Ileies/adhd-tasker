@@ -3,6 +3,7 @@ import {
 	MAX_RECORDING_MS,
 	MIN_RECORDING_MS,
 	pickRecordingType,
+	sttEngine,
 	speakable,
 	speechVolume
 } from '#lib/voice.js';
@@ -25,22 +26,122 @@ let duckTimer: ReturnType<typeof setTimeout> | undefined;
 /** Bumped on every speak and stop, so a slow fetch of older speech never plays over newer speech. */
 let speechRun = 0;
 
+/** The slice of the browser's speech recognition used without a key (not in the DOM typings yet). */
+interface Recognition {
+	lang: string;
+	continuous: boolean;
+	interimResults: boolean;
+	onstart: (() => void) | null;
+	onend: (() => void) | null;
+	onerror: ((event: { error: string }) => void) | null;
+	onresult:
+		| ((event: {
+				results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
+		  }) => void)
+		| null;
+	start(): void;
+	stop(): void;
+	abort(): void;
+}
+
+const recognitionClass = (): (new () => Recognition) | undefined => {
+	const scope = globalThis as unknown as Record<string, (new () => Recognition) | undefined>;
+	return scope.SpeechRecognition ?? scope.webkitSpeechRecognition;
+};
+
+/** The speech to text in use: OpenAI with a key (unless switched off to save cost), else the browser's own. */
+const engine = () =>
+	sttEngine({
+		hasKey: tasker.settings.hasOpenaiKey,
+		openaiTranscribe: tasker.settings.openaiTranscribe,
+		canRecord: canRecord(),
+		browser: !!recognitionClass()
+	});
+
+let recognition: Recognition | undefined;
+/** Resolves with the final text once the browser recognition has ended. */
+let recognized: Promise<string> | undefined;
+
 export const canRecord = () =>
 	typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
-/** A mic is only offered when the device can record and a key is saved, otherwise it would lead nowhere. */
-export const canTalk = () => canRecord() && tasker.settings.hasOpenaiKey;
+/** A mic is offered with a saved key (OpenAI) or, without one, where the browser can recognise speech itself. */
+export const canTalk = () => engine() !== null;
+
+/** Starts the browser recognition. Resolves false when it cannot start (no permission, no service). */
+async function startBrowserRecognition(): Promise<boolean> {
+	const Class = recognitionClass();
+	if (!Class) return false;
+	const active = new Class();
+	active.lang = navigator.language || 'en-US';
+	active.continuous = true;
+	active.interimResults = false;
+
+	let text = '';
+	let finish: (value: string) => void = () => {};
+	recognized = new Promise<string>((resolve) => (finish = resolve));
+	active.onresult = (event) => {
+		for (const result of Array.from(event.results)) {
+			if (result.isFinal) text += ` ${result[0].transcript}`;
+		}
+	};
+	let settle: (ok: boolean) => void = () => {};
+	const started = new Promise<boolean>((resolve) => (settle = resolve));
+	active.onstart = () => settle(true);
+	active.onerror = (event) => {
+		// 'no-speech' and 'aborted' just end the session, anything else means it never worked
+		if (event.error !== 'no-speech' && event.error !== 'aborted') settle(false);
+	};
+	active.onend = () => {
+		settle(false);
+		finish(text.trim());
+		tasker.voice.recording = false;
+	};
+	recognition = active;
+	try {
+		active.start();
+	} catch {
+		recognition = undefined;
+		return false;
+	}
+	if (await started) return true;
+	recognition = undefined;
+	return false;
+}
 
 /**
  * Starts recording while the key or button is held. Resolves false when the microphone is not available.
  * `onLimit` receives the text if the recording ended by itself at the time limit.
  */
 export async function startRecording(onLimit: (text: string | null) => void): Promise<boolean> {
-	if (tasker.voice.recording || tasker.voice.transcribing || !canRecord()) return false;
+	const mode = engine();
+	const browser = mode === 'browser';
+	if (tasker.voice.recording || tasker.voice.transcribing || !mode) {
+		return false;
+	}
 	// The assistant must not hear itself
 	stopSpeaking();
 	cancelled = false;
 	tasker.voice.recording = true;
+
+	if (browser) {
+		const ok = await startBrowserRecognition();
+		if (!ok) {
+			tasker.voice.recording = false;
+			return false;
+		}
+		startedAt = Date.now();
+		if (cancelled) {
+			recognition?.abort();
+			tasker.voice.recording = false;
+			return true;
+		}
+		limitTimer = setTimeout(
+			() => void finishRecording().then(onLimit, () => onLimit(null)),
+			MAX_RECORDING_MS
+		);
+		return true;
+	}
 
 	try {
 		stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -76,6 +177,16 @@ function releaseMicrophone() {
 /** Ends the recording and returns what was said, `null` when it was too short, empty or failed. */
 export async function finishRecording(): Promise<string | null> {
 	clearTimeout(limitTimer);
+	if (recognition) {
+		const active = recognition;
+		const result = recognized;
+		recognition = undefined;
+		recognized = undefined;
+		active.stop();
+		const text = (await result) ?? '';
+		tasker.voice.recording = false;
+		return Date.now() - startedAt < MIN_RECORDING_MS ? null : text || null;
+	}
 	const active = recorder;
 	if (!active) {
 		// Released before the microphone opened
