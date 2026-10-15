@@ -146,6 +146,20 @@ export const planSnapshots = sqliteTable('plan_snapshots', {
 	file: text('file', { mode: 'json' }).$type<ExportFile>().notNull()
 });
 
+/**
+ * The refresh token Google gave when the user linked a service, encrypted (`#lib/server/crypto`). With it the
+ * server reads and writes the user's calendar while the app is closed. One row per user, deleted on unlink
+ * (after Google was told to revoke it) and with the account.
+ */
+export const googleTokens = sqliteTable('google_tokens', {
+	email: text('email')
+		.primaryKey()
+		.references(() => users.email, { onDelete: 'cascade' }),
+	refreshToken: text('refresh_token').notNull(), // encrypted
+	scopes: text('scopes').notNull(), // as Google reported them, space separated
+	createdAt: integer('created_at').notNull() // ms since epoch
+});
+
 // Only for Google Calendar
 export const reminders = sqliteTable('reminders', {
 	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
