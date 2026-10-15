@@ -9,6 +9,8 @@
 	import { keepAwake, toggleFullscreen } from '#lib/display.js';
 	import { startStream } from '#lib/stream.js';
 	import { loadGsi, showOneTap, stopAutoSignIn, wantsOneTap } from '#lib/onetap.js';
+	import { startCalendarSync } from '#lib/calendar.js';
+	import { parseServices } from '#lib/google.js';
 	import { checkMove } from '#lib/move.js';
 	import MoveScreen from '#lib/components/MoveScreen.svelte';
 	import { readFlags, setFlag } from '#lib/flags.js';
@@ -47,11 +49,16 @@
 	onMount(() => {
 		// A device that was a guest may still hold a plan: it moves into the account, or asks first
 		if (data.user) void checkMove();
+		// Calendar events follow Google while a screen is open, the server also does it with every screen closed
+		const stopCalendar = parseServices(data.user?.googleServices).includes('calendar')
+			? startCalendarSync()
+			: () => {};
 		loadFlags();
 		const stopPreferences = initPreferences();
 		// One audio context for the page, unlocked by the first tap or key
 		const stopAudio = initAudio();
 		return () => {
+			stopCalendar();
 			stopPreferences();
 			stopAudio();
 		};

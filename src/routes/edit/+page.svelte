@@ -21,6 +21,7 @@
 		QUICK_START as DEFAULT_START
 	} from '#lib/quickadd.js';
 	import { priorityStyle } from '#lib/urgency.js';
+	import { loadAllDay } from '#lib/calendar.js';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -45,6 +46,12 @@
 		void untrack(() =>
 			loadDay(date).catch((error) => showToast(errorText(error, 'Could not load this day')))
 		);
+	});
+
+	// All-day calendar events are not tasks, they are one line above the day
+	$effect(() => {
+		const date = selected;
+		void untrack(() => loadAllDay(date));
 	});
 
 	const dayTasks = $derived(tasker.tasks.filter((task) => task.date === selected));
@@ -173,6 +180,13 @@
 			Details
 		</Button>
 	</div>
+
+	{#if tasker.calendar.allDay.length > 0}
+		<p class="border-b px-6 py-2 text-sm">
+			<span class="text-muted-foreground">All day:</span>
+			{tasker.calendar.allDay.map((line) => line.title).join(', ')}
+		</p>
+	{/if}
 
 	{#if overlapCount > 0}
 		<div class="bg-warning/15 flex items-center gap-2 border-b px-6 py-2 text-sm" role="status">

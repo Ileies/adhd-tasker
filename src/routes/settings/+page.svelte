@@ -7,6 +7,8 @@
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
 	import ClockSettingsForm from '#lib/components/ClockSettingsForm.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
+	import CalendarSettings from '#lib/components/CalendarSettings.svelte';
+	import { parseServices } from '#lib/google.js';
 	import DataSettings from '#lib/components/DataSettings.svelte';
 	import SyncSettings from '#lib/components/SyncSettings.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
@@ -174,6 +176,11 @@
 				</Card.Header>
 				<Card.Content>
 					<GoogleLinkPicker linked={data.user.googleServices} />
+					{#if parseServices(data.user.googleServices).includes('calendar')}
+						<div class="mt-6 border-t pt-6">
+							<CalendarSettings />
+						</div>
+					{/if}
 				</Card.Content>
 			</Card.Root>
 		{/if}

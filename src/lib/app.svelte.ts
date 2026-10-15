@@ -4,6 +4,7 @@ import type { Tone } from '#lib/tones.js';
 import type { Backend } from '#lib/backend.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
+import type { AllDayLine } from '#lib/core/calendar.js';
 import type { Comparison } from '#lib/core/merge.js';
 import { clientSettings, type ClientSettings } from '#lib/settings.js';
 
@@ -90,6 +91,8 @@ export const tasker: {
 		busy: boolean;
 		error: string | null;
 	};
+	/** All-day events of the day Plan shows, one line each (Calendar is read for an account only). */
+	calendar: { allDay: AllDayLine[] };
 } = $state({
 	backend: remoteBackend,
 	account: { email: null, ready: false, problem: null },
@@ -109,5 +112,6 @@ export const tasker: {
 	voice: { replies: false, recording: false, transcribing: false, speaking: false },
 	firstRun: { welcomed: true, screenHintSeen: true },
 	sample: [],
-	move: { comparison: null, hasKey: false, busy: false, error: null }
+	move: { comparison: null, hasKey: false, busy: false, error: null },
+	calendar: { allDay: [] }
 });
