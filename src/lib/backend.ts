@@ -7,6 +7,13 @@
 import type { NewTask, Task } from '#lib/core/repo.js';
 import type { Alarm, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
+import type {
+	AllDayLine,
+	CalendarImport,
+	CalendarOverview,
+	ImportMode,
+	Preview
+} from '#lib/core/calendar.js';
 import type { ActivityView } from '#lib/core/activity.js';
 import type { ExportFile, ImportResult } from '#lib/core/export.js';
 import type { AgentFeed } from '#lib/core/feed.js';
@@ -97,6 +104,20 @@ export interface Backend {
 		snapshots(): Promise<SnapshotInfo[]>;
 		/** Brings a snapshot back. What is there now becomes a snapshot itself. */
 		restore(id: number): Promise<MoveResult>;
+	};
+	calendar: {
+		/** Whether Calendar is linked, where the link is and the calendars to choose from. A device has none. */
+		overview(): Promise<CalendarOverview>;
+		/** What is coming in the chosen calendars and how much clashes with the plan. Changes nothing. */
+		preview(calendars: string[]): Promise<Preview>;
+		/** The first import, after the preview. Rejects with the reason when it was not previewed. */
+		import(mode: ImportMode): Promise<CalendarImport>;
+		/** Follows the calendars now, `true` when the plan changed. */
+		sync(): Promise<boolean>;
+		/** Stops following the calendars. Tasks already imported stay. */
+		stop(): Promise<void>;
+		/** The all-day events from `from` to `to` inclusive, one line each on Plan. */
+		allDay(from: string, to: string): Promise<AllDayLine[]>;
 	};
 	sample: {
 		/** The sample tasks still in the plan. Only a guest's device makes a sample day, so an account has none. */

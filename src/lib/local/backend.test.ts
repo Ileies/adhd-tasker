@@ -266,6 +266,21 @@ describe('data', () => {
 	});
 });
 
+describe('calendar', () => {
+	test('a device has no calendar to link, reads nothing and asks to sign in for the rest', async () => {
+		const { backend } = await setup();
+		expect(await backend.calendar.overview()).toMatchObject({ linked: false, calendars: [] });
+		expect(await backend.calendar.sync()).toBe(false);
+		expect(await backend.calendar.allDay('2026-10-14', '2026-10-15')).toEqual([]);
+		await backend.calendar.stop();
+		for (const attempt of [
+			() => backend.calendar.preview(['primary']),
+			() => backend.calendar.import('all')
+		])
+			expect(await attempt().catch((error) => error)).toMatchObject({ status: 401 });
+	});
+});
+
 describe('account', () => {
 	test('a device has no account to move into and no snapshots to restore, it says to sign in', async () => {
 		const { backend } = await setup();

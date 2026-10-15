@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { IMPORT_MODES, importCalendars, withCalendar } from '#lib/server/calendar.js';
+import { IMPORT_MODES } from '#lib/core/calendar.js';
+import { importCalendars, withCalendar } from '#lib/server/calendar.js';
 
 /**
  * The first import, after the preview: `{ mode: 'all' | 'noClash' }`. Writes in one transaction and answers what

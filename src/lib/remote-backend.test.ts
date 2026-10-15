@@ -224,6 +224,45 @@ describe('remoteBackend requests', () => {
 		expect(await requests[1].json()).toEqual({ id: 3 });
 	});
 
+	test('calendar: overview is a GET, preview and import POST their choice', async () => {
+		const { requests } = fakeFetch({
+			'GET http://localhost:5173/calendar': json({
+				linked: true,
+				state: { status: 'none' },
+				calendars: []
+			}),
+			'POST http://localhost:5173/calendar/preview': json({ events: 2 }),
+			'POST http://localhost:5173/calendar/import': json({ tasks: 1, left: 0, allDay: 0 })
+		});
+		expect(await remoteBackend.calendar.overview()).toMatchObject({ linked: true });
+		expect(await remoteBackend.calendar.preview(['primary'])).toMatchObject({ events: 2 });
+		expect(await remoteBackend.calendar.import('noClash')).toMatchObject({ tasks: 1 });
+		expect(await requests[1].json()).toEqual({ calendars: ['primary'] });
+		expect(await requests[2].json()).toEqual({ mode: 'noClash' });
+	});
+
+	test('calendar: sync answers whether the plan changed, stop is a DELETE', async () => {
+		const { requests } = fakeFetch({
+			'POST http://localhost:5173/calendar/sync': json({ changed: true }),
+			'DELETE http://localhost:5173/calendar': () => new Response(null, { status: 204 })
+		});
+		expect(await remoteBackend.calendar.sync()).toBe(true);
+		await remoteBackend.calendar.stop();
+		expect(requests[1].method).toBe('DELETE');
+	});
+
+	test('calendar: a refused import says why, a failed all-day read leaves the line out', async () => {
+		fakeFetch({
+			'POST http://localhost:5173/calendar/import': refuse(409, 'Look at the preview first'),
+			'GET http://localhost:5173/calendar/all-day': refuse(500)
+		});
+		expect(await failure(() => remoteBackend.calendar.import('all'))).toMatchObject({
+			status: 409,
+			message: 'Look at the preview first'
+		});
+		expect(await remoteBackend.calendar.allDay('2026-10-14', '2026-10-15')).toEqual([]);
+	});
+
 	test('activity: the view is a GET of /activity', async () => {
 		fakeFetch({ 'GET http://localhost:5173/activity': json({ tokensToday: 3 }) });
 		expect(await remoteBackend.activity.load()).toMatchObject({ tokensToday: 3 });

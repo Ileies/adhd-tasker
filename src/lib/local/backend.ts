@@ -199,6 +199,20 @@ export function localBackend(deps: LocalDeps): Backend {
 			restore: signInFirst
 		},
 
+		// Calendar is read by the server for an account, a device has nothing to link
+		calendar: {
+			overview: async () => ({
+				linked: false,
+				state: { status: 'none', calendars: [], syncedAt: null },
+				calendars: []
+			}),
+			preview: signInFirst,
+			import: signInFirst,
+			sync: async () => false,
+			stop: async () => {},
+			allDay: async () => []
+		},
+
 		sample: {
 			async ids() {
 				const present: number[] = [];

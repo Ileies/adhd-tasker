@@ -168,6 +168,34 @@ export const remoteBackend: Backend = {
 		}
 	},
 
+	calendar: {
+		async overview() {
+			return (await request('/calendar', undefined, 'Could not read your calendars')).json();
+		},
+		async preview(calendars) {
+			return (
+				await post('/calendar/preview', { calendars }, 'Could not read your calendars')
+			).json();
+		},
+		async import(mode) {
+			return (await post('/calendar/import', { mode }, 'Could not import your calendars')).json();
+		},
+		async sync() {
+			const { changed } = await (
+				await post('/calendar/sync', {}, 'Could not sync your calendars')
+			).json();
+			return changed === true;
+		},
+		async stop() {
+			await request('/calendar', { method: 'DELETE' }, 'Could not stop following your calendars');
+		},
+		async allDay(from, to) {
+			// Plan shows what it has, a failed read leaves the days without the line
+			const response = await send(`/calendar/all-day?from=${from}&to=${to}`);
+			return response.ok ? response.json() : [];
+		}
+	},
+
 	sample: {
 		// An account starts from its own plan, the sample day is for a device that has none
 		ids: async () => [],

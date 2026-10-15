@@ -3,6 +3,8 @@ import { describe, expect, test } from 'bun:test';
 import {
 	clashesWith,
 	datesOf,
+	describeCalendarImport,
+	describePreview,
 	EVENT_PRIORITY,
 	mapEvent,
 	piecesToTasks,
@@ -319,5 +321,39 @@ describe('datesOf', () => {
 		).toEqual(['2026-10-14', '2026-10-15']);
 		expect(datesOf({ kind: 'allDay', title: 'x', dates: ['2026-10-14'] })).toEqual(['2026-10-14']);
 		expect(datesOf({ kind: 'skip' })).toEqual([]);
+	});
+});
+
+describe('describePreview', () => {
+	const preview = (events: number, clashing: number) => ({
+		events,
+		timed: events,
+		allDay: 0,
+		clashing,
+		clashes: []
+	});
+
+	test('says how many events are coming and how many clash', () => {
+		expect(describePreview(preview(34, 9))).toBe(
+			'Your calendar has 34 events in the next 14 days, 9 of them at the same time as tasks in your plan.'
+		);
+	});
+
+	test('says so when nothing clashes, and when nothing is coming', () => {
+		expect(describePreview(preview(1, 0))).toBe(
+			'Your calendar has 1 event in the next 14 days, none of them at the same time as tasks in your plan.'
+		);
+		expect(describePreview(preview(0, 0))).toBe('Your calendar has no events in the next 14 days.');
+	});
+});
+
+describe('describeCalendarImport', () => {
+	test('names what was added, and only what there is to say', () => {
+		expect(describeCalendarImport({ tasks: 3, left: 0, allDay: 0 })).toBe(
+			'3 tasks added to your plan.'
+		);
+		expect(describeCalendarImport({ tasks: 1, left: 2, allDay: 1 })).toBe(
+			'1 task added to your plan, 1 all-day event shown on Plan, 2 events left out because they clash.'
+		);
 	});
 });

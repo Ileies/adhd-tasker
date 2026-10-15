@@ -14,7 +14,11 @@ import {
 	previewImport,
 	windowFor,
 	windowInstants,
+	type AllDayLine,
+	type CalendarImport,
+	type CalendarState,
 	type Fetched,
+	type ImportMode,
 	type KnownEvent,
 	type Mapped,
 	type PlanSlot,
@@ -27,21 +31,11 @@ import { forgetGoogle, hasRefreshToken } from '#lib/server/google-tokens.js';
 import { parseServices } from '#lib/google.js';
 import { todayIn } from '#lib/time.js';
 
-/** How the first import treats events that share time with a task of the plan. */
-export type ImportMode = 'all' | 'noClash';
-export const IMPORT_MODES: readonly ImportMode[] = ['all', 'noClash'];
-
 /** Most calendars one user can read, a guard against a request that asks for hundreds. */
 export const MAX_CALENDARS = 20;
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Timed = Extract<Mapped, { kind: 'timed' }>;
-
-export interface CalendarState {
-	status: 'none' | 'preview' | 'active';
-	calendars: string[];
-	syncedAt: number | null;
-}
 
 /** Where the user's day is: the timezone saved with the account, UTC until one is. */
 function clockOf(email: string, now: number) {
@@ -113,15 +107,6 @@ export async function previewCalendars(
 	});
 }
 
-export interface ImportResult {
-	/** Tasks made. */
-	tasks: number;
-	/** Timed events left out because they clash with the plan. */
-	left: number;
-	/** All-day events, shown on Plan. */
-	allDay: number;
-}
-
 /** Tasks for the pieces of an event that are today or later, the days before are history. */
 function insertEvent(tx: Tx, email: string, from: string, item: Fetched, makeTasks: boolean) {
 	const { mapped, event, calendarId } = item;
@@ -162,14 +147,14 @@ export async function importCalendars(
 	email: string,
 	mode: ImportMode,
 	now: number
-): Promise<ImportResult | null> {
+): Promise<CalendarImport | null> {
 	const state = calendarState(email);
 	if (state.status !== 'preview') return null;
 	return guarded(email, async () => {
 		const { fetched, window } = await fetchAll(email, now, state.calendars);
 		return db.transaction((tx) => {
 			const plan = planFrom(email, window.from, tx);
-			const result: ImportResult = { tasks: 0, left: 0, allDay: 0 };
+			const result: CalendarImport = { tasks: 0, left: 0, allDay: 0 };
 			for (const item of fetched) {
 				if (item.mapped.kind === 'skip') continue;
 				const clash = clashesWith(item.mapped, plan);
@@ -321,11 +306,6 @@ export const syncedUsers = () =>
 export function stopSync(email: string) {
 	db.delete(calendarSync).where(eq(calendarSync.email, email)).run();
 	db.delete(calendarEvents).where(eq(calendarEvents.email, email)).run();
-}
-
-export interface AllDayLine {
-	date: string;
-	title: string;
 }
 
 /** The all-day events of the days from `from` to `to` inclusive, for the line on Plan. */

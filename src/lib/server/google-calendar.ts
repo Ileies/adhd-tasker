@@ -4,7 +4,7 @@
  */
 import { GOOGLE_CLIENT_SECRET } from '$app/env/private';
 import { PUBLIC_GOOGLE_CLIENT_ID } from '$app/env/public';
-import type { CalendarEvent } from '#lib/core/calendar.js';
+import type { CalendarEvent, CalendarInfo } from '#lib/core/calendar.js';
 import { accessTokens, readRefreshToken } from '#lib/server/google-tokens.js';
 
 export const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -75,12 +75,6 @@ async function get<T>(email: string, now: number, path: string, query: Record<st
 	}
 	if (!response.ok) throw new GoogleError(`Google answered ${response.status}`, response.status);
 	return (await response.json()) as T;
-}
-
-export interface CalendarInfo {
-	id: string;
-	name: string;
-	primary: boolean;
 }
 
 /** The calendars the user can read, the primary one first. */

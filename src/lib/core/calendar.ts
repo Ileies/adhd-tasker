@@ -262,3 +262,62 @@ export const datesOf = (mapped: Mapped): DateKey[] =>
 		: mapped.kind === 'allDay'
 			? mapped.dates
 			: [];
+
+/** A calendar the user can read. */
+export interface CalendarInfo {
+	id: string;
+	name: string;
+	primary: boolean;
+}
+
+/** Where the link to the calendars is: not started, chosen and previewed, or followed. */
+export interface CalendarState {
+	status: 'none' | 'preview' | 'active';
+	calendars: string[];
+	syncedAt: number | null;
+}
+
+/** What Settings needs to draw the calendar card. `calendars` is empty until Calendar is linked. */
+export interface CalendarOverview {
+	linked: boolean;
+	state: CalendarState;
+	calendars: CalendarInfo[];
+}
+
+/** How the first import treats events that share time with a task of the plan. */
+export type ImportMode = 'all' | 'noClash';
+export const IMPORT_MODES: readonly ImportMode[] = ['all', 'noClash'];
+
+export interface CalendarImport {
+	/** Tasks made. */
+	tasks: number;
+	/** Timed events left out because they clash with the plan. */
+	left: number;
+	/** All-day events, shown on Plan. */
+	allDay: number;
+}
+
+/** An all-day event on one day, the line on Plan. */
+export interface AllDayLine {
+	date: DateKey;
+	title: string;
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** The sentence above the choice: what is coming and how much of it clashes. */
+export function describePreview(preview: Preview): string {
+	if (preview.events === 0) return `Your calendar has no events in the next ${WINDOW_DAYS} days.`;
+	const base = `Your calendar has ${plural(preview.events, 'event')} in the next ${WINDOW_DAYS} days`;
+	return preview.clashing > 0
+		? `${base}, ${preview.clashing} of them at the same time as tasks in your plan.`
+		: `${base}, none of them at the same time as tasks in your plan.`;
+}
+
+/** The sentence that tells what an import did. */
+export function describeCalendarImport({ tasks, left, allDay }: CalendarImport): string {
+	const parts = [`${plural(tasks, 'task')} added to your plan`];
+	if (allDay) parts.push(`${plural(allDay, 'all-day event')} shown on Plan`);
+	if (left) parts.push(`${plural(left, 'event')} left out because they clash`);
+	return `${parts.join(', ')}.`;
+}
