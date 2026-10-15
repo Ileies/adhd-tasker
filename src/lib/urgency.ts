@@ -40,35 +40,32 @@ interface PriorityStyle {
 	bars: number;
 }
 
-export const priorityStyle: Record<Priority, PriorityStyle> = {
-	[Priority.Low]: {
-		label: 'Low',
-		chip: 'bg-muted text-muted-foreground',
-		block: 'bg-muted border-border text-muted-foreground',
-		bars: 1
+/** The one ramp: every surface that shows a priority takes its color from the urgency of that priority. */
+const RAMP: Record<UrgencyLevel, Pick<PriorityStyle, 'chip' | 'block'>> = {
+	// Literal class names, so Tailwind can find them
+	0: {
+		chip: 'bg-urgency-0/20 border border-urgency-0 text-foreground',
+		block: 'bg-urgency-0 border-urgency-0 text-urgency-0-foreground'
 	},
-	[Priority.Medium]: {
-		label: 'Medium',
-		chip: 'bg-info/20 text-info',
-		block: 'bg-secondary border-primary/50 text-secondary-foreground',
-		bars: 2
+	1: {
+		chip: 'bg-urgency-1/20 border border-urgency-1 text-foreground',
+		block: 'bg-urgency-1 border-urgency-1 text-urgency-1-foreground'
 	},
-	[Priority.High]: {
-		label: 'High',
-		chip: 'bg-warning/25 text-warning',
-		block: 'bg-info/80 border-info text-info-foreground',
-		bars: 3
+	2: {
+		chip: 'bg-urgency-2/20 border border-urgency-2 text-foreground',
+		block: 'bg-urgency-2 border-urgency-2 text-urgency-2-foreground'
 	},
-	[Priority.Urgent]: {
-		label: 'Urgent',
-		chip: 'bg-destructive/15 text-destructive',
-		block: 'bg-warning/80 border-warning text-warning-foreground',
-		bars: 4
-	},
-	[Priority.Critical]: {
-		label: 'Critical',
-		chip: 'bg-destructive text-white',
-		block: 'bg-destructive/80 border-destructive text-white',
-		bars: 5
+	3: {
+		chip: 'bg-urgency-3/20 border border-urgency-3 text-foreground',
+		block: 'bg-urgency-3 border-urgency-3 text-urgency-3-foreground'
 	}
+};
+const ramp = (level: UrgencyLevel) => RAMP[level];
+
+export const priorityStyle: Record<Priority, PriorityStyle> = {
+	[Priority.Low]: { label: 'Low', ...ramp(baseLevel[Priority.Low]), bars: 1 },
+	[Priority.Medium]: { label: 'Medium', ...ramp(baseLevel[Priority.Medium]), bars: 2 },
+	[Priority.High]: { label: 'High', ...ramp(baseLevel[Priority.High]), bars: 3 },
+	[Priority.Urgent]: { label: 'Urgent', ...ramp(baseLevel[Priority.Urgent]), bars: 4 },
+	[Priority.Critical]: { label: 'Critical', ...ramp(baseLevel[Priority.Critical]), bars: 5 }
 };

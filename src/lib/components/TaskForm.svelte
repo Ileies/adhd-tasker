@@ -167,7 +167,7 @@
 			</div>
 
 			<div class="grid gap-2">
-				<Label>Quick Duration</Label>
+				<Label>Quick duration</Label>
 				<div class="flex flex-wrap gap-2">
 					{#each quickDurations as quick (quick.minutes)}
 						<Button

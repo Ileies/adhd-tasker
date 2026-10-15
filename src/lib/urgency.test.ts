@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import { Priority } from '#lib/types.js';
-import { urgencyLevel } from '#lib/urgency.js';
+import { priorityStyle, urgencyLevel } from '#lib/urgency.js';
 import { formatClock, formatDuration } from '#lib/format.js';
 
 describe('urgencyLevel', () => {
@@ -19,6 +19,28 @@ describe('urgencyLevel', () => {
 
 	test('overrunning is always critical', () => {
 		expect(urgencyLevel(Priority.Low, -1, 60)).toBe(3);
+	});
+});
+
+describe('priorityStyle', () => {
+	test('chip and block of a priority use the same urgency color', () => {
+		for (const style of Object.values(priorityStyle)) {
+			const level = /bg-urgency-(\d)/.exec(style.block)?.[1];
+			expect(level).toBeDefined();
+			expect(style.chip).toContain(`bg-urgency-${level}/20`);
+		}
+	});
+
+	test('priorities with the same urgency differ by label and bars', () => {
+		expect(priorityStyle[Priority.High].block).toBe(priorityStyle[Priority.Urgent].block);
+		expect(priorityStyle[Priority.High].bars).not.toBe(priorityStyle[Priority.Urgent].bars);
+	});
+
+	test('the ramp follows urgencyLevel', () => {
+		for (const [priority, style] of Object.entries(priorityStyle)) {
+			const level = urgencyLevel(Number(priority) as Priority, 50, 60);
+			expect(style.block).toContain(`bg-urgency-${level} `);
+		}
 	});
 });
 
