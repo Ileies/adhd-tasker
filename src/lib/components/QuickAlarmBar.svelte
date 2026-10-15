@@ -1,18 +1,16 @@
 <script lang="ts">
-	import { addAlarm } from '#lib/alarms.js';
+	import { startTimer } from '#lib/alarms.js';
 	import { QUICK_TIMERS, timerFields } from '#lib/alarmview.js';
-	import { showToast } from '#lib';
 	import { Button } from '#lib/components/ui/button/index.js';
 
 	let { hidden = false }: { hidden?: boolean } = $props();
 
 	let busy = $state(false);
 
-	async function start(minutes: number, label: string) {
+	async function start(minutes: number) {
 		busy = true;
-		const failure = await addAlarm(timerFields(minutes));
+		await startTimer(timerFields(minutes));
 		busy = false;
-		showToast(failure ?? `Timer set: ${label}`);
 	}
 </script>
 
@@ -31,7 +29,7 @@
 			class="h-12 flex-1 text-base"
 			disabled={busy}
 			tabindex={hidden ? -1 : 0}
-			onclick={() => start(timer.minutes, timer.label)}>{timer.label}</Button
+			onclick={() => start(timer.minutes)}>{timer.label}</Button
 		>
 	{/each}
 </div>

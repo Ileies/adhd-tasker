@@ -3,6 +3,8 @@ import { showToast, startRinging } from '#lib';
 import { SCHEDULE_LIMITS } from '#lib/schedule.js';
 import { SNOOZE_MINUTES, restoreFields } from '#lib/alarmview.js';
 import type { AlarmFields } from '#lib/backend.js';
+import { formatClock, formatMinutes } from '#lib/format.js';
+import { minutesNow } from '#lib/time.js';
 
 const DEVICE_KEY = 'tasker.device';
 /** An alarm whose time passed while the tab slept still rings if it is this recent. */
@@ -94,6 +96,18 @@ export async function addAlarm(fields: AlarmFields): Promise<string | null> {
 	}
 	await loadSchedule();
 	return null;
+}
+
+/** Starts a timer and says when it rings, with Undo. */
+export async function startTimer(fields: AlarmFields) {
+	const before = new Set(tasker.schedule.alarms.map((alarm) => alarm.id));
+	const failure = await addAlarm(fields);
+	if (failure) return showToast(failure);
+	const made = tasker.schedule.alarms.find((alarm) => !before.has(alarm.id));
+	if (!made) return showToast('Timer set');
+	const clock = formatClock(minutesNow(tasker.timezone, new Date(made.fireAt)));
+	const wait = fields.in_minutes ? `in ${formatMinutes(fields.in_minutes)}, ` : '';
+	showToast(`Timer set: ${wait}rings at ${clock}`, () => removeEntry(made.id));
 }
 
 export async function removeEntry(id: number) {

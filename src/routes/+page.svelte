@@ -17,7 +17,7 @@
 		showToast,
 		updateTask
 	} from '#lib';
-	import { addAlarm, playsSound } from '#lib/alarms.js';
+	import { playsSound, startTimer } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
 	import { hyperfocusDue, momentKey, reminderDue, type StuckAction } from '#lib/anchoring.js';
 	import {
@@ -280,14 +280,13 @@
 	}
 
 	/** A short alarm from the "I'm stuck" hint, the app holds the timer. */
-	async function startTimer(action: StuckAction) {
-		const failure = await addAlarm({
+	async function startStuckTimer(action: StuckAction) {
+		await startTimer({
 			in_minutes: action.minutes,
 			label: action.alarm,
 			tone: 'soft',
 			repeat: 'none'
 		});
-		showToast(failure ?? `Timer set: ${action.minutes} min`);
 	}
 </script>
 
@@ -328,7 +327,7 @@
 			onTomorrow={tomorrow}
 			onEdit={edit}
 			onDrop={drop}
-			onTimer={startTimer}
+			onTimer={startStuckTimer}
 			concurrent={ranking.concurrent}
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
 			planned={tasks.filter((task) => task.date === today).length}
