@@ -36,7 +36,10 @@ export const users = sqliteTable('users', {
 	lastCurrentTaskId: integer('last_current_task_id'), // what the scheduler saw as current at its last tick, to detect task.switched
 	displayDevice: text('display_device'), // id of the device that plays alarms and agent tones, null: every device does
 	voiceReplies: integer('voice_replies', { mode: 'boolean' }).default(D.voiceReplies).notNull(), // the assistant speaks its replies and notes
-	showClock: integer('show_clock', { mode: 'boolean' }).default(D.showClock).notNull() // the time of day with seconds on the Now screen
+	showClock: integer('show_clock', { mode: 'boolean' }).default(D.showClock).notNull(), // the time of day with seconds on the Now screen
+	checkInMinutes: integer('check_in_minutes').default(D.checkInMinutes).notNull(), // soft chime interval while a task is current, 0 is off
+	myDayStart: integer('my_day_start').default(D.myDayStart).notNull(), // minutes since midnight, the timeline folds the hours outside
+	myDayEnd: integer('my_day_end').default(D.myDayEnd).notNull()
 });
 
 export const tasks = sqliteTable('tasks', {

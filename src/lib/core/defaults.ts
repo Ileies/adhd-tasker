@@ -21,5 +21,8 @@ export const DEFAULT_SETTINGS: Settings = {
 	lastCurrentTaskId: null, // never tracked
 	displayDevice: null, // every device plays
 	voiceReplies: false,
-	showClock: false
+	showClock: false,
+	checkInMinutes: 5, // soft chime while a task is current, 0 is off
+	myDayStart: 420, // 07:00, the timeline folds the hours outside My day
+	myDayEnd: 1380 // 23:00
 };

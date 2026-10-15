@@ -31,6 +31,9 @@ describe('DEFAULT_SETTINGS', () => {
 				quietEnd,
 				voiceReplies,
 				showClock,
+				checkInMinutes: DEFAULT_SETTINGS.checkInMinutes,
+				myDayStart: DEFAULT_SETTINGS.myDayStart,
+				myDayEnd: DEFAULT_SETTINGS.myDayEnd,
 				dailyTokenBudget: DEFAULT_SETTINGS.dailyTokenBudget
 			}).ok
 		).toBe(true);

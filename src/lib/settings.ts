@@ -28,8 +28,16 @@ export type SettingsPatch = Partial<
 		| 'dailyTokenBudget'
 		| 'voiceReplies'
 		| 'showClock'
+		| 'checkInMinutes'
+		| 'myDayStart'
+		| 'myDayEnd'
 	>
 >;
+
+/** The check-in chime in minutes, 0 is off. */
+export const CHECK_IN_MAX = 60;
+/** My day has to span at least this many minutes, or the timeline has nothing to show. */
+export const MY_DAY_MIN = 60;
 
 const isBool = (value: unknown) => typeof value === 'boolean';
 const inRange = (min: number, max: number) => (value: unknown) =>
@@ -53,7 +61,10 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	quietEnd: isClock,
 	dailyTokenBudget: isBudget,
 	voiceReplies: isBool,
-	showClock: isBool
+	showClock: isBool,
+	checkInMinutes: inRange(0, CHECK_IN_MAX),
+	myDayStart: isClock,
+	myDayEnd: inRange(1, 1440)
 };
 
 /** A patch from the outside: known keys only, every value in range, at least one key. */
@@ -69,6 +80,9 @@ export function parseSettingsPatch(
 		if (!Object.hasOwn(VALID, key) || !valid) return { ok: false, error: `Unknown setting ${key}` };
 		if (!valid(value)) return { ok: false, error: `Invalid value for ${key}` };
 	}
+	const { myDayStart, myDayEnd } = body as SettingsPatch;
+	if (myDayStart !== undefined && myDayEnd !== undefined && myDayEnd - myDayStart < MY_DAY_MIN)
+		return { ok: false, error: 'My day has to be at least an hour long' };
 	return { ok: true, value: body as SettingsPatch };
 }
 

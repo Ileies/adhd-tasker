@@ -50,7 +50,10 @@ const SETTING_KEYS = [
 	'quietEnd',
 	'dailyTokenBudget',
 	'voiceReplies',
-	'showClock'
+	'showClock',
+	'checkInMinutes',
+	'myDayStart',
+	'myDayEnd'
 ] as const satisfies readonly (keyof SettingsPatch)[];
 
 export const FIRST_DAY = '0000-01-01';

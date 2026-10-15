@@ -44,6 +44,9 @@ export interface Settings {
 	displayDevice: string | null;
 	voiceReplies: boolean;
 	showClock: boolean;
+	checkInMinutes: number;
+	myDayStart: number;
+	myDayEnd: number;
 }
 
 /** One change the assistant made, `before` and `after` are tasks, null when absent. */

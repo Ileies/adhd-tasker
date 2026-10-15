@@ -38,9 +38,22 @@ describe('parseSettingsPatch', () => {
 		['an unknown autonomy', { aiAutonomy: 'free' }],
 		['an unknown event', { aiEvents: 'task.completed nope' }],
 		['a budget below 1000 tokens', { dailyTokenBudget: 10 }],
-		['a string for a switch', { showClock: 'true' }]
+		['a string for a switch', { showClock: 'true' }],
+		['a negative check-in', { checkInMinutes: -5 }],
+		['a check-in over an hour', { checkInMinutes: 90 }],
+		['a My day start past midnight', { myDayStart: 1440 }],
+		['a My day end of zero', { myDayEnd: 0 }],
+		['a My day shorter than an hour', { myDayStart: 600, myDayEnd: 630 }],
+		['a My day that ends before it starts', { myDayStart: 900, myDayEnd: 600 }]
 	])('rejects %s', (_name, body) => {
 		expect(parseSettingsPatch(body).ok).toBe(false);
+	});
+});
+
+describe('check-in and My day', () => {
+	test('the chime can be off and My day can end at midnight', () => {
+		const patch: SettingsPatch = { checkInMinutes: 0, myDayStart: 360, myDayEnd: 1440 };
+		expect(parseSettingsPatch(patch)).toEqual({ ok: true, value: patch });
 	});
 });
 

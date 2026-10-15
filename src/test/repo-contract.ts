@@ -430,6 +430,9 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				openaiKey: null,
 				voiceReplies: false,
 				showClock: false,
+				checkInMinutes: 5,
+				myDayStart: 420,
+				myDayEnd: 1380,
 				displayDevice: null
 			});
 		});
