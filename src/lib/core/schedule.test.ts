@@ -7,7 +7,8 @@ import {
 	fireDue,
 	runScheduleTool,
 	scheduleOverview,
-	setAlarmEnabled
+	setAlarmEnabled,
+	updateUserAlarm
 } from '#lib/core/schedule.js';
 import { SCHEDULE_LIMITS } from '#lib/schedule.js';
 import { NOW, testCtx } from '#test/ctx.js';
@@ -431,5 +432,38 @@ describe('fireDue guarantees', () => {
 		state.now = NOW + MIN;
 		await fireDue(ctx, 'UTC');
 		expect((await repo.events.recent(5)).map((event) => event.key)).toEqual([`wakeup:${row.id}`]);
+	});
+});
+
+describe('updateUserAlarm', () => {
+	const daily = { at: '09:30', label: 'Meds', tone: 'urgent', repeat: 'daily' };
+
+	test('changes label, time and repeat, keeps the tone and the on/off state', async () => {
+		const { ctx, repo, hints } = await testCtx();
+		const row = await addUserAlarm(ctx, daily, 'UTC');
+		await setAlarmEnabled(ctx, row.id, false, 'UTC');
+		hints.length = 0;
+		await updateUserAlarm(ctx, row.id, { at: '10:15', label: 'Pills', repeat: 'weekdays' }, 'UTC');
+		expect((await repo.schedule.pending())[0]).toMatchObject({
+			label: 'Pills',
+			minutes: 10 * 60 + 15,
+			repeat: 'weekdays',
+			tone: 'urgent',
+			enabled: false
+		});
+		expect(hints).toEqual([{ type: 'schedule' }]);
+	});
+
+	test('answers null for an alarm that is not pending', async () => {
+		const { ctx } = await testCtx();
+		expect(await updateUserAlarm(ctx, 999, daily, 'UTC')).toBeNull();
+	});
+
+	test('refuses a body without a label', async () => {
+		const { ctx } = await testCtx();
+		const row = await addUserAlarm(ctx, daily, 'UTC');
+		expect(await failureOf(updateUserAlarm(ctx, row.id, { at: '10:00' }, 'UTC'))).toMatchObject({
+			status: 400
+		});
 	});
 });

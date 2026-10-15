@@ -73,6 +73,13 @@ export const remoteBackend: Backend = {
 				body: JSON.stringify({ enabled })
 			});
 		},
+		async updateAlarm(id, fields) {
+			await request(`/schedule/${id}`, {
+				method: 'PUT',
+				headers: JSON_HEADERS,
+				body: JSON.stringify(fields)
+			});
+		},
 		async chooseDisplay(device) {
 			await send('/schedule/display', {
 				method: 'POST',
@@ -130,13 +137,6 @@ export const remoteBackend: Backend = {
 				body: JSON.stringify({ timezone })
 			});
 		},
-		async saveKey(key) {
-			await request(
-				'/settings/openai-key',
-				{ method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ key }) },
-				'Could not save the key'
-			);
-		},
 		async searchPlaces(query) {
 			return (
 				await request(
@@ -145,6 +145,13 @@ export const remoteBackend: Backend = {
 					'Could not search'
 				)
 			).json();
+		},
+		async saveKey(key) {
+			await request(
+				'/settings/openai-key',
+				{ method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ key }) },
+				'Could not save the key'
+			);
 		},
 		async removeKey() {
 			await request('/settings/openai-key', { method: 'DELETE' }, 'Could not remove the key');

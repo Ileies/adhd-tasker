@@ -20,7 +20,8 @@ import {
 	addUserAlarm,
 	cancelEntry,
 	scheduleOverview,
-	setAlarmEnabled
+	setAlarmEnabled,
+	updateUserAlarm
 } from '#lib/core/schedule.js';
 import { speak as speakWith, transcribe as transcribeWith } from '#lib/core/voice.js';
 import { openaiModel } from '#lib/openai.js';
@@ -134,6 +135,8 @@ export function localBackend(deps: LocalDeps): Backend {
 					if (!(await setAlarmEnabled(ctx(), id, enabled, await timezone())))
 						throw new AssistantError('No such alarm', 404);
 				}),
+			updateAlarm: (id, fields) =>
+				guarded(async () => void (await updateUserAlarm(ctx(), id, fields, await timezone()))),
 			// A guest has one device, so there is no display device to choose
 			chooseDisplay: async () => {}
 		},
@@ -171,9 +174,6 @@ export function localBackend(deps: LocalDeps): Backend {
 					if (!isValidTimezone(timezone)) throw new AssistantError('Invalid timezone', 400);
 					await repo.settings.update({ timezone });
 				}),
-			// The guest's key is checked from the browser and stays on the device
-			saveKey: (key) =>
-				guarded(
 			// The guest's browser asks the city search itself, only the typed name is sent
 			searchPlaces: (query) =>
 				guarded(async () => {
@@ -185,6 +185,9 @@ export function localBackend(deps: LocalDeps): Backend {
 						throw thrown;
 					}
 				}),
+			// The guest's key is checked from the browser and stays on the device
+			saveKey: (key) =>
+				guarded(
 					async () => void (await repo.settings.update({ openaiKey: await checkOpenaiKey(key) }))
 				),
 			removeKey: async () => void (await repo.settings.update({ openaiKey: null })),

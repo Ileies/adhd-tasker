@@ -76,6 +76,41 @@ export async function addUserAlarm(ctx: Ctx, body: unknown, timezone: string) {
 	return createAlarm(ctx, parsed.value, 'user');
 }
 
+/**
+ * Changes a pending alarm: same fields as a new one, it keeps its on/off state and its maker. A body without
+ * `tone` keeps the tone it has (an agent's custom tone survives a rename). `null` when it is not a pending alarm.
+ */
+export async function updateUserAlarm(
+	ctx: Ctx,
+	id: number,
+	body: unknown,
+	timezone: string
+): Promise<ScheduleEntry | null> {
+	if (typeof body !== 'object' || body === null) throw new AssistantError('Invalid request', 400);
+	if ('tone' in body && body.tone !== undefined && typeof body.tone !== 'string')
+		throw new AssistantError('Pick a tone from the list', 400);
+	const row = (await ctx.repo.schedule.pending()).find(
+		(entry) => entry.id === id && entry.kind === 'alarm'
+	);
+	if (!row) return null;
+
+	const args = { ...(body as Record<string, unknown>) };
+	if (args.tone === undefined && row.tone) args.tone = row.tone;
+	const parsed = parseAlarm(args, ctx.now(), timezone);
+	if (!parsed.ok) throw new AssistantError(parsed.error, 400);
+	const patch = {
+		fireAt: parsed.value.fireAt,
+		minutes: parsed.value.minutes,
+		repeat: parsed.value.repeat,
+		label: parsed.value.label,
+		tone: parsed.value.tone,
+		durationMin: parsed.value.durationMin
+	};
+	await ctx.repo.schedule.update(id, patch);
+	ctx.hint({ type: 'schedule' });
+	return { ...row, ...patch };
+}
+
 /** `null` when the id is not a pending entry of this user. */
 export async function cancelEntry(ctx: Ctx, id: number): Promise<ScheduleEntry | null> {
 	const row = await ctx.repo.schedule.cancel(id);

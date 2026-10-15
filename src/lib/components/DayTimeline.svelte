@@ -60,6 +60,7 @@
 		alarms = [],
 		onAlarmSwitch,
 		onAlarmCancel,
+		onAlarmEdit,
 		highlight = null,
 		compact = false,
 		day = MY_DAY,
@@ -78,6 +79,7 @@
 		alarms?: DayAlarm[];
 		onAlarmSwitch?: (alarm: Alarm, enabled: boolean) => void;
 		onAlarmCancel?: (alarm: Alarm) => void;
+		onAlarmEdit?: (alarm: Alarm) => void;
 		/** A task that was just added: scrolled into view and outlined. */
 		highlight?: number | null;
 		/** Fit the whole shown day on the screen when it can, otherwise the usual hour height. */
@@ -147,10 +149,11 @@
 	});
 	const MIN_BLOCK_PX = $derived(compact ? COMPACT_MIN_BLOCK_PX : COMFY_MIN_BLOCK_PX);
 	const px = (offset: number) => ((offset - from) / 60) * hourPx;
-	// An alarm in the folded night stays at the top edge until the night is opened
+	// An alarm in the folded night is hidden until the night is opened
 	const cards = $derived.by(() => {
 		const sorted = alarms
-			.map((row) => ({ row, y: px(Math.min(Math.max(off(row.minutes), from), to)) }))
+			.filter((row) => off(row.minutes) >= from)
+			.map((row) => ({ row, y: px(Math.min(off(row.minutes), to)) }))
 			.sort((a, b) => a.y - b.y || a.row.alarm.id - b.row.alarm.id);
 		const tops = stackCards(
 			sorted.map((card) => card.y),
@@ -608,7 +611,12 @@
 						]}"
 						style="top: {top}px; height: {CARD_PX}px"
 					>
-						<div class="min-w-0 flex-1">
+						<button
+							type="button"
+							class="min-w-0 flex-1 cursor-pointer text-left"
+							aria-label="Edit {row.alarm.label}"
+							onclick={() => onAlarmEdit?.(row.alarm)}
+						>
 							<div class="flex items-baseline gap-2">
 								<span class="tabular text-sm font-semibold">{formatClock(row.minutes)}</span>
 								<span class="truncate text-sm">{row.alarm.label}</span>
@@ -616,7 +624,7 @@
 							<div class="text-muted-foreground truncate text-xs">
 								{alarmStatus(row.alarm, row.state, dayName.format(row.alarm.fireAt))}
 							</div>
-						</div>
+						</button>
 						<Switch
 							size="sm"
 							checked={row.alarm.enabled}

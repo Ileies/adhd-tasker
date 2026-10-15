@@ -192,7 +192,12 @@ export interface Repo {
 		insert(entry: NewEntry): Promise<ScheduleEntry>;
 		update(
 			id: number,
-			patch: Partial<Pick<ScheduleEntry, 'fireAt' | 'status' | 'enabled'>>
+			patch: Partial<
+				Pick<
+					ScheduleEntry,
+					'fireAt' | 'status' | 'enabled' | 'minutes' | 'repeat' | 'label' | 'tone' | 'durationMin'
+				>
+			>
 		): Promise<void>;
 		/** The entry when it was pending, `null` otherwise. */
 		cancel(id: number): Promise<ScheduleEntry | null>;

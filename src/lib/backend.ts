@@ -39,7 +39,8 @@ export interface AlarmFields {
 	/** A timer from now, it cannot repeat. */
 	in_minutes?: number;
 	label: string;
-	tone: ToneName;
+	/** Left out on an edit, the alarm keeps the tone it has. */
+	tone?: ToneName;
 	repeat: Repeat;
 	duration_minutes?: number;
 }
@@ -61,6 +62,8 @@ export interface Backend {
 		remove(id: number): Promise<void>;
 		/** Turns an alarm on or off, it stays listed. Rejects with the reason (a timer that ran out cannot come back). */
 		setEnabled(id: number, enabled: boolean): Promise<void>;
+		/** Changes what an alarm says, when it rings, its repeat and tone. Rejects with the reason. */
+		updateAlarm(id: number, fields: AlarmFields): Promise<void>;
 		/** `null` lets every device play again. */
 		chooseDisplay(device: string | null): Promise<void>;
 	};
@@ -83,11 +86,11 @@ export interface Backend {
 		/** What the screens show and the forms start from. */
 		load(): Promise<ClientSettings>;
 		saveTimezone(timezone: string): Promise<void>;
+		/** Cities that match a typed name, for the daylight theme. Rejects with the reason when the search could not run. */
+		searchPlaces(query: string): Promise<Place[]>;
 		/** Checks the key with OpenAI, then stores it (encrypted on the server, plain on a guest's device). Rejects with the reason. */
 		saveKey(key: string): Promise<void>;
 		removeKey(): Promise<void>;
-		/** Cities that match a typed name, for the daylight theme. Rejects with the reason when the search could not run. */
-		searchPlaces(query: string): Promise<Place[]>;
 		/** Stores the changed settings. Rejects with the reason when a value is out of range. */
 		save(patch: SettingsPatch): Promise<void>;
 	};

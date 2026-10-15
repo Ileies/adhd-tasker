@@ -112,6 +112,17 @@ export async function switchAlarm(alarm: Alarm, enabled: boolean): Promise<strin
 	return null;
 }
 
+/** Saves a changed alarm. Returns why it failed. */
+export async function editAlarm(alarm: Alarm, fields: AlarmFields): Promise<string | null> {
+	try {
+		await tasker.backend.schedule.updateAlarm(alarm.id, fields);
+	} catch (error) {
+		return error instanceof Error ? error.message : 'Could not change the alarm';
+	}
+	await loadSchedule();
+	return null;
+}
+
 /** `null` lets every device play again. */
 export const chooseDisplay = (device: string | null) =>
 	tasker.backend.schedule.chooseDisplay(device);
