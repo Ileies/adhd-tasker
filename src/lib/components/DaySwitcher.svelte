@@ -16,7 +16,7 @@
 	const shift = (days: number) => (tasker.plan.date = addDays(date, days));
 </script>
 
-<div class="flex items-center justify-center gap-1">
+<div class="relative flex items-center justify-center gap-1">
 	<Button variant="ghost" size="icon" aria-label="Previous day" onclick={() => shift(-1)}>
 		<ChevronLeft />
 	</Button>
@@ -42,6 +42,10 @@
 		<ChevronRight />
 	</Button>
 	{#if date !== today}
-		<Button variant="outline" onclick={() => (tasker.plan.date = today)}>Today</Button>
+		<Button
+			variant="outline"
+			class="absolute left-full ml-1"
+			onclick={() => (tasker.plan.date = today)}>Today</Button
+		>
 	{/if}
 </div>

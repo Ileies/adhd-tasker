@@ -199,13 +199,13 @@
 		</div>
 
 		<!-- Wide screens show the clock in the rail, on a phone the rail is below the fold -->
-		<div class="min-w-0 truncate px-2 text-center">
+		<div class="min-w-0 px-2 text-center">
 			{#if current === 'now'}
 				<div class="sm:hidden"><ClockReadout timezone={tasker.timezone} /></div>
 			{:else if current === 'plan'}
 				<DaySwitcher />
 			{:else if title}
-				<span class="text-lg font-semibold">{title}</span>
+				<span class="block truncate text-lg font-semibold">{title}</span>
 			{/if}
 		</div>
 
