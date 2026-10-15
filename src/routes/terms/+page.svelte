@@ -16,7 +16,7 @@
 	<title>Terms - ADHD Tasker</title>
 </svelte:head>
 
-<PageFrame title="Terms of use" subtitle="Last updated October 15, 2026" {sections} prose>
+<PageFrame title="Terms of use" subtitle="Last updated October 16, 2026" {sections} prose>
 	<p>
 		ADHD Tasker is a free planner run privately by Elias Klassen (<a
 			class="underline"
@@ -70,9 +70,14 @@
 		Your account and content
 	</h2>
 	<p class="mt-2">
-		You sign in with your own Google account and keep it secure. What you write into the app stays
-		yours. You may use the app only for yourself and not to harm the service or other people, for
-		example by overloading it, probing it for weaknesses without permission or storing unlawful
+		Without an account, your plan lives only in your browser. It can be lost when you clear site
+		data, switch browsers or lose the device, and nobody can restore it for you. Use the export
+		under Settings to keep a copy.
+	</p>
+	<p class="mt-2">
+		If you sign in, you use your own Google account and keep it secure. What you write into the app
+		stays yours. You may use the app only for yourself and not to harm the service or other people,
+		for example by overloading it, probing it for weaknesses without permission or storing unlawful
 		content. Accounts that do so can be blocked.
 	</p>
 	<p class="mt-2">

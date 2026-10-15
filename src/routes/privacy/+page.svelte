@@ -3,7 +3,8 @@
 
 	const sections = [
 		{ id: 'who-is-responsible', label: 'Who is responsible' },
-		{ id: 'what-is-stored', label: 'What is stored' },
+		{ id: 'without-an-account', label: 'Without an account' },
+		{ id: 'what-is-stored', label: 'With an account' },
 		{ id: 'how-long-it-is-kept', label: 'How long it is kept' },
 		{ id: 'other-services-involved', label: 'Other services involved' },
 		{ id: 'cookies-and-local-storage', label: 'Cookies and local storage' },
@@ -18,7 +19,7 @@
 	<title>Privacy - ADHD Tasker</title>
 </svelte:head>
 
-<PageFrame title="Privacy" subtitle="Last updated October 15, 2026" {sections} prose>
+<PageFrame title="Privacy" subtitle="Last updated October 16, 2026" {sections} prose>
 	<p>
 		ADHD Tasker is a small, privately run planner. It stores what it needs to show you your plan and
 		nothing more. There is no advertising, no analytics, no tracking and no selling of data. How the
@@ -34,8 +35,21 @@
 		>. Write to this address for every question or request about your data.
 	</p>
 
+	<h2 id="without-an-account" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
+		Without an account
+	</h2>
+	<p class="mt-2">
+		You can use the app without signing in. Then your plan, alarms, settings and your OpenAI key, if
+		you add one, stay in this browser. This server never receives them, sets no cookie and loads
+		nothing from Google. The assistant, if you added a key, talks to OpenAI directly from your
+		browser, under your key and OpenAI's terms (see below). All this server sees is the request for
+		the app's files, like any web server (see Server logs). Clearing this site's data in your
+		browser deletes your plan. Settings has a copy of everything to download, and "Delete everything
+		on this device" removes it yourself.
+	</p>
+
 	<h2 id="what-is-stored" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
-		What is stored
+		What is stored with an account
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
 		<li>
@@ -171,9 +185,9 @@
 
 	<h2 id="server-logs" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Server logs</h2>
 	<p class="mt-2">
-		The server records which page was requested and when, and the web server in front of it may
-		record your IP address. These logs are used only to keep the service running and secure, and are
-		rotated regularly.
+		With or without an account, the server records which page or file was requested and when, and
+		the web server in front of it may record your IP address. These logs are used only to keep the
+		service running and secure, and are rotated regularly.
 	</p>
 
 	<h2 id="legal-basis" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Legal basis</h2>
