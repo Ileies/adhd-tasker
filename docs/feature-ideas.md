@@ -263,6 +263,9 @@ The ideas that look like the strongest return on a small investment. Details are
 - **Native apps with live lock-screen activity** `9/10`
   iOS Live Activities and an Android ongoing notification that show the current task and a countdown on the lock screen and the always-on display. The anchor travels with the user away from the desk.
 
+- **Android app with a home-screen widget** `8/10`
+  An Android app (a native wrapper around the PWA, or a small native shell) with a home-screen widget that shows the active task, the time left and a Done button, in the same urgency color as the hero. The phone home screen becomes a second Now screen without opening anything. Shares the push and ongoing-notification groundwork with the lock-screen item above, and iOS widgets could follow the same way.
+
 - **Watch app with haptic transitions** `8/10`
   A distinct tap pattern for "task starting", "wrap up" and "overrun" on the wrist. Anchoring that works in a meeting, in the kitchen or on a walk, and no one else notices.
 
