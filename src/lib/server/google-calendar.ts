@@ -83,7 +83,13 @@ export async function listCalendars(email: string, now: number): Promise<Calenda
 	let pageToken: string | undefined;
 	do {
 		const page = await get<{
-			items?: { id: string; summary?: string; summaryOverride?: string; primary?: boolean }[];
+			items?: {
+				id: string;
+				summary?: string;
+				summaryOverride?: string;
+				primary?: boolean;
+				accessRole?: string;
+			}[];
 			nextPageToken?: string;
 		}>(email, now, '/users/me/calendarList', {
 			minAccessRole: 'reader',
@@ -94,7 +100,8 @@ export async function listCalendars(email: string, now: number): Promise<Calenda
 			found.push({
 				id: item.id,
 				name: item.summaryOverride ?? item.summary ?? item.id,
-				primary: item.primary === true
+				primary: item.primary === true,
+				writable: item.accessRole === 'owner' || item.accessRole === 'writer'
 			});
 		pageToken = page.nextPageToken;
 	} while (pageToken);
@@ -129,4 +136,91 @@ export async function listEvents(
 		pageToken = events.length < MAX_EVENTS ? page.nextPageToken : undefined;
 	} while (pageToken);
 	return events;
+}
+
+/** Google changed the event after the app last read it: the change the app wanted is not made, Google wins. */
+export class GoogleConflict extends Error {}
+
+/** Sends one change. 401 ends the link like a read does, 404 and 410 are answered `null` (the event is gone). */
+async function send(
+	email: string,
+	now: number,
+	method: 'POST' | 'PATCH' | 'DELETE',
+	path: string,
+	options: { body?: unknown; ifMatch?: string } = {}
+): Promise<Record<string, unknown> | null> {
+	const response = await fetch(`${API}${path}`, {
+		method,
+		headers: {
+			Authorization: `Bearer ${await accessToken(email, now)}`,
+			...(options.body !== undefined && { 'Content-Type': 'application/json' }),
+			...(options.ifMatch !== undefined && { 'If-Match': options.ifMatch })
+		},
+		body: options.body === undefined ? undefined : JSON.stringify(options.body)
+	});
+	if (response.status === 401) {
+		tokens.delete(email);
+		throw new GoogleAuthError('Google refused the access token');
+	}
+	if (response.status === 412) throw new GoogleConflict('Google changed the event meanwhile');
+	if (response.status === 404 || response.status === 410) return null;
+	if (!response.ok) throw new GoogleError(`Google answered ${response.status}`, response.status);
+	return method === 'DELETE' ? {} : ((await response.json()) as Record<string, unknown>);
+}
+
+const eventPath = (calendarId: string, eventId?: string) =>
+	`/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ''}`;
+
+/** One event as Google has it now, `null` when it is gone. */
+export async function getEvent(
+	email: string,
+	now: number,
+	calendarId: string,
+	eventId: string
+): Promise<CalendarEvent | null> {
+	try {
+		return await get<CalendarEvent>(email, now, eventPath(calendarId, eventId), {});
+	} catch (failure) {
+		if (failure instanceof GoogleError && (failure.status === 404 || failure.status === 410))
+			return null;
+		throw failure;
+	}
+}
+
+/** Changes the fields of an event, but only while it still has the `etag` the app knows. Answers the new etag. */
+export async function patchEvent(
+	email: string,
+	now: number,
+	calendarId: string,
+	eventId: string,
+	etag: string,
+	fields: object
+): Promise<string | null> {
+	const done = await send(email, now, 'PATCH', eventPath(calendarId, eventId), {
+		body: fields,
+		ifMatch: etag
+	});
+	return done ? String(done.etag ?? '') : null;
+}
+
+/** Adds an event to a calendar. Answers its id and etag. */
+export async function createEvent(
+	email: string,
+	now: number,
+	calendarId: string,
+	fields: object
+): Promise<{ id: string; etag: string }> {
+	const done = await send(email, now, 'POST', eventPath(calendarId), { body: fields });
+	if (!done?.id) throw new GoogleError('Google did not answer with the new event', 200);
+	return { id: String(done.id), etag: String(done.etag ?? '') };
+}
+
+/** Deletes an event the app made. An event that is already gone is fine. */
+export async function deleteEvent(
+	email: string,
+	now: number,
+	calendarId: string,
+	eventId: string
+): Promise<void> {
+	await send(email, now, 'DELETE', eventPath(calendarId, eventId));
 }

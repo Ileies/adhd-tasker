@@ -13,7 +13,9 @@ export type Hint =
 	| { type: 'agent' }
 	| { type: 'schedule' }
 	| { type: 'alarm'; id: number; fireAt: number; label: string; tone: Tone; durationMin: number }
-	| { type: 'tone'; tone: Tone };
+	| { type: 'tone'; tone: Tone }
+	/** Something about Google Calendar to tell the user, the plan was read again. */
+	| { type: 'calendar'; message: string };
 
 /** Sends what `buildRequest` built and answers with the response. Errors are `AssistantError`s with a reason to show. */
 export interface Model {

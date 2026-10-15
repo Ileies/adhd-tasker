@@ -5,6 +5,7 @@ import { GET as allDay } from './all-day/+server.js';
 import { POST as importEvents } from './import/+server.js';
 import { POST as preview } from './preview/+server.js';
 import { POST as sync } from './sync/+server.js';
+import { PUT as write } from './write/+server.js';
 import { db } from '#lib/server/db/index.js';
 import { tasks } from '#lib/server/db/schema.js';
 import { API, TOKEN_URL } from '#lib/server/google-calendar.js';
@@ -55,6 +56,7 @@ describe('every calendar route', () => {
 		['preview', () => callRoute(preview, { body: { calendars: ['primary'] } })],
 		['import', () => callRoute(importEvents, { body: { mode: 'all' } })],
 		['sync', () => callRoute(sync, { method: 'POST' })],
+		['write', () => callRoute(write, { method: 'PUT', body: { calendar: null } })],
 		['all-day', () => callRoute(allDay, { url: '/calendar/all-day?from=2026-10-14&to=2026-10-28' })]
 	])('%s needs a login', async (_name, call) => {
 		expect((await call()).status).toBe(401);
@@ -188,5 +190,45 @@ describe('request checks', () => {
 			(await callRoute(allDay, { user, url: '/calendar/all-day?from=today&to=2026-10-28' })).status
 		).toBe(400);
 		expect((await callRoute(allDay, { user, url: '/calendar/all-day' })).status).toBe(400);
+	});
+});
+
+describe('PUT /calendar/write', () => {
+	/** Calendars followed, Google listing one calendar the user can write to. */
+	async function following() {
+		const user = await linked();
+		fakeFetch({
+			[`POST ${TOKEN_URL}`]: () => Response.json({ access_token: 'a', expires_in: 3600 }),
+			[`${API}/users/me/calendarList`]: () =>
+				Response.json({ items: [{ id: 'primary', accessRole: 'owner', primary: true }] }),
+			[`${API}/calendars/primary/events`]: () => Response.json({ items: [standup] })
+		});
+		await callRoute(preview, { user, body: { calendars: ['primary'] } });
+		await callRoute(importEvents, { user, body: { mode: 'all' } });
+		return user;
+	}
+
+	test('chooses a calendar and turns it off again', async () => {
+		const user = await following();
+		expect(
+			(await callRoute(write, { user, method: 'PUT', body: { calendar: 'primary' } })).status
+		).toBe(200);
+		expect((await callRoute(GET, { user })).body).toMatchObject({
+			state: { writeCalendar: 'primary' }
+		});
+		await callRoute(write, { user, method: 'PUT', body: { calendar: null } });
+		expect((await callRoute(GET, { user })).body).toMatchObject({ state: { writeCalendar: null } });
+	});
+
+	test.each([[{}], [{ calendar: 5 }], [{ calendar: '' }]])('%j is a bad request', async (body) => {
+		const user = await following();
+		expect((await callRoute(write, { user, method: 'PUT', body })).status).toBe(400);
+	});
+
+	test('a calendar the user cannot write to is refused', async () => {
+		const user = await following();
+		expect(
+			(await callRoute(write, { user, method: 'PUT', body: { calendar: 'holidays' } })).status
+		).toBe(409);
 	});
 });

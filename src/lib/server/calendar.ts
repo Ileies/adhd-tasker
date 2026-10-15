@@ -26,7 +26,7 @@ import {
 } from '#lib/core/calendar.js';
 import { db } from '#lib/server/db/index.js';
 import { calendarEvents, calendarSync, tasks, users } from '#lib/server/db/schema.js';
-import { GoogleAuthError, listEvents } from '#lib/server/google-calendar.js';
+import { GoogleAuthError, listCalendars, listEvents } from '#lib/server/google-calendar.js';
 import { forgetGoogle, hasRefreshToken } from '#lib/server/google-tokens.js';
 import { parseServices } from '#lib/google.js';
 import { todayIn } from '#lib/time.js';
@@ -38,7 +38,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Timed = Extract<Mapped, { kind: 'timed' }>;
 
 /** Where the user's day is: the timezone saved with the account, UTC until one is. */
-function clockOf(email: string, now: number) {
+export function clockOf(email: string, now: number) {
 	const user = db.select().from(users).where(eq(users.email, email)).get();
 	const timezone = user?.timezone ?? 'UTC';
 	return { timezone, today: todayIn(timezone, new Date(now)) };
@@ -47,8 +47,13 @@ function clockOf(email: string, now: number) {
 export function calendarState(email: string): CalendarState {
 	const row = db.select().from(calendarSync).where(eq(calendarSync.email, email)).get();
 	return row
-		? { status: row.status, calendars: row.calendars, syncedAt: row.syncedAt }
-		: { status: 'none', calendars: [], syncedAt: null };
+		? {
+				status: row.status,
+				calendars: row.calendars,
+				syncedAt: row.syncedAt,
+				writeCalendar: row.writeCalendar
+			}
+		: { status: 'none', calendars: [], syncedAt: null, writeCalendar: null };
 }
 
 /** Everything the calendars have in the window, mapped to what the app makes of it. */
@@ -56,10 +61,20 @@ async function fetchAll(email: string, now: number, calendars: string[]) {
 	const { timezone, today } = clockOf(email, now);
 	const window = windowFor(today);
 	const instants = windowInstants(today, timezone);
+	// Events the app made from the user's own tasks come back when their calendar is followed: they are not new
+	const own = new Set(
+		db
+			.select()
+			.from(calendarEvents)
+			.where(and(eq(calendarEvents.email, email), eq(calendarEvents.origin, 'app')))
+			.all()
+			.map((row) => `${row.calendarId}\n${row.eventId}`)
+	);
 	const fetched: Fetched[] = [];
 	for (const calendarId of calendars)
 		for (const event of await listEvents(email, now, calendarId, instants))
-			fetched.push({ calendarId, event, mapped: mapEvent(event, timezone) });
+			if (!own.has(`${calendarId}\n${event.id}`))
+				fetched.push({ calendarId, event, mapped: mapEvent(event, timezone) });
 	return { fetched, window };
 }
 
@@ -254,7 +269,7 @@ async function runSync(email: string, now: number): Promise<{ changed: boolean }
 			const known = tx
 				.select()
 				.from(calendarEvents)
-				.where(eq(calendarEvents.email, email))
+				.where(and(eq(calendarEvents.email, email), eq(calendarEvents.origin, 'google')))
 				.all()
 				.map(asKnown);
 			const plan = planSync(fetched, known, window);
@@ -302,10 +317,36 @@ export const syncedUsers = () =>
 		.all()
 		.map((row) => row.email);
 
-/** Stops following the calendars. Tasks already imported stay in the plan, they are the user's now. */
+/**
+ * Stops following the calendars and stops adding tasks to one. Tasks already imported stay in the plan, they are
+ * the user's now. Events the app made stay linked to their tasks, so following again does not import them twice.
+ */
 export function stopSync(email: string) {
 	db.delete(calendarSync).where(eq(calendarSync.email, email)).run();
-	db.delete(calendarEvents).where(eq(calendarEvents.email, email)).run();
+	db.delete(calendarEvents)
+		.where(and(eq(calendarEvents.email, email), eq(calendarEvents.origin, 'google')))
+		.run();
+}
+
+/**
+ * Chooses where the user's own tasks are added, `null` turns it off. Only a calendar the user can write to is
+ * accepted, and only while calendars are followed. Answers whether the choice was kept.
+ */
+export async function chooseWriteCalendar(
+	email: string,
+	calendarId: string | null,
+	now: number
+): Promise<boolean> {
+	if (calendarState(email).status !== 'active') return false;
+	if (calendarId !== null) {
+		const found = await guarded(email, () => listCalendars(email, now));
+		if (!found.some((calendar) => calendar.id === calendarId && calendar.writable)) return false;
+	}
+	db.update(calendarSync)
+		.set({ writeCalendar: calendarId })
+		.where(eq(calendarSync.email, email))
+		.run();
+	return true;
 }
 
 /** The all-day events of the days from `from` to `to` inclusive, for the line on Plan. */

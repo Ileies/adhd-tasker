@@ -284,7 +284,12 @@ describe('stopSync', () => {
 		expect(syncedUsers()).toEqual([TEST_EMAIL]);
 		stopSync(TEST_EMAIL);
 		expect(syncedUsers()).toEqual([]);
-		expect(calendarState(TEST_EMAIL)).toEqual({ status: 'none', calendars: [], syncedAt: null });
+		expect(calendarState(TEST_EMAIL)).toEqual({
+			status: 'none',
+			calendars: [],
+			syncedAt: null,
+			writeCalendar: null
+		});
 		expect(titles()).toEqual(['standup']);
 		expect(allDayLines(TEST_EMAIL, DAY, '2026-10-28')).toEqual([]);
 	});

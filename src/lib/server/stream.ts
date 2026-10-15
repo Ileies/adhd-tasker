@@ -12,6 +12,7 @@ export type StreamMessage =
 	| { type: 'tone'; tone: unknown }
 	/** The device that plays sound, null means every device does. */
 	| { type: 'display'; device: string | null }
+	| { type: 'calendar'; message: string }
 	| { type: 'hello' };
 
 interface Connection {

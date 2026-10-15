@@ -171,6 +171,7 @@ export const calendarSync = sqliteTable('calendar_sync', {
 	calendars: text('calendars', { mode: 'json' }).$type<string[]>().notNull(), // calendar ids
 	status: text('status').$type<'preview' | 'active'>().notNull(),
 	syncedAt: integer('synced_at'), // ms since epoch of the last successful sync
+	writeCalendar: text('write_calendar'), // where the user's own tasks are added, null = off (the default)
 	createdAt: integer('created_at').notNull()
 });
 
@@ -190,6 +191,8 @@ export const calendarEvents = sqliteTable(
 		eventId: text('event_id').notNull(),
 		etag: text('etag').notNull(),
 		kind: text('kind').$type<'timed' | 'allDay'>().notNull(),
+		// `google`: imported, Google owns it and it is never deleted there. `app`: made from a task of the user
+		origin: text('origin').$type<'google' | 'app'>().notNull().default('google'),
 		title: text('title').notNull(),
 		dates: text('dates', { mode: 'json' }).$type<string[]>().notNull(), // days it covers, YYYY-MM-DD
 		taskIds: text('task_ids', { mode: 'json' }).$type<number[]>().notNull()

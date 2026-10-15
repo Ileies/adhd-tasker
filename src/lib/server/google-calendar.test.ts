@@ -83,21 +83,22 @@ describe('listCalendars', () => {
 			[`${API}/users/me/calendarList`]: () =>
 				json({
 					items: [
-						{ id: 'work@group', summary: 'Work' },
+						{ id: 'work@group', summary: 'Work', accessRole: 'writer' },
 						{
 							id: 'me@example.com',
 							summary: 'me@example.com',
 							summaryOverride: 'Mine',
-							primary: true
+							primary: true,
+							accessRole: 'owner'
 						},
 						{ id: 'a@group', summary: 'Birthdays' }
 					]
 				})
 		});
 		expect(await listCalendars(TEST_EMAIL, 6_000_000_000)).toEqual([
-			{ id: 'me@example.com', name: 'Mine', primary: true },
-			{ id: 'a@group', name: 'Birthdays', primary: false },
-			{ id: 'work@group', name: 'Work', primary: false }
+			{ id: 'me@example.com', name: 'Mine', primary: true, writable: true },
+			{ id: 'a@group', name: 'Birthdays', primary: false, writable: false },
+			{ id: 'work@group', name: 'Work', primary: false, writable: true }
 		]);
 		const listed = requests.find((request) => request.url.includes('calendarList'));
 		expect(listed?.headers.get('Authorization')).toBe('Bearer a');
