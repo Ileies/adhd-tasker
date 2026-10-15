@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { Minus, Plus } from '@lucide/svelte';
-	import { formatClock24 } from '#lib/format.js';
-	import { parseClock, stepClock } from '#lib/taskform.js';
+	import { formatClock, formatClock24 } from '#lib/format.js';
+	import { parseClock, parseClockInput, stepClock } from '#lib/taskform.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 
@@ -25,13 +25,33 @@
 		onchange?: (value: string) => void;
 	} = $props();
 
-	let input: HTMLInputElement | null = $state(null);
+	let hidden: HTMLInputElement | null = $state(null);
 
-	async function move(delta: number) {
-		value = formatClock24(stepClock(parseClock(value) ?? 0, delta, step));
+	// Shown in the user's 12 or 24 hour format, kept as `HH:MM` in `value` (a native time input would follow the browser locale instead)
+	const minutes = $derived(parseClock(value));
+	const shown = $derived(minutes === null ? '' : formatClock(minutes));
+
+	async function commit(next: string) {
+		value = next;
 		await tick();
 		// The same event a typed change makes, so forms that listen for change save too
-		input?.dispatchEvent(new Event('change', { bubbles: true }));
+		hidden?.dispatchEvent(new Event('change', { bubbles: true }));
+		onchange?.(next);
+	}
+
+	function move(delta: number) {
+		return commit(formatClock24(stepClock(minutes ?? 0, delta, step)));
+	}
+
+	function typed(event: Event & { currentTarget: HTMLInputElement }) {
+		// The visible field has no name: only the hidden one reports, once the value is updated
+		event.stopPropagation();
+		const parsed = parseClockInput(event.currentTarget.value);
+		if (parsed === null) {
+			event.currentTarget.value = shown;
+			return;
+		}
+		return commit(formatClock24(parsed));
 	}
 </script>
 
@@ -46,15 +66,16 @@
 	>
 		<Minus />
 	</Button>
+	<input type="hidden" {name} {value} bind:this={hidden} />
 	<Input
-		bind:ref={input}
-		type="time"
-		{name}
+		type="text"
+		inputmode="numeric"
+		autocomplete="off"
 		{required}
-		bind:value
-		class="h-11 w-auto md:h-8 {className}"
+		value={shown}
+		class="h-11 w-24 text-center md:h-8 {className}"
 		aria-label={label}
-		onchange={(e) => onchange?.(e.currentTarget.value)}
+		onchange={typed}
 	/>
 	<Button
 		type="button"
