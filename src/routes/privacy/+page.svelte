@@ -67,8 +67,10 @@
 		<li>
 			<strong>Linked Google services:</strong> which services you allowed, and the refresh token Google
 			gave for them, stored encrypted so the server can reach them while the app is closed. Unlinking,
-			or deleting your account, tells Google to revoke it and deletes it here. Nothing is read from these
-			services yet.
+			or deleting your account, tells Google to revoke it and deletes it here. Of the linked services
+			only Calendar is read, and only after you chose calendars and an import: the titles and times of
+			events in the next 14 days become tasks in your plan, all-day events show on Plan. Nothing is written
+			to your calendar, and the events are used for nothing else.
 		</li>
 	</ul>
 	<p class="mt-2">
