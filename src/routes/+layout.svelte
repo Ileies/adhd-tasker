@@ -131,6 +131,7 @@
 	const overlay = $derived(page.url.pathname === '/');
 	let barVisible = $state(true);
 	let isFullscreen = $state(false);
+	let loginForm = $state<HTMLFormElement>();
 	let headerEl: HTMLElement | undefined = $state();
 	let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -250,7 +251,7 @@
 					{#if data.user}
 						<DropdownMenu.Label class="truncate">{data.user.email}</DropdownMenu.Label>
 					{:else}
-						<DropdownMenu.Item onSelect={() => goto('/settings#sync')}>
+						<DropdownMenu.Item onSelect={() => loginForm?.requestSubmit()}>
 							Sync across devices
 						</DropdownMenu.Item>
 					{/if}
@@ -269,6 +270,7 @@
 					<DropdownMenu.Item onSelect={() => goto('/terms')}>Terms</DropdownMenu.Item>
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>
+			<form method="POST" action="/login" bind:this={loginForm} hidden></form>
 		</div>
 	</header>
 
