@@ -35,7 +35,7 @@ The principle in `CLAUDE.md` stays the filter: anything that adds cognitive load
 
 ### Not in 1.0 (1.1 and later, in this order)
 
-1. **Daylight theme from location** (UX phase 8b, design in `daylight-theme.md`). Adds a third party (IP geolocation) and a Privacy page change for a theme. Until then the existing day hours stay under Appearance and the first run default is still "by daylight" with them.
+1. ~~**Daylight theme from location**~~ (UX phase 8b). Built ahead of this order, see Daylight theme in `CLAUDE.md` (design at `56be755`). It added two third parties (ipwho.is, Open-Meteo) and a Privacy page change.
 2. **Morning briefing** (`day.started`), **Break it down**, **Leave-by alarms**, **Save your place**, **Estimate learning** (needs the actual times recorded in C4 first).
 3. Everything under Parked in `CLAUDE.md` stays parked. Everything in `feature-ideas.md` that is not named here is 1.1 or later.
 
@@ -177,7 +177,7 @@ Notes on the order:
 | `CLAUDE.md` says no stat tiles. The "3 done today" line is an exception already agreed in the UX plan                                 | Write the exception into `CLAUDE.md` in UX phase 4                                                                                     |
 | Scope creep from `feature-ideas.md`. Many ideas rate 9 out of 10                                                                      | Nothing joins 1.0 without a new row in section 4 with points and a proof, and without removing points of equal size or moving the date |
 | The estimate is mine, not measured. UX phases have no estimate in their own plan                                                      | Re-estimate at each milestone. A phase that took twice the points is recorded here so the next estimate is honest                      |
-| 8b removed from 1.0 against decision 5 in the UX plan                                                                                 | Revisit when Calm ends. If wanted, it is 4 points and replaces nothing                                                                 |
+| 8b removed from 1.0 against decision 5 in the UX plan                                                                                 | Built anyway (4 points, replaced nothing). Its privacy surface is on the Privacy page and tested                                       |
 
 ## 7. Next actions
 

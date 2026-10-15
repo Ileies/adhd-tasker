@@ -4,8 +4,7 @@ Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
 - `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code
-- `daylight-theme.md`: design for 1.1
-- Finished and deleted (git history): the local first plan (`docs/local-first-plan.md` at `a419224`) and the UX plan (`docs/ux-plan.md` at `24192b1`)
+- Finished and deleted (git history): the local first plan (`docs/local-first-plan.md` at `a419224`), the UX plan (`docs/ux-plan.md` at `24192b1`) and the daylight theme (`docs/daylight-theme.md` at `56be755`)
 
 ## Now
 
@@ -28,7 +27,6 @@ Plans in `docs/`:
 - End-of-day summary
 - Morning briefing (`day.started` event)
 - Mark agent-made tasks in the Plan view (a small marker on timeline blocks)
-- Daylight theme from location (`daylight-theme.md`, 1.1)
 - Plan: a calendar grid in the day switcher popover
 - Productivity rating for the day so far (next to the "done today" line). Needs a fair measure of the day's load, including load the app cannot see, before it can be honest
 
