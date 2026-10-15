@@ -117,17 +117,20 @@
 			<h2 class="font-medium">Alarm</h2>
 			<div class="flex flex-wrap items-center gap-2">
 				<TimeInput bind:value={at} required label="Time" />
-				<Input
-					bind:value={label}
-					required
-					maxlength={SCHEDULE_LIMITS.maxLabel}
-					placeholder="What is it for"
-					class="h-11 min-w-40 flex-1 md:h-8"
-					aria-label="Label"
-				/>
-				<MicButton
-					onheard={(text) => (label = joinHeard(label, text).slice(0, SCHEDULE_LIMITS.maxLabel))}
-				/>
+				<div class="relative min-w-40 flex-1">
+					<Input
+						bind:value={label}
+						required
+						maxlength={SCHEDULE_LIMITS.maxLabel}
+						placeholder="What is it for"
+						class="h-11 pr-12 md:h-8"
+						aria-label="Label"
+					/>
+					<MicButton
+						class="absolute top-1/2 right-0.5 size-10 -translate-y-1/2 md:size-7"
+						onheard={(text) => (label = joinHeard(label, text).slice(0, SCHEDULE_LIMITS.maxLabel))}
+					/>
+				</div>
 				<Button type="submit" disabled={busy} class="min-h-11 md:min-h-8">Add</Button>
 			</div>
 			<details class="text-sm">

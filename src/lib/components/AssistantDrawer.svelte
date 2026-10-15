@@ -142,52 +142,53 @@
 		</div>
 
 		<form class="flex items-end gap-2 border-t p-3" onsubmit={submit}>
-			<Textarea
-				bind:value={draft}
-				rows={2}
-				class="resize-none"
-				placeholder="Message"
-				aria-label="Message the assistant"
-				disabled={!hasKey}
-				onkeydown={(e) => {
-					if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) void submit(e);
-				}}
-			/>
-			{#if canRecord() && !draft.trim()}
-				<Button
-					type="button"
-					size="icon"
-					class="size-11"
-					variant={voice.recording ? 'default' : 'secondary'}
-					aria-label="Hold to talk"
-					title="Hold to talk"
-					aria-pressed={voice.recording}
-					disabled={!hasKey || chat.busy || voice.transcribing}
-					onpointerdown={(e) => {
-						e.currentTarget.setPointerCapture(e.pointerId);
-						void press(e);
-					}}
-					onpointerup={release}
-					onpointercancel={release}
+			<div class="relative flex-1">
+				<Textarea
+					bind:value={draft}
+					rows={2}
+					class="resize-none pr-12"
+					placeholder="Message"
+					aria-label="Message the assistant"
+					disabled={!hasKey}
 					onkeydown={(e) => {
-						if (e.key === ' ' && !e.repeat) void press(e);
+						if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) void submit(e);
 					}}
-					onkeyup={(e) => e.key === ' ' && release()}
-					onclick={(e) => e.preventDefault()}
-				>
-					<Mic />
-				</Button>
-			{:else}
-				<Button
-					type="submit"
-					size="icon"
-					class="size-11"
-					aria-label="Send"
-					disabled={!hasKey || chat.busy || !draft.trim()}
-				>
-					<Send />
-				</Button>
-			{/if}
+				/>
+				{#if canRecord() && !draft.trim()}
+					<Button
+						type="button"
+						size="icon"
+						class="absolute top-1 right-1 size-11 md:size-9"
+						variant={voice.recording ? 'default' : 'ghost'}
+						aria-label="Hold to talk"
+						title="Hold to talk"
+						aria-pressed={voice.recording}
+						disabled={!hasKey || chat.busy || voice.transcribing}
+						onpointerdown={(e) => {
+							e.currentTarget.setPointerCapture(e.pointerId);
+							void press(e);
+						}}
+						onpointerup={release}
+						onpointercancel={release}
+						onkeydown={(e) => {
+							if (e.key === ' ' && !e.repeat) void press(e);
+						}}
+						onkeyup={(e) => e.key === ' ' && release()}
+						onclick={(e) => e.preventDefault()}
+					>
+						<Mic />
+					</Button>
+				{/if}
+			</div>
+			<Button
+				type="submit"
+				size="icon"
+				class="size-11"
+				aria-label="Send"
+				disabled={!hasKey || chat.busy || !draft.trim()}
+			>
+				<Send />
+			</Button>
 		</form>
 		<p class="text-muted-foreground px-3 pb-3 text-sm" role="status" aria-live="polite">
 			{#if voice.recording}Listening, release to send{:else if voice.transcribing}Understanding...{:else if micMessage}{micMessage}{/if}

@@ -125,16 +125,19 @@
 		</Dialog.Header>
 
 		<form onsubmit={handleSubmit} class="space-y-5">
-			<div class="flex items-center gap-1">
+			<div class="relative">
 				<Input
 					type="text"
-					class="h-12 flex-1 text-xl md:text-xl"
+					class="h-12 pr-12 text-xl md:text-xl"
 					bind:value={form.title}
 					placeholder="What needs doing? (required)"
 					aria-label="Title"
 					required
 				/>
-				<MicButton onheard={(text) => (form.title = joinHeard(form.title, text))} />
+				<MicButton
+					class="absolute top-1/2 right-1 -translate-y-1/2"
+					onheard={(text) => (form.title = joinHeard(form.title, text))}
+				/>
 			</div>
 
 			<div class="flex flex-wrap gap-2" role="group" aria-label="Day">
@@ -261,15 +264,18 @@
 			</div>
 
 			{#if noteOpen}
-				<div class="flex items-start gap-1">
+				<div class="relative">
 					<Textarea
-						class="flex-1 resize-none"
+						class="resize-none pr-12"
 						rows={3}
 						bind:value={form.description}
 						placeholder="Note"
 						aria-label="Note"
 					/>
-					<MicButton onheard={(text) => (form.description = joinHeard(form.description, text))} />
+					<MicButton
+						class="absolute top-1 right-1"
+						onheard={(text) => (form.description = joinHeard(form.description, text))}
+					/>
 				</div>
 			{:else}
 				<Button variant="ghost" size="sm" type="button" onclick={() => (noteOpen = true)}>
