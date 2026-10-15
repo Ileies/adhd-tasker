@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { Check, Plus, TriangleAlert } from '@lucide/svelte';
+	import { Check, Mic, Plus, TriangleAlert } from '@lucide/svelte';
+	import { canRecord, finishRecording, startRecording } from '#lib/speech.js';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
 	import {
 		addQuickTask,
@@ -22,6 +23,7 @@
 	} from '#lib/quickadd.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
+	import AlarmQuick from '#lib/components/AlarmQuick.svelte';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -117,6 +119,46 @@
 		highlight = created.id;
 		clearTimeout(highlightTimer);
 		highlightTimer = setTimeout(() => (highlight = null), HIGHLIGHT_MS);
+	}
+
+	const voice = tasker.voice;
+	let micMessage = $state('');
+	let pressed = false;
+
+	/** What was said lands in the field, so the preview shows and Add stays one tap. */
+	function fillHeard(text: string | null) {
+		if (!text) {
+			micMessage = 'Did not catch that';
+			return;
+		}
+		quick = quick.trim() ? `${quick.trim()} ${text}` : text;
+		quickInput?.focus();
+	}
+
+	// Push-to-talk: speaking lasts exactly as long as the button or Space is held
+	async function press(event: Event) {
+		event.preventDefault();
+		if (pressed) return;
+		pressed = true;
+		micMessage = '';
+		const limited = (text: string | null) => {
+			pressed = false;
+			fillHeard(text);
+		};
+		if (!(await startRecording(limited))) {
+			pressed = false;
+			micMessage = 'The microphone is not available';
+		}
+	}
+
+	async function release() {
+		if (!pressed) return;
+		pressed = false;
+		try {
+			fillHeard(await finishRecording());
+		} catch (e) {
+			micMessage = e instanceof Error ? e.message : 'Could not understand the recording';
+		}
 	}
 
 	async function addQuick(event: Event) {
@@ -219,27 +261,65 @@
 		onsubmit={addQuick}
 	>
 		<div class="flex gap-2">
-			<Input
-				bind:ref={quickInput}
-				bind:value={quick}
-				class="h-11 flex-1 text-base"
-				placeholder="Add a task: Call dentist 14:30 45m"
-				aria-label="Quick add a task"
-			/>
-			<Button
-				variant="outline"
-				size="icon-lg"
-				type="button"
-				aria-label="More options"
-				title="More options"
-				onclick={() => openTaskForm()}
+			<!-- One field with its tools inside, so the bar reads as a single control -->
+			<div
+				class="border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-11 min-w-0 flex-1 items-center rounded-lg border pr-1 focus-within:ring-3"
 			>
-				<Plus />
-			</Button>
-			<Button type="submit" size="lg" disabled={!quick.trim()}>Add</Button>
+				<Input
+					bind:ref={quickInput}
+					bind:value={quick}
+					class="h-full min-w-0 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
+					placeholder="Add a task: Call dentist 14:30 45m"
+					aria-label="Quick add a task"
+				/>
+				{#if canRecord() && tasker.settings.hasOpenaiKey}
+					<Button
+						type="button"
+						variant={voice.recording ? 'default' : 'ghost'}
+						size="icon"
+						class="size-9 shrink-0"
+						aria-label="Hold to talk"
+						title="Hold to talk"
+						aria-pressed={voice.recording}
+						disabled={voice.transcribing}
+						onpointerdown={(e) => {
+							e.currentTarget.setPointerCapture(e.pointerId);
+							void press(e);
+						}}
+						onpointerup={release}
+						onpointercancel={release}
+						onkeydown={(e) => {
+							if (e.key === ' ' && !e.repeat) void press(e);
+						}}
+						onkeyup={(e) => e.key === ' ' && release()}
+						onclick={(e) => e.preventDefault()}
+					>
+						<Mic />
+					</Button>
+				{/if}
+				<Button
+					variant="ghost"
+					size="icon"
+					class="size-9 shrink-0"
+					type="button"
+					aria-label="More options"
+					title="More options"
+					onclick={() => openTaskForm()}
+				>
+					<Plus />
+				</Button>
+			</div>
+			<Button type="submit" class="h-11 px-5" disabled={!quick.trim()}>Add</Button>
 		</div>
 		<!-- Always there, so the line under the field does not jump the page -->
-		<p class="text-muted-foreground h-5 truncate text-sm" aria-live="polite">{preview ?? ''}</p>
+		<p class="text-muted-foreground h-5 truncate text-sm" role="status" aria-live="polite">
+			{#if voice.recording}Listening, release to fill in{:else if voice.transcribing}Understanding...{:else if micMessage}{micMessage}{:else}{preview ??
+					''}{/if}
+		</p>
+		<!-- Big screens only: phones keep timers and alarms on their own page -->
+		<div class="hidden md:block">
+			<AlarmQuick />
+		</div>
 	</form>
 
 	{#if tasker.calendar.allDay.length > 0}
