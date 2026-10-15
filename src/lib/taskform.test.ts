@@ -1,6 +1,15 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { type DateChoice, dateChoice, endLine, isChipDuration, parseClock } from '#lib/taskform.js';
+import {
+	type DateChoice,
+	dateChoice,
+	endLine,
+	isChipDuration,
+	parseClock,
+	joinHeard,
+	stepClock,
+	stepNumber
+} from '#lib/taskform.js';
 
 describe('dateChoice', () => {
 	test.each<[string, DateChoice]>([
@@ -52,5 +61,39 @@ describe('isChipDuration', () => {
 
 	test('other values need the free field', () => {
 		expect(isChipDuration(50)).toBe(false);
+	});
+});
+
+describe('stepClock', () => {
+	test.each<[number, number, number]>([
+		[14 * 60, 15, 14 * 60 + 15],
+		[14 * 60 + 7, 15, 14 * 60 + 15],
+		[14 * 60 + 7, -15, 14 * 60],
+		[14 * 60, -15, 13 * 60 + 45],
+		[23 * 60 + 50, 15, 0],
+		[0, -15, 23 * 60 + 45]
+	])('%i moved by %i lands on %i', (from, delta, expected) => {
+		expect(stepClock(from, delta)).toBe(expected);
+	});
+});
+
+describe('stepNumber', () => {
+	test.each<[number, number, number]>([
+		[30, 5, 35],
+		[30, -5, 25],
+		[5, -5, 5],
+		[1440, 5, 1440]
+	])('%i moved by %i is %i between 5 and 1440', (from, delta, expected) => {
+		expect(stepNumber(from, delta, 5, 1440)).toBe(expected);
+	});
+});
+
+describe('joinHeard', () => {
+	test.each<[string, string, string]>([
+		['', 'Call dentist', 'Call dentist'],
+		['  ', 'Call dentist', 'Call dentist'],
+		['Buy milk ', 'at 14:00', 'Buy milk at 14:00']
+	])('%j plus %j is %j', (current, heard, expected) => {
+		expect(joinHeard(current, heard)).toBe(expected);
 	});
 });

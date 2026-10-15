@@ -36,3 +36,20 @@ export function parseClock(value: string): number | null {
 export function isChipDuration(duration: number): boolean {
 	return DURATION_CHIPS.includes(duration);
 }
+
+/** The next time on the `step` grid in the direction of `delta`, wrapping around midnight: 14:07 plus 15 is 14:15. */
+export function stepClock(minutes: number, delta: number, step = 15): number {
+	const grid =
+		delta > 0 ? Math.floor(minutes / step) * step + step : Math.ceil(minutes / step) * step - step;
+	return ((grid % DAY_END) + DAY_END) % DAY_END;
+}
+
+/** A number moved by `delta`, kept between `min` and `max`. */
+export function stepNumber(value: number, delta: number, min: number, max: number): number {
+	return Math.min(max, Math.max(min, value + delta));
+}
+
+/** What was said added after what is already in the field, with one space between. */
+export function joinHeard(current: string, heard: string): string {
+	return current.trim() ? `${current.trim()} ${heard}` : heard;
+}
