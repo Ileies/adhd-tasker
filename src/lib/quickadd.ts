@@ -24,6 +24,25 @@ function to24h(hour: number, meridiem?: string): number {
 	return (hour % 12) + (pm ? 12 : 0);
 }
 
+/** The first clock time in `text` (`14:30`, `2pm`, `at 14`) in minutes since midnight, and the text without it. */
+export function takeClock(text: string): { minutes: number | null; rest: string } {
+	const colon = text.match(TIME_COLON);
+	if (colon)
+		return {
+			minutes: to24h(Number(colon[1]), colon[3]) * 60 + Number(colon[2]),
+			rest: text.replace(colon[0], ' ')
+		};
+	const meridiem = text.match(TIME_MERIDIEM);
+	if (meridiem)
+		return {
+			minutes: to24h(Number(meridiem[1]), meridiem[2]) * 60,
+			rest: text.replace(meridiem[0], ' ')
+		};
+	const at = text.match(TIME_AT);
+	if (at) return { minutes: Number(at[1]) * 60, rest: text.replace(at[0], ' ') };
+	return { minutes: null, rest: text };
+}
+
 /**
  * Reads "Call dentist 14:30 for 45m" style text: a title plus an optional time and duration.
  * Recognised times: `14:30`, `2pm`, `2:30pm`, `at 14`. Durations: `45m`, `2h`, `1h30m`, `1.5h`.
