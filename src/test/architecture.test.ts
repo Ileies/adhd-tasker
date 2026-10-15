@@ -98,8 +98,6 @@ describe('pairing rule', () => {
 		'server/assistant.ts': 'until checks plan phase 4',
 		'server/schedule.ts': 'until checks plan phase 4',
 		'server/voice.ts': 'until checks plan phase 4',
-		'mode.ts':
-			'browser wiring that picks the backend, its rules live in the tested local runtime and backend',
 		'alarms.ts': 'until checks plan phase 6',
 		'agent.ts': 'until checks plan phase 6',
 		'assistant.ts': 'until checks plan phase 6',
