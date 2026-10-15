@@ -10,7 +10,7 @@ Judge every design and implementation decision against this: does it reduce cogn
 
 - **One thing at a time.** The current task dominates the screen, everything else recedes.
 - **Minimal friction.** Login once, then the current task is visible without any tap.
-- **Forgiving.** Destructive or accidental actions are undoable (Undo toast, not confirm dialogs).
+- **Forgiving.** Destructive or accidental actions are undoable (Undo toast, not confirm dialogs). The exception is anything that erases all data (Delete my account, Delete everything on this device): it asks in a dialog first and keeps the ten second Undo as well.
 - **External anchoring.** The app re-attracts attention with audio and color shifts instead of expecting the user to look.
 - **Immediate feedback.** Completing a task gets audio and visual confirmation.
 - **Calm.** No emoji, no decoration, no flashing, no animation that competes with the current task.

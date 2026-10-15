@@ -10,8 +10,11 @@
 		restoreDeviceBackup
 	} from '#lib/data.js';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
 
 	const { signedIn }: { signedIn: boolean } = $props();
+
+	let confirmingErase = $state(false);
 
 	let message = $state<{ ok: boolean; text: string } | null>(null);
 	let picker: HTMLInputElement | undefined = $state();
@@ -50,6 +53,11 @@
 		const failure = await restoreDeviceBackup();
 		if (failure) message = { ok: false, text: failure };
 	}
+
+	function confirmErase() {
+		confirmingErase = false;
+		eraseSoon();
+	}
 </script>
 
 <div class="space-y-4">
@@ -65,10 +73,36 @@
 	<div class="flex flex-wrap gap-2">
 		<Button variant="secondary" onclick={exportNow}>Export</Button>
 		<Button variant="secondary" onclick={() => picker?.click()}>Import</Button>
-		<Button variant="ghost" onclick={eraseSoon}>
+		<Button variant="ghost" onclick={() => (confirmingErase = true)}>
 			{signedIn ? 'Delete my account' : 'Delete everything on this device'}
 		</Button>
 	</div>
+
+	<Dialog.Root bind:open={confirmingErase}>
+		<Dialog.Content class="max-w-md">
+			<Dialog.Header>
+				<Dialog.Title>
+					{signedIn ? 'Delete your account?' : 'Delete everything on this device?'}
+				</Dialog.Title>
+				<Dialog.Description>
+					{#if signedIn}
+						This removes your plan, alarms, settings, key and the assistant's log from this server.
+						Export a copy first if you may want it back.
+					{:else}
+						This removes your plan, alarms, settings and key from this browser. Export a copy first
+						if you may want it back.
+					{/if}
+					You will have ten seconds to take it back.
+				</Dialog.Description>
+			</Dialog.Header>
+			<Dialog.Footer>
+				<Button variant="outline" onclick={() => (confirmingErase = false)}>Keep my data</Button>
+				<Button variant="destructive" onclick={confirmErase}>
+					{signedIn ? 'Delete my account' : 'Delete everything'}
+				</Button>
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
 	<input
 		bind:this={picker}
 		type="file"
