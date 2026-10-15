@@ -5,13 +5,7 @@ import { BackendError, type Backend } from '#lib/backend.js';
 import { localBackend } from '#lib/local/backend.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import { dismissToast } from '#lib/toast.js';
-import {
-	answerWelcome,
-	clearSampleDay,
-	dismissScreenHint,
-	loadFlags,
-	trySampleDay
-} from '#lib/welcome.js';
+import { answerWelcome, clearSampleDay, loadFlags, trySampleDay } from '#lib/welcome.js';
 import { testCtx } from '#test/ctx.js';
 import { Priority } from '#lib/types.js';
 
@@ -29,7 +23,7 @@ beforeEach(() => {
 	});
 	tasker.tasks = [];
 	tasker.sample = [];
-	tasker.firstRun = { welcomed: false, screenHintSeen: false };
+	tasker.firstRun = { welcomed: false };
 	dismissToast();
 });
 
@@ -51,13 +45,7 @@ describe('flags', () => {
 		expect(tasker.firstRun.welcomed).toBe(true);
 		tasker.firstRun.welcomed = false;
 		loadFlags();
-		expect(tasker.firstRun).toEqual({ welcomed: true, screenHintSeen: false });
-	});
-
-	test('dismissing the second screen hint is remembered and leaves the welcome alone', () => {
-		dismissScreenHint();
-		loadFlags();
-		expect(tasker.firstRun).toEqual({ welcomed: false, screenHintSeen: true });
+		expect(tasker.firstRun).toEqual({ welcomed: true });
 	});
 });
 

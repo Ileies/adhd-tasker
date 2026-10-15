@@ -24,19 +24,18 @@ afterEach(() => {
 
 describe('flags', () => {
 	test('start unset', () => {
-		expect(readFlags()).toEqual({ welcomed: false, screenHintSeen: false });
+		expect(readFlags()).toEqual({ welcomed: false });
 	});
 
-	test('a set flag stays set and the others are not touched', () => {
+	test('a set flag stays set', () => {
 		setFlag('welcomed');
-		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false });
+		expect(readFlags()).toEqual({ welcomed: true });
 	});
 
-	test('a cleared flag is unset again, the others stay', () => {
-		setFlag('screenHintSeen');
+	test('a cleared flag is unset again', () => {
 		setFlag('welcomed');
-		clearFlag('screenHintSeen');
-		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: false });
+		clearFlag('welcomed');
+		expect(readFlags()).toEqual({ welcomed: false });
 	});
 
 	test('a blocked storage silences the hints', () => {
@@ -46,7 +45,7 @@ describe('flags', () => {
 				throw new Error('blocked');
 			}
 		});
-		expect(readFlags()).toEqual({ welcomed: true, screenHintSeen: true });
+		expect(readFlags()).toEqual({ welcomed: true });
 		expect(() => setFlag('welcomed')).not.toThrow();
 		expect(() => clearFlag('welcomed')).not.toThrow();
 	});

@@ -1,13 +1,12 @@
 /**
- * What this device was already told or did, remembered in the browser: the welcome and the second screen hint
- * show once. Device preferences, never task data.
+ * What this device was already told or did, remembered in the browser: the welcome shows once. Device preferences, never task data.
  */
 
 /**
  * Each flag with what a browser that blocks storage reads. A flag that silences something reads as set, so
  * nothing nags on a device that cannot remember.
  */
-const WHEN_BLOCKED = { welcomed: true, screenHintSeen: true } as const;
+const WHEN_BLOCKED = { welcomed: true } as const;
 
 export type Flag = keyof typeof WHEN_BLOCKED;
 

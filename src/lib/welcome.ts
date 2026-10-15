@@ -11,18 +11,12 @@ import { showToast } from '#lib/toast.js';
 export function loadFlags() {
 	const flags = readFlags();
 	tasker.firstRun.welcomed = flags.welcomed;
-	tasker.firstRun.screenHintSeen = flags.screenHintSeen;
 }
 
 /** Either button of the welcome answers it for good. */
 export function answerWelcome() {
 	setFlag('welcomed');
 	tasker.firstRun.welcomed = true;
-}
-
-export function dismissScreenHint() {
-	setFlag('screenHintSeen');
-	tasker.firstRun.screenHintSeen = true;
 }
 
 const reasonOf = (error: unknown) =>

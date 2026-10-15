@@ -1,6 +1,5 @@
 /**
- * The first run: when the welcome shows, when the second screen hint shows, and the live example inside
- * the welcome. Pure, the flags that remember what was dismissed are in `flags.ts`.
+ * The first run: when the welcome shows and the live example inside the welcome. Pure, the flags that remember what was dismissed are in `flags.ts`.
  */
 import type { Task } from '#lib/core/repo.js';
 import { heroState, type HeroState } from '#lib/now.js';
@@ -17,18 +16,11 @@ export interface FirstRun {
 	taskCount: number;
 	/** The welcome was answered once on this device. */
 	welcomed: boolean;
-	/** The second screen hint was dismissed once on this device. */
-	hintSeen: boolean;
 }
 
 /** Only on the very first visit: no plan on the device, no account, the welcome never answered. */
 export function showWelcome(state: FirstRun): boolean {
 	return state.guest && state.ready && !state.problem && state.taskCount === 0 && !state.welcomed;
-}
-
-/** Once, after the first task exists. A signed in visitor knows what the app is, but can use it too. */
-export function showScreenHint(state: FirstRun): boolean {
-	return state.ready && !state.problem && state.taskCount > 0 && !state.hintSeen;
 }
 
 /** The live example in the welcome: a task 28 minutes from its end, made into the hero the way Now does. */

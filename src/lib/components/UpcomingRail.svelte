@@ -22,9 +22,7 @@
 		onEdit,
 		onTriage,
 		sample = false,
-		onClearSample,
-		screenHint = false,
-		onDismissHint
+		onClearSample
 	}: {
 		upcoming: Task[];
 		/** Tasks that ran out without an answer, decided one by one in the triage sheet. */
@@ -41,9 +39,6 @@
 		/** The plan holds the sample day: say so and offer to clear it. */
 		sample?: boolean;
 		onClearSample?: () => void;
-		/** Show the one time hint about running this on a second screen. */
-		screenHint?: boolean;
-		onDismissHint?: () => void;
 	} = $props();
 
 	const shown = $derived(upcoming.slice(0, NEXT_COUNT));
@@ -139,18 +134,6 @@
 				variant="link"
 				class="text-foreground h-auto p-0 text-sm"
 				onclick={() => onClearSample?.()}>Clear it</Button
-			>
-		</p>
-	{/if}
-
-	<!-- A second screen means a desktop or a tablet, a phone has nothing to press F on -->
-	{#if screenHint}
-		<p class="text-muted-foreground hidden flex-wrap items-center gap-x-3 text-sm md:flex">
-			Running this on a second screen? Press F for fullscreen.
-			<Button
-				variant="link"
-				class="text-foreground h-auto p-0 text-sm"
-				onclick={() => onDismissHint?.()}>Got it</Button
 			>
 		</p>
 	{/if}

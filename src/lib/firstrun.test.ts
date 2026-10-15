@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { showScreenHint, showWelcome, welcomeExample, type FirstRun } from '#lib/firstrun.js';
+import { showWelcome, welcomeExample, type FirstRun } from '#lib/firstrun.js';
 import { minutesLeft } from '#lib/priority.js';
 
 const first: FirstRun = {
@@ -8,8 +8,7 @@ const first: FirstRun = {
 	ready: true,
 	problem: false,
 	taskCount: 0,
-	welcomed: false,
-	hintSeen: false
+	welcomed: false
 };
 
 describe('showWelcome', () => {
@@ -25,26 +24,6 @@ describe('showWelcome', () => {
 		['it was answered before', { welcomed: true }]
 	])('stays away when %s', (_, change) => {
 		expect(showWelcome({ ...first, ...change })).toBe(false);
-	});
-});
-
-describe('showScreenHint', () => {
-	test('waits for the first task', () => {
-		expect(showScreenHint(first)).toBe(false);
-		expect(showScreenHint({ ...first, taskCount: 1 })).toBe(true);
-	});
-
-	test('shows once, a dismissed hint never comes back', () => {
-		expect(showScreenHint({ ...first, taskCount: 3, hintSeen: true })).toBe(false);
-	});
-
-	test('does not show before the plan was read or when the device failed', () => {
-		expect(showScreenHint({ ...first, taskCount: 1, ready: false })).toBe(false);
-		expect(showScreenHint({ ...first, taskCount: 1, problem: true })).toBe(false);
-	});
-
-	test('also shows for a signed in visitor', () => {
-		expect(showScreenHint({ ...first, guest: false, taskCount: 1 })).toBe(true);
 	});
 });
 

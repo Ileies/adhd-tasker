@@ -3,8 +3,8 @@
 	import NowHero from '#lib/components/NowHero.svelte';
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
 	import Welcome from '#lib/components/Welcome.svelte';
-	import { showScreenHint, showWelcome } from '#lib/firstrun.js';
-	import { answerWelcome, clearSampleDay, dismissScreenHint, trySampleDay } from '#lib/welcome.js';
+	import { showWelcome } from '#lib/firstrun.js';
+	import { answerWelcome, clearSampleDay, trySampleDay } from '#lib/welcome.js';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import {
@@ -49,17 +49,15 @@
 	const ready = $derived(!!data.user || tasker.account.ready);
 	const timezone = $derived(tasker.timezone ?? settings.timezone ?? null);
 
-	// First run: a guest with an empty device is welcomed once, a hint about a second screen follows the first task
+	// First run: a guest with an empty device is welcomed once
 	const firstRun = $derived({
 		guest: !data.user,
 		ready,
 		problem: !!tasker.account.problem,
 		taskCount: tasks.length,
-		welcomed: tasker.firstRun.welcomed,
-		hintSeen: tasker.firstRun.screenHintSeen
+		welcomed: tasker.firstRun.welcomed
 	});
 	const welcome = $derived(browser && showWelcome(firstRun));
-	const screenHint = $derived(browser && showScreenHint(firstRun));
 	// "Plan my first task" lands in the empty state, with the cursor in its line
 	let focusAdd = $state(false);
 
@@ -350,8 +348,6 @@
 			onTriage={() => (triage = true)}
 			sample={tasker.sample.length > 0}
 			onClearSample={() => void clearSampleDay()}
-			{screenHint}
-			onDismissHint={dismissScreenHint}
 		/>
 	</div>
 	<MissedTriage
