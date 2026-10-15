@@ -405,7 +405,7 @@
 
 			{#if draft}
 				<div
-					class="border-primary bg-primary/15 pointer-events-none absolute inset-x-1 z-10 overflow-hidden rounded-lg border-2 border-dashed px-2 py-1"
+					class="border-primary bg-primary/15 pointer-events-none absolute inset-x-0.5 z-10 overflow-hidden rounded-lg border-l-4 px-2 py-1"
 					style="top: {px(off(draft.startTime))}px; height: {Math.max(
 						px(from + draft.duration),
 						MIN_BLOCK_PX
@@ -415,7 +415,7 @@
 						<input
 							use:focusOnMount
 							bind:value={draft.title}
-							class="pointer-events-auto w-full bg-transparent text-sm font-medium outline-none"
+							class="pointer-events-auto block h-5 w-full bg-transparent p-0 text-sm leading-5 font-medium outline-none"
 							placeholder="Title, Enter to add"
 							aria-label="Title of the new task"
 							onkeydown={(e) => {
@@ -428,7 +428,12 @@
 							onblur={commitDraft}
 						/>
 					{/if}
-					<div class="tabular text-muted-foreground text-xs">
+					<div
+						class="tabular text-muted-foreground truncate text-xs {draft.drawing ||
+						px(from + draft.duration) >= 44
+							? ''
+							: 'hidden'}"
+					>
 						{formatClock(draft.startTime)} - {formatClock(draft.startTime + draft.duration)}
 					</div>
 				</div>
