@@ -26,5 +26,9 @@ export const DEFAULT_SETTINGS: Settings = {
 	clock12h: null, // null follows the device's own 12 or 24 hour setting until the user picks one
 	checkInMinutes: 5, // soft chime while a task is current, 0 is off
 	myDayStart: 420, // 07:00, the timeline folds the hours outside My day
-	myDayEnd: 1380 // 23:00
+	myDayEnd: 1380, // 23:00
+	locationLat: null, // no location: the theme follows the main city of the timezone
+	locationLon: null,
+	locationName: null,
+	locationSource: null // null: an account finds it from the internet address, a guest has none
 };

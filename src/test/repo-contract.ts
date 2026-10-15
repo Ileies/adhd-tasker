@@ -445,6 +445,10 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				checkInMinutes: 5,
 				myDayStart: 420,
 				myDayEnd: 1380,
+				locationLat: null,
+				locationLon: null,
+				locationName: null,
+				locationSource: null,
 				displayDevice: null
 			});
 		});

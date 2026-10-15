@@ -126,3 +126,46 @@ describe('presets', () => {
 		expect(budgetChip(tokens)).toBe(text);
 	});
 });
+
+describe('location', () => {
+	const place: SettingsPatch = {
+		locationLat: 51.34,
+		locationLon: 12.37,
+		locationName: 'Leipzig',
+		locationSource: 'city'
+	};
+	const cleared: SettingsPatch = {
+		locationLat: null,
+		locationLon: null,
+		locationName: null,
+		locationSource: null
+	};
+
+	test.each([
+		['a city', place],
+		['a position from the device', { ...place, locationSource: 'device' }],
+		['detect automatically, all four cleared', cleared]
+	] as const)('accepts %s', (_name, patch) => {
+		expect(parseSettingsPatch(patch)).toEqual({ ok: true, value: patch });
+	});
+
+	test.each([
+		['a latitude beyond the poles', { ...place, locationLat: 90.5 }],
+		['a longitude beyond the date line', { ...place, locationLon: -181 }],
+		['a latitude that is not finite', { ...place, locationLat: Number.NaN }],
+		['a latitude as text', { ...place, locationLat: '51.34' }],
+		['an empty name', { ...place, locationName: ' ' }],
+		['a name that is too long', { ...place, locationName: 'x'.repeat(101) }],
+		['a source the server alone may write', { ...place, locationSource: 'ip' }],
+		['an unknown source', { ...place, locationSource: 'gps' }],
+		['only the position', { locationLat: 51.34, locationLon: 12.37 }],
+		['a place without its source', { ...place, locationSource: null }],
+		['a cleared name with a position', { ...cleared, locationLat: 51.34 }]
+	])('rejects %s', (_name, body) => {
+		expect(parseSettingsPatch(body).ok).toBe(false);
+	});
+
+	test('a patch without any location keeps working', () => {
+		expect(parseSettingsPatch({ showClock: true }).ok).toBe(true);
+	});
+});

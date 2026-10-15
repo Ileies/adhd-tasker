@@ -49,6 +49,11 @@ export interface Settings {
 	checkInMinutes: number;
 	myDayStart: number;
 	myDayEnd: number;
+	/** Where the user is, for the theme. All four are set or all are `null` (see `#lib/location.js`). */
+	locationLat: number | null;
+	locationLon: number | null;
+	locationName: string | null;
+	locationSource: 'ip' | 'device' | 'city' | null;
 }
 
 /** One change the assistant made, `before` and `after` are tasks, null when absent. */

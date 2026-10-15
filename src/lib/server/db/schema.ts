@@ -5,7 +5,7 @@ import type { EventOrigin, EventType } from '#lib/events.js';
 import type { Autonomy } from '#lib/guardrails.js';
 import type { Repeat, ScheduleKind } from '#lib/schedule.js';
 import type { Tone } from '#lib/tones.js';
-import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /** Column defaults come from `DEFAULT_SETTINGS`, so an account and a guest start the same. */
 const D = DEFAULT_SETTINGS;
@@ -43,7 +43,11 @@ export const users = sqliteTable('users', {
 	clock12h: integer('clock_12h', { mode: 'boolean' }), // 12 hour clock, null follows the device
 	checkInMinutes: integer('check_in_minutes').default(D.checkInMinutes).notNull(), // soft chime interval while a task is current, 0 is off
 	myDayStart: integer('my_day_start').default(D.myDayStart).notNull(), // minutes since midnight, the timeline folds the hours outside
-	myDayEnd: integer('my_day_end').default(D.myDayEnd).notNull()
+	myDayEnd: integer('my_day_end').default(D.myDayEnd).notNull(),
+	locationLat: real('location_lat'), // rounded to 2 decimals, null: not known (never the internet address itself)
+	locationLon: real('location_lon'),
+	locationName: text('location_name'), // the city shown in Settings
+	locationSource: text('location_source').$type<'ip' | 'device' | 'city'>() // null: find it automatically
 });
 
 export const tasks = sqliteTable('tasks', {

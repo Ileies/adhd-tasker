@@ -6,6 +6,7 @@ import { OVERRUN_LIMITS, REMINDER_LIMITS } from '#lib/anchoring.js';
 import { isEventType } from '#lib/events.js';
 import { isAutonomy, type AgentSettings } from '#lib/guardrails.js';
 import type { Settings } from '#lib/core/repo.js';
+import { LOCATION_KEYS } from '#lib/location.js';
 
 /** What the page may know: everything but the key itself, which only says whether one is saved. */
 export type ClientSettings = Omit<Settings, 'openaiKey'> & { hasOpenaiKey: boolean };
@@ -33,6 +34,10 @@ export type SettingsPatch = Partial<
 		| 'checkInMinutes'
 		| 'myDayStart'
 		| 'myDayEnd'
+		| 'locationLat'
+		| 'locationLon'
+		| 'locationName'
+		| 'locationSource'
 	>
 >;
 
@@ -45,6 +50,9 @@ const isBool = (value: unknown) => typeof value === 'boolean';
 const inRange = (min: number, max: number) => (value: unknown) =>
 	typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 const isClock = inRange(0, 1439);
+const isCoordinate = (limit: number) => (value: unknown) =>
+	value === null ||
+	(typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit);
 
 /** Not every event type is a toggle, but the stored list only has to name real types. */
 const isEventList = (value: unknown) =>
@@ -68,7 +76,13 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	clock12h: (value) => value === null || isBool(value),
 	checkInMinutes: inRange(0, CHECK_IN_MAX),
 	myDayStart: isClock,
-	myDayEnd: inRange(1, 1440)
+	myDayEnd: inRange(1, 1440),
+	locationLat: isCoordinate(90),
+	locationLon: isCoordinate(180),
+	locationName: (value) =>
+		value === null || (typeof value === 'string' && value.trim() !== '' && value.length <= 100),
+	// `ip` is only ever written by the server, never accepted from outside
+	locationSource: (value) => value === null || value === 'device' || value === 'city'
 };
 
 /** A patch from the outside: known keys only, every value in range, at least one key. */
@@ -87,6 +101,13 @@ export function parseSettingsPatch(
 	const { myDayStart, myDayEnd } = body as SettingsPatch;
 	if (myDayStart !== undefined && myDayEnd !== undefined && myDayEnd - myDayStart < MY_DAY_MIN)
 		return { ok: false, error: 'My day has to be at least an hour long' };
+	// The four location settings come as one: all null (find it automatically) or all set
+	if (LOCATION_KEYS.some((key) => key in body)) {
+		const values = LOCATION_KEYS.map((key) => (body as Record<string, unknown>)[key]);
+		const none = values.every((value) => value === null);
+		const all = values.every((value) => value !== null && value !== undefined);
+		if (!none && !all) return { ok: false, error: 'A location needs all four of its settings' };
+	}
 	return { ok: true, value: body as SettingsPatch };
 }
 

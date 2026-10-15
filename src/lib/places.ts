@@ -1,0 +1,87 @@
+/**
+ * The main city of the common timezones, so the theme can follow the sun before anyone told the app
+ * where they are. A rough place is all a theme needs. A zone that is not listed has no city.
+ */
+import type { Place } from '#lib/location.js';
+
+const city = (name: string, lat: number, lon: number): Place => ({ name, lat, lon });
+
+const PLACES: Record<string, Place> = {
+	'Europe/Berlin': city('Berlin', 52.52, 13.41),
+	'Europe/London': city('London', 51.51, -0.13),
+	'Europe/Dublin': city('Dublin', 53.35, -6.26),
+	'Europe/Lisbon': city('Lisbon', 38.72, -9.14),
+	'Europe/Madrid': city('Madrid', 40.42, -3.7),
+	'Europe/Paris': city('Paris', 48.86, 2.35),
+	'Europe/Brussels': city('Brussels', 50.85, 4.35),
+	'Europe/Amsterdam': city('Amsterdam', 52.37, 4.9),
+	'Europe/Luxembourg': city('Luxembourg', 49.61, 6.13),
+	'Europe/Zurich': city('Zurich', 47.38, 8.54),
+	'Europe/Vienna': city('Vienna', 48.21, 16.37),
+	'Europe/Rome': city('Rome', 41.89, 12.5),
+	'Europe/Prague': city('Prague', 50.08, 14.44),
+	'Europe/Warsaw': city('Warsaw', 52.23, 21.01),
+	'Europe/Budapest': city('Budapest', 47.5, 19.04),
+	'Europe/Copenhagen': city('Copenhagen', 55.68, 12.57),
+	'Europe/Stockholm': city('Stockholm', 59.33, 18.07),
+	'Europe/Oslo': city('Oslo', 59.91, 10.75),
+	'Europe/Helsinki': city('Helsinki', 60.17, 24.94),
+	'Europe/Athens': city('Athens', 37.98, 23.73),
+	'Europe/Bucharest': city('Bucharest', 44.43, 26.1),
+	'Europe/Sofia': city('Sofia', 42.7, 23.32),
+	'Europe/Kyiv': city('Kyiv', 50.45, 30.52),
+	'Europe/Istanbul': city('Istanbul', 41.01, 28.98),
+	'Europe/Moscow': city('Moscow', 55.76, 37.62),
+	'Atlantic/Reykjavik': city('Reykjavik', 64.15, -21.94),
+	'Africa/Casablanca': city('Casablanca', 33.57, -7.59),
+	'Africa/Lagos': city('Lagos', 6.52, 3.38),
+	'Africa/Cairo': city('Cairo', 30.04, 31.24),
+	'Africa/Nairobi': city('Nairobi', -1.29, 36.82),
+	'Africa/Johannesburg': city('Johannesburg', -26.2, 28.05),
+	'Asia/Jerusalem': city('Jerusalem', 31.77, 35.22),
+	'Asia/Dubai': city('Dubai', 25.2, 55.27),
+	'Asia/Tehran': city('Tehran', 35.69, 51.39),
+	'Asia/Karachi': city('Karachi', 24.86, 67.01),
+	'Asia/Kolkata': city('Mumbai', 19.08, 72.88),
+	'Asia/Calcutta': city('Mumbai', 19.08, 72.88),
+	'Asia/Dhaka': city('Dhaka', 23.81, 90.41),
+	'Asia/Bangkok': city('Bangkok', 13.76, 100.5),
+	'Asia/Jakarta': city('Jakarta', -6.21, 106.85),
+	'Asia/Singapore': city('Singapore', 1.35, 103.82),
+	'Asia/Hong_Kong': city('Hong Kong', 22.32, 114.17),
+	'Asia/Shanghai': city('Shanghai', 31.23, 121.47),
+	'Asia/Taipei': city('Taipei', 25.03, 121.57),
+	'Asia/Manila': city('Manila', 14.6, 120.98),
+	'Asia/Seoul': city('Seoul', 37.57, 126.98),
+	'Asia/Tokyo': city('Tokyo', 35.68, 139.69),
+	'Australia/Perth': city('Perth', -31.95, 115.86),
+	'Australia/Adelaide': city('Adelaide', -34.93, 138.6),
+	'Australia/Brisbane': city('Brisbane', -27.47, 153.03),
+	'Australia/Sydney': city('Sydney', -33.87, 151.21),
+	'Australia/Melbourne': city('Melbourne', -37.81, 144.96),
+	'Pacific/Auckland': city('Auckland', -36.85, 174.76),
+	'Pacific/Honolulu': city('Honolulu', 21.31, -157.86),
+	'America/Anchorage': city('Anchorage', 61.22, -149.9),
+	'America/Los_Angeles': city('Los Angeles', 34.05, -118.24),
+	'America/Vancouver': city('Vancouver', 49.28, -123.12),
+	'America/Phoenix': city('Phoenix', 33.45, -112.07),
+	'America/Denver': city('Denver', 39.74, -104.99),
+	'America/Edmonton': city('Edmonton', 53.55, -113.49),
+	'America/Chicago': city('Chicago', 41.88, -87.63),
+	'America/Winnipeg': city('Winnipeg', 49.9, -97.14),
+	'America/Mexico_City': city('Mexico City', 19.43, -99.13),
+	'America/New_York': city('New York', 40.71, -74.01),
+	'America/Toronto': city('Toronto', 43.65, -79.38),
+	'America/Halifax': city('Halifax', 44.65, -63.58),
+	'America/Bogota': city('Bogota', 4.71, -74.07),
+	'America/Lima': city('Lima', -12.05, -77.04),
+	'America/Santiago': city('Santiago', -33.45, -70.67),
+	'America/Caracas': city('Caracas', 10.48, -66.9),
+	'America/Argentina/Buenos_Aires': city('Buenos Aires', -34.6, -58.38),
+	'America/Sao_Paulo': city('Sao Paulo', -23.55, -46.63)
+};
+
+/** The main city of a timezone, `null` when the zone is not in the list. */
+export function placeForTimezone(timezone: string | null | undefined): Place | null {
+	return (timezone && PLACES[timezone]) || null;
+}
