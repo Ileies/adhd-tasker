@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { Check, TriangleAlert } from '@lucide/svelte';
+	import { Check, ChevronDown, ChevronUp, TriangleAlert } from '@lucide/svelte';
 	import { TaskStatus, type Task } from '#lib/types.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import {
@@ -9,10 +9,13 @@
 		SNAP,
 		keyAdjust,
 		layoutDay,
-		moveTo,
+		dayOffset,
+		midnightOffset,
+		moveOnTimeline,
 		resizeTo,
 		snap,
-		visibleRange,
+		timeAtOffset,
+		timelineRange,
 		MY_DAY
 	} from '#lib/plan.js';
 	import { QUICK_DURATION } from '#lib/quickadd.js';
@@ -82,29 +85,50 @@
 	let draft = $state<Draft | null>(null);
 	let scroller: HTMLDivElement | undefined = $state();
 	let grid: HTMLDivElement | undefined = $state();
-	let earlyOpen = $state(false);
-	let lateOpen = $state(false);
+	let nightOpen = $state(false);
 
+	// The timeline starts where the night starts (end of My day), so the night is one block at the
+	// top. Positions on it are offsets from that start, see `dayOffset`.
+	const origin = $derived(day.end);
+	const midnight = $derived(midnightOffset(origin));
+	const off = (time: number) => dayOffset(time, origin);
 	const placements = $derived(layoutDay(tasks));
-	// Hours outside the day fold into one thin row, unless a task is in them or the row was opened
-	const range = $derived(visibleRange(tasks, day));
-	const earlyFolded = $derived(range.start > 0 && !earlyOpen);
-	const lateFolded = $derived(range.end < DAY_MINUTES && !lateOpen);
-	const from = $derived(earlyFolded ? range.start : 0);
-	const to = $derived(lateFolded ? range.end : DAY_MINUTES);
+	// The night folds into one thin row, down to the hours that hold a task, until it is opened
+	const range = $derived(timelineRange(tasks, day));
+	const from = $derived(nightOpen ? 0 : range.from);
+	const to = $derived(range.to);
 	const hours = $derived(
 		Array.from(
 			{ length: Math.floor(to / 60) - Math.ceil(from / 60) + 1 },
 			(_, i) => Math.ceil(from / 60) + i
 		)
 	);
-	const px = (minutes: number) => ((minutes - from) / 60) * HOUR_PX;
+	const px = (offset: number) => ((offset - from) / 60) * HOUR_PX;
+	/** Where the day ends on this side of midnight: a block drawn there stays on its side. */
+	const sideEnd = (offset: number) => (offset < midnight ? midnight : DAY_MINUTES);
+	const sideStart = (offset: number) => (offset < midnight ? 0 : midnight);
 
-	/** The minute under a pointer, on the grid column. */
+	/** The offset under a pointer, on the grid column. */
 	function minutesAt(clientY: number) {
 		const rect = grid!.getBoundingClientRect();
 		return from + ((clientY - rect.top) / HOUR_PX) * 60;
 	}
+
+	/** Past stretches of today, as offset ranges, so what is left of the day shows at a glance. */
+	const past = $derived.by(() => {
+		if (!showNow) return [];
+		const at = off(now);
+		const spans =
+			at >= midnight
+				? [[midnight, at]]
+				: [
+						[0, at],
+						[midnight, DAY_MINUTES]
+					];
+		return spans
+			.map(([a, b]) => ({ a: Math.max(a, from), b: Math.min(b, to) }))
+			.filter(({ a, b }) => b > a);
+	});
 
 	function begin(event: PointerEvent, task: Task, mode: Drag['mode']) {
 		if (event.button !== 0) return;
@@ -127,7 +151,7 @@
 		const dy = event.clientY - drag.originY;
 		const delta = (dy / HOUR_PX) * 60;
 		if (drag.mode === 'move')
-			drag.startTime = moveTo(drag.originStart + delta, drag.originDuration);
+			drag.startTime = moveOnTimeline(drag.originStart, drag.originDuration, delta, origin);
 		else drag.duration = resizeTo(drag.originStart, drag.originDuration + delta);
 		if (Math.abs(dy) > MOVE_THRESHOLD_PX) drag.moved = true;
 	}
@@ -153,18 +177,17 @@
 		// A title that is typed but not entered yet is kept
 		if (draft && !draft.drawing) commitDraft();
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		const minutes = minutesAt(event.clientY);
-		const startTime = Math.max(
-			0,
-			Math.min(DAY_MINUTES - MIN_DURATION, Math.floor(minutes / SNAP) * SNAP)
-		);
+		const raw = Math.max(0, Math.min(DAY_MINUTES - MIN_DURATION, minutesAt(event.clientY)));
+		// A block stays on its side of midnight
+		const offset = Math.min(Math.floor(raw / SNAP) * SNAP, sideEnd(raw) - MIN_DURATION);
 		draft = {
-			startTime,
+			startTime: timeAtOffset(offset, origin),
 			duration: MIN_DURATION,
 			title: '',
 			drawing: true,
 			originY: event.clientY,
-			originMinutes: startTime,
+			// An offset, not a time of day
+			originMinutes: offset,
 			moved: false
 		};
 	}
@@ -172,18 +195,25 @@
 	function drawTrack(event: PointerEvent) {
 		if (!draft?.drawing) return;
 		if (Math.abs(event.clientY - draft.originY) > MOVE_THRESHOLD_PX) draft.moved = true;
-		const minutes = Math.max(0, Math.min(DAY_MINUTES, snap(minutesAt(event.clientY))));
-		const start = Math.min(draft.originMinutes, minutes);
-		const end = Math.max(draft.originMinutes + MIN_DURATION, minutes);
-		draft.startTime = start;
-		draft.duration = Math.min(DAY_MINUTES - start, end - start);
+		const first = draft.originMinutes;
+		const minutes = Math.max(
+			sideStart(first),
+			Math.min(sideEnd(first), snap(minutesAt(event.clientY)))
+		);
+		const start = Math.min(first, minutes);
+		const end = Math.max(first + MIN_DURATION, minutes);
+		draft.startTime = timeAtOffset(start, origin);
+		draft.duration = Math.min(sideEnd(first) - start, end - start);
 	}
 
 	function drawEnd(event: PointerEvent) {
 		if (!draft?.drawing) return;
 		(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
 		if (!draft.moved) {
-			draft.duration = Math.min(QUICK_DURATION, DAY_MINUTES - draft.startTime);
+			draft.duration = Math.min(
+				QUICK_DURATION,
+				sideEnd(draft.originMinutes) - off(draft.startTime)
+			);
 		}
 		draft.drawing = false;
 	}
@@ -223,8 +253,8 @@
 	$effect(() => {
 		if (!scroller || positionedFor === date) return;
 		positionedFor = date;
-		const focus = showNow ? now : Math.min(480, ...tasks.map((t) => t.startTime));
-		const top = earlyFolded ? ROW_PX : 0;
+		const focus = showNow ? off(now) : Math.min(off(480), ...tasks.map((t) => off(t.startTime)));
+		const top = range.night > 0 ? ROW_PX : 0;
 		scroller.scrollTop = Math.max(0, top + px(Math.max(from, focus)) - HOUR_PX * 1.5);
 	});
 
@@ -238,20 +268,18 @@
 	});
 </script>
 
-{#snippet fold(label: string, onclick: () => void)}
-	<button
-		type="button"
-		class="text-muted-foreground hover:bg-muted/60 focus-visible:ring-ring tabular flex w-full cursor-pointer items-center border-y border-dashed px-4 text-xs focus-visible:ring-2 focus-visible:outline-none"
-		style="height: {ROW_PX}px"
-		{onclick}
-	>
-		{label}
-	</button>
-{/snippet}
-
 <div bind:this={scroller} class="h-full overflow-y-auto">
-	{#if earlyFolded}
-		{@render fold(`${formatClock(0)} - ${formatClock(range.start)}`, () => (earlyOpen = true))}
+	{#if range.night > 0}
+		<button
+			type="button"
+			class="text-muted-foreground hover:bg-muted/60 focus-visible:ring-ring tabular flex w-full cursor-pointer items-center justify-between border-b border-dashed px-4 text-xs focus-visible:ring-2 focus-visible:outline-none"
+			style="height: {ROW_PX}px"
+			aria-expanded={nightOpen}
+			onclick={() => (nightOpen = !nightOpen)}
+		>
+			<span>Night, {formatClock(origin % DAY_MINUTES)} - {formatClock(day.start)}</span>
+			{#if nightOpen}<ChevronUp class="size-4" />{:else}<ChevronDown class="size-4" />{/if}
+		</button>
 	{/if}
 
 	<div class="grid grid-cols-[3.5rem_1fr]" style="height: {px(to)}px">
@@ -265,7 +293,7 @@
 						: ''}"
 					style="top: {px(hour * 60)}px"
 				>
-					{formatClock(hour * 60)}
+					{formatClock(timeAtOffset(hour * 60, origin))}
 				</span>
 			{/each}
 		</div>
@@ -308,7 +336,7 @@
 						{overlaps ? 'ring-warning ring-2' : ''}
 						{highlight === task.id ? 'ring-foreground ring-2' : ''}
 						{dragging ? 'z-10 cursor-grabbing shadow-lg' : 'cursor-grab'}"
-					style="top: {px(start)}px; height: {Math.max(
+					style="top: {px(off(start))}px; height: {Math.max(
 						px(from + duration),
 						MIN_BLOCK_PX
 					)}px; left: calc({(lane / lanes) * 100}% + 2px); width: calc({100 / lanes}% - 4px)"
@@ -371,7 +399,7 @@
 			{#if draft}
 				<div
 					class="border-primary bg-primary/15 pointer-events-none absolute inset-x-1 z-10 overflow-hidden rounded-lg border-2 border-dashed px-2 py-1"
-					style="top: {px(draft.startTime)}px; height: {Math.max(
+					style="top: {px(off(draft.startTime))}px; height: {Math.max(
 						px(from + draft.duration),
 						MIN_BLOCK_PX
 					)}px"
@@ -400,17 +428,17 @@
 			{/if}
 
 			<!-- What is past on today is dimmed, so what is left of the day shows at a glance -->
-			{#if showNow && now > from}
+			{#each past as { a, b } (a)}
 				<div
-					class="bg-background/50 pointer-events-none absolute inset-x-0 top-0 z-5"
-					style="height: {px(Math.min(now, to))}px"
+					class="bg-background/50 pointer-events-none absolute inset-x-0 z-5"
+					style="top: {px(a)}px; height: {px(b) - px(a)}px"
 				></div>
-			{/if}
+			{/each}
 
-			{#if showNow}
+			{#if showNow && off(now) >= from && off(now) <= to}
 				<div
 					class="pointer-events-none absolute inset-x-0 z-20 flex items-center"
-					style="top: {px(now)}px"
+					style="top: {px(off(now))}px"
 				>
 					<div class="bg-destructive -ml-1 size-2 rounded-full"></div>
 					<div class="bg-destructive h-0.5 flex-1"></div>
@@ -418,11 +446,4 @@
 			{/if}
 		</div>
 	</div>
-
-	{#if lateFolded}
-		{@render fold(
-			`${formatClock(range.end)} - ${formatClock(DAY_MINUTES - 1)}`,
-			() => (lateOpen = true)
-		)}
-	{/if}
 </div>
