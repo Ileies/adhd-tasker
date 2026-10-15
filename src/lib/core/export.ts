@@ -4,7 +4,7 @@
  * file moves a guest's plan into an account (local first plan 5.3). It never holds the OpenAI key, the
  * assistant's log or anything that belongs to one machine (display device, linked Google services).
  */
-import type { NewTask, Repo, ScheduleEntry } from '#lib/core/repo.js';
+import type { NewTask, Repo, ScheduleEntry, Settings, Task } from '#lib/core/repo.js';
 import { REPEATS, SCHEDULE_LIMITS, type Repeat } from '#lib/schedule.js';
 import { parseSettingsPatch, type SettingsPatch } from '#lib/settings.js';
 import { isValidTimezone } from '#lib/time.js';
@@ -53,20 +53,28 @@ const SETTING_KEYS = [
 	'showClock'
 ] as const satisfies readonly (keyof SettingsPatch)[];
 
-const FIRST_DAY = '0000-01-01';
+export const FIRST_DAY = '0000-01-01';
 
-export async function buildExport(repo: Repo, now: number): Promise<ExportFile> {
-	const saved = await repo.settings.get();
+/**
+ * The file for rows that are already read: the plan, the pending alarms (the assistant's wakeups are not
+ * exported) and the settings the user chose. Pure, so the server can build it inside a transaction.
+ */
+export function assembleExport(rows: {
+	settings: Settings;
+	tasks: Task[];
+	schedule: ScheduleEntry[];
+	now: number;
+}): ExportFile {
 	const settings: ExportFile['settings'] = {};
-	for (const key of SETTING_KEYS) Object.assign(settings, { [key]: saved[key] });
-	if (saved.timezone) settings.timezone = saved.timezone;
+	for (const key of SETTING_KEYS) Object.assign(settings, { [key]: rows.settings[key] });
+	if (rows.settings.timezone) settings.timezone = rows.settings.timezone;
 
 	return {
 		app: EXPORT_APP,
 		version: EXPORT_VERSION,
-		exportedAt: now,
+		exportedAt: rows.now,
 		settings,
-		tasks: (await repo.tasks.between(FIRST_DAY)).map((task) => ({
+		tasks: rows.tasks.map((task) => ({
 			title: task.title,
 			description: task.description,
 			date: task.date,
@@ -75,7 +83,7 @@ export async function buildExport(repo: Repo, now: number): Promise<ExportFile> 
 			priority: task.priority,
 			status: task.status
 		})),
-		alarms: (await repo.schedule.pending())
+		alarms: rows.schedule
 			.filter((entry) => entry.kind === 'alarm')
 			.map((entry) => ({
 				fireAt: entry.fireAt,
@@ -86,6 +94,15 @@ export async function buildExport(repo: Repo, now: number): Promise<ExportFile> 
 				durationMin: entry.durationMin
 			}))
 	};
+}
+
+export async function buildExport(repo: Repo, now: number): Promise<ExportFile> {
+	return assembleExport({
+		settings: await repo.settings.get(),
+		tasks: await repo.tasks.between(FIRST_DAY),
+		schedule: await repo.schedule.pending(),
+		now
+	});
 }
 
 type Parsed = { ok: true; value: ExportFile } | { ok: false; error: string };
@@ -197,8 +214,13 @@ export interface ImportResult {
 	alarms: number;
 }
 
-const sameTask = (task: { title: string; date: string; startTime: number; duration: number }) =>
-	`${task.date}|${task.startTime}|${task.duration}|${task.title}`;
+/** What makes two tasks the same one for an import: when, how long and what it is called. */
+export const sameTask = (task: {
+	title: string;
+	date: string;
+	startTime: number;
+	duration: number;
+}) => `${task.date}|${task.startTime}|${task.duration}|${task.title}`;
 
 /** The sentence that tells what an import did. */
 export function describeImport({ tasks, skipped, alarms }: ImportResult): string {
