@@ -40,7 +40,7 @@
 	</div>
 
 	{#if tasker.themeMode === 'auto'}
-		<div class="text-muted-foreground flex items-center gap-2 text-sm">
+		<div class="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
 			<span>Light from</span>
 			<Input
 				type="time"
@@ -57,7 +57,7 @@
 				onchange={(e) => onTimeChange('dayEnd', e.currentTarget.value)}
 				aria-label="Daytime ends"
 			/>
+			<span class="text-xs">Dark outside these hours.</span>
 		</div>
-		<p class="text-muted-foreground text-xs">Dark outside these hours.</p>
 	{/if}
 </div>
