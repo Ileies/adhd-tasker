@@ -132,19 +132,61 @@ export function conflictsWith<T extends Span & { status: TaskStatus }>(
 export const MY_DAY = { start: 7 * 60, end: 23 * 60 };
 
 /**
- * The hours the timeline shows in full: `day`, widened to whole hours around every task so that
- * nothing planned outside it is ever hidden. The rest collapses into one thin row at each end.
+ * The timeline starts where the night starts (My day end), not at midnight: the offset of a time
+ * is how far it is from that origin. 23:00 is 0, midnight is 60, 07:00 is 480, 22:59 is 1439.
  */
-export function visibleRange(
+export function dayOffset(minutes: number, origin = MY_DAY.end): number {
+	return (((minutes - origin) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+}
+
+/** The offset of midnight: tasks never cross it, so the night is two blocks either side of it. */
+export function midnightOffset(origin = MY_DAY.end): number {
+	return (DAY_MINUTES - origin) % DAY_MINUTES;
+}
+
+/** The time of day (minutes since midnight) at an offset on the timeline. */
+export function timeAtOffset(offset: number, origin = MY_DAY.end): number {
+	const midnight = midnightOffset(origin);
+	return offset < midnight ? offset + origin : offset - midnight;
+}
+
+/**
+ * The part of the timeline that is shown in full. The night (from `day.end` round to `day.start`)
+ * folds into one thin row at the top, widened to whole hours around every task in it so that
+ * nothing planned at night is hidden. All values are offsets, see `dayOffset`.
+ */
+export function timelineRange(
 	tasks: Pick<Task, 'startTime' | 'duration'>[],
 	day = MY_DAY
-): { start: number; end: number } {
-	let { start, end } = day;
+): { night: number; from: number; to: number } {
+	const night = dayOffset(day.start, day.end);
+	let from = night;
+	let to = DAY_MINUTES;
 	for (const task of tasks) {
-		start = Math.min(start, Math.floor(task.startTime / 60) * 60);
-		end = Math.max(end, Math.ceil((task.startTime + task.duration) / 60) * 60);
+		const start = dayOffset(task.startTime, day.end);
+		if (start < night) from = Math.min(from, Math.floor(start / 60) * 60);
+		// A task that runs across the end of the day makes the timeline longer
+		to = Math.max(to, Math.ceil((start + task.duration) / 60) * 60);
 	}
-	return { start, end: Math.min(DAY_MINUTES, end) };
+	return { night, from, to };
+}
+
+/**
+ * Where a task lands when it is dragged by `delta` minutes on the timeline, as a time of day. It
+ * stays on its side of midnight: a task never crosses it.
+ */
+export function moveOnTimeline(
+	startTime: number,
+	duration: number,
+	delta: number,
+	origin = MY_DAY.end
+): number {
+	const midnight = midnightOffset(origin);
+	const offset = dayOffset(startTime, origin);
+	if (offset < midnight) {
+		return timeAtOffset(snap(Math.max(0, Math.min(midnight - duration, offset + delta))), origin);
+	}
+	return moveTo(Math.max(midnight, offset + delta) - midnight, duration);
 }
 
 /** What arrow keys do to a focused block: up and down move by one step, with Shift they resize. Null for any other key. */

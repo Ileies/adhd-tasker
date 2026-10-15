@@ -17,7 +17,11 @@ import {
 	phoneGroups,
 	resizeTo,
 	snap,
-	visibleRange
+	dayOffset,
+	midnightOffset,
+	moveOnTimeline,
+	timeAtOffset,
+	timelineRange
 } from '#lib/plan.js';
 
 const span = (id: number, startTime: number, duration: number, status = TaskStatus.Pending) => ({
@@ -261,18 +265,57 @@ describe('moveLater', () => {
 	});
 });
 
-describe('visibleRange', () => {
+describe('timeline offsets', () => {
 	const h = (hours: number) => hours * 60;
 
-	test('is the day itself when every task is inside it', () => {
-		expect(visibleRange([span(1, h(9), 60)])).toEqual({ start: h(7), end: h(23) });
+	test('the timeline starts where the night starts', () => {
+		expect(dayOffset(h(23))).toBe(0);
+		expect(dayOffset(h(24) - 15)).toBe(45);
+		expect(dayOffset(0)).toBe(h(1));
+		expect(dayOffset(h(7))).toBe(h(8));
+		expect(dayOffset(h(22) + 59)).toBe(1439);
 	});
 
-	test('widens to whole hours around a task outside the day', () => {
-		expect(visibleRange([span(1, h(5) + 30, 60), span(2, h(23) + 15, 30)])).toEqual({
-			start: h(5),
-			end: h(24)
+	test('midnight is one hour in and offsets convert back to times', () => {
+		expect(midnightOffset()).toBe(h(1));
+		expect(timeAtOffset(30)).toBe(h(23) + 30);
+		expect(timeAtOffset(h(1))).toBe(0);
+		expect(timeAtOffset(h(8))).toBe(h(7));
+	});
+});
+
+describe('timelineRange', () => {
+	const h = (hours: number) => hours * 60;
+
+	test('folds the whole night when every task is inside the day', () => {
+		expect(timelineRange([span(1, h(9), 60)])).toEqual({ night: h(8), from: h(8), to: 1440 });
+	});
+
+	test('opens the night to whole hours around a task in it', () => {
+		expect(timelineRange([span(1, h(5) + 30, 60), span(2, h(23) + 15, 30)])).toEqual({
+			night: h(8),
+			from: 0,
+			to: 1440
 		});
+		expect(timelineRange([span(1, h(5) + 30, 60)]).from).toBe(h(6));
+	});
+
+	test('grows past the end when a task runs across the end of the day', () => {
+		expect(timelineRange([span(1, h(22) + 30, 60)]).to).toBe(h(25));
+	});
+});
+
+describe('moveOnTimeline', () => {
+	test('a task after midnight does not move before it', () => {
+		expect(moveOnTimeline(30, 30, -120)).toBe(0);
+	});
+
+	test('a task before midnight does not cross it', () => {
+		expect(moveOnTimeline(1380, 30, 120)).toBe(1410);
+	});
+
+	test('moves within the day and snaps', () => {
+		expect(moveOnTimeline(600, 60, 31)).toBe(630);
 	});
 });
 
