@@ -44,9 +44,15 @@ export function audioExtension(mime: string): string {
 	return 'webm';
 }
 
+/** Some browsers report no type for a recording, so an empty or generic type passes and OpenAI reads the container. */
 export function isAudioMime(mime: string): boolean {
+	const base = mime.split(';')[0].trim().toLowerCase();
 	return (
-		mime.split(';')[0].trim().toLowerCase().startsWith('audio/') || mime.startsWith('video/webm')
+		base === '' ||
+		base === 'application/octet-stream' ||
+		base.startsWith('audio/') ||
+		base === 'video/webm' ||
+		base === 'video/mp4'
 	);
 }
 

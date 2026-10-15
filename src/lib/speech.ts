@@ -10,6 +10,7 @@ import {
 /** Browser side of voice: push-to-talk recording, transcription and spoken replies. Server side is `src/lib/server/voice.ts`. */
 
 let recorder: MediaRecorder | undefined;
+let chosenType = '';
 let stream: MediaStream | undefined;
 let chunks: BlobPart[] = [];
 let startedAt = 0;
@@ -54,6 +55,7 @@ export async function startRecording(onLimit: (text: string | null) => void): Pr
 	}
 
 	const type = pickRecordingType((candidate) => MediaRecorder.isTypeSupported(candidate));
+	chosenType = type ?? '';
 	recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
 	chunks = [];
 	recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data);
@@ -83,7 +85,7 @@ export async function finishRecording(): Promise<string | null> {
 	recorder = undefined;
 
 	const blob = await new Promise<Blob>((resolve) => {
-		active.onstop = () => resolve(new Blob(chunks, { type: active.mimeType }));
+		active.onstop = () => resolve(new Blob(chunks, { type: active.mimeType || chosenType }));
 		active.stop();
 	});
 	releaseMicrophone();

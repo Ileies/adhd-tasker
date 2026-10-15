@@ -39,6 +39,10 @@ describe('isAudioMime', () => {
 		expect(isAudioMime('video/webm')).toBe(true);
 		expect(isAudioMime('text/html')).toBe(false);
 	});
+	test('a recording without a type is let through, OpenAI reads the container', () => {
+		expect(isAudioMime('')).toBe(true);
+		expect(isAudioMime('application/octet-stream')).toBe(true);
+	});
 });
 
 describe('speakable', () => {
