@@ -62,8 +62,11 @@ export function beginGuest(): () => void {
 			tasker.settings = await runtime.backend.settings.load();
 			// From yesterday on, like the layout load of an account, so the Plan screen has its neighbours
 			const from = addDays(todayIn(tasker.settings.timezone ?? deviceTimezone()), -1);
-			tasker.tasks = await runtime.backend.tasks.since(from);
-			tasker.sample = await runtime.backend.sample.ids();
+			// Independent reads, so Now does not wait for one after the other
+			[tasker.tasks, tasker.sample] = await Promise.all([
+				runtime.backend.tasks.since(from),
+				runtime.backend.sample.ids()
+			]);
 			// Signed out again: the next sign in asks anew about the plan on this device
 			void forgetDecline().catch(() => {});
 			tasker.account.ready = true;
