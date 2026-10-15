@@ -24,6 +24,7 @@ export interface CalendarEvent {
 	status?: string;
 	etag?: string;
 	summary?: string;
+	description?: string;
 	start?: { dateTime?: string; date?: string };
 	end?: { dateTime?: string; date?: string };
 }
@@ -268,6 +269,8 @@ export interface CalendarInfo {
 	id: string;
 	name: string;
 	primary: boolean;
+	/** Events can be added to it. */
+	writable: boolean;
 }
 
 /** Where the link to the calendars is: not started, chosen and previewed, or followed. */
@@ -275,6 +278,8 @@ export interface CalendarState {
 	status: 'none' | 'preview' | 'active';
 	calendars: string[];
 	syncedAt: number | null;
+	/** The calendar the user's own tasks are added to, `null` while that is off (the default). */
+	writeCalendar: string | null;
 }
 
 /** What Settings needs to draw the calendar card. `calendars` is empty until Calendar is linked. */
@@ -320,4 +325,87 @@ export function describeCalendarImport({ tasks, left, allDay }: CalendarImport):
 	if (allDay) parts.push(`${plural(allDay, 'all-day event')} shown on Plan`);
 	if (left) parts.push(`${plural(left, 'event')} left out because they clash`);
 	return `${parts.join(', ')}.`;
+}
+
+/** The line the app adds to the description of an event whose task is done. Google events are never deleted. */
+export const DONE_MARK = 'Done in ADHD Tasker';
+
+/** The description with the done marker on its own last line, or without it. Anything else in it is kept. */
+export function withDoneMark(description: string | undefined, done: boolean): string {
+	const lines = (description ?? '').split('\n').filter((line) => line.trim() !== DONE_MARK);
+	while (lines.length > 0 && lines.at(-1)!.trim() === '') lines.pop();
+	if (done) lines.push(...(lines.length > 0 ? ['', DONE_MARK] : [DONE_MARK]));
+	return lines.join('\n');
+}
+
+/** The time of a task as Google wants it: instants plus the zone they are read in. */
+export function eventTimes(
+	task: { date: DateKey; startTime: number; duration: number },
+	timezone: string
+) {
+	const at = (minutes: number) => ({
+		dateTime: new Date(zonedToEpoch(task.date, minutes, timezone)).toISOString(),
+		timeZone: timezone
+	});
+	return { start: at(task.startTime), end: at(task.startTime + task.duration) };
+}
+
+/** A task of the user as a new event, `description` carries the task's own and the done marker. */
+export function taskEvent(
+	task: {
+		title: string;
+		description: string;
+		date: DateKey;
+		startTime: number;
+		duration: number;
+		done: boolean;
+	},
+	timezone: string
+) {
+	return {
+		summary: task.title,
+		description: withDoneMark(task.description, task.done),
+		...eventTimes(task, timezone)
+	};
+}
+
+/** What a changed task asks of its event: the time when it moved or was resized, the marker when its done state changed. */
+export function eventPatch(
+	before: { date: DateKey; startTime: number; duration: number; done: boolean },
+	after: { date: DateKey; startTime: number; duration: number; done: boolean },
+	timezone: string,
+	description: string | undefined
+): { start?: unknown; end?: unknown; description?: string } | null {
+	const patch: { start?: unknown; end?: unknown; description?: string } = {};
+	if (
+		before.date !== after.date ||
+		before.startTime !== after.startTime ||
+		before.duration !== after.duration
+	)
+		Object.assign(patch, eventTimes(after, timezone));
+	if (before.done !== after.done) patch.description = withDoneMark(description, after.done);
+	return Object.keys(patch).length > 0 ? patch : null;
+}
+
+/** Whether a task edit moves or resizes the task, the fields that are missing from the edit are unchanged. */
+export function changesTime(
+	before: { date: DateKey; startTime: number; duration: number },
+	edit: { date?: unknown; startTime?: unknown; duration?: unknown } | null
+): boolean {
+	if (!edit) return false;
+	const differs = (key: 'date' | 'startTime' | 'duration') =>
+		edit[key] !== undefined && edit[key] !== before[key];
+	return differs('date') || differs('startTime') || differs('duration');
+}
+
+/** Why a task cut at midnight from one event cannot be moved here. */
+export const READ_ONLY_REASON = 'This event runs past midnight. Change it in Google Calendar.';
+
+/** What the user is told after a task change reached Google, `null` when there is nothing to tell. */
+export function describeWrite(outcome: 'none' | 'written' | 'googleWon' | 'failed', title: string) {
+	if (outcome === 'googleWon')
+		return `Google Calendar changed "${title}" in the meantime, so its version was kept.`;
+	if (outcome === 'failed')
+		return 'Google Calendar could not be reached. Your plan has the change.';
+	return null;
 }

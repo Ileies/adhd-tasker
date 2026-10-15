@@ -1,10 +1,17 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import {
+	changesTime,
 	clashesWith,
 	datesOf,
 	describeCalendarImport,
 	describePreview,
+	describeWrite,
+	DONE_MARK,
+	eventPatch,
+	eventTimes,
+	taskEvent,
+	withDoneMark,
 	EVENT_PRIORITY,
 	mapEvent,
 	piecesToTasks,
@@ -355,5 +362,123 @@ describe('describeCalendarImport', () => {
 		expect(describeCalendarImport({ tasks: 1, left: 2, allDay: 1 })).toBe(
 			'1 task added to your plan, 1 all-day event shown on Plan, 2 events left out because they clash.'
 		);
+	});
+});
+
+describe('withDoneMark', () => {
+	test.each([
+		['', true, DONE_MARK],
+		[undefined, true, DONE_MARK],
+		['Bring slides', true, `Bring slides\n\n${DONE_MARK}`],
+		[`Bring slides\n\n${DONE_MARK}`, true, `Bring slides\n\n${DONE_MARK}`],
+		[`Bring slides\n\n${DONE_MARK}`, false, 'Bring slides'],
+		[DONE_MARK, false, ''],
+		['Bring slides', false, 'Bring slides']
+	])('%j with done %j gives %j', (description, done, expected) => {
+		expect(withDoneMark(description, done)).toBe(expected);
+	});
+});
+
+describe('eventTimes', () => {
+	test('reads the wall clock in the timezone of the user', () => {
+		const { start, end } = eventTimes(
+			{ date: '2026-10-14', startTime: 600, duration: 45 },
+			'Asia/Tokyo'
+		);
+		expect(start).toEqual({ dateTime: '2026-10-14T01:00:00.000Z', timeZone: 'Asia/Tokyo' });
+		expect(end).toEqual({ dateTime: '2026-10-14T01:45:00.000Z', timeZone: 'Asia/Tokyo' });
+	});
+
+	test('a task that ends at midnight ends on the next day', () => {
+		const { end } = eventTimes({ date: '2026-10-14', startTime: 1380, duration: 60 }, 'UTC');
+		expect(end.dateTime).toBe('2026-10-15T00:00:00.000Z');
+	});
+});
+
+describe('taskEvent', () => {
+	test('carries the title, the description and the time', () => {
+		const event = taskEvent(
+			{
+				title: 'Call dentist',
+				description: 'Ask about Friday',
+				date: '2026-10-14',
+				startTime: 540,
+				duration: 15,
+				done: false
+			},
+			'UTC'
+		);
+		expect(event).toMatchObject({ summary: 'Call dentist', description: 'Ask about Friday' });
+		expect(event.start.dateTime).toBe('2026-10-14T09:00:00.000Z');
+	});
+
+	test('a done task is marked', () => {
+		const event = taskEvent(
+			{ title: 'A', description: '', date: '2026-10-14', startTime: 540, duration: 15, done: true },
+			'UTC'
+		);
+		expect(event.description).toBe(DONE_MARK);
+	});
+});
+
+describe('eventPatch', () => {
+	const base = { date: '2026-10-14', startTime: 600, duration: 30, done: false };
+
+	test('nothing to tell Google when only the title or the priority changed', () => {
+		expect(eventPatch(base, { ...base }, 'UTC', 'x')).toBeNull();
+	});
+
+	test.each([
+		['moved', { startTime: 660 }],
+		['resized', { duration: 60 }],
+		['moved to another day', { date: '2026-10-15' }]
+	])('a task that was %s sends the time and leaves the description alone', (_, change) => {
+		const patch = eventPatch(base, { ...base, ...change }, 'UTC', 'x');
+		expect(patch).toHaveProperty('start');
+		expect(patch).toHaveProperty('end');
+		expect(patch).not.toHaveProperty('description');
+	});
+
+	test('done adds the marker to the description Google has, undone takes it off', () => {
+		expect(eventPatch(base, { ...base, done: true }, 'UTC', 'Agenda')).toEqual({
+			description: `Agenda\n\n${DONE_MARK}`
+		});
+		expect(eventPatch({ ...base, done: true }, base, 'UTC', `Agenda\n\n${DONE_MARK}`)).toEqual({
+			description: 'Agenda'
+		});
+	});
+});
+
+describe('changesTime', () => {
+	const before = { date: '2026-10-14', startTime: 600, duration: 30 };
+
+	test.each([
+		[
+			'a done toggle sends the same time',
+			{ startTime: 600, duration: 30, date: '2026-10-14' },
+			false
+		],
+		['an edit without a time', {}, false],
+		['a later start', { startTime: 615 }, true],
+		['a longer task', { duration: 45 }, true],
+		['another day', { date: '2026-10-15' }, true]
+	])('%s', (_, edit, expected) => {
+		expect(changesTime(before, edit)).toBe(expected);
+	});
+
+	test('no edit at all changes nothing', () => {
+		expect(changesTime(before, null)).toBe(false);
+	});
+});
+
+describe('describeWrite', () => {
+	test('says when Google won and when Google could not be reached', () => {
+		expect(describeWrite('googleWon', 'Standup')).toContain('"Standup"');
+		expect(describeWrite('failed', 'Standup')).toContain('could not be reached');
+	});
+
+	test('says nothing when it worked or there was nothing to write', () => {
+		expect(describeWrite('written', 'Standup')).toBeNull();
+		expect(describeWrite('none', 'Standup')).toBeNull();
 	});
 });
