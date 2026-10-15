@@ -123,6 +123,14 @@
 
 	const voice = tasker.voice;
 	let micMessage = $state('');
+	/** The line under the field: only there when it has something to say. */
+	const hint = $derived(
+		voice.recording
+			? 'Listening, release to fill in'
+			: voice.transcribing
+				? 'Understanding...'
+				: micMessage || preview || ''
+	);
 
 	/** What was said lands in the field, so the preview shows and Add stays one tap. */
 	function fillHeard(text: string) {
@@ -226,7 +234,9 @@
 
 <div class="bg-background flex h-full flex-col">
 	<form
-		class="z-30 flex flex-col gap-1 border-b p-3 pb-1 max-md:order-last max-md:border-t max-md:border-b-0 sm:px-6"
+		class="z-30 flex flex-col gap-1 border-b p-3 {hint
+			? 'pb-1'
+			: ''} max-md:order-last max-md:border-t max-md:border-b-0 sm:px-6"
 		onsubmit={addQuick}
 	>
 		<div class="flex gap-2">
@@ -256,11 +266,11 @@
 			</div>
 			<Button type="submit" class="h-11 px-5 md:h-10" disabled={!quick.trim()}>Add</Button>
 		</div>
-		<!-- Always there, so the line under the field does not jump the page -->
-		<p class="text-muted-foreground h-5 truncate text-sm" role="status" aria-live="polite">
-			{#if voice.recording}Listening, release to fill in{:else if voice.transcribing}Understanding...{:else if micMessage}{micMessage}{:else}{preview ??
-					''}{/if}
-		</p>
+		{#if hint}
+			<p class="text-muted-foreground h-5 truncate text-sm" role="status" aria-live="polite">
+				{hint}
+			</p>
+		{/if}
 	</form>
 
 	{#if tasker.calendar.allDay.length > 0}
