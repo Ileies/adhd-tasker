@@ -21,6 +21,7 @@ describe('sound slots', () => {
 	test.each([
 		['done', true],
 		['task-started', true],
+		['alarm', true],
 		['chime', false],
 		[undefined, false]
 	])('%p is a slot: %p', (value, expected) => {

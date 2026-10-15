@@ -9,6 +9,7 @@ import {
 	parseTone,
 	readTone,
 	ringGain,
+	repeatTimeline,
 	ringTimeline,
 	toneLength,
 	toneNotes
@@ -55,6 +56,19 @@ describe('ringTimeline', () => {
 
 	test('no duration means nothing rings', () => {
 		expect(ringTimeline(tone, 0)).toEqual([]);
+	});
+});
+
+describe('repeatTimeline', () => {
+	test('a sound of any length repeats with the short gap and no repeat starts after the duration', () => {
+		const timeline = repeatTimeline(3000, 60_000);
+		expect(timeline[1].atMs - timeline[0].atMs).toBe(3000 + RING.gapMs);
+		expect(timeline.at(-1)!.atMs).toBeLessThan(60_000);
+	});
+
+	test('is the timeline of a tone with the same length', () => {
+		const tone = toneNotes('wake');
+		expect(repeatTimeline(toneLength(tone), 60_000)).toEqual(ringTimeline(tone, 60_000));
 	});
 });
 
