@@ -194,7 +194,7 @@ Everything is synthesized with the Web Audio API on one shared `AudioContext` (`
 
 ## Roadmap (`TODO.md`, scope and progress to 1.0 in `docs/roadmap-1.0.md`)
 
-**Done: `docs/local-first-plan.md`** (login optional, guest mode on the device, first run, the account move, Google Calendar read and write, Privacy and Terms). The plan file stays until the other plans are re-read. `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` are next: re-read them against the new code once and pick the next plan. Open from it: the real Google run and the Google verification (`docs/google-verification.md`).
+**Done: the local first plan** (login optional, guest mode on the device, first run, the account move, Google Calendar read and write, Privacy and Terms), finished and deleted (git history, `docs/local-first-plan.md` at `a419224`). `docs/ux-plan.md`, `docs/checks-and-tests-plan.md` and `docs/feature-ideas.md` are next: re-read them against the new code once and pick the next plan. Open items are in `TODO.md`.
 
 **Planned, do not implement without discussion:** end-of-day summary, recurring tasks, capture inbox. **Parked on purpose:** adaptive behavior model, Crisis Mode, anti-context-switch scheduler, full analytics dashboard.
 

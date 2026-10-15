@@ -30,7 +30,7 @@ The principle in `CLAUDE.md` stays the filter: anything that adds cognitive load
 | D. Assistant    | Chat, event agent with guardrails, voice (all done), plus the drawer cleanup. Stays optional                                                                   |
 | E. Craft        | UX plan phases 3 to 10 except 8b: navigation, one color ramp, Plan rework, task sheet, settings, secondary pages, first run, accessibility                     |
 | F. Trust        | Gate, tests, D1 to D8, server and route tests, e2e smoke, CI, security review                                                                                  |
-| H. Local first  | Guest mode on the device, first run, optional account and the move into it, Google Calendar read and write (`local-first-plan.md`)                             |
+| H. Local first  | Guest mode on the device, first run, optional account and the move into it, Google Calendar read and write (local first plan, deleted, git history)            |
 | G. Launch       | Account deletion and data export, privacy and terms in sync, backup restore drill, uptime check, clean clone setup, dogfood and three outside users            |
 
 ### Not in 1.0 (1.1 and later, in this order)
