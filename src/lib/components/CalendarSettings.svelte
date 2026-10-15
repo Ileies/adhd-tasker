@@ -6,7 +6,9 @@
 	import { formatClock } from '#lib/format.js';
 	import { formatDay, deviceTimezone, todayIn } from '#lib/time.js';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
 
+	let confirmingStop = $state(false);
 	let overview = $state<CalendarOverview | null>(null);
 	let chosen = $state<string[]>([]);
 	let preview = $state<Preview | null>(null);
@@ -102,8 +104,31 @@
 		</p>
 		<div class="flex flex-wrap gap-2">
 			<Button variant="outline" disabled={busy} onclick={syncNow}>Read now</Button>
-			<Button variant="ghost" disabled={busy} onclick={stop}>Stop following</Button>
+			<Button variant="ghost" disabled={busy} onclick={() => (confirmingStop = true)}
+				>Stop following</Button
+			>
 		</div>
+		<Dialog.Root bind:open={confirmingStop}>
+			<Dialog.Content class="max-w-md">
+				<Dialog.Header>
+					<Dialog.Title>Stop following your calendars?</Dialog.Title>
+					<Dialog.Description>
+						Tasks already in your plan stay, but they stop following changes in Google. "Add my own
+						tasks to Google Calendar" is turned off too.
+					</Dialog.Description>
+				</Dialog.Header>
+				<Dialog.Footer>
+					<Button variant="outline" onclick={() => (confirmingStop = false)}>Keep following</Button>
+					<Button
+						variant="destructive"
+						onclick={() => {
+							confirmingStop = false;
+							void stop();
+						}}>Stop following</Button
+					>
+				</Dialog.Footer>
+			</Dialog.Content>
+		</Dialog.Root>
 		<p class="text-muted-foreground text-sm">
 			Moving or resizing one of these tasks changes its event in Google Calendar, and Done adds a
 			line to its description. Nothing is ever deleted there. If the event changed in Google in the

@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { GOOGLE_SERVICES, parseServices } from '#lib/google.js';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
 
 	const { linked: stored }: { linked: string | null | undefined } = $props();
+
+	let confirmingUnlink = $state(false);
 
 	// Tasks and Keep are not used by anything yet: only Calendar is offered (see TODO.md)
 	const VISIBLE = GOOGLE_SERVICES.filter((service) => service.id === 'calendar');
@@ -17,7 +20,30 @@
 	});
 </script>
 
-<form method="POST" action="/login" class="space-y-4">
+<Dialog.Root bind:open={confirmingUnlink}>
+	<Dialog.Content class="max-w-md">
+		<Dialog.Header>
+			<Dialog.Title>Unlink Google?</Dialog.Title>
+			<Dialog.Description>
+				This takes the app's access away at Google and stops following your calendars. Tasks already
+				in your plan stay. Linking again asks Google for permission again.
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => (confirmingUnlink = false)}>Keep it linked</Button>
+			<!-- The dialog is portaled out of the form, so the button names the form -->
+			<Button
+				type="submit"
+				variant="destructive"
+				form="google-link"
+				formaction="/settings?/unlinkGoogle"
+				formnovalidate>Unlink</Button
+			>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<form id="google-link" method="POST" action="/login" class="space-y-4">
 	<fieldset class="space-y-3">
 		<legend class="sr-only">Google services to link</legend>
 		{#each VISIBLE as service (service.id)}
@@ -47,8 +73,7 @@
 			>{linked.length ? 'Update Google link' : 'Link Google Calendar'}</Button
 		>
 		{#if linked.length}
-			<Button type="submit" variant="ghost" formaction="/settings?/unlinkGoogle" formnovalidate
-				>Unlink</Button
+			<Button type="button" variant="ghost" onclick={() => (confirmingUnlink = true)}>Unlink</Button
 			>
 		{/if}
 	</div>
