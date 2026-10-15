@@ -8,7 +8,12 @@
 </script>
 
 {#if card}
-	<section class="bg-muted/40 rounded-lg border p-4" aria-label="Assistant" aria-live="polite">
+	<section
+		id="assistant-note"
+		class="bg-muted/40 rounded-lg border p-4"
+		aria-label="Assistant"
+		aria-live="polite"
+	>
 		<h2 class="text-muted-foreground mb-2 text-sm font-semibold tracking-wide uppercase">
 			Assistant
 		</h2>

@@ -30,6 +30,8 @@
 	} from '#lib/now.js';
 	import { extendTask, moveLater } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
+	import { doneToday } from '#lib/rail.js';
+	import MissedTriage from '#lib/components/MissedTriage.svelte';
 	import { formatClock } from '#lib/format.js';
 	import { addDays, minutesNow, todayIn } from '#lib/time.js';
 	import { untrack } from 'svelte';
@@ -248,6 +250,9 @@
 		showToast(`Dropped: ${task.title}`, () => createTask(rest));
 	}
 
+	// The triage sheet asks about missed tasks one at a time
+	let triage = $state(false);
+
 	// The edit dialog opens over Now, UX phase 7 replaces it with the task sheet
 	let form: TaskFormType = $state({
 		selectedTask: undefined,
@@ -330,19 +335,31 @@
 			planned={tasks.filter((task) => task.date === today).length}
 			onQuickAdd={(text) => void addQuickTask(text, today, now)}
 			focusQuickAdd={focusAdd}
+			noteCount={tasker.agent.cards.length}
 		/>
 		<UpcomingRail
 			upcoming={ranking.upcoming}
-			missed={ranking.missed}
+			missedCount={ranking.missed.length}
 			{now}
-			onDone={complete}
-			onExtend={extend}
-			onDrop={drop}
+			{today}
+			{timezone}
+			done={doneToday(tasks, today)}
+			headsUp={headsUp !== null}
+			onEdit={edit}
+			onTriage={() => (triage = true)}
 			sample={tasker.sample.length > 0}
 			onClearSample={() => void clearSampleDay()}
 			{screenHint}
 			onDismissHint={dismissScreenHint}
 		/>
 	</div>
+	<MissedTriage
+		bind:open={triage}
+		missed={ranking.missed}
+		onDone={complete}
+		onLater={later}
+		onTomorrow={tomorrow}
+		onDrop={drop}
+	/>
 	<TaskForm bind:form onDelete={drop} />
 {/if}

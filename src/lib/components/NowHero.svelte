@@ -12,6 +12,7 @@
 	import { formatClock, formatLeft, formatMinutes } from '#lib/format.js';
 	import { endedAgo, headsUpLine, type HeroState } from '#lib/now.js';
 	import { minutesLeft } from '#lib/priority.js';
+	import { noteLine } from '#lib/rail.js';
 	import { urgencyLevel, urgencySurface } from '#lib/urgency.js';
 
 	let {
@@ -34,7 +35,8 @@
 		compact = false,
 		planned = 1,
 		onQuickAdd,
-		focusQuickAdd = false
+		focusQuickAdd = false,
+		noteCount = 0
 	}: {
 		hero: HeroState<Task>;
 		now: number;
@@ -61,7 +63,11 @@
 		onQuickAdd?: (text: string) => void;
 		/** Puts the cursor in the empty state's line, when the visitor just said they want to plan. */
 		focusQuickAdd?: boolean;
+		/** Open assistant cards, shown as one line that jumps to them on phones. */
+		noteCount?: number;
 	} = $props();
+
+	const note = $derived(noteLine(noteCount));
 
 	let quick = $state('');
 	let quickInput: HTMLInputElement | null = $state(null);
@@ -254,7 +260,12 @@
 			{/if}
 
 			<!-- The example in the welcome shows the time, not the buttons -->
-			<div class="flex flex-wrap items-center gap-3 {compact ? 'hidden' : ''}">
+			<!-- On phones the actions stay at the bottom edge, within the thumb's reach -->
+			<div
+				class="flex flex-wrap items-center gap-3 max-md:sticky max-md:bottom-0 max-md:z-10 max-md:-mx-6 max-md:bg-inherit max-md:px-6 max-md:py-3 {compact
+					? 'hidden'
+					: ''}"
+			>
 				<Button size="lg" class={doneClass} onclick={() => onDone(task)}>
 					<Check />
 					Done
@@ -332,6 +343,11 @@
 					Next <span class="tabular font-semibold">{formatClock(next.startTime)}</span>
 					{next.title}
 				</p>
+			{/if}
+
+			<!-- A question in the rail is never seen on a phone, so the hero points at it -->
+			{#if note && !compact}
+				<a href="#assistant-note" class="text-base underline md:hidden">{note}</a>
 			{/if}
 		</div>
 	{:else if hero.kind === 'free'}
