@@ -31,7 +31,7 @@ const value = (name: string, fallback: string) => {
 };
 
 /** ssh alias for pronix (root@192.168.10.85); root is required for the shared pm2 daemon. */
-const HOST = value('host', 'home');
+const HOST = value('host', 'ros');
 const REMOTE_ROOT = value('remote-root', '/var/www/adhd-tasker');
 const PM2_NAME = 'adhd-tasker';
 
