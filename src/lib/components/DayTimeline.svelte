@@ -108,6 +108,14 @@
 	const sideEnd = (offset: number) => (offset < midnight ? midnight : DAY_MINUTES);
 	const sideStart = (offset: number) => (offset < midnight ? 0 : midnight);
 
+	/** Opens or closes the night and keeps the hours under the eye where they are. */
+	async function toggleNight() {
+		const shift = (range.from / 60) * HOUR_PX;
+		nightOpen = !nightOpen;
+		await tick();
+		if (scroller) scroller.scrollTop += nightOpen ? shift : -shift;
+	}
+
 	/** The offset under a pointer, on the grid column. */
 	function minutesAt(clientY: number) {
 		const rect = grid!.getBoundingClientRect();
@@ -271,14 +279,14 @@
 	});
 </script>
 
-<div bind:this={scroller} class="h-full overflow-y-auto">
+<div bind:this={scroller} class="h-full overflow-y-auto [overflow-anchor:none]">
 	{#if range.night > 0}
 		<button
 			type="button"
-			class="text-muted-foreground hover:bg-muted/60 focus-visible:ring-ring tabular flex w-full cursor-pointer items-center justify-between border-b border-dashed px-4 text-xs focus-visible:ring-2 focus-visible:outline-none"
+			class="bg-background text-muted-foreground hover:bg-muted/60 focus-visible:ring-ring tabular sticky top-0 z-30 flex w-full cursor-pointer items-center justify-between border-b border-dashed px-4 text-xs select-none focus-visible:ring-2 focus-visible:outline-none"
 			style="height: {ROW_PX}px"
 			aria-expanded={nightOpen}
-			onclick={() => (nightOpen = !nightOpen)}
+			onclick={toggleNight}
 		>
 			<span>Night, {formatClock(origin % DAY_MINUTES)} - {formatClock(day.start)}</span>
 			{#if nightOpen}<ChevronUp class="size-4" />{:else}<ChevronDown class="size-4" />{/if}
