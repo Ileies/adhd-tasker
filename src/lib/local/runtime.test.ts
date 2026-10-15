@@ -111,8 +111,11 @@ describe('a device with two tabs', () => {
 		const { leader, follower } = await tabs();
 		await follower.backend.tasks.create(task);
 		// The follower never reacts by itself and no tick runs: only the leader's reaction can settle the event
-		await Bun.sleep(80);
-		const { events } = await follower.backend.activity.load();
+		let { events } = await follower.backend.activity.load();
+		for (let i = 0; i < 200 && !events[0]?.outcome; i++) {
+			await Bun.sleep(10);
+			({ events } = await follower.backend.activity.load());
+		}
 		expect(events[0].outcome).toBe('silent: no OpenAI key');
 		expect(leader.leading.at(-1)).toBe(true);
 	});

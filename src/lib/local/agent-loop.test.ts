@@ -137,7 +137,8 @@ describe('reactions', () => {
 		loop.reactSoon();
 		loop.reactSoon();
 		loop.reactSoon();
-		await Bun.sleep(60);
+		// Wait for the card, not a fixed time: a busy machine delays the coalesced reaction
+		for (let i = 0; i < 200 && !(await repo.cards.open()); i++) await Bun.sleep(10);
 		expect((await repo.cards.open())?.text).toBe('One');
 		expect(calls.calls).toBe(2); // one reaction: the say round and the closing round
 	});
