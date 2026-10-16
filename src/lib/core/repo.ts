@@ -124,6 +124,10 @@ export interface Settings {
 	checkInMinutes: number;
 	myDayStart: number;
 	myDayEnd: number;
+	/** How long a session runs before the app asks how it is going (`docs/flow-plan.md` 5.2). */
+	checkMinutes: number;
+	/** Minutes since midnight: from here on the app calls until the user starts (`docs/flow-plan.md` 5.14). */
+	startWorkAt: number;
 	/** Where the user is, for the theme. All four are set or all are `null` (see `#lib/location.js`). */
 	locationLat: number | null;
 	locationLon: number | null;

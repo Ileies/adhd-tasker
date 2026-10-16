@@ -44,6 +44,8 @@ describe('DEFAULT_SETTINGS', () => {
 				checkInMinutes: DEFAULT_SETTINGS.checkInMinutes,
 				myDayStart: DEFAULT_SETTINGS.myDayStart,
 				myDayEnd: DEFAULT_SETTINGS.myDayEnd,
+				checkMinutes: DEFAULT_SETTINGS.checkMinutes,
+				startWorkAt: DEFAULT_SETTINGS.startWorkAt,
 				dailyTokenBudget: DEFAULT_SETTINGS.dailyTokenBudget
 			}).ok
 		).toBe(true);

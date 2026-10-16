@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import {
 	BUDGET_PRESETS,
 	CHECK_IN_PRESETS,
+	CHECK_MINUTES_PRESETS,
 	HEADS_UP_PRESETS,
 	OVERRUN_PRESETS,
 	agentPatch,
@@ -59,7 +60,10 @@ describe('parseSettingsPatch', () => {
 		['a My day start past midnight', { myDayStart: 1440 }],
 		['a My day end of zero', { myDayEnd: 0 }],
 		['a My day shorter than an hour', { myDayStart: 600, myDayEnd: 630 }],
-		['a My day that ends before it starts', { myDayStart: 900, myDayEnd: 600 }]
+		['a My day that ends before it starts', { myDayStart: 900, myDayEnd: 600 }],
+		['a check interval of one minute', { checkMinutes: 1 }],
+		['a check interval over two hours', { checkMinutes: 121 }],
+		['a start of work past midnight', { startWorkAt: 1440 }]
 	])('rejects %s', (_name, body) => {
 		expect(parseSettingsPatch(body).ok).toBe(false);
 	});
@@ -68,6 +72,13 @@ describe('parseSettingsPatch', () => {
 describe('check-in and My day', () => {
 	test('the chime can be off and My day can end at midnight', () => {
 		const patch: SettingsPatch = { checkInMinutes: 0, myDayStart: 360, myDayEnd: 1440 };
+		expect(parseSettingsPatch(patch)).toEqual({ ok: true, value: patch });
+	});
+});
+
+describe('the flow settings', () => {
+	test('how often it asks and when work starts are plain settings', () => {
+		const patch: SettingsPatch = { checkMinutes: 45, startWorkAt: 8 * 60 + 30 };
 		expect(parseSettingsPatch(patch)).toEqual({ ok: true, value: patch });
 	});
 });
@@ -100,6 +111,8 @@ describe('presets', () => {
 			expect(parseSettingsPatch({ overrunMinutes: value }).ok).toBe(true);
 		for (const value of CHECK_IN_PRESETS)
 			expect(parseSettingsPatch({ checkInMinutes: value }).ok).toBe(true);
+		for (const value of CHECK_MINUTES_PRESETS)
+			expect(parseSettingsPatch({ checkMinutes: value }).ok).toBe(true);
 		for (const value of BUDGET_PRESETS)
 			expect(parseSettingsPatch({ dailyTokenBudget: value }).ok).toBe(true);
 	});
@@ -108,6 +121,7 @@ describe('presets', () => {
 		expect(HEADS_UP_PRESETS).toContain(DEFAULT_SETTINGS.reminderAdvanceTime);
 		expect(OVERRUN_PRESETS).toContain(DEFAULT_SETTINGS.overrunMinutes);
 		expect(CHECK_IN_PRESETS).toContain(DEFAULT_SETTINGS.checkInMinutes);
+		expect(CHECK_MINUTES_PRESETS).toContain(DEFAULT_SETTINGS.checkMinutes);
 	});
 
 	test('a stored value that is no preset joins the choices in order', () => {

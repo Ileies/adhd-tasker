@@ -47,6 +47,8 @@ export const users = sqliteTable('users', {
 	checkInMinutes: integer('check_in_minutes').default(D.checkInMinutes).notNull(), // soft chime interval while a task is current, 0 is off
 	myDayStart: integer('my_day_start').default(D.myDayStart).notNull(), // minutes since midnight, the timeline folds the hours outside
 	myDayEnd: integer('my_day_end').default(D.myDayEnd).notNull(),
+	checkMinutes: integer('check_minutes').default(D.checkMinutes).notNull(), // a session on a to-do runs this long before the check
+	startWorkAt: integer('start_work_at').default(D.startWorkAt).notNull(), // minutes since midnight, the morning call until Start
 	locationLat: real('location_lat'), // rounded to 2 decimals, null: not known (never the internet address itself)
 	locationLon: real('location_lon'),
 	locationName: text('location_name'), // the city shown in Settings

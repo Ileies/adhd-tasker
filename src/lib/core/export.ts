@@ -98,7 +98,9 @@ const SETTING_KEYS = [
 	'clock12h',
 	'checkInMinutes',
 	'myDayStart',
-	'myDayEnd'
+	'myDayEnd',
+	'checkMinutes',
+	'startWorkAt'
 ] as const satisfies readonly (keyof SettingsPatch)[];
 
 export const FIRST_DAY = '0000-01-01';

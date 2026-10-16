@@ -36,6 +36,8 @@ export type SettingsPatch = Partial<
 		| 'checkInMinutes'
 		| 'myDayStart'
 		| 'myDayEnd'
+		| 'checkMinutes'
+		| 'startWorkAt'
 		| 'locationLat'
 		| 'locationLon'
 		| 'locationName'
@@ -45,6 +47,8 @@ export type SettingsPatch = Partial<
 
 /** The check-in chime in minutes, 0 is off. */
 export const CHECK_IN_MAX = 60;
+/** How long a session runs before the app asks how it is going, in minutes. */
+export const CHECK_MINUTES_LIMITS = { min: 5, max: 120 } as const;
 /** My day has to span at least this many minutes, or the timeline has nothing to show. */
 export const MY_DAY_MIN = 60;
 
@@ -80,6 +84,8 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	checkInMinutes: inRange(0, CHECK_IN_MAX),
 	myDayStart: isClock,
 	myDayEnd: inRange(1, 1440),
+	checkMinutes: inRange(CHECK_MINUTES_LIMITS.min, CHECK_MINUTES_LIMITS.max),
+	startWorkAt: isClock,
 	locationLat: isCoordinate(90),
 	locationLon: isCoordinate(180),
 	locationName: (value) =>
@@ -127,6 +133,8 @@ export const HEADS_UP_PRESETS = [5, 10, 15, 30];
 export const OVERRUN_PRESETS = [10, 15, 30, 60];
 /** 0 is off. */
 export const CHECK_IN_PRESETS = [0, 5, 10, 15];
+/** How often the app asks how it is going while a to-do runs. */
+export const CHECK_MINUTES_PRESETS = [15, 25, 30, 45, 60];
 /** Tokens a day for unprompted reactions. No limit is `null` and has its own chip. */
 export const BUDGET_PRESETS = [50_000, 200_000];
 

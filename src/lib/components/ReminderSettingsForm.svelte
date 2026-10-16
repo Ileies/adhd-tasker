@@ -2,6 +2,7 @@
 	import { saveSettings } from '#lib/autosave.js';
 	import {
 		CHECK_IN_PRESETS,
+		CHECK_MINUTES_PRESETS,
 		HEADS_UP_PRESETS,
 		OVERRUN_PRESETS,
 		minutesChip,
@@ -12,6 +13,7 @@
 
 	const {
 		checkIn,
+		ask,
 		reminders,
 		advance,
 		hyperfocus,
@@ -19,6 +21,7 @@
 		showClock
 	}: {
 		checkIn: number;
+		ask: number;
 		reminders: boolean;
 		advance: number;
 		hyperfocus: boolean;
@@ -40,6 +43,16 @@
 </script>
 
 <div class="space-y-6">
+	<div class="space-y-3">
+		<p class="font-medium">Ask how it's going every</p>
+		<PresetChips
+			label="Minutes between the questions on a to-do"
+			options={chips(CHECK_MINUTES_PRESETS, ask)}
+			value={ask}
+			onselect={(checkMinutes) => put({ checkMinutes })}
+		/>
+	</div>
+
 	<div class="space-y-3">
 		<p class="font-medium">Check-in chime</p>
 		<PresetChips

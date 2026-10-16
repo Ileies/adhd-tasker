@@ -641,6 +641,8 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				checkInMinutes: 5,
 				myDayStart: 420,
 				myDayEnd: 1380,
+				checkMinutes: 30,
+				startWorkAt: 540,
 				locationLat: null,
 				locationLon: null,
 				locationName: null,

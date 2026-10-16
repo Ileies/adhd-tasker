@@ -51,6 +51,7 @@
 			<Card.Content class="space-y-6">
 				<ReminderSettingsForm
 					checkIn={settings.checkInMinutes}
+					ask={settings.checkMinutes}
 					reminders={settings.enableReminders}
 					advance={settings.reminderAdvanceTime}
 					hyperfocus={settings.hyperfocusAlarm}
@@ -79,7 +80,11 @@
 			<TimezonePicker />
 			{#if ready}
 				<ClockFormatForm twelve={effectiveClock12h(settings.clock12h)} />
-				<MyDayForm start={settings.myDayStart} end={settings.myDayEnd} />
+				<MyDayForm
+					start={settings.myDayStart}
+					end={settings.myDayEnd}
+					startWork={settings.startWorkAt}
+				/>
 			{/if}
 		</Card.Content>
 	</Card.Root>
