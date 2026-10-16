@@ -82,6 +82,23 @@ describe('rank', () => {
 		expect(rank([a, b], h(12)).missed).toEqual([b, a]);
 	});
 
+	test.each(['appointment', 'travel'] as const)(
+		'a %s that ended is not missed, it just ended',
+		(kind) => {
+			const ended: RankTask = { ...task('Exam', h(9), 30), kind };
+			const mine = task('Mine', h(8), 30);
+			const ranking = rank([ended, mine], h(10));
+			expect(ranking.missed).toEqual([mine]);
+			expect(ranking.current).toBeNull();
+		}
+	);
+
+	test('an appointment still runs, is upcoming and takes the minute like any task', () => {
+		const exam: RankTask = { ...task('Exam', h(12), 120), kind: 'appointment' };
+		expect(rank([exam], h(11)).upcoming).toEqual([exam]);
+		expect(rank([exam], h(12, 30)).current).toBe(exam);
+	});
+
 	test('stored active and overdue statuses are ignored', () => {
 		const a = task('A', h(9), 60, Priority.Medium, TaskStatus.Active);
 		const b = task('B', h(7), 30, Priority.Medium, TaskStatus.Overdue);

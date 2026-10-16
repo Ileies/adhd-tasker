@@ -22,7 +22,7 @@ export type PickTodo = Pick<
 	| 'status'
 > &
 	/** What pushing it away counted, absent in a test that is not about it. */
-	Partial<Pick<Todo, 'skips' | 'skipSince'>>;
+	Partial<Pick<Todo, 'skips' | 'skipSince' | 'parentId'>>;
 
 /** The line for a to-do picked in the low energy hour. */
 export const LOW_ENERGY_LINE = 'A short one while energy is low.';

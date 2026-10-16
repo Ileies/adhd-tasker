@@ -4,14 +4,20 @@ import { priorityStyle } from '#lib/urgency.js';
 export type RankTask = Pick<
 	Task,
 	'id' | 'title' | 'startTime' | 'duration' | 'priority' | 'status'
->;
+> &
+	/** Absent in a test that is not about it, and for tasks saved before appointments: a block. */
+	Partial<Pick<Task, 'kind'>>;
+
+/** Appointments and travel end on their own, they are never missed and never run out unanswered. */
+export const endsOnItsOwn = (task: Pick<RankTask, 'kind'>) =>
+	task.kind === 'appointment' || task.kind === 'travel';
 
 export interface Ranking<T extends RankTask = Task> {
 	/** The task at a time that is on right now, null when none is. */
 	current: T | null;
 	/** Tasks that have not started yet, by start time. */
 	upcoming: T[];
-	/** Tasks whose window ended without being completed, most recent first. */
+	/** Tasks of the user's own whose window ended without being completed, most recent first. Appointments just end. */
 	missed: T[];
 	/** How many tasks are running right now, the current one included. */
 	concurrent: number;
@@ -45,7 +51,7 @@ export function rank<T extends RankTask>(tasks: T[], now: number): Ranking<T> {
 		.filter((task) => task.startTime > now)
 		.sort((a, b) => a.startTime - b.startTime || compareCurrent(a, b));
 	const missed = open
-		.filter((task) => endOf(task) <= now)
+		.filter((task) => endOf(task) <= now && !endsOnItsOwn(task))
 		.sort((a, b) => endOf(b) - endOf(a) || a.id - b.id);
 
 	return { current: running[0] ?? null, upcoming, missed, concurrent: running.length };

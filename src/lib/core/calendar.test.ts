@@ -154,7 +154,7 @@ describe('mapEvent', () => {
 });
 
 describe('piecesToTasks', () => {
-	test('every piece is a task with the default priority and no description', () => {
+	test('every piece is an appointment with the default priority and no description', () => {
 		const mapped = timedPieces(
 			mapEvent(timed('Party', '2026-10-14T22:00:00Z', '2026-10-15T02:00:00Z'), 'UTC')
 		);
@@ -166,7 +166,8 @@ describe('piecesToTasks', () => {
 			date: '2026-10-14',
 			startTime: 1320,
 			duration: 120,
-			priority: EVENT_PRIORITY
+			priority: EVENT_PRIORITY,
+			kind: 'appointment'
 		});
 	});
 });

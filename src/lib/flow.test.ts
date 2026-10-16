@@ -1460,6 +1460,83 @@ describe('what Call it a day costs', () => {
 	});
 });
 
+describe('4.1 an exam with travel and preparation', () => {
+	const EXAM = 20;
+	const TRAVEL = 21;
+	/** Exam Math 12:00 to 14:00, Travel 11:05 to 11:50, Study A prepares for it, Study B does not. */
+	const examDay = () => {
+		const exam = simTask(EXAM, hm(12), 120, { title: 'Exam Math', kind: 'appointment' });
+		const travel = simTask(TRAVEL, hm(11, 5), 45, { title: 'Travel to Exam Math', kind: 'travel' });
+		const prep = simTodo(1, { title: 'Study Math', parentId: EXAM, dueDate: '2026-10-14' });
+		const other = simTodo(2, { title: 'Write report', dueDate: '2026-11-20', priority: 1 });
+		const day = new SimDay([exam, travel], [prep, other]);
+		day.jumpTo(hm(10, 30));
+		day.start();
+		return day;
+	};
+
+	test('travel takes the screen when it starts and the exam when it starts', () => {
+		const day = examDay();
+		expect(day.runTo(hm(11, 20)).current).toMatchObject({ kind: 'task', task: { id: TRAVEL } });
+		expect(day.runTo(hm(12, 30)).current).toMatchObject({ kind: 'task', task: { id: EXAM } });
+	});
+
+	test('the minutes before the exam are get ready, not a new session', () => {
+		const day = examDay();
+		expect(day.runTo(hm(11, 55)).current).toMatchObject({ kind: 'ready', next: { id: EXAM } });
+	});
+
+	test('the exam ends on its own: no time up, nothing missed, nobody asked whether it happened', () => {
+		const day = examDay();
+		day.runTo(hm(14, 20));
+		const state = day.peek();
+		expect(state.missed).toEqual([]);
+		expect(day.timeline.some(({ state }) => state.current.kind === 'time-up')).toBe(false);
+		expect(state.current.kind).toBe('todo');
+	});
+
+	test('a task of the user that runs out unanswered is still time up', () => {
+		const day = new SimDay([simTask(EXAM, hm(12), 120)], [simTodo(1)]);
+		day.diligent = false;
+		day.jumpTo(hm(11));
+		day.start();
+		expect(day.runTo(hm(14, 5)).current).toMatchObject({ kind: 'time-up' });
+	});
+
+	test('the exam gives the minutes back at once when it is over, with a warm-up session', () => {
+		const day = examDay();
+		day.runTo(hm(14, 1));
+		const state = day.peek();
+		if (state.current.kind !== 'todo') throw new Error('expected a to-do');
+		expect(state.current.session.start).toBe(at(hm(14)));
+	});
+
+	test('the preparation is picked before the exam and never after it started', () => {
+		const day = examDay();
+		day.jumpTo(hm(10, 31));
+		expect(currentId(day)).toBe(1);
+		day.runTo(hm(14, 20));
+		expect(currentId(day)).toBe(2);
+	});
+
+	test('a to-do whose exam started while it was pinned is not current again', () => {
+		const day = examDay();
+		day.runTo(hm(10, 50));
+		expect(currentId(day)).toBe(1);
+		day.runTo(hm(14, 1));
+		expect(currentId(day)).not.toBe(1);
+	});
+
+	test('Done on the exam gives the minutes back before it was meant to end', () => {
+		const day = examDay();
+		day.runTo(hm(12, 30));
+		day.finishTask(EXAM);
+		const state = day.runTo(hm(12, 31));
+		expect(state.current.kind).toBe('todo');
+		expect(state.missed).toEqual([]);
+	});
+});
+
 describe('sessionTiming', () => {
 	const min = (minutes: number) => minutes * 60_000;
 	const dayEnd = min(23 * 60);

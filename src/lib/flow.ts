@@ -28,7 +28,7 @@ import {
 import type { FlowRow } from '#lib/core/repo.js';
 import { TIME_UP_WINDOWS, timeBoundState, type HeroState } from '#lib/now.js';
 import { LOW_ENERGY_LINE, dayCostLine, pick, type PickTodo } from '#lib/pick.js';
-import { rank, type RankTask } from '#lib/priority.js';
+import { endsOnItsOwn, rank, type RankTask } from '#lib/priority.js';
 import {
 	FACE_IT_MINUTES,
 	OFFER_AFTER_MINUTES,
@@ -301,8 +301,10 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 	// The time-bound items as the sessions see them: where they start, when they are over, when they were finished
 	const items = tasks.map((task) => ({
 		start: at(task.startTime),
+		// An appointment holds the minutes until it ends, nobody is asked about it afterwards
 		over:
-			at(task.startTime + task.duration) + TIME_UP_WINDOWS * settings.overrunMinutes * MINUTE_MS,
+			at(task.startTime + task.duration) +
+			(endsOnItsOwn(task) ? 0 : TIME_UP_WINDOWS * settings.overrunMinutes * MINUTE_MS),
 		doneAt:
 			task.status === TaskStatus.Completed ? (task.completedAt ?? Number.NEGATIVE_INFINITY) : null
 	}));
@@ -473,8 +475,12 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 		})
 		.sort((a, b) => a.start - b.start || a.at - b.at);
 
+	/** A to-do that prepares for an appointment ends when the appointment starts, it is never picked after that. */
+	const takenOver = (todo: D) =>
+		todo.parentId != null &&
+		tasks.some((task) => task.id === todo.parentId && at(task.startTime) <= nowMs);
 	const open = (id: number | null) =>
-		todos.find((todo) => todo.id === id && todo.status === 'open');
+		todos.find((todo) => todo.id === id && todo.status === 'open' && !takenOver(todo));
 
 	/** The first pin of a session that still points at an open to-do, and the attempt number a new pin would take. */
 	function pinnedFor(sessionStart: number) {
@@ -711,7 +717,7 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 				(step.row.type === 'rotate' || STRUGGLES.includes(step.row.data.why as Struggle))
 		);
 		return pick({
-			todos,
+			todos: todos.filter((todo) => !takenOver(todo)),
 			date,
 			now,
 			myDayEnd: settings.myDayEnd,

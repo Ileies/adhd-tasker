@@ -100,7 +100,9 @@ export function piecesToTasks(mapped: Extract<Mapped, { kind: 'timed' }>): NewTa
 		date: piece.date,
 		startTime: piece.startTime,
 		duration: piece.duration,
-		priority: EVENT_PRIORITY
+		priority: EVENT_PRIORITY,
+		// Somebody else's time: it ends on its own, nobody is asked whether it happened
+		kind: 'appointment'
 	}));
 }
 

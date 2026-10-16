@@ -112,6 +112,16 @@ describe('task.missed and task.overrun', () => {
 		expect(types(events)).toContain('task.missed');
 	});
 
+	test.each(['appointment', 'travel'] as const)('a %s is never missed or overrun', (kind) => {
+		const ended = [{ ...task(1, 480, 60), kind }];
+		expect(types(detectEvents(ended, 540 + OVERRUN_MINUTES + 5, 1).events)).not.toContain(
+			'task.missed'
+		);
+		expect(types(detectEvents(ended, 540 + OVERRUN_MINUTES + 5, 1).events)).not.toContain(
+			'task.overrun'
+		);
+	});
+
 	test('the overrun threshold can be changed', () => {
 		const overrun = (now: number, minutes: number) =>
 			detectEvents(tasks, now, 1, minutes).events.some((e) => e.type === 'task.overrun');
