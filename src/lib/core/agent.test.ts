@@ -483,7 +483,7 @@ describe('watch', () => {
 		expect((await settingsOf(made)).lastCurrentTaskId).toBe(task.id);
 	});
 
-	test('free time is stored as 0', async () => {
+	test('no task at all is stored as 0', async () => {
 		const made = await testCtx();
 		await watch(made.ctx, await settingsOf(made));
 		expect((await settingsOf(made)).lastCurrentTaskId).toBe(0);

@@ -82,12 +82,23 @@ describe('sampleDay', () => {
 		}
 	});
 
-	test('during the day a task is always running', () => {
+	test('the gaps are left for to-dos and none is longer than two hours', () => {
 		fc.assert(
-			fc.property(fc.integer({ min: 7 * 60, max: 22 * 60 + 59 }), (now) => {
-				const today = withIds(now).filter((task) => task.date === TODAY);
-				expect(rank(today, now).current).not.toBeNull();
+			fc.property(minute, (now) => {
+				const byDay = Map.groupBy(sampleDay(TODAY, now), (task) => task.date);
+				for (const tasks of byDay.values()) {
+					const sorted = tasks.toSorted((a, b) => a.startTime - b.startTime);
+					for (const [index, task] of sorted.entries()) {
+						if (index === 0 || task.startTime > 22 * 60) continue;
+						const gap = task.startTime - (sorted[index - 1].startTime + sorted[index - 1].duration);
+						expect(gap).toBeLessThanOrEqual(120);
+					}
+				}
 			})
 		);
+	});
+
+	test('no block is a free slot, the gaps stay empty', () => {
+		for (const task of sampleDay(TODAY, 0)) expect(task.title.toLowerCase()).not.toContain('free');
 	});
 });

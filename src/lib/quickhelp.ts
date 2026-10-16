@@ -24,7 +24,7 @@ export const QUICK_RULES: Record<QuickMode, QuickRule[]> = {
 		},
 		{
 			name: 'No time',
-			how: 'A line without a time is a to-do. It waits for free time and the app picks when to work on it.',
+			how: 'A line without a time is a to-do. It waits in your to-do list and the app picks when to work on it.',
 			example: 'Water the plants'
 		},
 		{

@@ -615,7 +615,7 @@ describe('heroFromFlow', () => {
 		expect(hero(day, hm(12, 40))).toMatchObject({ kind: 'wrapping-up', left: 5 });
 	});
 
-	test('time up carries the next task and no state speaks of free time', () => {
+	test('time up carries the next task for the line below', () => {
 		const day = started([lunch(), simTask(11, hm(14), 30, { title: 'Call' })]);
 		expect(hero(day, hm(12, 50))).toMatchObject({ kind: 'time-up', next: { title: 'Call' } });
 	});

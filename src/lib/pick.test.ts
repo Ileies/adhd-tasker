@@ -29,7 +29,7 @@ const todo = (id: number, patch: Partial<PickTodo> = {}): PickTodo => ({
 	...patch
 });
 
-/** A free day: nothing else is booked, so free time is simply what is left of the clock. */
+/** A free day: nothing else is booked, so the free minutes are simply what is left of the clock. */
 const input = (
 	todos: PickTodo[],
 	patch: Partial<PickInput<PickTodo>> = {}
@@ -127,7 +127,7 @@ describe('pick', () => {
 			expect(tight?.why).toBe('urgent');
 		});
 
-		test('free time taken by appointments makes it urgent', () => {
+		test('minutes taken by appointments make it urgent', () => {
 			const busy = input([todo(1), todo(2, { estimate: 60, dueDate: DATE, dueTime: 15 * 60 })], {
 				freeUntil: (minute) => Math.max(0, minute - NOW - 240)
 			});

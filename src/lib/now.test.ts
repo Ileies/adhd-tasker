@@ -35,7 +35,7 @@ const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 const settings = { overrunMinutes: 15 };
 /** What time-bound items make of the hero, `null` when none has the screen. */
 const stateAt = (tasks: RankTask[], now: number) => timeBoundState(rank(tasks, now), now, settings);
-/** The same as a hero, where the free time is the plan state. */
+/** The same as a hero, where no task at a time leaves the plan state. */
 const heroAt = (tasks: RankTask[], now: number): HeroState<RankTask, { title: string }> =>
 	stateAt(tasks, now) ?? { kind: 'plan' };
 
@@ -288,7 +288,7 @@ describe('tabTitle', () => {
 		expect(hero(state)).toBe(title);
 	});
 
-	test('no title ever speaks of free time', () => {
+	test('no title ever says the user is free', () => {
 		for (const now of [h(8), h(12), h(23)])
 			expect(tabTitle(heroAt([], now)).toLowerCase()).not.toContain('free');
 	});

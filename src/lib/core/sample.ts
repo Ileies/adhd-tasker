@@ -131,11 +131,9 @@ const ROUTINE: Block[] = [
 		priority: Medium,
 		days: 'all'
 	},
-	{ title: 'Free time', start: at(16, 30), duration: 30, priority: Low, days: 'all', flex: true },
 
 	{ title: 'Cook and eat dinner', start: at(18), duration: 60, priority: High, days: 'all' },
 	{ title: 'Clean the kitchen', start: at(19), duration: 15, priority: Medium, days: 'all' },
-	{ title: 'Free time', start: at(19, 15), duration: 75, priority: Low, days: 'all', flex: true },
 	{
 		title: 'Pack your bag and lay out clothes',
 		start: at(20, 30),
@@ -210,7 +208,8 @@ function appliesOn(days: Days, weekday: number) {
 /**
  * The routine for each of the seven days from `today`. A task that ended before `now` today is already done.
  * The setup task takes the place of the first break that has not started yet (today, else a later day).
- * Between 23:00 and 07:00 nothing is planned, which Now shows as free time.
+ * The gaps between the blocks and the night from 23:00 to 07:00 are left empty: Now fills a gap with what the user
+ * has to do (a to-do), or asks what is next.
  */
 export function sampleDay(today: DateKey, now: number): (NewTask & { status: TaskStatus })[] {
 	const days = Array.from({ length: SAMPLE_DAYS }, (_, index) => {

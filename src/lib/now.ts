@@ -10,7 +10,7 @@ export const BAR_MINUTES = 15;
 /** Time up stays on screen for this many overrun windows, unless it is answered earlier. */
 export const TIME_UP_WINDOWS = 2;
 
-/** What the hero shows: a task at a time, or what the flow engine made of the free time (`D` is a to-do). */
+/** What the hero shows: a task at a time, or what the flow engine made of the minutes between them (`D` is a to-do). */
 export type HeroState<T extends RankTask, D = never> =
 	| { kind: 'active'; task: T; left: number }
 	| { kind: 'wrapping-up'; task: T; left: number; next: T | null }

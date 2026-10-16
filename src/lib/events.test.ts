@@ -66,7 +66,7 @@ describe('task.switched', () => {
 		});
 	});
 
-	test('free time to a task counts as a switch', () => {
+	test('no task to a task counts as a switch', () => {
 		expect(detectEvents([task(1, 540, 60)], 540, null).events[0].payload).toMatchObject({
 			fromId: null,
 			toId: 1

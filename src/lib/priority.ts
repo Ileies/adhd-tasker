@@ -7,7 +7,7 @@ export type RankTask = Pick<
 >;
 
 export interface Ranking<T extends RankTask = Task> {
-	/** What to do right now, null in free time. */
+	/** The task at a time that is on right now, null when none is. */
 	current: T | null;
 	/** Tasks that have not started yet, by start time. */
 	upcoming: T[];

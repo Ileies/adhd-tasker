@@ -1,8 +1,8 @@
 /**
  * Which to-do gets the next session (`docs/flow-plan.md` 5.3). Pure: the engine hands in the open to-dos, what was
- * worked on today and how much free time there is, and gets one to-do back with the line that says why.
+ * worked on today and how many minutes are left to fill, and gets one to-do back with the line that says why.
  *
- * Urgent ones first (due today and not fitting any more), the rest by fair share: the free time of today is split by
+ * Urgent ones first (due today and not fitting any more), the rest by fair share: the minutes of today that are left are split by
  * how much each to-do needs per day left and how important it is, and the one furthest behind its share goes next.
  */
 import { formatClock, formatMinutes } from '#lib/format.js';
@@ -146,7 +146,7 @@ export function pick<D extends PickTodo>(input: PickInput<D>): Picked<D> | null 
 		};
 	}
 
-	// The rest share today's free time by need and weight, the one furthest behind goes next
+	// The rest share what is left of today by need and weight, the one furthest behind goes next
 	const rest = candidates;
 	const pool = input.freeLeft + rest.reduce((sum, todo) => sum + spentOf(todo), 0);
 	const need = (todo: D) => {
