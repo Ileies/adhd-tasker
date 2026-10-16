@@ -7,7 +7,7 @@ import { remoteBackend } from '#lib/remote-backend.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import type { AllDayLine } from '#lib/core/calendar.js';
 import type { Comparison } from '#lib/core/merge.js';
-import type { FlowRow, Todo } from '#lib/core/repo.js';
+import type { FlowRow, Routine, Todo } from '#lib/core/repo.js';
 import { clientSettings, type ClientSettings } from '#lib/settings.js';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
@@ -65,6 +65,8 @@ export const tasker: {
 	tasks: Task[];
 	/** Open to-dos and the ones finished in the last day and a half. */
 	todos: Todo[];
+	/** The tasks at a time that repeat, oldest first. Their days are ordinary tasks in `tasks`. */
+	routines: Routine[];
 	/** What the user answered on `date` (their today), oldest first. The flow engine replays it, nothing else is stored. */
 	flow: { date: string | null; rows: FlowRow[] };
 	isMuted: boolean;
@@ -114,6 +116,7 @@ export const tasker: {
 	settings: clientSettings(DEFAULT_SETTINGS),
 	tasks: [],
 	todos: [],
+	routines: [],
 	flow: { date: null, rows: [] },
 	isMuted: false,
 	mutedUntil: null,

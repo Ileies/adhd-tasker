@@ -53,7 +53,7 @@
 		untrack(() => {
 			if (data.user) {
 				const { email, ...settings } = data.user;
-				useAccount(email, settings, data.tasks, data.todos, data.flow);
+				useAccount(email, settings, data.tasks, data.todos, data.flow, data.routines);
 			} else stopGuest = beginGuest();
 		});
 	onMount(() => stopGuest);

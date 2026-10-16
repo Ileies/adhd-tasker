@@ -7,7 +7,7 @@ import { pollAgent } from '#lib/agent.js';
 import { deviceId, loadSchedule } from '#lib/alarms.js';
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError } from '#lib/backend.js';
-import type { FlowRow, Task, Todo } from '#lib/core/repo.js';
+import type { FlowRow, Routine, Task, Todo } from '#lib/core/repo.js';
 import { deferredBackend } from '#lib/local/deferred.js';
 import { forgetDecline } from '#lib/local/device.js';
 import { startLocalRuntime } from '#lib/local/runtime.js';
@@ -27,13 +27,15 @@ export function useAccount(
 	settings: ClientSettings,
 	tasks: Task[],
 	todos: Todo[] = [],
-	flow: { date: string | null; rows: FlowRow[] } = { date: null, rows: [] }
+	flow: { date: string | null; rows: FlowRow[] } = { date: null, rows: [] },
+	routines: Routine[] = []
 ) {
 	tasker.backend = remoteBackend;
 	tasker.account.email = email;
 	tasker.settings = settings;
 	tasker.tasks = tasks;
 	tasker.todos = todos;
+	tasker.routines = routines;
 	tasker.flow = flow;
 	tasker.account.ready = true;
 }
@@ -73,10 +75,11 @@ export function beginGuest(): () => void {
 			// Independent reads, so Now does not wait for one after the other
 			const today = todayIn(tasker.settings.timezone ?? deviceTimezone());
 			let rows: FlowRow[];
-			[tasker.tasks, tasker.sample, tasker.todos, rows] = await Promise.all([
+			[tasker.tasks, tasker.sample, tasker.todos, tasker.routines, rows] = await Promise.all([
 				runtime.backend.tasks.since(from),
 				runtime.backend.sample.ids(),
 				runtime.backend.todos.load(),
+				runtime.backend.routines.load(),
 				runtime.backend.flow.load(today)
 			]);
 			tasker.flow = { date: today, rows };
