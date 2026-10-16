@@ -566,6 +566,128 @@ describe('watch', () => {
 	});
 });
 
+describe('watch and the flow engine', () => {
+	const settingsOf = (made: Made) => made.repo.settings.get();
+	const events = async (made: Made) => (await made.repo.events.recent(20)).reverse();
+	const todo = (made: Made, title = 'Study B') =>
+		made.repo.todos.insert({
+			title,
+			description: '',
+			priority: 5,
+			estimate: 900,
+			learned: false,
+			progress: 0,
+			spentMinutes: 0,
+			skips: 0,
+			dueDate: '2026-11-01',
+			dueTime: null,
+			parentId: null,
+			notBefore: null,
+			nextStep: null,
+			createdAt: NOW
+		});
+	const started = (made: Made) =>
+		made.repo.flow.insert({ at: NOW - MIN, date: DATE, type: 'start' });
+
+	test('a session nobody pinned gets its pin from the first tick, once', async () => {
+		const made = await testCtx();
+		const study = await todo(made);
+		await started(made);
+		await watch(made.ctx, await settingsOf(made));
+		await watch(made.ctx, await settingsOf(made));
+		const pins = (await made.repo.flow.day(DATE)).filter((row) => row.type === 'pin');
+		expect(pins).toHaveLength(1);
+		expect(pins[0]).toMatchObject({ todoId: study.id, at: NOW });
+		expect(made.hints.filter((hint) => hint.type === 'flow')).toHaveLength(1);
+	});
+
+	test('no pin is written before the user started the day', async () => {
+		const made = await testCtx();
+		await todo(made);
+		await watch(made.ctx, await settingsOf(made));
+		expect(await made.repo.flow.day(DATE)).toEqual([]);
+		expect((await settingsOf(made)).lastCurrentKey).toBe('away');
+	});
+
+	test('what is current is remembered under its key', async () => {
+		const made = await testCtx();
+		const study = await todo(made);
+		await started(made);
+		await watch(made.ctx, await settingsOf(made));
+		expect((await settingsOf(made)).lastCurrentKey).toBe(`todo:${study.id}`);
+	});
+
+	test('the first tick ever reports nothing', async () => {
+		const made = await testCtx();
+		await todo(made);
+		await started(made);
+		await watch(made.ctx, await settingsOf(made));
+		expect(await events(made)).toEqual([]);
+	});
+
+	test('a task that ends hands over to a to-do and the switch names both', async () => {
+		const made = await testCtx();
+		const task = await addTask(made.repo);
+		await todo(made);
+		await started(made);
+		await watch(made.ctx, await settingsOf(made));
+		await made.repo.tasks.update(task.id, { status: TaskStatus.Completed, completedAt: NOW + MIN });
+		made.state.now = NOW + 2 * MIN;
+		await watch(made.ctx, await settingsOf(made));
+
+		const switched = (await events(made)).filter((event) => event.type === 'task.switched');
+		expect(switched).toHaveLength(1);
+		expect(switched[0].payload).toMatchObject({ from: 'Write intro', to: 'Study B' });
+		expect(switched[0].payload.reason).toEqual(expect.any(String));
+	});
+
+	test('a to-do that is done hands over to the next one, and the same switch is logged once', async () => {
+		const made = await testCtx();
+		const first = await todo(made, 'Study B');
+		await todo(made, 'Study C');
+		await started(made);
+		await watch(made.ctx, await settingsOf(made));
+		await made.repo.todos.update(first.id, {
+			status: 'done',
+			completedAt: NOW + MIN,
+			progress: 100
+		});
+		made.state.now = NOW + 2 * MIN;
+		await watch(made.ctx, await settingsOf(made));
+		await watch(made.ctx, await settingsOf(made));
+
+		const switched = (await events(made)).filter((event) => event.type === 'task.switched');
+		expect(switched).toHaveLength(1);
+		expect(switched[0].payload).toMatchObject({ from: 'Study B', to: 'Study C' });
+	});
+
+	test('a switch between two tasks keeps the explanation of the ranking', async () => {
+		const made = await testCtx();
+		const first = await addTask(made.repo, { title: 'First' });
+		await addTask(made.repo, { title: 'Second', startTime: 9 * 60 + 30, priority: 5 });
+		await watch(made.ctx, await settingsOf(made));
+		made.state.now = NOW + 31 * MIN;
+		await watch(made.ctx, await settingsOf(made));
+		void first;
+		const [event] = (await events(made)).filter((entry) => entry.type === 'task.switched');
+		expect(event.payload).toMatchObject({
+			from: 'First',
+			to: 'Second',
+			reason: expect.stringContaining('priority')
+		});
+	});
+
+	test('a missed task still comes through while to-dos run', async () => {
+		const made = await testCtx();
+		await addTask(made.repo, { startTime: 7 * 60 + 30, duration: 30 });
+		await todo(made);
+		await started(made);
+		made.state.now = NOW;
+		await watch(made.ctx, await settingsOf(made));
+		expect((await events(made)).map((event) => event.type)).toContain('task.missed');
+	});
+});
+
 describe('prune', () => {
 	test('removes handled events and usage older than 30 days, keeps unhandled ones', async () => {
 		const made = await testCtx();

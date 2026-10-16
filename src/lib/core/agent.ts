@@ -3,8 +3,10 @@ import { describe, runTool, type Change } from '#lib/core/assistant.js';
 import { emit } from '#lib/core/events.js';
 import type { Settings } from '#lib/core/repo.js';
 import { describePending, runScheduleTool } from '#lib/core/schedule.js';
+import { loadTodos } from '#lib/core/todos.js';
 import { dayStart, recordUsage } from '#lib/core/usage.js';
 import { describeEvent, detectEvents, type EventType } from '#lib/events.js';
+import { currentKey, currentTitle, flow, switchLine } from '#lib/flow.js';
 import { LIMITS, decideReaction, parseEvents, type AgentSettings } from '#lib/guardrails.js';
 import {
 	ACT_ONLY_TOOLS,
@@ -15,7 +17,7 @@ import {
 } from '#lib/assistant-tools.js';
 import { functionCalls } from '#lib/openai.js';
 import { rank } from '#lib/priority.js';
-import { addDays, minutesNow, todayIn } from '#lib/time.js';
+import { addDays, minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
 import { formatClock24 } from '#lib/format.js';
 
 const AGENT_QUIET_MS = 60_000;
@@ -210,15 +212,45 @@ export async function react(ctx: Ctx, settings: Settings) {
 /** A switch right after an agent edit is the agent's consequence, not news. */
 const agentEditedRecently = (ctx: Ctx) => ctx.repo.actions.anySince(ctx.now() - AGENT_QUIET_MS);
 
-/** Runs the shared ranking for one user and logs what changed since the last tick. */
+/**
+ * Runs the shared flow engine for one user: writes the pin of a session nobody pinned yet, logs what changed since
+ * the last tick (a switch, a missed or overrun task) and remembers what is current.
+ */
 export async function watch(ctx: Ctx, settings: Settings) {
 	if (!settings.timezone) return;
-	const at = new Date(ctx.now());
+	const nowMs = ctx.now();
+	const at = new Date(nowMs);
 	const today = todayIn(settings.timezone, at);
 	const now = minutesNow(settings.timezone, at);
-	const todays = await ctx.repo.tasks.between(today, today);
+	const [todays, todos, log] = await Promise.all([
+		ctx.repo.tasks.between(today, today),
+		loadTodos(ctx),
+		ctx.repo.flow.day(today)
+	]);
+	const state = flow({
+		date: today,
+		now,
+		nowMs,
+		at: (minutes) => zonedToEpoch(today, minutes, settings.timezone!),
+		tasks: todays,
+		todos,
+		log,
+		settings
+	});
 
-	// 0 stands for "free time", null for "never tracked", so the first tick ever reports nothing
+	// The first tick that sees a session without a pin writes it, whichever device or server that is
+	if (state.pin) {
+		const written = await ctx.repo.flow.insert({
+			at: nowMs,
+			date: today,
+			type: 'pin',
+			todoId: state.pin.todoId,
+			key: state.pin.key
+		});
+		if (written) ctx.hint({ type: 'flow' });
+	}
+
+	// 0 stands for "no task", null for "never tracked", so the first tick ever reports nothing
 	const previous =
 		settings.lastCurrentTaskId === null
 			? undefined
@@ -232,15 +264,44 @@ export async function watch(ctx: Ctx, settings: Settings) {
 		settings.overrunMinutes
 	);
 
+	// A switch between two tasks is explained by `rank()` as before, every other one (to-dos, plan, rest) by the engine
+	const key = currentKey(state.current);
+	const before = settings.lastCurrentKey;
+	const betweenTasks = before?.startsWith('task:') && key.startsWith('task:');
+	const events = detected.filter((event) => event.type !== 'task.switched' || betweenTasks);
+	if (before !== null && before !== key && !betweenTasks) {
+		const [kind, id] = before.split(':');
+		const from =
+			kind === 'todo'
+				? todos.find((todo) => todo.id === Number(id))
+				: kind === 'task' || kind === 'time-up'
+					? todays.find((task) => task.id === Number(id))
+					: undefined;
+		events.push({
+			type: 'task.switched',
+			key: `flow-switched:${before}:${key}:${today}:${now}`,
+			payload: {
+				from: from?.title ?? null,
+				fromId: null,
+				to: currentTitle(state.current),
+				toId: null,
+				reason: switchLine(state)
+			}
+		});
+	}
+
 	// A missed task stays detected for a while, so skip the facts that are already logged instead of inserting every tick
-	const known = await ctx.repo.events.knownKeys(detected.map((event) => event.key));
-	for (const event of detected.filter((event) => !known.has(event.key))) {
+	const known = await ctx.repo.events.knownKeys(events.map((event) => event.key));
+	for (const event of events.filter((event) => !known.has(event.key))) {
 		const origin =
 			event.type === 'task.switched' && (await agentEditedRecently(ctx)) ? 'agent' : 'system';
 		await emit(ctx, event.type, event.payload, origin, event.key);
 	}
-	if ((currentId ?? 0) !== settings.lastCurrentTaskId)
-		await ctx.repo.settings.update({ lastCurrentTaskId: currentId ?? 0 });
+	const remembered = {
+		...((currentId ?? 0) !== settings.lastCurrentTaskId && { lastCurrentTaskId: currentId ?? 0 }),
+		...(key !== before && { lastCurrentKey: key })
+	};
+	if (Object.keys(remembered).length > 0) await ctx.repo.settings.update(remembered);
 }
 
 /** Housekeeping for one user: old events, usage rows, finished schedule entries, resolved cards and the flow log. */

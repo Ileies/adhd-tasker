@@ -305,3 +305,40 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 		});
 	}
 }
+
+/** The title of what is current, `null` for a state that is not an item (plan, ready, away, rest). */
+export function currentTitle(
+	current: Current<{ title: string }, { title: string }>
+): string | null {
+	switch (current.kind) {
+		case 'task':
+			return current.task.title;
+		case 'time-up':
+			return (current.current ?? current.ended).title;
+		case 'todo':
+			return current.todo.title;
+		default:
+			return null;
+	}
+}
+
+/** One line for the log: why the screen changed to this. */
+export function switchLine(state: Pick<FlowState<unknown, unknown>, 'current' | 'reason'>): string {
+	const { current } = state;
+	switch (current.kind) {
+		case 'task':
+			return 'Scheduled for now';
+		case 'time-up':
+			return 'Time ran out for the previous task';
+		case 'todo':
+			return state.reason ?? 'The next session started';
+		case 'ready':
+			return 'The next item is about to start';
+		case 'away':
+			return 'The day has not started yet';
+		case 'plan':
+			return 'Nothing is open to pick';
+		case 'rest':
+			return current.why === 'night' ? 'My day is over' : 'The user called it a day';
+	}
+}

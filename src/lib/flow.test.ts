@@ -1,7 +1,15 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { currentKey, pinKey, pinStart, READY_MINUTES, SESSION_MINUTES } from '#lib/flow.js';
+import {
+	currentKey,
+	currentTitle,
+	pinKey,
+	pinStart,
+	READY_MINUTES,
+	SESSION_MINUTES,
+	switchLine
+} from '#lib/flow.js';
 import { Priority } from '#lib/types.js';
 import { at, SimDay, simTask, simTodo } from '#test/simulate.js';
 
@@ -517,5 +525,43 @@ describe('pin keys', () => {
 
 	test.each(['', null, 'start', 'pin:', 'pin:x', 'pin:1:'])('%p is not a pin key', (key) => {
 		expect(pinStart(key)).toBeNull();
+	});
+});
+
+describe('currentTitle and switchLine', () => {
+	const task = { id: 1, title: 'Lunch' };
+	const todo = { id: 2, title: 'Study B' };
+	const session = { start: 0, end: 1, length: 30 };
+
+	test.each([
+		[{ kind: 'task', task, left: 5, wrapping: false }, 'Lunch'],
+		[{ kind: 'time-up', ended: task, over: 1, current: null }, 'Lunch'],
+		[{ kind: 'time-up', ended: task, over: 1, current: { id: 3, title: 'Call' } }, 'Call'],
+		[{ kind: 'todo', todo, session }, 'Study B'],
+		[{ kind: 'ready', next: task }, null],
+		[{ kind: 'away', since: null }, null],
+		[{ kind: 'plan' }, null],
+		[{ kind: 'rest', why: 'night' }, null]
+	] as const)('%j has the title %p', (current, title) => {
+		expect(currentTitle(current as never)).toBe(title);
+	});
+
+	test('a to-do says why it was picked, every other state has its own line', () => {
+		expect(switchLine({ current: { kind: 'todo', todo, session }, reason: 'Due today' })).toBe(
+			'Due today'
+		);
+		expect(switchLine({ current: { kind: 'todo', todo, session }, reason: null })).toBe(
+			'The next session started'
+		);
+		const lines = [
+			{ kind: 'task', task, left: 1, wrapping: false },
+			{ kind: 'time-up', ended: task, over: 1, current: null },
+			{ kind: 'ready', next: task },
+			{ kind: 'away', since: null },
+			{ kind: 'plan' },
+			{ kind: 'rest', why: 'night' },
+			{ kind: 'rest', why: 'called' }
+		].map((current) => switchLine({ current: current as never, reason: null }));
+		expect(new Set(lines).size).toBe(lines.length);
 	});
 });

@@ -53,6 +53,11 @@ describe('recordFlow', () => {
 		expect(hints.filter((hint) => hint.type === 'flow')).toHaveLength(1);
 	});
 
+	test('a pin key may carry an attempt for a session whose first pick is gone', async () => {
+		const { ctx } = await testCtx();
+		expect(await recordFlow(ctx, { type: 'pin', todoId: 1, key: 'pin:999:2' })).not.toBeNull();
+	});
+
 	test('a key on any other type is ignored', async () => {
 		const { ctx } = await testCtx();
 		await recordFlow(ctx, { type: 'rest', key: 'pin:5' });
