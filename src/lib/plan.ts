@@ -61,8 +61,10 @@ export function nextFreeSlot<T extends Span & { status: TaskStatus }>(
 
 export interface Placement<T extends Span> {
 	task: T;
-	/** Column within its group of overlapping tasks. */
+	/** Column within its group of blocks that meet on screen. */
 	lane: number;
+	/** Columns it covers from `lane` on, more than one when the columns beside it stay free. */
+	span: number;
 	/** Number of columns in that group, tasks share the width evenly. */
 	lanes: number;
 	/** True when another task is scheduled at the same time. */
@@ -70,33 +72,49 @@ export interface Placement<T extends Span> {
 }
 
 /**
- * Places tasks side by side instead of stacking them, so overlaps are visible.
- * A group is a chain of tasks that overlap each other, every task in a group gets the same column count.
+ * Places tasks side by side instead of on top of each other. Columns follow the blocks as the
+ * timeline draws them: from `origin` (see `dayOffset`) and at least `minLength` minutes tall, so a
+ * short block that is drawn taller than its time sits beside the next task. A group is a chain of
+ * blocks that meet, every task in a group gets the same column count. `overlaps` follows the clock.
  */
-export function layoutDay<T extends Span>(tasks: T[]): Placement<T>[] {
-	const sorted = [...tasks].sort(
-		(a, b) => a.startTime - b.startTime || b.duration - a.duration || a.id - b.id
-	);
+export function layoutDay<T extends Span>(
+	tasks: T[],
+	{ minLength = 0, origin = 0 }: { minLength?: number; origin?: number } = {}
+): Placement<T>[] {
+	const boxes = tasks
+		.map((task) => {
+			const top = dayOffset(task.startTime, origin);
+			return { task, top, bottom: top + Math.max(task.duration, minLength) };
+		})
+		.sort((a, b) => a.top - b.top || b.task.duration - a.task.duration || a.task.id - b.task.id);
+	type Box = (typeof boxes)[number] & { lane: number };
+	const meet = (a: { top: number; bottom: number }, b: { top: number; bottom: number }) =>
+		a.top < b.bottom && b.top < a.bottom;
 	const placements: Placement<T>[] = [];
-	let group: Placement<T>[] = [];
-	let groupEnd = -1;
+	let group: Box[] = [];
+	let groupBottom = -1;
 
 	const closeGroup = () => {
-		const lanes = Math.max(1, ...group.map((p) => p.lane + 1));
-		for (const placement of group) {
-			placement.lanes = lanes;
-			placement.overlaps = lanes > 1;
+		const lanes = Math.max(1, ...group.map((box) => box.lane + 1));
+		for (const box of group) {
+			let span = 1;
+			while (
+				box.lane + span < lanes &&
+				!group.some((other) => other.lane === box.lane + span && meet(other, box))
+			)
+				span++;
+			const overlaps = tasks.some((other) => other !== box.task && overlap(other, box.task));
+			placements.push({ task: box.task, lane: box.lane, span, lanes, overlaps });
 		}
-		placements.push(...group);
 		group = [];
 	};
 
-	for (const task of sorted) {
-		if (group.length > 0 && task.startTime >= groupEnd) closeGroup();
+	for (const box of boxes) {
+		if (group.length > 0 && box.top >= groupBottom) closeGroup();
 		let lane = 0;
-		while (group.some((p) => p.lane === lane && overlap(p.task, task))) lane++;
-		group.push({ task, lane, lanes: 1, overlaps: false });
-		groupEnd = Math.max(groupEnd, task.startTime + task.duration);
+		while (group.some((other) => other.lane === lane && meet(other, box))) lane++;
+		group.push({ ...box, lane });
+		groupBottom = Math.max(groupBottom, box.bottom);
 	}
 	closeGroup();
 	return placements;

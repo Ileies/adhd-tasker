@@ -128,7 +128,6 @@
 	const origin = $derived(day.end);
 	const midnight = $derived(midnightOffset(origin));
 	const off = (time: number) => dayOffset(time, origin);
-	const placements = $derived(layoutDay(tasks));
 	// The night folds into one thin row, down to the hours that hold a task, until it is opened
 	const range = $derived(timelineRange(tasks, day));
 	const from = $derived(nightOpen ? 0 : range.from);
@@ -149,6 +148,10 @@
 	});
 	const MIN_BLOCK_PX = $derived(compact ? COMPACT_MIN_BLOCK_PX : COMFY_MIN_BLOCK_PX);
 	const px = (offset: number) => ((offset - from) / 60) * hourPx;
+	// A short block is drawn taller than its time, the columns account for that so it never covers the next one
+	const placements = $derived(
+		layoutDay(tasks, { minLength: (MIN_BLOCK_PX / hourPx) * 60, origin })
+	);
 	// An alarm in the folded night is hidden until the night is opened
 	const cards = $derived.by(() => {
 		const sorted = alarms
@@ -455,7 +458,7 @@
 				></div>
 			{/each}
 
-			{#each placements as { task, lane, lanes, overlaps } (task.id)}
+			{#each placements as { task, lane, span, lanes, overlaps } (task.id)}
 				{@const dragging = drag?.id === task.id ? drag : null}
 				{@const start = dragging?.startTime ?? task.startTime}
 				{@const duration = dragging?.duration ?? task.duration}
@@ -475,7 +478,8 @@
 					style="top: {px(off(start))}px; height: {Math.max(
 						px(from + duration),
 						MIN_BLOCK_PX
-					)}px; left: calc({(lane / lanes) * 100}% + 2px); width: calc({100 / lanes}% - 4px)"
+					)}px; left: calc({(lane / lanes) * 100}% + 2px); width: calc({(span / lanes) *
+						100}% - 4px)"
 					onclick={(e) => e.stopPropagation()}
 					onkeydown={(e) => blockKey(e, task)}
 					onpointerdown={(e) => begin(e, task, 'move')}
