@@ -158,6 +158,14 @@ describe('parseCheckData', () => {
 		});
 	});
 
+	test('keeps that the break was offered, and nothing else for it', () => {
+		expect(parseCheckData({ before: 0, after: 0, minutes: 5, keep: true, offered: true })).toEqual({
+			ok: true,
+			value: { before: 0, after: 0, minutes: 5, keep: true, offered: true }
+		});
+		expect(parseCheckData({ before: 0, after: 0, minutes: 5, offered: false }).ok).toBe(false);
+	});
+
 	test.each([[null], [[]], ['x'], [3]])('%p is not an answer', (value) => {
 		expect(parseCheckData(value).ok).toBe(false);
 	});
@@ -234,15 +242,22 @@ describe('checkPatch', () => {
 	const answer = { before: 10, after: 20, minutes: 30 };
 
 	test('the progress and the time spent are written', () => {
-		expect(checkPatch(todo, answer)).toEqual({ progress: 20, spentMinutes: 90 });
+		expect(checkPatch(todo, answer)).toMatchObject({ progress: 20, spentMinutes: 90 });
 	});
 
 	test('Keep going adds the time and leaves the progress alone', () => {
 		expect(checkPatch(todo, { ...answer, after: 10, keep: true })).toEqual({ spentMinutes: 90 });
 	});
 
+	test('moving forward ends what pushing the to-do away counted, standing still does not', () => {
+		expect(checkPatch(todo, answer)).toMatchObject({ skips: 0, skipSince: null });
+		const same = checkPatch(todo, { ...answer, after: 10 });
+		expect(same.skips).toBeUndefined();
+		expect(same.skipSince).toBeUndefined();
+	});
+
 	test('"It\'s bigger than I thought" learns the size from the pace', () => {
-		expect(checkPatch(todo, { ...answer, after: 20, pace: 'bigger' })).toEqual({
+		expect(checkPatch(todo, { ...answer, after: 20, pace: 'bigger' })).toMatchObject({
 			progress: 20,
 			spentMinutes: 90,
 			estimate: 450,

@@ -77,18 +77,27 @@ describe('momentKey', () => {
 });
 
 describe('STUCK_REASONS', () => {
-	test.each(STUCK_REASONS.map((reason) => [reason.id, reason.action] as const))(
-		'%s has a timer the schedule accepts',
-		(_id, action) => {
-			const parsed = parseAlarm(
-				{ in_minutes: action.minutes, label: action.alarm, tone: 'soft' },
-				Date.UTC(2026, 9, 14, 10),
-				'UTC'
-			);
-			expect(parsed.ok).toBe(true);
-			expect(action.label).toContain(`${action.minutes} min`);
-		}
+	const withTimer = STUCK_REASONS.flatMap((reason) =>
+		'action' in reason ? [[reason.id, reason.action] as const] : []
 	);
+	test.each(withTimer)('%s has a timer the schedule accepts', (_id, action) => {
+		const parsed = parseAlarm(
+			{ in_minutes: action.minutes, label: action.alarm, tone: 'soft' },
+			Date.UTC(2026, 9, 14, 10),
+			'UTC'
+		);
+		expect(parsed.ok).toBe(true);
+		expect(action.label).toContain(`${action.minutes} min`);
+	});
+
+	test('the reasons that act on their own have no timer: the app does the work', () => {
+		const acting = STUCK_REASONS.filter((reason) => 'effect' in reason);
+		expect(acting.map((reason) => [reason.id, reason.effect])).toEqual([
+			['low-energy', 'struggle'],
+			['break', 'break']
+		]);
+		for (const reason of acting) expect('action' in reason).toBe(false);
+	});
 
 	test('every reason has its own id', () => {
 		expect(new Set(STUCK_REASONS.map((reason) => reason.id)).size).toBe(STUCK_REASONS.length);

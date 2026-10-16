@@ -41,20 +41,25 @@ export const STUCK_REASONS = [
 		}
 	},
 	{
+		id: 'low-energy',
+		label: 'I lost energy for this',
+		hint: 'Then this is not the thing for now. Switching to something else.',
+		effect: 'struggle'
+	},
+	{
 		id: 'break',
 		label: 'I need a break',
-		hint: 'Step away from the screen for 5 minutes, then come back to this.',
-		action: {
-			label: 'Start a 5 min break',
-			minutes: 5,
-			alarm: 'The break is over. Back to the task.'
-		}
+		hint: 'Step away from the screen. I will call you back.',
+		effect: 'break'
 	}
 ] as const satisfies readonly {
 	id: string;
 	label: string;
 	hint: string;
-	action: StuckAction;
+	/** A hint with one small first step and a timer the user can start. */
+	action?: StuckAction;
+	/** What the app does on its own: a struggle (the ladder rotates or gives a break), or a break now. */
+	effect?: 'struggle' | 'break';
 }[];
 
 export type StuckReason = (typeof STUCK_REASONS)[number];

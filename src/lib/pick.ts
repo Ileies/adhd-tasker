@@ -7,6 +7,7 @@
  */
 import { formatClock, formatMinutes } from '#lib/format.js';
 import type { Todo } from '#lib/core/repo.js';
+import { LOW_ENERGY_MAX_LEFT } from '#lib/struggle.js';
 
 export type PickTodo = Pick<
 	Todo,
@@ -19,7 +20,12 @@ export type PickTodo = Pick<
 	| 'dueTime'
 	| 'notBefore'
 	| 'status'
->;
+> &
+	/** What pushing it away counted, absent in a test that is not about it. */
+	Partial<Pick<Todo, 'skips' | 'skipSince'>>;
+
+/** The line for a to-do picked in the low energy hour. */
+export const LOW_ENERGY_LINE = 'A short one while energy is low.';
 
 /** A to-do that is due today must still fit with this much to spare, otherwise it is urgent. */
 export const URGENT_SPARE_MINUTES = 30;
@@ -53,9 +59,13 @@ export interface PickInput<D extends PickTodo> {
 	freeLeft: number;
 	/** Free minutes from now to a minute of today. */
 	freeUntil(minute: number): number;
+	/** To-dos the user was rotated away from lately, left alone unless nothing else is open. */
+	cooling?: ReadonlySet<number>;
+	/** The low energy hour: only to-dos with at most `LOW_ENERGY_MAX_LEFT` minutes left, unless there are none. */
+	shortOnly?: boolean;
 }
 
-export type PickWhy = 'urgent' | 'only' | 'continuity' | 'share';
+export type PickWhy = 'urgent' | 'only' | 'continuity' | 'share' | 'short';
 
 export interface Picked<D> {
 	todo: D;
@@ -113,10 +123,73 @@ function urgentLine(todo: PickTodo, date: string, remaining: number): string {
 	return `${when}, about ${formatMinutes(remaining)} left to do.`;
 }
 
+/**
+ * The to-dos a session may go to: the open ones that are ready, without the ones that cool down and, in the low energy
+ * hour, only the short ones. With none left the cool down is dropped first and then the low energy filter.
+ */
+export function candidatesFor<D extends PickTodo>(
+	input: Pick<PickInput<D>, 'todos' | 'date' | 'cooling' | 'shortOnly'>
+): D[] {
+	const ready = input.todos.filter((todo) => isCandidate(todo, input.date));
+	const short = (todo: D) => remainingMinutes(todo) <= LOW_ENERGY_MAX_LEFT;
+	const warm = (todo: D) => !input.cooling?.has(todo.id);
+	const attempts: ((todo: D) => boolean)[] = [
+		(todo) => warm(todo) && (!input.shortOnly || short(todo)),
+		(todo) => !input.shortOnly || short(todo),
+		() => true
+	];
+	for (const accepts of attempts) {
+		const found = ready.filter(accepts);
+		if (found.length > 0) return found;
+	}
+	return [];
+}
+
+/** How many other to-dos a rotation away from `todoId` could go to: open, ready and not cooling down. */
+export function rotationTargets(
+	todos: readonly Pick<PickTodo, 'id' | 'status' | 'notBefore'>[],
+	date: string,
+	cooling: ReadonlySet<number>,
+	todoId: number
+): number {
+	return todos.filter(
+		(todo) => todo.id !== todoId && isCandidate(todo, date) && !cooling.has(todo.id)
+	).length;
+}
+
 /** The to-do for the next session, `null` when none is open and ready. */
 export function pick<D extends PickTodo>(input: PickInput<D>): Picked<D> | null {
+	const picked = choose(input);
+	// In the low energy hour a short to-do says so, an urgent one still says why it is urgent
+	if (
+		picked &&
+		input.shortOnly &&
+		picked.why !== 'urgent' &&
+		remainingMinutes(picked.todo) <= LOW_ENERGY_MAX_LEFT
+	)
+		return { ...picked, why: 'short', line: LOW_ENERGY_LINE };
+	return picked;
+}
+
+/**
+ * What stopping for the day costs, one plain line for "Call it a day", `null` when it costs nothing: the to-do is not
+ * behind its share of today, or it has no date to be late for. `spentToday` is the time it had today.
+ */
+export function dayCostLine(todo: PickTodo, date: string, spentToday: number): string | null {
+	if (todo.dueDate === null) return null;
+	const left = remainingMinutes(todo);
+	const days = daysLeft(todo, date);
+	const today = Math.max(left / days, Math.min(left, MIN_NEED_MINUTES));
+	const behind = Math.ceil((today - spentToday) / 5) * 5;
+	if (behind < 15) return null;
+	if (days <= 1)
+		return `${todo.title} is due today, about ${formatMinutes(left)} of it is still open.`;
+	return `${todo.title} is ${formatMinutes(behind)} behind today, tomorrow needs ${formatMinutes(ceilTo5(left / (days - 1)))} for it.`;
+}
+
+function choose<D extends PickTodo>(input: PickInput<D>): Picked<D> | null {
 	const { date, now, myDayEnd, spent } = input;
-	const candidates = input.todos.filter((todo) => isCandidate(todo, date));
+	const candidates = candidatesFor(input);
 	if (candidates.length === 0) return null;
 
 	const remaining = new Map(candidates.map((todo) => [todo.id, remainingMinutes(todo)]));

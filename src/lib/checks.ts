@@ -52,10 +52,20 @@ export interface CheckData {
 	worked?: boolean;
 	/** The gain was slow for the size, written by whoever records the answer. */
 	slow?: boolean;
+	/** The 5 minute break was offered with this question (so it is not offered again for a while). */
+	offered?: boolean;
 }
+
+/**
+ * What a question is about: how far the to-do is (`progress`), whether to go on after a break (`break`), or, after
+ * the last break the ladder gives, whether the day's focus work is done (`day`), or what to do with a to-do that
+ * was pushed away again and again (`face`, the end of its ten minutes).
+ */
+export type CheckAbout = 'progress' | 'break' | 'day' | 'face';
 
 /** A question waiting for an answer, as the flow engine hands it to the hero. */
 export interface Check<D> {
+	about: CheckAbout;
 	/** The to-do the question is about. `null` in the plan state: nothing to ask, only "still there?". */
 	todo: D | null;
 	/** 0: asked. 1: asked again after two minutes ("Still there?"). */
@@ -71,6 +81,8 @@ export interface Check<D> {
 	early: boolean;
 	/** "How big is all of it?" was asked for this to-do already, Not sure included. */
 	sizeAsked: boolean;
+	/** The 5 minute break chip comes with this question: 90 minutes of work without a break, offered once. */
+	offerBreak: boolean;
 }
 
 export const isPace = (value: unknown): value is Pace => PACES.includes(value as Pace);
@@ -221,6 +233,10 @@ export function parseCheckData(
 		if (input.worked !== true) return fail('worked is true when set');
 		data.worked = true;
 	}
+	if (input.offered !== undefined) {
+		if (input.offered !== true) return fail('offered is true when set');
+		data.offered = true;
+	}
 	return { ok: true, value: data };
 }
 
@@ -236,6 +252,11 @@ export function checkPatch(
 	const spentMinutes = todo.spentMinutes + data.minutes;
 	const patch: TodoPatch = { spentMinutes };
 	if (!data.keep) patch.progress = data.after;
+	// Moving forward ends what pushing it away counted
+	if (!data.keep && data.after > data.before) {
+		patch.skips = 0;
+		patch.skipSince = null;
+	}
 	if (typeof data.size === 'number') {
 		patch.estimate = data.size;
 		patch.learned = false;

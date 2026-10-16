@@ -3,6 +3,8 @@ import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
 import {
 	CONTINUITY_MAX_MINUTES,
+	LOW_ENERGY_LINE,
+	dayCostLine,
 	daysBetween,
 	isCandidate,
 	pick,
@@ -299,5 +301,89 @@ describe('pick', () => {
 				}
 			)
 		);
+	});
+});
+
+describe('a to-do the user was rotated away from', () => {
+	const todos = [todo(1, { dueDate: '2026-11-01' }), todo(2), todo(3)];
+
+	test('is left alone while it cools down', () => {
+		const picked = pick(input(todos, { cooling: new Set([1]) }));
+		expect(picked?.todo.id).not.toBe(1);
+	});
+
+	test('is picked again when nothing else is open', () => {
+		expect(pick(input([todo(1)], { cooling: new Set([1]) }))?.todo.id).toBe(1);
+	});
+
+	test('is picked again when everything else is cooling down too', () => {
+		expect(pick(input(todos, { cooling: new Set([1, 2, 3]) }))).not.toBeNull();
+	});
+
+	test('the one left is "only" when the others cool down', () => {
+		expect(pick(input(todos, { cooling: new Set([1, 2]) }))?.why).toBe('only');
+	});
+});
+
+describe('the low energy hour', () => {
+	const big = todo(1, { dueDate: '2026-11-01', estimate: 900 });
+	const small = todo(2, { dueDate: '2026-12-31', estimate: 60, priority: Priority.Low });
+
+	test('picks a to-do with at most 30 minutes left, whatever else is behind', () => {
+		const quick = todo(3, { dueDate: '2026-12-31', estimate: 25, priority: Priority.Low });
+		const picked = pick(input([big, small, quick], { shortOnly: true }));
+		expect(picked?.todo.id).toBe(3);
+		expect(picked?.why).toBe('short');
+		expect(picked?.line).toBe(LOW_ENERGY_LINE);
+	});
+
+	test('counts what is left, not the size', () => {
+		const nearlyDone = todo(2, { estimate: 600, progress: 95 });
+		expect(pick(input([big, nearlyDone], { shortOnly: true }))?.todo.id).toBe(2);
+	});
+
+	test('keeps the usual pick when nothing is short enough', () => {
+		const picked = pick(input([big, small], { shortOnly: true }));
+		expect(picked?.why).not.toBe('short');
+		expect(picked).toEqual(pick(input([big, small])));
+	});
+
+	test('does not hide a to-do that is urgent', () => {
+		const urgent = todo(3, { dueDate: DATE, dueTime: NOW + 60, estimate: 120 });
+		const quick = todo(4, { estimate: 20 });
+		expect(pick(input([urgent, quick], { shortOnly: true }))?.todo.id).toBe(4);
+		expect(pick(input([urgent], { shortOnly: true }))?.why).toBe('urgent');
+	});
+
+	test('the cool down is dropped before the low energy filter', () => {
+		const quick = todo(3, { estimate: 20 });
+		const picked = pick(input([big, small, quick], { shortOnly: true, cooling: new Set([3]) }));
+		expect(picked?.todo.id).toBe(3);
+	});
+});
+
+describe('what stopping for the day costs', () => {
+	const study = todo(1, { dueDate: '2026-10-24', estimate: 600, title: 'Study B' });
+
+	test('says how far behind the share of today it is and what tomorrow needs', () => {
+		// 10 h over the 11 days left today included is about 55 min a day, with 20 min done it is 35 min behind,
+		// and the 10 days after today need 60 min each
+		expect(dayCostLine(study, DATE, 20)).toBe(
+			'Study B is 35 min behind today, tomorrow needs 1 h for it.'
+		);
+	});
+
+	test('says nothing when today is done', () => {
+		expect(dayCostLine(study, DATE, 60)).toBeNull();
+		expect(dayCostLine(study, DATE, 55)).toBeNull();
+	});
+
+	test('says nothing for a to-do that has no date to be late for', () => {
+		expect(dayCostLine(todo(1, { dueDate: null }), DATE, 0)).toBeNull();
+	});
+
+	test('a to-do due today says what is still open', () => {
+		const today = todo(1, { dueDate: DATE, estimate: 120, title: 'Taxes' });
+		expect(dayCostLine(today, DATE, 30)).toBe('Taxes is due today, about 2 h of it is still open.');
 	});
 });
