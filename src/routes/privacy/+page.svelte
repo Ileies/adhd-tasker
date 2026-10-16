@@ -64,7 +64,8 @@
 		</li>
 		<li>
 			<strong>Your plan:</strong> the tasks you create (title, description, date, time, duration, priority,
-			done or not) and your alarms.
+			done or not, whether it is your own time, an appointment, or the travel to an appointment and which
+			one) and your alarms.
 		</li>
 		<li>
 			<strong>Your to-dos:</strong> things to do without a time (title, notes, size, due date, how far
