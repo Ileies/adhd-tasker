@@ -1,5 +1,6 @@
 import {
 	DAY,
+	TASK_KINDS,
 	parseDuration,
 	parsePriority,
 	parseTime,
@@ -10,8 +11,6 @@ import {
 import type { TaskKind } from '#lib/core/repo.js';
 import { MAX_SHIFT } from '#lib/placeday.js';
 import { isDateKey } from '#lib/time.js';
-
-export const TASK_KINDS: readonly TaskKind[] = ['block', 'appointment', 'travel'];
 
 /** What the screens may send: the assistant's fields plus the kind of task, the appointment travel leads to and how far it may move. */
 export type TaskInput = TaskPatch & { kind?: TaskKind; parentId?: number | null; shift?: number };

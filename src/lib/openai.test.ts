@@ -36,6 +36,8 @@ describe('buildRequest', () => {
 		const names = request.tools.map((tool) => tool.name);
 		expect(names).toEqual([
 			'list_tasks',
+			'list_todos',
+			'list_routines',
 			'say',
 			'ask',
 			'schedule_wakeup',

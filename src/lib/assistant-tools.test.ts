@@ -2,17 +2,25 @@
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
 import {
+	ACT_ONLY_TOOLS,
 	MAX_LIST_DAYS,
 	MAX_SAY,
+	ROUTINE_WRITE_TOOLS,
 	TOOLS,
+	parseAddRoutine,
 	parseAddTask,
+	parseAddTodo,
 	parseAsk,
+	parseDeleteById,
 	parseDeleteTask,
 	parseListTasks,
 	parseReason,
 	parseSay,
 	parseToolArguments,
-	parseUpdateTask
+	parseUpdateRoutine,
+	parseUpdateTask,
+	parseUpdateTodo,
+	reactionTools
 } from '#lib/assistant-tools.js';
 import { addDays, isDateKey } from '#lib/time.js';
 
@@ -162,6 +170,132 @@ describe('parseUpdateTask', () => {
 	test('a long description is cut to 1000 characters', () => {
 		const result = parseUpdateTask({ id: 4, description: 'x'.repeat(1500) });
 		expect(result.ok && result.value.patch.description?.length).toBe(1000);
+	});
+});
+
+describe('the kind of a task', () => {
+	const base = { title: 'Exam', date: '2026-10-14', start: '12:00' };
+
+	test('kind, shift and the appointment of a travel task are read when sent', () => {
+		const added = parseAddTask({ ...base, kind: 'travel', shift: 30, parent_id: 7 });
+		expect(added.ok && added.value).toMatchObject({ kind: 'travel', shift: 30, parentId: 7 });
+		const updated = parseUpdateTask({ id: 4, shift: 60 });
+		expect(updated.ok && updated.value.patch).toEqual({ shift: 60 });
+	});
+
+	test('a task that says nothing about them has none of the three', () => {
+		const added = parseAddTask(base);
+		expect(added.ok && Object.keys(added.value)).not.toContain('kind');
+		expect(added.ok && Object.keys(added.value)).not.toContain('shift');
+	});
+
+	test.each([
+		['a kind that does not exist', { kind: 'meeting' }],
+		['a shift beyond the most it may move', { shift: 241 }],
+		['a shift that is not whole', { shift: 7.5 }],
+		['a negative shift', { shift: -5 }],
+		['an appointment id that is not a number', { parent_id: 'seven' }]
+	])('rejects %s', (_name, change) => {
+		expect(parseAddTask({ ...base, ...change }).ok).toBe(false);
+		expect(parseUpdateTask({ id: 4, ...change }).ok).toBe(false);
+	});
+});
+
+describe('to-do and routine tools', () => {
+	test('a to-do is sent in the names of the screens, the clock as minutes', () => {
+		expect(
+			parseAddTodo({
+				title: 'Study B',
+				estimate_minutes: 180,
+				due_date: '2026-11-05',
+				due_time: '18:30',
+				next_step: 'Open the book',
+				parent_id: 12
+			})
+		).toEqual({
+			ok: true,
+			value: {
+				title: 'Study B',
+				estimate: 180,
+				dueDate: '2026-11-05',
+				dueTime: 18 * 60 + 30,
+				nextStep: 'Open the book',
+				parentId: 12
+			}
+		});
+	});
+
+	test('the progress cannot be sent', () => {
+		const parsed = parseUpdateTodo({ id: 3, progress: 100, title: 'X' });
+		expect(parsed).toEqual({ ok: true, value: { id: 3, title: 'X' } });
+	});
+
+	test('clear empties fields, a due date takes its time with it', () => {
+		expect(parseUpdateTodo({ id: 3, clear: ['due', 'next_step'] })).toEqual({
+			ok: true,
+			value: { id: 3, dueDate: null, dueTime: null, nextStep: null }
+		});
+		expect(parseUpdateRoutine({ id: 2, clear: ['last_day'] })).toEqual({
+			ok: true,
+			value: { id: 2, lastDay: null }
+		});
+	});
+
+	test.each([
+		['a clock that is not a clock', () => parseAddTodo({ title: 'X', due_time: '25:00' })],
+		['a field that cannot be cleared', () => parseUpdateTodo({ id: 3, clear: ['title'] })],
+		['clear that is not a list', () => parseUpdateTodo({ id: 3, clear: 'due' })],
+		['an update without an id', () => parseUpdateTodo({ title: 'X' })],
+		['a routine update with a text id', () => parseUpdateRoutine({ id: '2', title: 'X' })],
+		['a routine start that is not a clock', () => parseAddRoutine({ start: 'noon' })],
+		['a delete of a to-do without an id', () => parseDeleteById({}, 'todo')]
+	])('rejects %s', (_name, run) => {
+		expect(run().ok).toBe(false);
+	});
+
+	test('a routine is sent in the names of the screens', () => {
+		expect(
+			parseAddRoutine({
+				title: 'Meds',
+				start: '07:00',
+				duration_minutes: 15,
+				repeat: 'daily',
+				first_day: '2026-10-14',
+				shift: 0
+			})
+		).toEqual({
+			ok: true,
+			value: {
+				title: 'Meds',
+				startTime: 420,
+				duration: 15,
+				repeat: 'daily',
+				firstDay: '2026-10-14',
+				shift: 0
+			}
+		});
+	});
+
+	test('the delete message names the list to look in', () => {
+		const parsed = parseDeleteById({ id: 'x' }, 'routine');
+		expect(!parsed.ok && parsed.error).toContain('list_routines');
+	});
+
+	test('an unprompted reaction may add or change to-dos with autonomy act, never a routine', () => {
+		const names = (mayEdit: boolean) => reactionTools(mayEdit).map((tool) => tool.name);
+		expect(names(false)).not.toContain('add_todo');
+		expect(names(true)).toContain('add_todo');
+		for (const tool of ROUTINE_WRITE_TOOLS) {
+			expect(names(true)).not.toContain(tool);
+			expect(names(false)).not.toContain(tool);
+			expect(ACT_ONLY_TOOLS).not.toContain(tool);
+			expect(TOOLS.map((chat) => chat.name)).toContain(tool);
+		}
+	});
+
+	test('the floor of the day is in the routine tool descriptions', () => {
+		const update = TOOLS.find((tool) => tool.name === 'update_routine')!;
+		expect(update.description).toContain('Meds, meals, sleep and water');
 	});
 });
 
