@@ -1,6 +1,6 @@
 # Roadmap to 1.0
 
-Status: decided scope, 2026-10-14, updated 2026-10-16 for the local first plan. Progress: **58 of 135 points, 43 %**.
+Status: decided scope, 2026-10-14, updated 2026-10-16 for the local first plan. Progress: **64 of 135 points, 47 %**.
 
 This file owns the definition of 1.0, how progress is measured and the order of the work. It does not replace the detailed plans. Each criterion points to the plan that describes how it is built (`checks-and-tests-plan.md`, `feature-ideas.md`; the UX plan was built and deleted, git history: `docs/ux-plan.md` at `24192b1`, the "ux plan N" references below point to its phases). When a plan and this file disagree about scope, this file wins. When they disagree about how, the plan wins.
 
@@ -77,11 +77,11 @@ These cuts are my call and open to veto. The one I would argue hardest to keep o
 | B3  | PWA installable                                                                                  | 1   | Lighthouse installable check                                                                     | shipped   | x   |
 | B4  | Quick timers (5, 10, 25 min, 1 h) and one snooze per alarm                                       | 2   | Snooze gone on second ring; timer is one tap                                                     | ux plan 8 |     |
 
-### C. Daily rhythm (0 of 13)
+### C. Daily rhythm (5 of 13)
 
 | ID  | Criterion                                                                                                                      | Pts | Proof                                                                                                   | Source        |     |
 | --- | ------------------------------------------------------------------------------------------------------------------------------ | --- | ------------------------------------------------------------------------------------------------------- | ------------- | --- |
-| C1  | Recurring tasks, the core feature: essentials (sleep, meals, water, shower, nails) by cadence. Edit one or all, DST safe, Undo | 5   | Pure `recurrence.test.ts` with property test; a daily task appears on the right days in the user's zone | planned       |     |
+| C1  | Recurring tasks, the core feature: essentials (sleep, meals, water, shower, nails) by cadence. Edit one or all, DST safe, Undo | 5   | Pure `recurrence.test.ts` with property test; a daily task appears on the right days in the user's zone | shipped       | x   |
 | C2  | Capture inbox: `Shift+Space` anywhere, no time, schedule or drop from a list                                                   | 4   | Capture in under 3 s; an inbox item can become a task in two taps; survives reload                      | planned       |     |
 | C3  | End-of-day shutdown at day end: what got done, move unfinished to tomorrow or drop in one tap, calm screen                     | 3   | Pure summary test; works without a key                                                                  | planned       |     |
 | C4  | `startedAt` and `completedAt` recorded on tasks (schema, no UI)                                                                | 1   | Test; `bun run db:push` applied; set on Done                                                            | feature ideas |     |
@@ -96,7 +96,7 @@ These cuts are my call and open to veto. The one I would argue hardest to keep o
 | D4  | Drawer suggestions, single mic and send button, entry only with a key, Activity restructure | 2   | Seen on a real screen                                     | ux plan 7, 9 |     |
 | D5  | Whole app works without a key                                                               | 1   | Server integration test with no key (F4) plus manual pass | shipped      | x   |
 
-### E. Craft (0 of 20)
+### E. Craft (1 of 20)
 
 | ID  | Criterion                                                                                                                                                                   | Pts | Proof                                                                              | Source     |     |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------------------------------------------------------------------------- | ---------- | --- |
@@ -105,7 +105,7 @@ These cuts are my call and open to veto. The one I would argue hardest to keep o
 | E3  | Plan rework: day switcher in bar, live parse preview, 30 min default, drag to create, keyboard blocks, grouped phone list                                                   | 5   | `visibleHours` test; a day can be planned with the keyboard only                   | ux plan 6  |     |
 | E4  | Task sheet with chips and priority control, failed save shows a toast                                                                                                       | 2   | Seen on a real screen                                                              | ux plan 7  |     |
 | E5  | Settings: auto-save, presets, sections, My day, Google card hidden                                                                                                          | 4   | No Save button except the key; schema applied                                      | ux plan 8  |     |
-| E6  | First run: no theme question, essentials intro (sleep, meals, water, shower, nails: pick a time for each, needs planning first, see section 6), one-time second screen hint | 1   | A new account reaches a useful screen after only choosing times for the essentials | ux plan 10 |     |
+| E6  | First run: no theme question, essentials intro (sleep, meals, water, shower, nails: pick a time for each, needs planning first, see section 6), one-time second screen hint | 1   | A new account reaches a useful screen after only choosing times for the essentials | ux plan 10 | x   |
 | E7  | Accessibility: axe has no serious or critical violation on Now in light and dark, everything reachable by keyboard                                                          | 2   | `bun run test:e2e` axe spec green                                                  | ux plan 13 |     |
 
 ### F. Trust (8 of 21)
