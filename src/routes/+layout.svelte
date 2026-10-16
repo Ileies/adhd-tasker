@@ -29,6 +29,7 @@
 	import SoundMenu from '#lib/components/SoundMenu.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
 	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
+	import PrepSheet from '#lib/components/PrepSheet.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { browser } from '$app/env';
@@ -193,6 +194,7 @@
 <TimezoneDialog />
 <UndoToast />
 <AlarmBanner />
+<PrepSheet />
 <AssistantDrawer hasKey={tasker.settings.hasOpenaiKey} />
 
 <!-- Hidden form: dropdown content is portaled, so it cannot live inside a form -->

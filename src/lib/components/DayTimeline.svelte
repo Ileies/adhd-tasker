@@ -484,6 +484,7 @@
 						{slim ? 'flex items-center' : 'py-1'}
 						{priorityStyle[task.priority].block}
 						{done ? 'opacity-55' : ''}
+						{task.kind === 'travel' ? 'border-y border-r border-dashed border-current/50' : ''}
 						{overlaps ? 'ring-warning ring-2 ring-inset' : ''}
 						{highlight === task.id ? 'ring-foreground ring-2 ring-inset' : ''}
 						{dragging ? 'z-10 cursor-grabbing shadow-lg' : 'cursor-grab'}"
@@ -510,7 +511,7 @@
 								<div class="tabular truncate text-xs opacity-80">
 									{formatClock(start)} - {formatClock(start + duration)} · {formatDuration(
 										duration
-									)}
+									)}{task.kind === 'appointment' ? ' · Appointment' : ''}
 								</div>
 							{/if}
 						</div>

@@ -9,7 +9,8 @@
 	import SegmentedControl from '#lib/components/SegmentedControl.svelte';
 	import MicButton from '#lib/components/MicButton.svelte';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
-	import { createTask, deleteTask, errorText, loadDay, showToast, updateTask } from '#lib';
+	import { createTask, errorText, loadDay, showToast, updateTask } from '#lib';
+	import { dropTask } from '#lib/prepare.js';
 	import { tasker, type Alarm } from '#lib/app.svelte.js';
 	import type { Todo } from '#lib/core/repo.js';
 	import { addQuickLine, chooseTodo, finishTodo } from '#lib/todos.js';
@@ -19,8 +20,10 @@
 	import {
 		QUICK_DURATION as DEFAULT_DURATION,
 		QUICK_START as DEFAULT_START,
-		quickPreview
+		quickPreview,
+		quickTaskKind
 	} from '#lib/quickadd.js';
+	import type { TaskKind } from '#lib/core/repo.js';
 	import { joinHeard } from '#lib/taskform.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
@@ -103,10 +106,13 @@
 	};
 	const alarmFields = $derived(quickAlarmFields(quick));
 	const alarmPreview = $derived(quickAlarmPreview(quick));
+	/** What the user tapped on the chip, the words of the line decide until then. */
+	let chosenKind = $state<TaskKind | null>(null);
+	const quickKindNow = $derived(quickTaskKind(quick, chosenKind));
 	const preview = $derived(
 		mode === 'alarm'
 			? (alarmPreview ?? (quick.trim() ? 'Add a time: 7:00, 8am or in 10 min' : null))
-			: quickPreview(quick, selected, selected === today ? now : null, today)
+			: quickPreview(quick, selected, selected === today ? now : null, today, chosenKind)
 	);
 	let doneOpen = $state(false);
 
@@ -128,7 +134,8 @@
 		date: untrack(() => today),
 		duration: DEFAULT_DURATION,
 		startTime: DEFAULT_START,
-		priority: Priority.Medium
+		priority: Priority.Medium,
+		kind: 'block'
 	});
 
 	function openEditForm(task: Task) {
@@ -139,6 +146,7 @@
 		form.duration = task.duration;
 		form.startTime = task.startTime;
 		form.priority = task.priority;
+		form.kind = task.kind;
 		form.isEditing = true;
 		form.showTaskForm = true;
 	}
@@ -152,6 +160,7 @@
 		form.duration = DEFAULT_DURATION;
 		form.startTime = startTime;
 		form.priority = Priority.Medium;
+		form.kind = 'block';
 		form.showTaskForm = true;
 	}
 
@@ -200,10 +209,15 @@
 			return;
 		}
 		const text = quick;
+		const kind = chosenKind;
 		quick = '';
+		chosenKind = null;
 		const before = new Set(tasker.tasks.map((task) => task.id));
-		const made = await addQuickLine(text, selected, selected === today ? now : null, today);
+		const made = await addQuickLine(text, selected, selected === today ? now : null, today, kind);
 		if (made?.kind === 'task') showNew(before);
+		// An appointment asks how to get there and what to prepare, one tap can skip it
+		if (made?.kind === 'task' && made.task.kind === 'appointment')
+			tasker.prep.appointment = made.task;
 		// On a phone a new task shows in the other tab, so go where it is
 		if (made?.kind === 'task') view = 'times';
 	}
@@ -248,9 +262,7 @@
 	}
 
 	function remove(task: Task) {
-		const { id: _id, ...rest } = task;
-		void deleteTask(task);
-		showToast(`Deleted: ${task.title}`, () => createTask(rest));
+		void dropTask(task);
 	}
 </script>
 
@@ -370,9 +382,22 @@
 			</Button>
 		</div>
 		{#if hint}
-			<p class="text-muted-foreground h-5 truncate text-sm" role="status" aria-live="polite">
-				{hint}
-			</p>
+			<div class="flex h-5 items-center gap-2">
+				<p class="text-muted-foreground min-w-0 truncate text-sm" role="status" aria-live="polite">
+					{hint}
+				</p>
+				<!-- The words chose it, one tap says otherwise -->
+				{#if mode === 'task' && quickKindNow}
+					<button
+						type="button"
+						class="text-muted-foreground hover:bg-muted shrink-0 cursor-pointer rounded-full border px-2 text-xs"
+						aria-pressed={quickKindNow === 'appointment'}
+						onclick={() => (chosenKind = quickKindNow === 'appointment' ? 'block' : 'appointment')}
+					>
+						{quickKindNow === 'appointment' ? 'Make it a task' : 'Make it an appointment'}
+					</button>
+				{/if}
+			</div>
 		{/if}
 	</form>
 
@@ -407,6 +432,7 @@
 		<div class="min-h-0 overflow-y-auto md:border-r {view === 'todo' ? 'h-full' : 'max-md:hidden'}">
 			<TodoPanel
 				todos={tasker.todos}
+				tasks={tasker.tasks.filter((task) => task.kind === 'appointment')}
 				{today}
 				onOpen={(todo) => (editingTodo = todo)}
 				onNow={doNow}

@@ -17,7 +17,9 @@
 	import { fade } from 'svelte/transition';
 	import { formatClock, formatLeft, formatMinutes } from '#lib/format.js';
 	import { endedAgo, headsUpLine, type HeroState } from '#lib/now.js';
-	import { minutesLeft } from '#lib/priority.js';
+	import { endsOnItsOwn, minutesLeft } from '#lib/priority.js';
+	import { leaveLine } from '#lib/prep.js';
+	import { tasker } from '#lib/app.svelte.js';
 	import { noteLine } from '#lib/rail.js';
 	import { urgencyLevel, urgencySurface } from '#lib/urgency.js';
 
@@ -159,6 +161,8 @@
 				: null
 	);
 	const todo = $derived(hero.kind === 'todo' ? hero.todo : null);
+	/** "Leave now. Exam Math at 12:00." while travel runs. */
+	const leave = $derived(task ? leaveLine(task, tasker.tasks) : null);
 	const next = $derived(
 		hero.kind === 'todo' || hero.kind === 'wrapping-up' || hero.kind === 'time-up'
 			? hero.next
@@ -399,6 +403,10 @@
 				{task.title}
 			</h1>
 
+			{#if leave}
+				<p class="text-2xl font-semibold md:text-3xl">{leave}</p>
+			{/if}
+
 			{#if task.description}
 				<p class="line-clamp-4 max-w-3xl text-xl leading-relaxed opacity-90 md:text-2xl">
 					{task.description}
@@ -446,7 +454,8 @@
 					<Check />
 					Done
 				</Button>
-				{#if hero.kind === 'wrapping-up'}
+				<!-- An appointment ends on its own: nothing to extend, and nothing to be stuck on -->
+				{#if hero.kind === 'wrapping-up' && !endsOnItsOwn(task)}
 					<Button
 						size="lg"
 						variant="ghost"
@@ -456,7 +465,7 @@
 						15 more min
 					</Button>
 				{/if}
-				{@render stuckButton()}
+				{#if !endsOnItsOwn(task)}{@render stuckButton()}{/if}
 				<HeroMenu {task} {onEdit} {onExtend} {onLater} {onTomorrow} {onDrop} />
 			</div>
 

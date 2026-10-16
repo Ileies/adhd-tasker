@@ -12,6 +12,7 @@
 		joinHeard,
 		parseClock
 	} from '#lib/taskform.js';
+	import { needsPrep } from '#lib/prep.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2 } from '@lucide/svelte';
 	import MicButton from '#lib/components/MicButton.svelte';
@@ -54,6 +55,17 @@
 	const choice = $derived(dateChoice(form.date, today));
 	const end = $derived(endLine(form.startTime, form.duration));
 	const done = $derived(form.selectedTask?.status === TaskStatus.Completed);
+	/** An appointment nobody prepares for yet offers the sheet again. */
+	const offerPrep = $derived(
+		form.isEditing && form.selectedTask ? needsPrep(form.selectedTask, tasker.todos, today) : false
+	);
+
+	function openPrep() {
+		const appointment = form.selectedTask;
+		if (!appointment) return;
+		form.showTaskForm = false;
+		tasker.prep.appointment = appointment;
+	}
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -65,7 +77,8 @@
 			date: form.date,
 			duration: form.duration,
 			startTime: form.startTime,
-			priority: form.priority
+			priority: form.priority,
+			kind: form.kind
 		};
 
 		if (!taskData.title) {
@@ -85,7 +98,9 @@
 					return;
 				}
 			} else {
-				await createTask(taskData);
+				const created = await createTask(taskData);
+				// An appointment asks how to get there and what to prepare
+				if (created.kind === 'appointment') tasker.prep.appointment = created;
 			}
 
 			form.showTaskForm = false;
@@ -195,6 +210,30 @@
 				{/if}
 			</div>
 
+			{#if form.kind !== 'travel'}
+				<div class="grid gap-2">
+					<div class="flex flex-wrap gap-2" role="group" aria-label="Kind">
+						<button
+							type="button"
+							class="{chip} {form.kind === 'block' ? lit : unlit}"
+							aria-pressed={form.kind === 'block'}
+							onclick={() => (form.kind = 'block')}>Task at a time</button
+						>
+						<button
+							type="button"
+							class="{chip} {form.kind === 'appointment' ? lit : unlit}"
+							aria-pressed={form.kind === 'appointment'}
+							onclick={() => (form.kind = 'appointment')}>Appointment</button
+						>
+					</div>
+					<p class="text-muted-foreground text-sm">
+						{form.kind === 'appointment'
+							? "Somebody else's time. It ends on its own and nobody asks whether you did it."
+							: 'Your own time. You are asked when it runs out.'}
+					</p>
+				</div>
+			{/if}
+
 			<div class="grid gap-2">
 				<div class="flex flex-wrap items-center gap-2">
 					<label class="flex items-center gap-2 text-sm">
@@ -282,6 +321,13 @@
 				<Button variant="ghost" size="sm" type="button" onclick={() => (noteOpen = true)}>
 					<Plus />
 					Add a note
+				</Button>
+			{/if}
+
+			{#if offerPrep}
+				<Button variant="ghost" size="sm" type="button" onclick={openPrep}>
+					<Plus />
+					Prepare for it
 				</Button>
 			{/if}
 

@@ -17,7 +17,9 @@
 		showToast,
 		updateTask
 	} from '#lib';
-	import { playsSound, startTimer } from '#lib/alarms.js';
+	import { dropTask } from '#lib/prepare.js';
+	import { playsSound, ring, startTimer } from '#lib/alarms.js';
+	import { leaveLine } from '#lib/prep.js';
 	import { reportStuck } from '#lib/agent.js';
 	import {
 		awayCallMoment,
@@ -296,7 +298,16 @@
 				: hasCurrent || hero.kind === 'plan'
 					? (flowState.reason ?? switchLine(flowState))
 					: null;
-			if (hasCurrent) {
+			if (current?.kind === 'travel') {
+				// Leaving on time is the moment that matters: it rings like an alarm until it is tapped, a minute at most
+				ring({
+					id: -current.id,
+					fireAt: zonedToEpoch(today, current.startTime, zone),
+					label: leaveLine(current, tasker.tasks) ?? current.title,
+					tone: 'urgent',
+					durationMin: 1
+				});
+			} else if (hasCurrent) {
 				if (untrack(() => confirming) !== null) startPending = true;
 				else playSound('task-started');
 			}
@@ -365,9 +376,7 @@
 	}
 
 	function drop(task: Task) {
-		const { id: _id, ...rest } = task;
-		void deleteTask(task);
-		showToast(`Dropped: ${task.title}`, () => createTask(rest));
+		void dropTask(task, 'Dropped');
 	}
 
 	/** The triage's "Do it when there is time": the task that ran out becomes a to-do of its length. */
@@ -506,7 +515,8 @@
 		date: '',
 		duration: 60,
 		startTime: 0,
-		priority: Priority.Medium
+		priority: Priority.Medium,
+		kind: 'block'
 	});
 
 	function edit(task: Task) {
@@ -517,6 +527,7 @@
 		form.duration = task.duration;
 		form.startTime = task.startTime;
 		form.priority = task.priority;
+		form.kind = task.kind;
 		form.isEditing = true;
 		form.showTaskForm = true;
 	}
