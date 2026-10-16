@@ -5,6 +5,7 @@
 	import { alarmStatus, stackCards, type AlarmDayState, type DayAlarm } from '#lib/alarmview.js';
 	import { Switch } from '#lib/components/ui/switch/index.js';
 	import { TaskStatus, type Task } from '#lib/types.js';
+	import type { Placed } from '#lib/placeday.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import {
 		DAY_MINUTES,
@@ -75,7 +76,8 @@
 		onToggle
 	}: {
 		date: string;
-		tasks: Task[];
+		/** The day as placed (`placeDay`): a task that made room is drawn at its placed time and says for what. */
+		tasks: Placed<Task>[];
 		/** Minutes since midnight, drawn as a line when `showNow` is set. */
 		now: number;
 		showNow: boolean;
@@ -479,7 +481,9 @@
 					data-task={task.id}
 					role="button"
 					tabindex="0"
-					aria-label="{task.title}, {formatClock(start)} to {formatClock(start + duration)}"
+					aria-label="{task.title}, {formatClock(start)} to {formatClock(
+						start + duration
+					)}{task.movedFor ? `, moved for ${task.movedFor}` : ''}"
 					class="group focus-visible:ring-ring absolute touch-none overflow-hidden rounded-lg border-l-4 px-2 shadow-sm select-none focus-visible:ring-2 focus-visible:outline-none
 						{slim ? 'flex items-center' : 'py-1'}
 						{priorityStyle[task.priority].block}
@@ -511,7 +515,9 @@
 								<div class="tabular truncate text-xs opacity-80">
 									{formatClock(start)} - {formatClock(start + duration)} · {formatDuration(
 										duration
-									)}{task.kind === 'appointment' ? ' · Appointment' : ''}
+									)}{task.kind === 'appointment' ? ' · Appointment' : ''}{task.movedFor
+										? ` · moved for ${task.movedFor}`
+										: ''}
 								</div>
 							{/if}
 						</div>

@@ -27,6 +27,7 @@ export interface TaskForm {
 	startTime: number; // Start time in seconds since start of the day
 	priority: Priority; // Priority level
 	kind: TaskKind; // block (a task of the user's own), appointment or travel
+	shift: number; // minutes a block may move to make room for an appointment, 0 stays
 }
 
 export type { Task };

@@ -2,7 +2,8 @@
 	import { createTask, errorText, showToast, updateTask } from '#lib';
 	import { tasker } from '#lib/app.svelte.js';
 	import { Priority, TaskStatus, type Task, type TaskForm } from '#lib/types.js';
-	import { formatClock24 } from '#lib/format.js';
+	import { formatClock24, formatMinutes } from '#lib/format.js';
+	import { SHIFT_CHIPS } from '#lib/placeday.js';
 	import { todayIn, addDays } from '#lib/time.js';
 	import {
 		DURATION_CHIPS,
@@ -78,7 +79,9 @@
 			duration: form.duration,
 			startTime: form.startTime,
 			priority: form.priority,
-			kind: form.kind
+			kind: form.kind,
+			// Only a task of the user's own moves, an appointment keeps what it had
+			shift: form.kind === 'block' ? form.shift : 0
 		};
 
 		if (!taskData.title) {
@@ -231,6 +234,30 @@
 							? "Somebody else's time. It ends on its own and nobody asks whether you did it."
 							: 'Your own time. You are asked when it runs out.'}
 					</p>
+				</div>
+			{/if}
+
+			{#if form.kind === 'block'}
+				<div class="grid gap-2">
+					<div class="flex flex-wrap items-center gap-2" role="group" aria-label="Can move by">
+						<span class="text-muted-foreground text-sm">Can move by</span>
+						{#each SHIFT_CHIPS as minutes (minutes)}
+							<button
+								type="button"
+								class="{chip} {form.shift === minutes ? lit : unlit}"
+								aria-pressed={form.shift === minutes}
+								onclick={() => (form.shift = minutes)}
+							>
+								{minutes === 0 ? 'Stays' : formatMinutes(minutes)}
+							</button>
+						{/each}
+					</div>
+					{#if form.shift > 0}
+						<p class="text-muted-foreground text-sm">
+							It makes room for appointments and travel when they clash, within this time. The time
+							you set here never changes.
+						</p>
+					{/if}
 				</div>
 			{/if}
 

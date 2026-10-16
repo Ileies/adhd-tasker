@@ -17,6 +17,7 @@
 	import { minutesNow, todayIn } from '#lib/time.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import { DAY_MINUTES, SNAP, overlapLine, phoneGroups } from '#lib/plan.js';
+	import { placeDay, stored, type Placed } from '#lib/placeday.js';
 	import {
 		QUICK_DURATION as DEFAULT_DURATION,
 		QUICK_START as DEFAULT_START,
@@ -96,7 +97,8 @@
 		void untrack(() => loadAllDay(date));
 	});
 
-	const dayTasks = $derived(tasker.tasks.filter((task) => task.date === selected));
+	// The day as it will be lived: tasks that may move have made room. Everything that saves goes through `stored`
+	const dayTasks = $derived(placeDay(tasker.tasks.filter((task) => task.date === selected)));
 	const overlap = $derived(overlapLine(dayTasks));
 	const groups = $derived(phoneGroups(dayTasks, selected === today ? now : null));
 	let mode = $state<'task' | 'alarm'>('task');
@@ -135,10 +137,12 @@
 		duration: DEFAULT_DURATION,
 		startTime: DEFAULT_START,
 		priority: Priority.Medium,
-		kind: 'block'
+		kind: 'block',
+		shift: 0
 	});
 
-	function openEditForm(task: Task) {
+	function openEditForm(placed: Task) {
+		const task = stored(placed);
 		form.selectedTask = task;
 		form.title = task.title;
 		form.description = task.description;
@@ -147,6 +151,7 @@
 		form.startTime = task.startTime;
 		form.priority = task.priority;
 		form.kind = task.kind;
+		form.shift = task.shift;
 		form.isEditing = true;
 		form.showTaskForm = true;
 	}
@@ -161,6 +166,7 @@
 		form.startTime = startTime;
 		form.priority = Priority.Medium;
 		form.kind = 'block';
+		form.shift = 0;
 		form.showTaskForm = true;
 	}
 
@@ -241,7 +247,8 @@
 		}
 	}
 
-	function toggle(task: Task) {
+	function toggle(placed: Task) {
+		const task = stored(placed);
 		const before = task.status;
 		const status = before === TaskStatus.Completed ? TaskStatus.Pending : TaskStatus.Completed;
 		void updateTask({ ...task, status });
@@ -251,18 +258,21 @@
 		);
 	}
 
-	function move(task: Task, startTime: number) {
+	// A drag decides the time: the user saw the task where it was placed and put it somewhere
+	function move(placed: Task, startTime: number) {
+		const task = stored(placed);
 		void updateTask({ ...task, startTime });
 		showToast(`${task.title} moved to ${formatClock(startTime)}`, () => updateTask(task));
 	}
 
-	function resize(task: Task, duration: number) {
+	function resize(placed: Task, duration: number) {
+		const task = stored(placed);
 		void updateTask({ ...task, duration });
 		showToast(`${task.title} now ${formatDuration(duration)}`, () => updateTask(task));
 	}
 
 	function remove(task: Task) {
-		void dropTask(task);
+		void dropTask(stored(task));
 	}
 </script>
 
@@ -270,8 +280,9 @@
 	<title>Plan - ADHD Tasker</title>
 </svelte:head>
 
-{#snippet row(task: Task, current = false)}
+{#snippet row(task: Task | Placed<Task>, current = false)}
 	{@const done = task.status === TaskStatus.Completed}
+	{@const movedFor = 'movedFor' in task ? task.movedFor : null}
 	<li
 		class="flex items-center gap-3 px-4 py-2 {done ? 'opacity-55' : ''} {current
 			? priorityStyle[task.priority].block
@@ -288,7 +299,7 @@
 			<span class="min-w-0 flex-1">
 				<span class="block truncate font-medium {done ? 'line-through' : ''}">{task.title}</span>
 				<span class="text-xs {current ? '' : 'text-muted-foreground'}"
-					>{formatDuration(task.duration)}</span
+					>{formatDuration(task.duration)}{movedFor ? ` · moved for ${movedFor}` : ''}</span
 				>
 			</span>
 			<span class="shrink-0 rounded-full px-2 py-0.5 text-xs {priorityStyle[task.priority].chip}">

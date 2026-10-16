@@ -43,6 +43,7 @@
 	} from '#lib/now.js';
 	import { isCandidate } from '#lib/pick.js';
 	import { extendTask, moveLater, todoFromTask } from '#lib/plan.js';
+	import { placeDay, stored } from '#lib/placeday.js';
 	import { rank, switchReason } from '#lib/priority.js';
 	import { doneToday, todosDoneBetween } from '#lib/rail.js';
 	import MissedTriage from '#lib/components/MissedTriage.svelte';
@@ -101,7 +102,8 @@
 	let today = $state(todayIn(untrack(() => timezone)));
 	let nowMs = $state(Date.now());
 	// Only today's tasks compete for the screen, other days live on the Plan screen
-	const todays = $derived(tasks.filter((task) => task.date === today));
+	// Tasks that may move have made room for appointments and travel (`placeDay`), the stored times never change
+	const todays = $derived(placeDay(tasks.filter((task) => task.date === today)));
 	const ranking = $derived(rank(todays, now));
 	// What is current, replayed from today's answers and finished items (the server runs the same function)
 	const zone = $derived(timezone ?? deviceTimezone());
@@ -324,8 +326,9 @@
 		return () => clearTimeout(timer);
 	});
 
+	// The tasks on this screen are the placed day: what is saved is always the time the user gave (`stored`)
 	function setStatus(task: Task, status: TaskStatus) {
-		return updateTask({ ...task, status });
+		return updateTask({ ...stored(task), status });
 	}
 
 	function complete(task: Task) {
@@ -348,15 +351,18 @@
 	}
 
 	/** Gives a task 15 more minutes: from now when it already ran out, on top of its end while it runs. */
-	function extend(task: Task) {
+	function extend(placed: Task) {
+		const task = stored(placed);
 		const before = task.duration;
-		void updateTask({ ...task, duration: extendTask(task, now, 15) });
+		// The end is counted from the time it was placed at, the time it is saved at stays
+		void updateTask({ ...task, duration: extendTask(placed, now, 15) });
 		showToast(`${task.title}: 15 more minutes`, () => updateTask({ ...task, duration: before }));
 	}
 
 	/** Moves a task that ran out to the next free slot today, or to tomorrow when nothing fits. */
-	function later(task: Task) {
-		const others = tasker.tasks.filter((other) => other.date === today && other.id !== task.id);
+	function later(placed: Task) {
+		const task = stored(placed);
+		const others = todays.filter((other) => other.id !== task.id);
 		const to = moveLater(task, others, today, now);
 		const before = { date: task.date, startTime: task.startTime };
 		void updateTask({ ...task, date: to.date, startTime: to.startTime });
@@ -369,18 +375,20 @@
 	}
 
 	/** Keeps the start time and moves the task to the next day. */
-	function tomorrow(task: Task) {
+	function tomorrow(placed: Task) {
+		const task = stored(placed);
 		const before = task.date;
 		void updateTask({ ...task, date: addDays(today, 1) });
 		showToast(`${task.title} moved to tomorrow`, () => updateTask({ ...task, date: before }));
 	}
 
 	function drop(task: Task) {
-		void dropTask(task, 'Dropped');
+		void dropTask(stored(task), 'Dropped');
 	}
 
 	/** The triage's "Do it when there is time": the task that ran out becomes a to-do of its length. */
-	async function whenThereIsTime(task: Task) {
+	async function whenThereIsTime(placed: Task) {
+		const task = stored(placed);
 		const { id: _id, ...rest } = task;
 		let made: Todo;
 		try {
@@ -516,10 +524,13 @@
 		duration: 60,
 		startTime: 0,
 		priority: Priority.Medium,
-		kind: 'block'
+		kind: 'block',
+		shift: 0
 	});
 
-	function edit(task: Task) {
+	function edit(placed: Task) {
+		// The sheet shows and saves the time the user gave, not the one the day placed it at
+		const task = stored(placed);
 		form.selectedTask = task;
 		form.title = task.title;
 		form.description = task.description;
@@ -528,6 +539,7 @@
 		form.startTime = task.startTime;
 		form.priority = task.priority;
 		form.kind = task.kind;
+		form.shift = task.shift;
 		form.isEditing = true;
 		form.showTaskForm = true;
 	}
