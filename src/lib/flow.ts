@@ -11,7 +11,7 @@
  * and Done, plan, ready, rest and night. Checks, breaks, rotation and Away come with the next phases.
  */
 import type { FlowRow } from '#lib/core/repo.js';
-import { TIME_UP_WINDOWS, timeBoundState } from '#lib/now.js';
+import { TIME_UP_WINDOWS, timeBoundState, type HeroState } from '#lib/now.js';
 import { pick, type PickTodo } from '#lib/pick.js';
 import { rank, type RankTask } from '#lib/priority.js';
 import { TaskStatus } from '#lib/types.js';
@@ -303,6 +303,45 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 			freeLeft: freeBetween(tasks, now, settings.myDayEnd),
 			freeUntil: (minute) => freeBetween(tasks, now, minute)
 		});
+	}
+}
+
+/** What the hero shows for the flow state. A session counts down to its planned end in epoch ms. */
+export function heroFromFlow<T extends FlowTask, D>(
+	state: FlowState<T, D>,
+	now: number,
+	nowMs: number
+): HeroState<T, D> {
+	const { current } = state;
+	const next = state.next[0] ?? null;
+	switch (current.kind) {
+		case 'task':
+			return current.wrapping
+				? { kind: 'wrapping-up', task: current.task, left: current.left, next }
+				: { kind: 'active', task: current.task, left: current.left };
+		case 'time-up':
+			return {
+				kind: 'time-up',
+				ended: current.ended,
+				over: current.over,
+				current: current.current,
+				next
+			};
+		case 'todo': {
+			const { session } = current;
+			return {
+				kind: 'todo',
+				todo: current.todo,
+				left: Math.max(0, Math.ceil((session.end - nowMs) / MINUTE_MS)),
+				length: Math.max(1, Math.round((session.end - session.start) / MINUTE_MS)),
+				line: state.reason,
+				next
+			};
+		}
+		case 'ready':
+			return { kind: 'ready', next: current.next, left: current.next.startTime - now };
+		default:
+			return current;
 	}
 }
 

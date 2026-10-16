@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { Check } from '@lucide/svelte';
 	import { STUCK_REASONS, type StuckAction, type StuckReason } from '#lib/anchoring.js';
+	import type { Todo } from '#lib/core/repo.js';
 	import type { Task } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import HeroMenu from '#lib/components/HeroMenu.svelte';
+	import TodoMenu from '#lib/components/TodoMenu.svelte';
 	import SilenceLine from '#lib/components/SilenceLine.svelte';
 	import { fade } from 'svelte/transition';
 	import { formatClock, formatLeft, formatMinutes } from '#lib/format.js';
@@ -30,17 +32,25 @@
 		onTimer,
 		concurrent,
 		compact = false,
-		planned = 1,
+		todoCount = 0,
+		firstUp = null,
 		onQuickAdd,
 		focusQuickAdd = false,
+		onAsk,
+		onStart,
+		onResume,
+		onRest,
+		onTodoDone,
+		onTodoEdit,
+		onTodoDrop,
 		noteCount = 0,
 		dark = false
 	}: {
-		hero: HeroState<Task>;
+		hero: HeroState<Task, Todo>;
 		now: number;
 		reason: string | null;
 		headsUp: Task | null;
-		/** Title of the task that was just finished, shown for a moment before the hero moves on. */
+		/** Title of the item that was just finished, shown for a moment before the hero moves on. */
 		done?: string | null;
 		onDone: (task: Task) => void;
 		onStuck: (task: Task, reason: StuckReason) => void;
@@ -53,12 +63,25 @@
 		concurrent: number;
 		/** A smaller hero without the page's height, for the example in the welcome. */
 		compact?: boolean;
-		/** How many tasks today has. With none, the empty state asks for the first one. */
-		planned?: number;
-		/** Adds what the empty state's line says. */
+		/** How many to-dos are open. With none, the morning and the plan state ask for the first one. */
+		todoCount?: number;
+		/** The next thing at a time today, said in the morning. */
+		firstUp?: Task | null;
+		/** Adds what the line of the plan state says. */
 		onQuickAdd?: (text: string) => void;
-		/** Puts the cursor in the empty state's line, when the visitor just said they want to plan. */
+		/** Puts the cursor in the plan line, when the visitor just said they want to plan. */
 		focusQuickAdd?: boolean;
+		/** Opens the assistant, only given when it can answer (a key is saved). */
+		onAsk?: () => void;
+		/** "Start" in the morning. */
+		onStart?: () => void;
+		/** Takes back "Call it a day". */
+		onResume?: () => void;
+		/** "Call it a day". */
+		onRest?: () => void;
+		onTodoDone?: (todo: Todo) => void;
+		onTodoEdit?: (todo: Todo) => void;
+		onTodoDrop?: (todo: Todo) => void;
 		/** Open assistant cards, shown as one line that jumps to them on phones. */
 		noteCount?: number;
 		/** Black surface: it is night and nothing is planned for now. */
@@ -91,25 +114,32 @@
 				? hero.current
 				: null
 	);
+	const todo = $derived(hero.kind === 'todo' ? hero.todo : null);
 	const next = $derived(
-		hero.kind === 'free' || hero.kind === 'wrapping-up' || hero.kind === 'time-up'
+		hero.kind === 'todo' || hero.kind === 'wrapping-up' || hero.kind === 'time-up'
 			? hero.next
 			: null
 	);
+	// The morning with nothing to start, and the plan state, ask what is next
+	const asking = $derived(hero.kind === 'plan' || (hero.kind === 'away' && todoCount === 0));
 
-	// The stuck panel belongs to one task, it closes when another one becomes current
-	let stuckFor = $state<{ id: number; reason: StuckReason | null; timer: boolean } | null>(null);
-	const stuck = $derived(task && stuckFor?.id === task.id ? stuckFor : null);
+	// The stuck panel belongs to one item, it closes when another one becomes current
+	let stuckFor = $state<{ key: string; reason: StuckReason | null; timer: boolean } | null>(null);
+	const itemKey = $derived(task ? `task:${task.id}` : todo ? `todo:${todo.id}` : null);
+	const stuck = $derived(itemKey && stuckFor?.key === itemKey ? stuckFor : null);
 
 	function choose(reason: StuckReason) {
-		if (!task) return;
-		stuckFor = { id: task.id, reason, timer: false };
-		onStuck(task, reason);
+		if (!itemKey) return;
+		stuckFor = { key: itemKey, reason, timer: false };
+		if (task) onStuck(task, reason);
 	}
 
 	const left = $derived(task ? minutesLeft(task, now) : 0);
 	// The bar drains like a Time Timer: it shows what is left
 	const remaining = $derived(task ? Math.min(100, Math.max(0, (100 * left) / task.duration)) : 0);
+	const sessionRemaining = $derived(
+		hero.kind === 'todo' ? Math.min(100, Math.max(0, (100 * hero.left) / hero.length)) : 0
+	);
 	const surface = $derived(
 		done !== null
 			? urgencySurface[0]
@@ -119,7 +149,9 @@
 					? urgencySurface[urgencyLevel(timeUp.ended.priority, -timeUp.over, timeUp.ended.duration)]
 					: task
 						? urgencySurface[urgencyLevel(task.priority, left, task.duration)]
-						: urgencySurface[0]
+						: todo && hero.kind === 'todo'
+							? urgencySurface[urgencyLevel(todo.priority, hero.length, hero.length)]
+							: urgencySurface[0]
 	);
 
 	const doneClass =
@@ -127,6 +159,77 @@
 	const secondaryClass = 'h-16 border-current bg-transparent px-8 text-xl hover:bg-current/10';
 	const barButtonClass = 'h-9 border-current bg-transparent px-4 text-base hover:bg-current/10';
 </script>
+
+{#snippet stuckButton()}
+	{#if !stuck && itemKey}
+		<Button
+			size="lg"
+			variant="outline"
+			class="h-14 border-current bg-transparent px-6 text-lg hover:bg-current/10"
+			onclick={() => (stuckFor = { key: itemKey, reason: null, timer: false })}
+		>
+			I'm stuck
+		</Button>
+	{/if}
+{/snippet}
+
+{#snippet stuckPanel()}
+	{#if stuck}
+		<div
+			class="max-w-xl space-y-3 rounded-lg border border-current/30 p-4"
+			role="group"
+			aria-label="I'm stuck"
+		>
+			{#if stuck.reason}
+				<p class="text-xl leading-relaxed">{stuck.reason.hint}</p>
+				{@const action = stuck.reason.action}
+				<Button
+					variant="outline"
+					class="h-11 border-current bg-transparent text-base hover:bg-current/10"
+					disabled={stuck.timer}
+					onclick={() => {
+						if (stuckFor) stuckFor.timer = true;
+						onTimer(action);
+					}}
+				>
+					{stuck.timer ? 'Timer set' : action.label}
+				</Button>
+				<Button
+					variant="ghost"
+					class="px-0 text-base hover:bg-transparent hover:underline"
+					onclick={() => (stuckFor = null)}>Close</Button
+				>
+			{:else}
+				<p class="text-lg">What is in the way?</p>
+				<div class="flex flex-wrap gap-2">
+					{#each STUCK_REASONS as option (option.id)}
+						<Button
+							variant="outline"
+							class="h-11 border-current bg-transparent text-base hover:bg-current/10"
+							onclick={() => choose(option)}>{option.label}</Button
+						>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet reasonLine()}
+	{#if reason}
+		<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
+	{/if}
+{/snippet}
+
+{#snippet nextLine()}
+	<!-- The rail sits below the fold on phones, so hint at what is next -->
+	{#if next}
+		<p class="truncate text-base opacity-90 md:hidden">
+			Next <span class="tabular font-semibold">{formatClock(next.startTime)}</span>
+			{next.title}
+		</p>
+	{/if}
+{/snippet}
 
 <section
 	class="relative flex flex-col justify-center transition-colors duration-[1500ms] {compact
@@ -271,111 +374,128 @@
 						15 more min
 					</Button>
 				{/if}
-				{#if !stuck}
-					<Button
-						size="lg"
-						variant="outline"
-						class="h-14 border-current bg-transparent px-6 text-lg hover:bg-current/10"
-						onclick={() => (stuckFor = { id: task.id, reason: null, timer: false })}
-					>
-						I'm stuck
-					</Button>
-				{/if}
+				{@render stuckButton()}
 				<HeroMenu {task} {onEdit} {onExtend} {onLater} {onTomorrow} {onDrop} />
 			</div>
 
-			{#if stuck}
-				<div
-					class="max-w-xl space-y-3 rounded-lg border border-current/30 p-4"
-					role="group"
-					aria-label="I'm stuck"
-				>
-					{#if stuck.reason}
-						<p class="text-xl leading-relaxed">{stuck.reason.hint}</p>
-						{@const action = stuck.reason.action}
-						<Button
-							variant="outline"
-							class="h-11 border-current bg-transparent text-base hover:bg-current/10"
-							disabled={stuck.timer}
-							onclick={() => {
-								if (stuckFor) stuckFor.timer = true;
-								onTimer(action);
-							}}
-						>
-							{stuck.timer ? 'Timer set' : action.label}
-						</Button>
-						<Button
-							variant="ghost"
-							class="px-0 text-base hover:bg-transparent hover:underline"
-							onclick={() => (stuckFor = null)}>Close</Button
-						>
-					{:else}
-						<p class="text-lg">What is in the way?</p>
-						<div class="flex flex-wrap gap-2">
-							{#each STUCK_REASONS as option (option.id)}
-								<Button
-									variant="outline"
-									class="h-11 border-current bg-transparent text-base hover:bg-current/10"
-									onclick={() => choose(option)}>{option.label}</Button
-								>
-							{/each}
-						</div>
-					{/if}
-				</div>
-			{/if}
-
-			{#if reason}
-				<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
-			{/if}
-
-			<!-- The rail sits below the fold on phones, so hint at what is next -->
-			{#if next}
-				<p class="truncate text-base opacity-90 md:hidden">
-					Next <span class="tabular font-semibold">{formatClock(next.startTime)}</span>
-					{next.title}
-				</p>
-			{/if}
+			{@render stuckPanel()}
+			{@render reasonLine()}
+			{@render nextLine()}
 
 			<!-- A question in the rail is never seen on a phone, so the hero points at it -->
 			{#if note && !compact}
 				<a href="#assistant-note" class="text-base underline md:hidden">{note}</a>
 			{/if}
 		</div>
-	{:else if dark}
-		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
-			<h1 class="text-display font-bold">Sleep</h1>
-			{#if hero.kind === 'free'}
-				<p class="text-xl opacity-90 md:text-2xl">
-					Next: <span class="tabular font-semibold">{formatClock(hero.next.startTime)}</span>
-					{hero.next.title}
+	{:else if hero.kind === 'todo'}
+		{@const item = hero.todo}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+			<div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-lg opacity-90">
+				<PriorityMeter priority={item.priority} showLabel={false} />
+			</div>
+
+			<h1 class="text-display line-clamp-3 font-bold break-words">{item.title}</h1>
+
+			{#if item.nextStep}
+				<p class="max-w-3xl text-xl leading-relaxed md:text-2xl">
+					<span class="opacity-80">Next step:</span>
+					{item.nextStep}
 				</p>
 			{/if}
-		</div>
-	{:else if hero.kind === 'free'}
-		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
-			<h1 class="text-display font-bold">Free time</h1>
-			<p class="text-xl opacity-90 md:text-2xl">Next: {hero.next.title}</p>
+
 			<div>
-				<div class="tabular text-clock font-bold">
-					{formatMinutes(hero.next.startTime - now)}
-				</div>
+				<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
+				<div class="mt-1 text-lg opacity-90">left in this session</div>
+			</div>
+
+			<div
+				class="h-4 w-full overflow-hidden rounded-full bg-current/20"
+				role="progressbar"
+				aria-valuenow={Math.round(sessionRemaining)}
+				aria-valuemin={0}
+				aria-valuemax={100}
+				aria-valuetext={formatLeft(hero.left)}
+				aria-label="Time left in this session"
+			>
+				<div
+					class="h-full rounded-full bg-current transition-[width] duration-1000"
+					style="width: {sessionRemaining}%"
+				></div>
+			</div>
+
+			<!-- How far the whole to-do is, a quiet line, never a score -->
+			<div
+				class="h-2 w-full max-w-md overflow-hidden rounded-full bg-current/20"
+				role="progressbar"
+				aria-valuenow={item.progress}
+				aria-valuemin={0}
+				aria-valuemax={100}
+				aria-label="Progress on this to-do"
+			>
+				<div class="h-full rounded-full bg-current/70" style="width: {item.progress}%"></div>
+			</div>
+
+			{#if headsUp}
+				<p class="text-xl font-semibold">{headsUpLine(headsUp, now, false)}</p>
+			{/if}
+
+			<div
+				class="flex flex-wrap items-center gap-3 max-md:sticky max-md:bottom-0 max-md:z-10 max-md:-mx-6 max-md:bg-inherit max-md:px-6 max-md:py-3"
+			>
+				<Button size="lg" class={doneClass} onclick={() => onTodoDone?.(item)}>
+					<Check />
+					Done
+				</Button>
+				{@render stuckButton()}
+				<TodoMenu
+					todo={item}
+					onEdit={(value) => onTodoEdit?.(value)}
+					onRest={() => onRest?.()}
+					onDrop={(value) => onTodoDrop?.(value)}
+				/>
+			</div>
+
+			{@render stuckPanel()}
+			{@render reasonLine()}
+			{@render nextLine()}
+
+			{#if note && !compact}
+				<a href="#assistant-note" class="text-base underline md:hidden">{note}</a>
+			{/if}
+		</div>
+	{:else if hero.kind === 'ready'}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
+			<h1 class="text-display font-bold">Get ready</h1>
+			<p class="text-xl opacity-90 md:text-2xl">{hero.next.title}</p>
+			<div>
+				<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
 				<div class="mt-1 text-lg opacity-90">
 					until it starts at {formatClock(hero.next.startTime)}
 				</div>
 			</div>
-			{#if reason}
-				<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
+			{@render reasonLine()}
+		</div>
+	{:else if dark}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
+			<h1 class="text-display font-bold">Sleep</h1>
+			{#if firstUp}
+				<p class="text-xl opacity-90 md:text-2xl">
+					Next: <span class="tabular font-semibold">{formatClock(firstUp.startTime)}</span>
+					{firstUp.title}
+				</p>
 			{/if}
 		</div>
-	{:else if planned === 0 && onQuickAdd}
+	{:else if asking && onQuickAdd}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
-			<h1 class="text-display font-bold">Nothing planned today</h1>
+			<h1 class="text-display font-bold">
+				{hero.kind === 'away' ? 'Good morning' : "Plan what's next"}
+			</h1>
 			<form class="flex max-w-xl gap-2" onsubmit={addQuick}>
 				<Input
 					bind:ref={quickInput}
 					bind:value={quick}
 					placeholder="What is the first thing?"
-					aria-label="Add a task for today"
+					aria-label="Add a to-do"
 					class="h-14 border-current bg-transparent px-4 text-lg placeholder:text-current/60"
 				/>
 				<Button
@@ -385,7 +505,7 @@
 					disabled={!quick.trim()}>Add</Button
 				>
 			</form>
-			<div>
+			<div class="flex flex-wrap gap-x-6">
 				<Button
 					variant="ghost"
 					class="px-0 text-lg hover:bg-transparent hover:underline"
@@ -393,14 +513,44 @@
 				>
 					Open Plan
 				</Button>
+				{#if onAsk}
+					<Button
+						variant="ghost"
+						class="px-0 text-lg hover:bg-transparent hover:underline"
+						onclick={onAsk}
+					>
+						Ask the assistant
+					</Button>
+				{/if}
+			</div>
+			{@render reasonLine()}
+		</div>
+	{:else if hero.kind === 'away'}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+			<h1 class="text-display font-bold">Good morning</h1>
+			{#if firstUp}
+				<p class="text-xl opacity-90 md:text-2xl">
+					First: <span class="tabular font-semibold">{formatClock(firstUp.startTime)}</span>
+					{firstUp.title}
+				</p>
+			{/if}
+			<div>
+				<Button size="lg" class={doneClass} onclick={() => onStart?.()}>Start</Button>
+			</div>
+		</div>
+	{:else if hero.kind === 'rest'}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+			<h1 class="text-display font-bold">Day is done</h1>
+			<div>
+				<Button size="lg" variant="outline" class={secondaryClass} onclick={() => onResume?.()}>
+					Back to work
+				</Button>
 			</div>
 		</div>
 	{:else}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
-			<h1 class="text-display font-bold">Nothing left today</h1>
-			{#if reason}
-				<p class="text-base opacity-80" transition:fade={{ duration: 1000 }}>{reason}</p>
-			{/if}
+			<h1 class="text-display font-bold">Plan what's next</h1>
+			{@render reasonLine()}
 		</div>
 	{/if}
 

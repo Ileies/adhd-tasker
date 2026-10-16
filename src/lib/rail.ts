@@ -7,6 +7,21 @@ export function doneToday(tasks: { date: string; status: TaskStatus }[], today: 
 	return tasks.filter((task) => task.date === today && task.status === TaskStatus.Completed).length;
 }
 
+/** How many to-dos were finished between two moments (epoch ms, `from` inclusive), the day of the count. */
+export function todosDoneBetween(
+	todos: { status: string; completedAt: number | null }[],
+	from: number,
+	to: number
+): number {
+	return todos.filter(
+		(todo) =>
+			todo.status === 'done' &&
+			todo.completedAt !== null &&
+			todo.completedAt >= from &&
+			todo.completedAt < to
+	).length;
+}
+
 /** The line under the clock, `null` at zero. */
 export function doneLine(count: number): string | null {
 	return count > 0 ? `${count} done today` : null;

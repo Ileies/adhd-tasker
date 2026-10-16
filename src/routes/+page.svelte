@@ -8,7 +8,6 @@
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import {
-		addQuickTask,
 		createTask,
 		deleteTask,
 		loadDay,
@@ -20,22 +19,24 @@
 	import { playsSound, startTimer } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
 	import { hyperfocusDue, momentKey, reminderDue, type StuckAction } from '#lib/anchoring.js';
+	import type { Todo } from '#lib/core/repo.js';
+	import { currentKey, flow, heroFromFlow, switchLine } from '#lib/flow.js';
 	import {
 		DONE_CONFIRM_MS,
 		REASON_MS,
 		heroFocus,
 		heroDark,
-		heroState,
-		isNight,
 		tabTitle,
 		wrapUpStarted
 	} from '#lib/now.js';
+	import { isCandidate } from '#lib/pick.js';
 	import { extendTask, moveLater } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
-	import { doneToday } from '#lib/rail.js';
+	import { doneToday, todosDoneBetween } from '#lib/rail.js';
 	import MissedTriage from '#lib/components/MissedTriage.svelte';
 	import { formatClock } from '#lib/format.js';
-	import { addDays, minutesNow, todayIn } from '#lib/time.js';
+	import { addDays, deviceTimezone, minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
+	import { addTodo, changeTodo, recordAnswer } from '#lib/todos.js';
 	import { untrack } from 'svelte';
 	import { browser } from '$app/env';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
@@ -45,6 +46,7 @@
 	// The server render has no shared client state (it is module level and must not leak between requests),
 	// so it reads the load data directly. Otherwise the first paint would be the empty state, then flip.
 	const tasks = $derived(browser ? tasker.tasks : data.tasks);
+	const todos = $derived(browser ? tasker.todos : data.todos);
 	const settings = $derived(browser ? tasker.settings : (data.user ?? tasker.settings));
 	// A signed in visitor's plan came with the page. A guest's is on the device and shows once it was read:
 	// until then one calm frame, never the empty state, which would be a lie for a moment
@@ -56,7 +58,7 @@
 		guest: !data.user,
 		ready,
 		problem: !!tasker.account.problem,
-		taskCount: tasks.length,
+		taskCount: tasks.length + todos.length,
 		welcomed: tasker.firstRun.welcomed
 	});
 	const welcome = $derived(browser && showWelcome(firstRun));
@@ -65,26 +67,53 @@
 
 	let now = $state(minutesNow(untrack(() => timezone)));
 	let today = $state(todayIn(untrack(() => timezone)));
+	let nowMs = $state(Date.now());
 	// Only today's tasks compete for the screen, other days live on the Plan screen
-	const ranking = $derived(
-		rank(
-			tasks.filter((task) => task.date === today),
-			now
-		)
+	const todays = $derived(tasks.filter((task) => task.date === today));
+	const ranking = $derived(rank(todays, now));
+	// What is current, replayed from today's answers and finished items (the server runs the same function)
+	const zone = $derived(timezone ?? deviceTimezone());
+	const flowRows = $derived(
+		(browser ? tasker.flow : data.flow).date === today
+			? (browser ? tasker.flow : data.flow).rows
+			: []
 	);
-	const hasCurrent = $derived(ranking.current !== null);
+	const flowState = $derived(
+		flow({
+			date: today,
+			now,
+			nowMs,
+			at: (minutes) => zonedToEpoch(today, minutes, zone),
+			tasks: todays,
+			todos,
+			log: flowRows,
+			settings
+		})
+	);
+	const hero = $derived(heroFromFlow(flowState, now, nowMs));
+	const hasCurrent = $derived(
+		hero.kind === 'active' ||
+			hero.kind === 'wrapping-up' ||
+			hero.kind === 'todo' ||
+			(hero.kind === 'time-up' && hero.current !== null)
+	);
+	const openTodos = $derived(todos.filter((todo) => isCandidate(todo, today)).length);
+	const doneCount = $derived(
+		doneToday(tasks, today) +
+			todosDoneBetween(todos, zonedToEpoch(today, 0, zone), zonedToEpoch(today, 1440, zone))
+	);
 	// The next task when it starts within the heads-up minutes, shown in the hero (the chime sounds below)
 	const headsUp = $derived(
 		settings.enableReminders
 			? reminderDue(ranking.upcoming, now, settings.reminderAdvanceTime)
 			: null
 	);
-	const hero = $derived(heroState(ranking, now, { overrunMinutes: settings.overrunMinutes }));
 
 	$effect(() => {
 		const tick = () => {
 			now = minutesNow(timezone);
 			today = todayIn(timezone);
+			nowMs = Date.now();
 		};
 		tick();
 		const timer = setInterval(tick, 1000);
@@ -164,26 +193,42 @@
 	function endConfirmation() {
 		clearTimeout(confirmTimer);
 		confirming = null;
-		if (startPending && ranking.current) playSound('task-started');
+		if (startPending && hasCurrent) playSound('task-started');
 		startPending = false;
 	}
 
+	// A session needs its to-do pinned, so adding or editing a to-do halfway does not change what is current.
+	// The first screen or tick that sees an unpinned session writes the pin, the key makes a second write a no-op.
+	$effect(() => {
+		const pin = flowState.pin;
+		if (!ready || !pin) return;
+		untrack(() => void recordAnswer({ type: 'pin', todoId: pin.todoId, key: pin.key }));
+	});
+
 	// Explain every switch that happens while the page is open, and chime for it. A switch the page loads with
-	// ("Scheduled for now" on every load) is noise: the screen already shows the task.
+	// ("Scheduled for now" on every load) is noise: the screen already shows what is current.
 	let reason = $state<string | null>(null);
 	let previous: Task | null = null;
+	let previousKey: string | null = null;
 	let initialized = false;
 	$effect(() => {
 		const current = ranking.current;
-		const why = switchReason(previous, ranking, tasker.tasks, now);
-		if (why !== null && initialized) {
-			reason = why;
-			if (current) {
+		const key = currentKey(flowState.current);
+		if (initialized && key !== previousKey) {
+			const betweenTasks = previousKey?.startsWith('task:') && key.startsWith('task:');
+			// Two tasks at a time: `rank()` explains it. Anything else (a to-do, rest, plan) the engine does
+			reason = betweenTasks
+				? switchReason(previous, ranking, tasker.tasks, now)
+				: hasCurrent || hero.kind === 'plan'
+					? (flowState.reason ?? switchLine(flowState))
+					: null;
+			if (hasCurrent) {
 				if (untrack(() => confirming) !== null) startPending = true;
 				else playSound('task-started');
 			}
 		}
 		previous = current;
+		previousKey = key;
 		initialized = true;
 	});
 
@@ -249,6 +294,47 @@
 		const { id: _id, ...rest } = task;
 		void deleteTask(task);
 		showToast(`Dropped: ${task.title}`, () => createTask(rest));
+	}
+
+	function completeTodo(todo: Todo) {
+		const before = { status: todo.status, progress: todo.progress };
+		void changeTodo({ id: todo.id, status: 'done' });
+		if (playsSound()) playSound('done');
+		clearTimeout(confirmTimer);
+		confirming = todo.title;
+		confirmTimer = setTimeout(endConfirmation, DONE_CONFIRM_MS);
+		showToast(`Done: ${todo.title}`, () => {
+			endConfirmation();
+			return changeTodo({ id: todo.id, ...before });
+		});
+	}
+
+	function dropTodo(todo: Todo) {
+		void changeTodo({ id: todo.id, status: 'dropped' });
+		showToast(`Dropped: ${todo.title}`, () => changeTodo({ id: todo.id, status: todo.status }));
+	}
+
+	/** "Start" in the morning: from here the day runs in sessions. */
+	function start() {
+		void recordAnswer({ type: 'start' });
+	}
+
+	/** "Call it a day": the hero rests until the user comes back. */
+	function rest() {
+		void recordAnswer({ type: 'rest' });
+		showToast('Day is done', resume);
+	}
+
+	/** Takes back the last "Call it a day". */
+	function resume() {
+		const row = flowRows.findLast((entry) => entry.type === 'rest' && entry.id > 0);
+		return row ? recordAnswer({ type: 'undo', data: { ref: row.id } }) : Promise.resolve(null);
+	}
+
+	function addTodoFromHero(text: string) {
+		const title = text.trim();
+		if (title)
+			void addTodo({ title, priority: Priority.Medium }).catch((error) => showToast(error.message));
 	}
 
 	// The triage sheet asks about missed tasks one at a time
@@ -330,11 +416,18 @@
 			onTimer={startStuckTimer}
 			concurrent={ranking.concurrent}
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
-			planned={tasks.filter((task) => task.date === today).length}
-			onQuickAdd={(text) => void addQuickTask(text, today, now)}
+			todoCount={openTodos}
+			firstUp={ranking.upcoming[0] ?? null}
+			onQuickAdd={addTodoFromHero}
 			focusQuickAdd={focusAdd}
+			onAsk={tasker.settings.hasOpenaiKey ? () => (tasker.assistant.open = true) : undefined}
+			onStart={start}
+			onResume={() => void resume()}
+			onRest={rest}
+			onTodoDone={completeTodo}
+			onTodoDrop={dropTodo}
 			noteCount={tasker.agent.cards.length}
-			dark={heroDark(hero, isNight(now, settings.myDayStart, settings.myDayEnd))}
+			dark={heroDark(hero)}
 		/>
 		<UpcomingRail
 			upcoming={ranking.upcoming}
@@ -342,7 +435,7 @@
 			{now}
 			{today}
 			{timezone}
-			done={doneToday(tasks, today)}
+			done={doneCount}
 			headsUp={headsUp !== null}
 			onEdit={edit}
 			onTriage={() => (triage = true)}

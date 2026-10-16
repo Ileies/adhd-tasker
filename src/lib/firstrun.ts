@@ -2,7 +2,7 @@
  * The first run: when the welcome shows and the live example inside the welcome. Pure, the flags that remember what was dismissed are in `flags.ts`.
  */
 import type { Task } from '#lib/core/repo.js';
-import { heroState, type HeroState } from '#lib/now.js';
+import { timeBoundState, type HeroState } from '#lib/now.js';
 import { rank } from '#lib/priority.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
@@ -37,5 +37,6 @@ export function welcomeExample(): { hero: HeroState<Task>; now: number } {
 		completedAt: null
 	};
 	const now = 14 * 60 + 32;
-	return { hero: heroState(rank([task], now), now, { overrunMinutes: 15 }), now };
+	const hero = timeBoundState(rank([task], now), now, { overrunMinutes: 15 })!;
+	return { hero, now };
 }

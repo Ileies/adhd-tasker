@@ -7,7 +7,8 @@ import {
 	missedLine,
 	alarmLines,
 	noteLine,
-	timeRange
+	timeRange,
+	todosDoneBetween
 } from '#lib/rail.js';
 import { TaskStatus } from '#lib/types.js';
 import { zonedToEpoch } from '#lib/time.js';
@@ -23,6 +24,30 @@ describe('doneToday', () => {
 			{ date: '2026-10-14', status: TaskStatus.Completed }
 		];
 		expect(doneToday(tasks, '2026-10-15')).toBe(1);
+	});
+});
+
+describe('todosDoneBetween', () => {
+	const from = at('2026-10-15', 0);
+	const to = at('2026-10-16', 0);
+
+	test('counts the to-dos finished within the day, start inclusive and end exclusive', () => {
+		const todos = [
+			{ status: 'done', completedAt: from },
+			{ status: 'done', completedAt: from + 60_000 },
+			{ status: 'done', completedAt: to },
+			{ status: 'done', completedAt: from - 1 }
+		];
+		expect(todosDoneBetween(todos, from, to)).toBe(2);
+	});
+
+	test('ignores to-dos that are open, dropped or have no finishing time', () => {
+		const todos = [
+			{ status: 'open', completedAt: from + 1 },
+			{ status: 'dropped', completedAt: from + 1 },
+			{ status: 'done', completedAt: null }
+		];
+		expect(todosDoneBetween(todos, from, to)).toBe(0);
 	});
 });
 

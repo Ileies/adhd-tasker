@@ -4,6 +4,7 @@ import fc from 'fast-check';
 import {
 	currentKey,
 	currentTitle,
+	heroFromFlow,
 	pinKey,
 	pinStart,
 	READY_MINUTES,
@@ -563,5 +564,67 @@ describe('currentTitle and switchLine', () => {
 			{ kind: 'rest', why: 'called' }
 		].map((current) => switchLine({ current: current as never, reason: null }));
 		expect(new Set(lines).size).toBe(lines.length);
+	});
+});
+
+describe('heroFromFlow', () => {
+	const hero = (day: SimDay, minute: number) => {
+		const state = day.runTo(minute);
+		return heroFromFlow(state, minute, at(minute));
+	};
+	const started = (tasks = [lunch()]) => {
+		const day = new SimDay(tasks, studies());
+		day.jumpTo(hm(10, 30));
+		day.start();
+		return day;
+	};
+
+	test('the morning is away until the user starts', () => {
+		const day = new SimDay([], studies());
+		expect(hero(day, hm(7, 30))).toEqual({ kind: 'away', since: null });
+	});
+
+	test('a session counts down to its planned end, with the next task for the line below', () => {
+		const day = started();
+		expect(hero(day, hm(10, 40))).toMatchObject({
+			kind: 'todo',
+			todo: { id: 2 },
+			left: 20,
+			length: 30,
+			next: { title: 'Lunch' }
+		});
+	});
+
+	test('the next session starts on its own and the bar fills again', () => {
+		const day = started();
+		expect(hero(day, hm(11, 5))).toMatchObject({ kind: 'todo', left: 25, length: 30 });
+	});
+
+	test('less than ten minutes before a task the hero says get ready, with the minutes left', () => {
+		const day = started();
+		expect(hero(day, hm(11, 51))).toMatchObject({
+			kind: 'ready',
+			next: { title: 'Lunch' },
+			left: 9
+		});
+	});
+
+	test('a task at a time shows as active and, in its last minutes, as wrapping up', () => {
+		const day = started();
+		expect(hero(day, hm(12, 10)).kind).toBe('active');
+		expect(hero(day, hm(12, 40))).toMatchObject({ kind: 'wrapping-up', left: 5 });
+	});
+
+	test('time up carries the next task and no state speaks of free time', () => {
+		const day = started([lunch(), simTask(11, hm(14), 30, { title: 'Call' })]);
+		expect(hero(day, hm(12, 50))).toMatchObject({ kind: 'time-up', next: { title: 'Call' } });
+	});
+
+	test('states without an item come through as they are', () => {
+		const day = new SimDay([], []);
+		day.jumpTo(hm(10));
+		day.start();
+		expect(hero(day, hm(10, 1))).toEqual({ kind: 'plan' });
+		expect(hero(day, hm(23, 30))).toEqual({ kind: 'rest', why: 'night' });
 	});
 });

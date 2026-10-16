@@ -9,8 +9,8 @@ import {
 	heroFocus,
 	headsUpLine,
 	heroDark,
-	heroState,
-	isNight,
+	type HeroState,
+	timeBoundState,
 	wrapUpStarted,
 	tabTitle,
 	wrapUpWindow
@@ -33,7 +33,11 @@ const task = (
 
 const h = (hours: number, minutes = 0) => hours * 60 + minutes;
 const settings = { overrunMinutes: 15 };
-const stateAt = (tasks: RankTask[], now: number) => heroState(rank(tasks, now), now, settings);
+/** What time-bound items make of the hero, `null` when none has the screen. */
+const stateAt = (tasks: RankTask[], now: number) => timeBoundState(rank(tasks, now), now, settings);
+/** The same as a hero, where the free time is the plan state. */
+const heroAt = (tasks: RankTask[], now: number): HeroState<RankTask, { title: string }> =>
+	stateAt(tasks, now) ?? { kind: 'plan' };
 
 describe('wrapUpWindow', () => {
 	test.each([
@@ -54,7 +58,7 @@ describe('wrapUpWindow', () => {
 	});
 });
 
-describe('heroState', () => {
+describe('timeBoundState', () => {
 	test('a task with plenty of time left is active', () => {
 		const a = task('A', h(9), 60);
 		expect(stateAt([a], h(9, 10))).toEqual({ kind: 'active', task: a, left: 50 });
@@ -69,13 +73,13 @@ describe('heroState', () => {
 			left: 10,
 			next: b
 		});
-		expect(stateAt([a, b], h(9, 29)).kind).toBe('active');
+		expect(stateAt([a, b], h(9, 29))?.kind).toBe('active');
 	});
 
 	test('the last quarter of a long task is wrapping up', () => {
 		const a = task('A', h(9), 240);
-		expect(stateAt([a], h(12, 0)).kind).toBe('wrapping-up');
-		expect(stateAt([a], h(11, 59)).kind).toBe('active');
+		expect(stateAt([a], h(12, 0))?.kind).toBe('wrapping-up');
+		expect(stateAt([a], h(11, 59))?.kind).toBe('active');
 	});
 
 	test('a task that just ran out is time up with nothing current', () => {
@@ -92,26 +96,26 @@ describe('heroState', () => {
 
 	test('time up stays until answered, for two overrun windows', () => {
 		const a = task('A', h(9), 60);
-		expect(stateAt([a], h(10, 29)).kind).toBe('time-up');
-		expect(stateAt([a], h(10, 30)).kind).toBe('empty');
+		expect(stateAt([a], h(10, 29))?.kind).toBe('time-up');
+		expect(stateAt([a], h(10, 30))).toBeNull();
 	});
 
 	test('the overrun window setting sets how long time up stays', () => {
 		const a = task('A', h(9), 60);
-		const at = (now: number) => heroState(rank([a], now), now, { overrunMinutes: 5 }).kind;
+		const at = (now: number) => timeBoundState(rank([a], now), now, { overrunMinutes: 5 })?.kind;
 		expect(at(h(10, 9))).toBe('time-up');
-		expect(at(h(10, 10))).toBe('empty');
+		expect(at(h(10, 10))).toBeUndefined();
 	});
 
-	test('after time up the hero is free time when something is still planned', () => {
+	test('after time up nothing time-bound has the screen, whatever is planned later', () => {
 		const a = task('A', h(9), 60);
 		const b = task('B', h(13), 30);
-		expect(stateAt([a, b], h(10, 45))).toEqual({ kind: 'free', next: b });
+		expect(stateAt([a, b], h(10, 45))).toBeNull();
 	});
 
 	test('answering time up with Done leaves it', () => {
 		const done = task('A', h(9), 60, TaskStatus.Completed);
-		expect(stateAt([done], h(10, 3)).kind).toBe('empty');
+		expect(stateAt([done], h(10, 3))).toBeNull();
 	});
 
 	test('a task that started in place of the ended one shows under a transition bar', () => {
@@ -129,21 +133,20 @@ describe('heroState', () => {
 	test('the transition bar goes when the new task is 15 minutes old', () => {
 		const a = task('A', h(9), 60);
 		const b = task('B', h(10), 120);
-		expect(stateAt([a, b], h(10, BAR_MINUTES - 1)).kind).toBe('time-up');
+		expect(stateAt([a, b], h(10, BAR_MINUTES - 1))?.kind).toBe('time-up');
 		expect(stateAt([a, b], h(10, BAR_MINUTES))).toMatchObject({ kind: 'active', task: b });
 	});
 
 	test('the transition bar also goes after two overrun windows', () => {
 		const a = task('A', h(9), 60);
 		const b = task('B', h(10), 120);
-		const state = heroState(rank([a, b], h(10, 10)), h(10, 10), { overrunMinutes: 5 });
-		expect(state.kind).toBe('active');
+		const state = timeBoundState(rank([a, b], h(10, 10)), h(10, 10), { overrunMinutes: 5 });
+		expect(state?.kind).toBe('active');
 	});
 
-	test('nothing planned today is empty, only later tasks are free time', () => {
-		expect(stateAt([], h(9)).kind).toBe('empty');
-		const later = task('Later', h(15), 30);
-		expect(stateAt([later], h(9))).toEqual({ kind: 'free', next: later });
+	test('nothing planned today, or only later, is nothing time-bound', () => {
+		expect(stateAt([], h(9))).toBeNull();
+		expect(stateAt([task('Later', h(15), 30)], h(9))).toBeNull();
 	});
 
 	test('only the latest ended task counts for time up', () => {
@@ -168,11 +171,12 @@ describe('heroState', () => {
 						task(`T${i}`, s.start, Math.min(s.duration, 1440 - s.start))
 					);
 					const ranking = rank(tasks, now);
-					const state = heroState(ranking, now, settings);
-					if (ranking.current && state.kind !== 'time-up') {
+					const state = timeBoundState(ranking, now, settings);
+					if (ranking.current) expect(state).not.toBeNull();
+					if (ranking.current && state?.kind !== 'time-up') {
 						expect(state).toMatchObject({ task: ranking.current });
 					}
-					if (state.kind === 'time-up') expect(state.current).toBe(ranking.current);
+					if (state?.kind === 'time-up') expect(state.current).toBe(ranking.current);
 				}
 			)
 		);
@@ -223,70 +227,84 @@ describe('heroFocus', () => {
 	const b = task('Call dentist', h(10), 30);
 
 	test('is the running task, whether active or wrapping up', () => {
-		expect(heroFocus(stateAt([a], h(9, 10)))).toBe(a);
-		expect(heroFocus(stateAt([a], h(9, 55)))).toBe(a);
+		expect(heroFocus(heroAt([a], h(9, 10)))).toBe(a);
+		expect(heroFocus(heroAt([a], h(9, 55)))).toBe(a);
 	});
 
 	test('is the ended task on the time up screen', () => {
-		expect(heroFocus(stateAt([a], h(10, 3)))).toBe(a);
+		expect(heroFocus(heroAt([a], h(10, 3)))).toBe(a);
 	});
 
 	test('is the new task under the transition bar, it owns the screen', () => {
-		expect(heroFocus(stateAt([a, b], h(10, 2)))).toBe(b);
+		expect(heroFocus(heroAt([a, b], h(10, 2)))).toBe(b);
 	});
 
-	test('is nothing when free or empty', () => {
-		expect(heroFocus(stateAt([b], h(8)))).toBeNull();
-		expect(heroFocus(stateAt([], h(8)))).toBeNull();
+	test('is nothing when no task has the screen', () => {
+		expect(heroFocus(heroAt([b], h(8)))).toBeNull();
+		expect(
+			heroFocus({
+				kind: 'todo',
+				todo: { title: 'Study' },
+				left: 20,
+				length: 30,
+				line: null,
+				next: null
+			})
+		).toBeNull();
 	});
 });
 
 describe('tabTitle', () => {
 	const a = task('Write intro', h(9), 60);
-	const b = task('Call dentist', h(15), 30);
+	const study = { title: 'Study B' };
+	const hero = (state: HeroState<RankTask, { title: string }>) => tabTitle(state);
 
 	test.each([
 		['active', [a], h(9, 20), '40 min - Write intro'],
 		['wrapping up', [a], h(9, 52), '8 min - Write intro'],
 		['a long task in hours', [task('Deep work', h(9), 240)], h(9, 20), '3 h 40 min - Deep work'],
-		['time up', [a], h(10, 3), 'Time is up - Write intro'],
-		['free', [b], h(14), 'Free until 15:00'],
-		['empty', [], h(14), 'Nothing left today']
+		['time up', [a], h(10, 3), 'Time is up - Write intro']
 	])('%s', (_name, tasks, now, title) => {
-		expect(tabTitle(stateAt(tasks, now))).toBe(title);
+		expect(tabTitle(heroAt(tasks, now))).toBe(title);
 	});
 
 	test('time up under the transition bar still says time is up', () => {
 		const next = task('Review', h(10), 30);
-		expect(tabTitle(stateAt([a, next], h(10, 2)))).toBe('Time is up - Write intro');
+		expect(tabTitle(heroAt([a, next], h(10, 2)))).toBe('Time is up - Write intro');
 	});
-});
 
-describe('isNight', () => {
-	test('night is outside My day, start inclusive and end exclusive', () => {
-		expect(isNight(h(6, 59), h(7), h(23))).toBe(true);
-		expect(isNight(h(7), h(7), h(23))).toBe(false);
-		expect(isNight(h(22, 59), h(7), h(23))).toBe(false);
-		expect(isNight(h(23), h(7), h(23))).toBe(true);
+	test.each([
+		[
+			'a session',
+			{ kind: 'todo', todo: study, left: 18, length: 30, line: null, next: null },
+			'18 min - Study B'
+		],
+		['plan', { kind: 'plan' }, "Plan what's next"],
+		['the morning', { kind: 'away', since: null }, 'Good morning'],
+		['ready', { kind: 'ready', next: a, left: 8 }, 'Get ready'],
+		['a called day', { kind: 'rest', why: 'called' }, 'Day is done'],
+		['night', { kind: 'rest', why: 'night' }, 'Sleep']
+	] as const)('%s', (_name, state, title) => {
+		expect(hero(state)).toBe(title);
+	});
+
+	test('no title ever speaks of free time', () => {
+		for (const now of [h(8), h(12), h(23)])
+			expect(tabTitle(heroAt([], now)).toLowerCase()).not.toContain('free');
 	});
 });
 
 describe('heroDark', () => {
-	const a = task('Write intro', h(23, 30), 30);
-
-	test('is dark at night while nothing is planned for now', () => {
-		expect(heroDark(stateAt([], h(23, 10)), true)).toBe(true);
-	});
-
-	test('is dark in free time at night, the next task is not running yet', () => {
-		expect(heroDark(stateAt([a], h(23, 10)), true)).toBe(true);
+	test('is dark at night while nothing has the screen', () => {
+		expect(heroDark({ kind: 'rest', why: 'night' })).toBe(true);
 	});
 
 	test('stays in color while a task runs, even at night', () => {
-		expect(heroDark(stateAt([a], h(23, 40)), true)).toBe(false);
+		const a = task('Write intro', h(23, 30), 30);
+		expect(heroDark(heroAt([a], h(23, 40)))).toBe(false);
 	});
 
-	test('stays in color by day', () => {
-		expect(heroDark(stateAt([], h(12)), false)).toBe(false);
+	test('stays in color when the user called it a day', () => {
+		expect(heroDark({ kind: 'rest', why: 'called' })).toBe(false);
 	});
 });
