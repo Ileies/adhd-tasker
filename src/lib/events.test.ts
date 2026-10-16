@@ -5,6 +5,7 @@ import {
 	OVERRUN_MINUTES,
 	STALE_MINUTES,
 	describeChange,
+	describeTodoChange,
 	describeEvent,
 	EVENT_TYPES,
 	detectEvents
@@ -153,6 +154,59 @@ describe('describeChange', () => {
 		expect(describeChange(base, { ...base })).toBe(null);
 		expect(describeChange(base, { ...base, status: TaskStatus.Active })).toBe(null);
 		expect(describeChange(null, null)).toBe(null);
+	});
+});
+
+describe('describeTodoChange', () => {
+	const base = {
+		id: 1,
+		title: 'Taxes',
+		status: 'open' as const,
+		priority: Priority.Medium,
+		estimate: 60,
+		dueDate: null,
+		dueTime: null,
+		notBefore: null,
+		parentId: null,
+		nextStep: null
+	};
+
+	test('classifies the edit', () => {
+		expect(describeTodoChange(null, base)?.type).toBe('todo.created');
+		expect(describeTodoChange(base, null)?.type).toBe('todo.deleted');
+		expect(describeTodoChange(base, { ...base, status: 'done' })).toMatchObject({
+			type: 'todo.completed',
+			payload: { completed: true }
+		});
+		expect(describeTodoChange({ ...base, status: 'done' }, base)).toMatchObject({
+			type: 'todo.completed',
+			payload: { completed: false }
+		});
+		expect(describeTodoChange(base, { ...base, dueDate: '2026-10-20' })).toMatchObject({
+			type: 'todo.updated',
+			payload: { changed: ['dueDate'] }
+		});
+	});
+
+	test('dropping a to-do is an update that names the status', () => {
+		expect(describeTodoChange(base, { ...base, status: 'dropped' })).toMatchObject({
+			type: 'todo.updated',
+			payload: { changed: ['status'] }
+		});
+	});
+
+	test('ignores edits nobody would notice', () => {
+		expect(describeTodoChange(base, { ...base })).toBe(null);
+		expect(describeTodoChange(null, null)).toBe(null);
+	});
+
+	test('the description quotes the title and the due date', () => {
+		expect(describeEvent('todo.created', { title: 'Taxes', dueDate: '2026-10-20' })).toBe(
+			'To-do "Taxes" was added, due 2026-10-20'
+		);
+		expect(describeEvent('todo.completed', { title: 'Taxes', completed: false })).toBe(
+			'To-do "Taxes" was reopened'
+		);
 	});
 });
 
