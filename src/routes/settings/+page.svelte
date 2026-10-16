@@ -9,6 +9,7 @@
 	import OpenAiKeyForm from '#lib/components/OpenAiKeyForm.svelte';
 	import AgentSettingsForm from '#lib/components/AgentSettingsForm.svelte';
 	import VoiceSettingsForm from '#lib/components/VoiceSettingsForm.svelte';
+	import SpeechLanguageForm from '#lib/components/SpeechLanguageForm.svelte';
 	import AccountCard from '#lib/components/AccountCard.svelte';
 	import GoogleLinkPicker from '#lib/components/GoogleLinkPicker.svelte';
 	import CalendarSettings from '#lib/components/CalendarSettings.svelte';
@@ -89,7 +90,10 @@
 				<Card.Title>Assistant</Card.Title>
 			</Card.Header>
 			<Card.Content class="space-y-6">
-				<OpenAiKeyForm hasKey={settings.hasOpenaiKey} signedIn={!!data.user} />
+				<SpeechLanguageForm language={settings.voiceLanguage} />
+				<div class="border-t pt-6">
+					<OpenAiKeyForm hasKey={settings.hasOpenaiKey} signedIn={!!data.user} />
+				</div>
 				{#if settings.hasOpenaiKey}
 					<div class="space-y-3 border-t pt-6">
 						<p class="text-muted-foreground text-sm">
