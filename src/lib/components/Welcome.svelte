@@ -1,11 +1,32 @@
 <script lang="ts">
 	import NowHero from '#lib/components/NowHero.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
+	import TimeInput from '#lib/components/TimeInput.svelte';
+	import { Switch } from '#lib/components/ui/switch/index.js';
+	import {
+		ESSENTIALS,
+		essentialTimes,
+		type EssentialKey,
+		type EssentialTimes
+	} from '#lib/essentials.js';
 	import { welcomeExample } from '#lib/firstrun.js';
+	import { formatClock24 } from '#lib/format.js';
 
-	let { onPlan, onSample }: { onPlan: () => void; onSample: () => void } = $props();
+	let { onPlan, onSample }: { onPlan: (times: EssentialTimes) => void; onSample: () => void } =
+		$props();
 
 	const example = welcomeExample();
+
+	// Every essential starts on at its usual time, the form is the whole choice
+	let on = $state(
+		Object.fromEntries(ESSENTIALS.map(({ key }) => [key, true])) as Record<EssentialKey, boolean>
+	);
+	let clocks = $state(
+		Object.fromEntries(ESSENTIALS.map(({ key, time }) => [key, formatClock24(time)])) as Record<
+			EssentialKey,
+			string
+		>
+	);
 	const nothing = () => {};
 
 	// "Plan my first task" first explains where things are. Nothing is answered until "Start planning",
@@ -46,12 +67,35 @@
 			{/each}
 		</ol>
 
+		<section class="space-y-3" aria-labelledby="essentials-title">
+			<h2 id="essentials-title" class="text-xl font-semibold">What happens every day?</h2>
+			<p class="text-muted-foreground text-base">
+				Pick a time for each, or turn it off. They repeat daily and a meal moves a little for an
+				appointment. Change them any time with the Repeat icon on Plan.
+			</p>
+			<ul class="space-y-2">
+				{#each ESSENTIALS as essential (essential.key)}
+					<li class="flex items-center gap-3">
+						<Switch bind:checked={on[essential.key]} aria-label="{essential.label} every day" />
+						<span class="w-24 text-lg">{essential.label}</span>
+						<TimeInput label={essential.label} bind:value={clocks[essential.key]} />
+					</li>
+				{/each}
+			</ul>
+		</section>
+
 		<p class="text-muted-foreground text-base">
 			You can change or undo everything. Delete a task and an Undo appears.
 		</p>
 
 		<div class="flex flex-wrap gap-3">
-			<Button size="lg" class="h-14 px-8 text-lg" onclick={onPlan}>Start planning</Button>
+			<Button
+				size="lg"
+				class="h-14 px-8 text-lg"
+				onclick={() => onPlan(essentialTimes(on, clocks))}
+			>
+				Start planning
+			</Button>
 			<Button size="lg" variant="outline" class="h-14 px-8 text-lg" onclick={() => (tour = false)}>
 				Back
 			</Button>

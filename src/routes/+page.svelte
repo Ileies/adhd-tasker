@@ -4,7 +4,7 @@
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
 	import Welcome from '#lib/components/Welcome.svelte';
 	import { showWelcome } from '#lib/firstrun.js';
-	import { answerWelcome, trySampleDay } from '#lib/welcome.js';
+	import { addEssentials, trySampleDay } from '#lib/welcome.js';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import {
@@ -570,8 +570,8 @@
 	</div>
 {:else if welcome}
 	<Welcome
-		onPlan={() => {
-			answerWelcome();
+		onPlan={(times) => {
+			void addEssentials(times, today, now);
 			focusAdd = true;
 		}}
 		onSample={() => void trySampleDay(today, now)}
