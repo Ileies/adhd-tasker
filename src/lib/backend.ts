@@ -123,7 +123,8 @@ export interface Backend {
 		/** `null` when the backend refused. `since` is the last action id seen, `null` before the first poll. */
 		feed(since: number | null): Promise<AgentFeed | null>;
 		resolveCard(id: number): Promise<void>;
-		stuck(taskId: number, reason: string): Promise<void>;
+		/** "I'm stuck" on a task at a time or on a to-do. */
+		stuck(about: { taskId: number } | { todoId: number }, reason: string): Promise<void>;
 	};
 	activity: {
 		/** What the assistant changed, the events it saw and today's token use. */

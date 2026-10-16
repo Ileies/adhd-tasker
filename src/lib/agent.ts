@@ -55,7 +55,7 @@ export async function resolveCard(card: AgentCard, answer?: string) {
 	await sendMessage(answer);
 }
 
-/** Tells the server the user is stuck on a task. The on-screen hint does not wait for it, a failure costs only the assistant's answer. */
-export async function reportStuck(taskId: number, reason: string) {
-	await tasker.backend.agent.stuck(taskId, reason).catch(() => {});
+/** Tells the server the user is stuck on a task or a to-do. The on-screen hint does not wait for it, a failure costs only the assistant's answer. */
+export async function reportStuck(about: { taskId: number } | { todoId: number }, reason: string) {
+	await tasker.backend.agent.stuck(about, reason).catch(() => {});
 }

@@ -94,9 +94,28 @@ describe('reportStuck', () => {
 		});
 	});
 
+	test('on a to-do it names the to-do and the reason id the assistant keys on', async () => {
+		const { ctx, repo } = await testCtx();
+		const todo = await repo.todos.insert({ title: 'Study B', priority: 3, createdAt: 1 });
+		await reportStuck(ctx, { todoId: todo.id, reason: 'too-big' });
+		expect((await repo.events.recent(1))[0]).toMatchObject({
+			type: 'stuck.pressed',
+			origin: 'user',
+			payload: {
+				todoId: todo.id,
+				title: 'Study B',
+				reason: 'It feels too big',
+				reasonId: 'too-big'
+			}
+		});
+	});
+
 	test.each([
 		['no body', null, 400],
 		['an unknown reason', { taskId: 1, reason: 'bored' }, 400],
+		['a task and a to-do at once', { taskId: 1, todoId: 1, reason: STUCK_REASONS[0].id }, 400],
+		['neither', { reason: STUCK_REASONS[0].id }, 400],
+		['a to-do that does not exist', { todoId: 999, reason: STUCK_REASONS[0].id }, 404],
 		['a task id that is not a number', { taskId: '1', reason: STUCK_REASONS[0].id }, 400],
 		['a task that does not exist', { taskId: 999, reason: STUCK_REASONS[0].id }, 404]
 	])('%s answers %d', async (_name, body, status) => {

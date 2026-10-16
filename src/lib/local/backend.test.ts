@@ -293,9 +293,24 @@ describe('agent', () => {
 	test('stuck logs an event for a task and refuses an unknown task', async () => {
 		const { backend, repo } = await setup();
 		const created = await backend.tasks.create(task);
-		await backend.agent.stuck(created.id, 'too-big');
+		await backend.agent.stuck({ taskId: created.id }, 'too-big');
 		expect((await repo.events.recent(5)).map((event) => event.type)).toContain('stuck.pressed');
-		expect(await failure(backend.agent.stuck(999, 'too-big'))).toMatchObject({ status: 404 });
+		expect(await failure(backend.agent.stuck({ taskId: 999 }, 'too-big'))).toMatchObject({
+			status: 404
+		});
+	});
+
+	test('stuck on a to-do names the to-do and refuses an unknown one', async () => {
+		const { backend, repo } = await setup();
+		const todo = await backend.todos.create({ title: 'Study B' });
+		await backend.agent.stuck({ todoId: todo.id }, 'too-big');
+		expect((await repo.events.recent(1))[0]).toMatchObject({
+			type: 'stuck.pressed',
+			payload: { todoId: todo.id, title: 'Study B', reasonId: 'too-big' }
+		});
+		expect(await failure(backend.agent.stuck({ todoId: 999 }, 'too-big'))).toMatchObject({
+			status: 404
+		});
 	});
 });
 

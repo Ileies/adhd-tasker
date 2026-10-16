@@ -52,19 +52,37 @@ export async function dismissCard(ctx: Ctx, id: unknown): Promise<void> {
 		throw new AssistantError('No such open card', 404);
 }
 
-/** "I'm stuck": logs the event, the agent may answer with a card. The fixed hint on screen does not depend on this. */
+/**
+ * "I'm stuck": logs the event, the agent may answer with a card. The fixed hint on screen does not depend on this.
+ * `body` is `{ taskId | todoId, reason }`: the item the user is stuck on is a task at a time or a to-do.
+ */
 export async function reportStuck(ctx: Ctx, body: unknown): Promise<void> {
-	const { taskId, reason: raw } = (body ?? {}) as { taskId?: unknown; reason?: unknown };
+	const {
+		taskId,
+		todoId,
+		reason: raw
+	} = (body ?? {}) as { taskId?: unknown; todoId?: unknown; reason?: unknown };
 	const reason = findStuckReason(raw);
-	if (!reason || typeof taskId !== 'number')
-		throw new AssistantError('taskId and a known reason are needed', 400);
+	if (!reason || (typeof taskId !== 'number') === (typeof todoId !== 'number'))
+		throw new AssistantError('a taskId or a todoId and a known reason are needed', 400);
 
-	const task = await ctx.repo.tasks.get(taskId);
+	if (typeof todoId === 'number') {
+		const todo = await ctx.repo.todos.get(todoId);
+		if (!todo) throw new AssistantError('No such to-do', 404);
+		await emit(
+			ctx,
+			'stuck.pressed',
+			{ todoId: todo.id, title: todo.title, reason: reason.label, reasonId: reason.id },
+			'user'
+		);
+		return;
+	}
+	const task = await ctx.repo.tasks.get(taskId as number);
 	if (!task) throw new AssistantError('No such task', 404);
 	await emit(
 		ctx,
 		'stuck.pressed',
-		{ taskId: task.id, title: task.title, reason: reason.label },
+		{ taskId: task.id, title: task.title, reason: reason.label, reasonId: reason.id },
 		'user'
 	);
 }

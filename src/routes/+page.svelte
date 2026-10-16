@@ -478,7 +478,9 @@
 	}
 
 	function todoStuck(todo: Todo, why: StuckReason) {
-		if (why.id === 'break') breakNow();
+		// Too big: the assistant may answer with one small next step, the fixed hint is already on screen
+		if (why.id === 'too-big') void reportStuck({ todoId: todo.id }, why.id);
+		else if (why.id === 'break') breakNow();
 		else if (why.id === 'low-energy' || why.id === 'cant-start') pushAway(todo, why.id);
 	}
 
@@ -594,7 +596,7 @@
 			onDrop={drop}
 			onTimer={startStuckTimer}
 			concurrent={ranking.concurrent}
-			onStuck={(task, why) => reportStuck(task.id, why.id)}
+			onStuck={(task, why) => reportStuck({ taskId: task.id }, why.id)}
 			todoCount={openTodos}
 			firstUp={ranking.upcoming[0] ?? null}
 			onQuickAdd={(text) => void addFromHero(text)}

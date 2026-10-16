@@ -214,7 +214,7 @@ export function localBackend(deps: LocalDeps): Backend {
 		agent: {
 			feed: (since) => agentFeed(ctx(), since),
 			resolveCard: (id) => guarded(() => dismissCard(ctx(), id)),
-			stuck: (taskId, reason) => guarded(() => reportStuck(ctx(), { taskId, reason }))
+			stuck: (about, reason) => guarded(() => reportStuck(ctx(), { ...about, reason }))
 		},
 
 		activity: { load: () => activityView(ctx()) },

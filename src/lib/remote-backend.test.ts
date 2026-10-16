@@ -187,8 +187,10 @@ describe('remoteBackend requests', () => {
 			'POST http://localhost:5173/agent/stuck': json({ ok: true })
 		});
 		await remoteBackend.agent.resolveCard(5);
-		await remoteBackend.agent.stuck(9, 'Do not know where to start');
+		await remoteBackend.agent.stuck({ taskId: 9 }, 'Do not know where to start');
 		expect(await requests[1].json()).toEqual({ taskId: 9, reason: 'Do not know where to start' });
+		await remoteBackend.agent.stuck({ todoId: 4 }, 'too-big');
+		expect(await requests[2].json()).toEqual({ todoId: 4, reason: 'too-big' });
 	});
 
 	test('settings: a changed setting is a PUT of just that patch', async () => {

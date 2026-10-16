@@ -177,11 +177,11 @@ export const remoteBackend: Backend = {
 		async resolveCard(id) {
 			await send(`/agent/cards/${id}`, { method: 'POST' });
 		},
-		async stuck(taskId, reason) {
+		async stuck(about, reason) {
 			await send('/agent/stuck', {
 				method: 'POST',
 				headers: JSON_HEADERS,
-				body: JSON.stringify({ taskId, reason })
+				body: JSON.stringify({ ...about, reason })
 			});
 		}
 	},

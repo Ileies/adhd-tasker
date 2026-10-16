@@ -194,7 +194,8 @@
 		}
 		stuckFor = { key: itemKey, reason, timer: false };
 		if (task) onStuck(task, reason);
-		else if (todo && reason.id === 'cant-start') onTodoStuck?.(todo, reason);
+		else if (todo && (reason.id === 'cant-start' || reason.id === 'too-big'))
+			onTodoStuck?.(todo, reason);
 	}
 
 	// "Call it a day" says once what it costs, then asks
