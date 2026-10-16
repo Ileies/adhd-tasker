@@ -13,7 +13,14 @@ import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
 import { createPlanTask, deletePlanTask, updatePlanTask } from '#lib/core/plan.js';
 import { loadFlow, recordFlow } from '#lib/core/flow.js';
 import { createTodo, deleteTodo, loadTodos, updateTodo } from '#lib/core/todos.js';
-import { createRoutine, deleteRoutine, loadRoutines, updateRoutine } from '#lib/core/routines.js';
+import {
+	createRoutine,
+	deleteRoutine,
+	loadRoutines,
+	makeRoutines,
+	updateRoutine
+} from '#lib/core/routines.js';
+import { newRoutineOf, parseRoutineInput } from '#lib/routine-input.js';
 import { GeocodeError, searchPlaces } from '#lib/core/geocode.js';
 import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
@@ -317,15 +324,18 @@ export function localBackend(deps: LocalDeps): Backend {
 						todos.push((await repo.todos.insert({ ...todo, createdAt: now() })).id);
 				}
 				await marks.write(created.map((task) => task.id));
-				for (const todo of sampleTodos(today))
+				for (const todo of sampleTodos(today, minutes))
 					todos.push((await repo.todos.insert({ ...todo, createdAt: now() })).id);
 				await marks.writeTodos(todos);
-				// The essentials are routines: the first one makes the week ahead for all of them
+				// The routines are made one by one, then one pass makes the days ahead for all of them
 				const routines: number[] = [];
 				for (const patch of sampleRoutines()) {
-					routines.push((await createRoutine(ctx(), { ...patch, firstDay: today })).id);
-					await marks.writeRoutines(routines);
+					const parsed = parseRoutineInput({ ...patch, firstDay: today }, 'create');
+					if (!parsed.ok) throw new AssistantError(parsed.error, 400);
+					routines.push((await repo.routines.insert(newRoutineOf(parsed.value, today))).id);
 				}
+				await marks.writeRoutines(routines);
+				await makeRoutines(ctx(), today);
 				// Like the rest of the sample, what ended before now today is done already
 				for (const task of await sampleTasks()) {
 					if (task.date === today && task.startTime + task.duration <= minutes)

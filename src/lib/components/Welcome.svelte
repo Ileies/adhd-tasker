@@ -135,7 +135,7 @@
 				Plan my first task
 			</Button>
 			<Button size="lg" variant="outline" class="h-14 px-8 text-lg" onclick={onSample}>
-				Try a sample day
+				Try a sample week
 			</Button>
 		</div>
 

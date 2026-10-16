@@ -174,6 +174,9 @@ const EVENING_DURATION = 60;
 /** How many days the sample covers, today included. */
 export const SAMPLE_DAYS = 7;
 
+/** The setup to-do is due today until this time of day, tomorrow after it. */
+const SETUP_TODAY_UNTIL = at(20);
+
 /** The day of the appointment, counted from today. The evening slot of that day is taken by it. */
 const APPOINTMENT_IN_DAYS = 2;
 
@@ -248,9 +251,10 @@ export function sampleDay(today: DateKey, now: number): (NewTask & { status: Tas
 
 /**
  * The to-dos of the sample, work without a time that the flow engine fits into the gaps. The first is the setup, due
- * today, so the first thing Now picks in a gap is the one that sets the app up.
+ * today while there is still room for it (before 20:00, else tomorrow, so the first evening never says "does not
+ * fit"): the first thing Now picks in a gap is the one that sets the app up.
  */
-export function sampleTodos(today: DateKey): NewTodo[] {
+export function sampleTodos(today: DateKey, now: number): NewTodo[] {
 	return [
 		{
 			title: 'Set up ADHD Tasker',
@@ -258,7 +262,7 @@ export function sampleTodos(today: DateKey): NewTodo[] {
 				'Open Settings: pick your sounds, check the hours of My day, choose light or dark. Then tap Done.',
 			priority: High,
 			estimate: 15,
-			dueDate: today,
+			dueDate: now < SETUP_TODAY_UNTIL ? today : addDays(today, 1),
 			nextStep: 'Open Settings'
 		},
 		{
@@ -272,7 +276,7 @@ export function sampleTodos(today: DateKey): NewTodo[] {
 			title: 'Taxes: gather the receipts',
 			description: '',
 			priority: Medium,
-			estimate: 180,
+			estimate: 150,
 			dueDate: addDays(today, 6)
 		},
 		{ title: 'Answer the old messages', description: '', priority: Low, estimate: 30 }

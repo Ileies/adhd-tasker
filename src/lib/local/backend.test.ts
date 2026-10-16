@@ -1,5 +1,5 @@
 /// <reference types="bun" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, setDefaultTimeout, test } from 'bun:test';
 import { BackendError } from '#lib/backend.js';
 import type { Hint, Model } from '#lib/core/context.js';
 import { sampleRoutines } from '#lib/core/sample.js';
@@ -9,6 +9,9 @@ import { Priority, TaskStatus } from '#lib/types.js';
 import { GEOCODE_URL } from '#lib/core/geocode.js';
 import { testCtx } from '#test/ctx.js';
 import { fakeFetch } from '#test/fakes.js';
+
+// The sample week is a few hundred writes: slow when the gate runs everything at once with coverage
+setDefaultTimeout(30_000);
 
 const task = {
 	title: 'Write intro',

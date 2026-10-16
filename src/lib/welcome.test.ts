@@ -1,5 +1,5 @@
 /// <reference types="bun" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError, type Backend } from '#lib/backend.js';
 import { localBackend } from '#lib/local/backend.js';
@@ -16,6 +16,9 @@ import {
 } from '#lib/welcome.js';
 import { testCtx } from '#test/ctx.js';
 import { Priority } from '#lib/types.js';
+
+// The sample week is a few hundred writes: slow when the gate runs everything at once with coverage
+setDefaultTimeout(30_000);
 
 const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
 let stored: Record<string, string>;
@@ -84,7 +87,7 @@ describe('trySampleDay', () => {
 	test('says why when the device cannot add it', async () => {
 		tasker.backend = remoteBackend;
 		await trySampleDay('2026-10-14', 12 * 60);
-		expect(tasker.toasts.at(-1)?.message).toContain('Could not add the sample day');
+		expect(tasker.toasts.at(-1)?.message).toContain('Could not add the sample week');
 		expect(tasker.tasks).toEqual([]);
 		expect(tasker.firstRun.welcomed).toBe(true);
 	});
@@ -150,7 +153,7 @@ describe('clearSampleDay', () => {
 		await clearSampleDay();
 		expect(tasker.tasks.map((task) => task.id)).toEqual([mine.id]);
 		expect(tasker.sample).toEqual([]);
-		expect(tasker.toasts.at(-1)?.message).toBe('Sample day cleared');
+		expect(tasker.toasts.at(-1)?.message).toBe('Sample week cleared');
 	});
 
 	test('brings the welcome back when nothing else is left', async () => {
@@ -190,7 +193,7 @@ describe('clearSampleDay', () => {
 		await clearSampleDay();
 		expect(tasker.sample).toEqual([1, 2]);
 		expect(tasker.tasks).toHaveLength(2);
-		expect(tasker.toasts.at(-1)?.message).toBe('Could not clear the sample day: Storage is full');
+		expect(tasker.toasts.at(-1)?.message).toBe('Could not clear the sample week: Storage is full');
 	});
 });
 

@@ -296,7 +296,7 @@ export const remoteBackend: Backend = {
 		// An account starts from its own plan, the sample day is for a device that has none
 		ids: async () => [],
 		async start() {
-			throw new BackendError('The sample day is only for this device', 501);
+			throw new BackendError('The sample week is only for this device', 501);
 		},
 		clear: async () => 0,
 		keep: async () => {}

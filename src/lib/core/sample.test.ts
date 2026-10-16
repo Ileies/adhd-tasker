@@ -124,15 +124,19 @@ describe('sampleRoutines', () => {
 });
 
 describe('sampleTodos', () => {
-	test('the setup is a to-do due today, picked in a gap', () => {
-		const todos = sampleTodos(TODAY);
-		const setup = todos.filter((todo) => todo.title === SETUP);
+	test.each([
+		['at noon', 12 * 60, TODAY],
+		['just before 20:00', 20 * 60 - 1, TODAY],
+		['at 20:00', 20 * 60, addDays(TODAY, 1)],
+		['late in the evening', 22 * 60, addDays(TODAY, 1)]
+	])('the setup is one to-do of 15 min, started %s it is due %s', (_when, now, dueDate) => {
+		const setup = sampleTodos(TODAY, now).filter((todo) => todo.title === SETUP);
 		expect(setup).toHaveLength(1);
-		expect(setup[0]).toMatchObject({ dueDate: TODAY, estimate: 15 });
+		expect(setup[0]).toMatchObject({ dueDate, estimate: 15 });
 	});
 
 	test('the others have a size, and most a due date in the coming week', () => {
-		const rest = sampleTodos(TODAY).filter((todo) => todo.title !== SETUP);
+		const rest = sampleTodos(TODAY, 0).filter((todo) => todo.title !== SETUP);
 		expect(rest.every((todo) => todo.estimate !== null && todo.estimate !== undefined)).toBe(true);
 		const due = rest.filter((todo) => todo.dueDate);
 		expect(due.length).toBeGreaterThanOrEqual(2);
@@ -140,7 +144,7 @@ describe('sampleTodos', () => {
 	});
 
 	test('a to-do has no time of its own', () => {
-		for (const todo of sampleTodos(TODAY)) expect(todo.dueTime ?? null).toBeNull();
+		for (const todo of sampleTodos(TODAY, 0)) expect(todo.dueTime ?? null).toBeNull();
 	});
 });
 

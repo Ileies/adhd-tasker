@@ -49,7 +49,7 @@ export async function trySampleDay(today: string, minutes: number) {
 		await loadRoutines().catch(() => {});
 		await loadTodos().catch(() => {});
 	} catch (error) {
-		showToast(`Could not add the sample day: ${reasonOf(error)}`);
+		showToast(`Could not add the sample week: ${reasonOf(error)}`);
 	}
 }
 
@@ -89,7 +89,7 @@ export async function keepSampleDay() {
 		tasker.sample = [];
 		showToast('The sample is your plan now');
 	} catch (error) {
-		showToast(`Could not keep the sample day: ${reasonOf(error)}`);
+		showToast(`Could not keep the sample week: ${reasonOf(error)}`);
 	}
 }
 
@@ -107,8 +107,8 @@ export async function clearSampleDay() {
 		await reloadRoutines().catch(() => {});
 		await loadTodos().catch(() => {});
 		if (tasker.tasks.length === 0 && tasker.todos.length === 0) reopenWelcome();
-		showToast('Sample day cleared');
+		showToast('Sample week cleared');
 	} catch (error) {
-		showToast(`Could not clear the sample day: ${reasonOf(error)}`);
+		showToast(`Could not clear the sample week: ${reasonOf(error)}`);
 	}
 }
