@@ -1,5 +1,5 @@
 /// <reference types="bun" />
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, setDefaultTimeout, test } from 'bun:test';
 import fc from 'fast-check';
 import {
 	currentKey,
@@ -16,6 +16,9 @@ import {
 } from '#lib/flow.js';
 import { Priority } from '#lib/types.js';
 import { at, SimDay, simTask, simTodo } from '#test/simulate.js';
+
+// Whole days stepped by the minute: slow when the gate runs everything at once with coverage
+setDefaultTimeout(30_000);
 
 const hm = (hours: number, minutes = 0) => hours * 60 + minutes;
 const kinds = (day: SimDay) => day.timeline.map(({ state }) => state.current.kind);
