@@ -20,6 +20,7 @@
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import DaySwitcher from '#lib/components/DaySwitcher.svelte';
 	import { loadFlags } from '#lib/welcome.js';
+	import SampleBanner from '#lib/components/SampleBanner.svelte';
 	import TimezoneDialog from '#lib/components/TimezoneDialog.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -296,6 +297,8 @@
 			<form method="POST" action="/login" bind:this={loginForm} hidden></form>
 		</div>
 	</header>
+
+	<SampleBanner />
 
 	<main class="relative min-h-0 flex-1 overflow-auto">
 		<!-- A plan on this device waits for the visitor's choice before anything else is shown -->

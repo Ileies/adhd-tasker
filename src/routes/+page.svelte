@@ -4,7 +4,7 @@
 	import UpcomingRail from '#lib/components/UpcomingRail.svelte';
 	import Welcome from '#lib/components/Welcome.svelte';
 	import { showWelcome } from '#lib/firstrun.js';
-	import { answerWelcome, clearSampleDay, trySampleDay } from '#lib/welcome.js';
+	import { answerWelcome, trySampleDay } from '#lib/welcome.js';
 	import TaskForm from '#lib/components/TaskForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import {
@@ -346,8 +346,6 @@
 			headsUp={headsUp !== null}
 			onEdit={edit}
 			onTriage={() => (triage = true)}
-			sample={tasker.sample.length > 0}
-			onClearSample={() => void clearSampleDay()}
 		/>
 	</div>
 	<MissedTriage

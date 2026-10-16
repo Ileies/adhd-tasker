@@ -22,9 +22,7 @@
 		done,
 		headsUp = false,
 		onEdit,
-		onTriage,
-		sample = false,
-		onClearSample
+		onTriage
 	}: {
 		upcoming: Task[];
 		/** Tasks that ran out without an answer, decided one by one in the triage sheet. */
@@ -38,9 +36,6 @@
 		headsUp?: boolean;
 		onEdit: (task: Task) => void;
 		onTriage: () => void;
-		/** The plan holds the sample day: say so and offer to clear it. */
-		sample?: boolean;
-		onClearSample?: () => void;
 	} = $props();
 
 	const shown = $derived(upcoming.slice(0, NEXT_COUNT));
@@ -133,17 +128,6 @@
 
 	{#if missedText}
 		<Button variant="outline" class="h-11 justify-start" onclick={onTriage}>{missedText}</Button>
-	{/if}
-
-	{#if sample}
-		<p class="text-muted-foreground flex flex-wrap items-center gap-x-3 text-sm">
-			Sample day.
-			<Button
-				variant="link"
-				class="text-foreground h-auto p-0 text-sm"
-				onclick={() => onClearSample?.()}>Clear it</Button
-			>
-		</p>
 	{/if}
 
 	<div class="mt-auto flex flex-col gap-4">
