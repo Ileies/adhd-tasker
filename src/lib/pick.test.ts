@@ -387,3 +387,64 @@ describe('what stopping for the day costs', () => {
 		expect(dayCostLine(today, DATE, 30)).toBe('Taxes is due today, about 2 h of it is still open.');
 	});
 });
+
+describe('with the free time of the coming days', () => {
+	/** `perDay` realistic free minutes on every day, today's own are what is left of it. */
+	const room = (perDay: number, today = perDay): PickInput<PickTodo>['capacity'] => ({
+		until: (date) => today + perDay * Math.max(0, daysBetween(DATE, date))
+	});
+
+	test('a to-do due later that no longer fits the free time is urgent and says so', () => {
+		const result = pick(
+			input(
+				[
+					todo(1, { priority: Priority.Critical }),
+					todo(2, { estimate: 600, dueDate: '2026-10-15' })
+				],
+				{
+					capacity: room(240)
+				}
+			)
+		);
+		expect(result).toMatchObject({ todo: { id: 2 }, why: 'urgent' });
+		expect(result?.line).toBe('Due tomorrow, about 10 h left to do, more than is free until then.');
+	});
+
+	test('one that fits with 30 minutes to spare is not urgent', () => {
+		const result = pick(
+			input([todo(1), todo(2, { estimate: 450, dueDate: '2026-10-15' })], { capacity: room(240) })
+		);
+		expect(result?.why).not.toBe('urgent');
+	});
+
+	test('without the free time of the coming days a later date is never urgent', () => {
+		const result = pick(input([todo(1), todo(2, { estimate: 6000, dueDate: '2026-10-15' })]));
+		expect(result?.why).not.toBe('urgent');
+	});
+
+	test('a day full of appointments moves the need to the days that are free', () => {
+		// Due in 10 days: with the days free, two thirds of an hour a day. Today is all that is free, so all of it is today
+		const todos = [
+			todo(1, { estimate: 600, dueDate: '2026-10-24' }),
+			todo(2, { estimate: 600, dueDate: '2026-10-24', priority: Priority.High })
+		];
+		const crowded: PickInput<PickTodo>['capacity'] = { until: () => 700 };
+		const spread = pick(input(todos, { capacity: room(120) }));
+		expect(spread?.line).toBe('Due in 10 days. About 55 min today keeps you on track.');
+		expect(pick(input(todos, { capacity: crowded }))?.line).toBe(
+			'Due in 10 days. About 10 h today keeps you on track.'
+		);
+	});
+
+	test('a to-do without a date keeps its thirty days', () => {
+		const result = pick(
+			input(
+				[todo(1, { estimate: 900, dueDate: null }), todo(2, { estimate: 900, dueDate: null })],
+				{
+					capacity: room(240)
+				}
+			)
+		);
+		expect(result?.line).toBe('Nothing is due, it has had the least time today.');
+	});
+});

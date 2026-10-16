@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { prune, react, watch } from '#lib/core/agent.js';
 import type { Model } from '#lib/core/context.js';
-import type { Settings } from '#lib/core/repo.js';
+import type { Settings, Todo } from '#lib/core/repo.js';
 import type { EventType } from '#lib/events.js';
 import { LIMITS } from '#lib/guardrails.js';
 import type { ResponseBody } from '#lib/openai.js';
@@ -849,7 +849,7 @@ describe('watch', () => {
 describe('watch and the flow engine', () => {
 	const settingsOf = (made: Made) => made.repo.settings.get();
 	const events = async (made: Made) => (await made.repo.events.recent(20)).reverse();
-	const todo = (made: Made, title = 'Study B') =>
+	const todo = (made: Made, title = 'Study B', patch: Partial<Todo> = {}) =>
 		made.repo.todos.insert({
 			title,
 			description: '',
@@ -864,10 +864,41 @@ describe('watch and the flow engine', () => {
 			parentId: null,
 			notBefore: null,
 			nextStep: null,
-			createdAt: NOW
+			createdAt: NOW,
+			...patch
 		});
 	const started = (made: Made) =>
 		made.repo.flow.insert({ at: NOW - MIN, date: DATE, type: 'start' });
+
+	test('a to-do due tomorrow that no longer fits the free time is pinned over a more important one', async () => {
+		const made = await testCtx();
+		await todo(made, 'Study B');
+		const handIn = await todo(made, 'Hand in', {
+			priority: 1,
+			estimate: 600,
+			dueDate: '2026-10-15'
+		});
+		await addTask(made.repo, {
+			date: '2026-10-15',
+			startTime: 8 * 60,
+			duration: 14 * 60,
+			kind: 'appointment'
+		});
+		await started(made);
+		await watch(made.ctx, await settingsOf(made));
+		const pins = (await made.repo.flow.day(DATE)).filter((row) => row.type === 'pin');
+		expect(pins[0]).toMatchObject({ todoId: handIn.id });
+	});
+
+	test('with tomorrow free the same to-do waits for its turn', async () => {
+		const made = await testCtx();
+		const study = await todo(made, 'Study B', { estimate: 1500 });
+		await todo(made, 'Hand in', { priority: 1, estimate: 600, dueDate: '2026-10-15' });
+		await started(made);
+		await watch(made.ctx, await settingsOf(made));
+		const pins = (await made.repo.flow.day(DATE)).filter((row) => row.type === 'pin');
+		expect(pins[0]).toMatchObject({ todoId: study.id });
+	});
 
 	test('a session nobody pinned gets its pin from the first tick, once', async () => {
 		const made = await testCtx();

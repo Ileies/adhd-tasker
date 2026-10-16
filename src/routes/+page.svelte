@@ -104,6 +104,8 @@
 	// Only today's tasks compete for the screen, other days live on the Plan screen
 	// Tasks that may move have made room for appointments and travel (`placeDay`), the stored times never change
 	const todays = $derived(placeDay(tasks.filter((task) => task.date === today)));
+	// The days after today, for the free time a to-do has until it is due
+	const ahead = $derived(tasks.filter((task) => task.date > today));
 	const ranking = $derived(rank(todays, now));
 	// What is current, replayed from today's answers and finished items (the server runs the same function)
 	const zone = $derived(timezone ?? deviceTimezone());
@@ -119,6 +121,7 @@
 			nowMs,
 			at: (minutes) => zonedToEpoch(today, minutes, zone),
 			tasks: todays,
+			later: ahead,
 			todos,
 			log: flowRows,
 			settings

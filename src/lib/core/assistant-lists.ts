@@ -26,7 +26,7 @@ import { formatClock24, formatMinutes } from '#lib/format.js';
 import { placeDay } from '#lib/placeday.js';
 import { prepDue, travelOf } from '#lib/prep.js';
 import { repeatText } from '#lib/schedule.js';
-import { minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
+import { addDays, minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
 
 type Args = Record<string, unknown>;
 type RecordFn = (tool: string, before: Subject | null, after: Subject | null) => Promise<number>;
@@ -64,10 +64,11 @@ export async function dayLines(ctx: Ctx, settings: Settings): Promise<string[]> 
 	const timezone = settings.timezone ?? 'UTC';
 	const nowMs = ctx.now();
 	const today = todayIn(timezone, new Date(nowMs));
-	const [stored, todos, log] = await Promise.all([
+	const [stored, todos, log, later] = await Promise.all([
 		ctx.repo.tasks.between(today, today),
 		loadTodos(ctx),
-		ctx.repo.flow.day(today)
+		ctx.repo.flow.day(today),
+		ctx.repo.tasks.between(addDays(today, 1))
 	]);
 	const state = flow({
 		date: today,
@@ -75,6 +76,7 @@ export async function dayLines(ctx: Ctx, settings: Settings): Promise<string[]> 
 		nowMs,
 		at: (minutes) => zonedToEpoch(today, minutes, timezone),
 		tasks: placeDay(stored),
+		later,
 		todos,
 		log,
 		settings

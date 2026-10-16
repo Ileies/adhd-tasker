@@ -1587,6 +1587,40 @@ describe('4.5 lunch and a meeting at the same time', () => {
 	});
 });
 
+describe('will it fit: the free time of the coming days', () => {
+	/** Tomorrow is booked from 08:00 to 22:00, so a to-do due then has today and 2 h of tomorrow. */
+	const booked = () => [
+		{ ...simTask(30, hm(8), 14 * 60, { kind: 'appointment' }), date: '2026-10-15' }
+	];
+	const todos = () => [
+		simTodo(1, { estimate: 1500, dueDate: '2026-11-03' }),
+		simTodo(2, { title: 'Hand in', priority: Priority.Low, estimate: 600, dueDate: '2026-10-15' })
+	];
+
+	test('a to-do due tomorrow that no longer fits goes first, whatever its priority', () => {
+		const day = new SimDay([], todos());
+		day.later = booked();
+		day.jumpTo(hm(8));
+		day.start();
+		expect(currentId(day)).toBe(2);
+	});
+
+	test('the same to-do waits its turn when tomorrow is free', () => {
+		const day = new SimDay([], todos());
+		day.later = [];
+		day.jumpTo(hm(8));
+		day.start();
+		expect(currentId(day)).toBe(1);
+	});
+
+	test('without the later days the engine knows only today, as before', () => {
+		const day = new SimDay([], todos());
+		day.jumpTo(hm(8));
+		day.start();
+		expect(currentId(day)).toBe(1);
+	});
+});
+
 describe('sessionTiming', () => {
 	const min = (minutes: number) => minutes * 60_000;
 	const dayEnd = min(23 * 60);

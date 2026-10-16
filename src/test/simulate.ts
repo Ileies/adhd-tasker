@@ -71,6 +71,8 @@ export class SimDay {
 	diligent = true;
 	/** The break length setting. */
 	breakMinutes = 10;
+	/** The tasks of the days after today. Left out, the engine knows only today (as before phase 7). */
+	later: (FlowTask & { date: string })[] | undefined;
 	/** What was current at every minute that ran, `[minute, key]`, for asserting how a day went. */
 	readonly timeline: { minute: number; state: FlowState<FlowTask, FlowTodo> }[] = [];
 	private nextRow = 1;
@@ -94,6 +96,7 @@ export class SimDay {
 			at,
 			// The day as a device lives it: tasks that may move have made room
 			tasks: placeDay(this.tasks),
+			later: this.later,
 			todos: this.todos,
 			log: this.log,
 			settings: this.settings

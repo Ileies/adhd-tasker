@@ -250,10 +250,11 @@ export async function watch(ctx: Ctx, settings: Settings) {
 	const now = minutesNow(settings.timezone, at);
 	// A routine that is behind makes its days first, so today is whole before anything looks at it
 	await makeRoutines(ctx, today);
-	const [stored, open, log] = await Promise.all([
+	const [stored, open, log, later] = await Promise.all([
 		ctx.repo.tasks.between(today, today),
 		loadTodos(ctx),
-		ctx.repo.flow.day(today)
+		ctx.repo.flow.day(today),
+		ctx.repo.tasks.between(addDays(today, 1))
 	]);
 	// The day as it is lived: tasks that may move have made room, the stored times stay as they are
 	const todays = placeDay(stored);
@@ -265,6 +266,7 @@ export async function watch(ctx: Ctx, settings: Settings) {
 		nowMs,
 		at: (minutes) => zonedToEpoch(today, minutes, settings.timezone!),
 		tasks: todays,
+		later,
 		todos,
 		log,
 		settings

@@ -5,6 +5,7 @@
  * Urgent ones first (due today and not fitting any more), the rest by fair share: the minutes of today that are left are split by
  * how much each to-do needs per day left and how important it is, and the one furthest behind its share goes next.
  */
+import type { Capacity } from '#lib/capacity.js';
 import { formatClock, formatMinutes } from '#lib/format.js';
 import type { Todo } from '#lib/core/repo.js';
 import { LOW_ENERGY_MAX_LEFT } from '#lib/struggle.js';
@@ -59,6 +60,12 @@ export interface PickInput<D extends PickTodo> {
 	freeLeft: number;
 	/** Free minutes from now to a minute of today. */
 	freeUntil(minute: number): number;
+	/**
+	 * The realistic free time of every day until a date (`capacity.ts`). With it a to-do due later is urgent when it no
+	 * longer fits into that time, and its need today is its share of the free time left, not of the calendar days.
+	 * Without it only today's minutes are known.
+	 */
+	capacity?: Pick<Capacity, 'until'>;
 	/** To-dos the user was rotated away from lately, left alone unless nothing else is open. */
 	cooling?: ReadonlySet<number>;
 	/** The low energy hour: only to-dos with at most `LOW_ENERGY_MAX_LEFT` minutes left, unless there are none. */
@@ -111,16 +118,31 @@ function dueWords(dueDate: string, date: string): string {
 	return days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
 }
 
+/**
+ * The part of a to-do's remaining work that belongs to today. With the realistic free time known it is today's part of
+ * the free time until the due date, so days that are full of appointments do not count; otherwise one calendar day's part.
+ */
+function todayShare(todo: PickTodo, input: Pick<PickInput<PickTodo>, 'date' | 'capacity'>): number {
+	if (input.capacity && todo.dueDate !== null && todo.dueDate > input.date) {
+		const total = input.capacity.until(todo.dueDate, todo.dueTime);
+		return total > 0 ? Math.min(1, input.capacity.until(input.date) / total) : 1;
+	}
+	return 1 / daysLeft(todo, input.date);
+}
+
 const ceilTo5 = (minutes: number) => Math.max(5, Math.ceil(minutes / 5) * 5);
 
 function urgentLine(todo: PickTodo, date: string, remaining: number): string {
+	const later = todo.dueDate !== null && todo.dueDate > date;
 	const when =
 		todo.dueDate !== null && todo.dueDate < date
 			? 'Overdue'
-			: todo.dueTime !== null
-				? `Due at ${formatClock(todo.dueTime)}`
-				: 'Due today';
-	return `${when}, about ${formatMinutes(remaining)} left to do.`;
+			: later
+				? dueWords(todo.dueDate!, date)
+				: todo.dueTime !== null
+					? `Due at ${formatClock(todo.dueTime)}`
+					: 'Due today';
+	return `${when}, about ${formatMinutes(remaining)} left to do${later ? ', more than is free until then' : ''}.`;
 }
 
 /**
@@ -195,15 +217,23 @@ function choose<D extends PickTodo>(input: PickInput<D>): Picked<D> | null {
 	const remaining = new Map(candidates.map((todo) => [todo.id, remainingMinutes(todo)]));
 	const spentOf = (todo: D) => spent.get(todo.id) ?? 0;
 
-	// Urgent: due today, and what is left no longer fits before it with time to spare
+	// Urgent: due today, and what is left no longer fits before it with time to spare. A to-do due later is urgent
+	// when it does not fit into the realistic free time until then, if that is known.
+	const noRoom = (todo: D, due: number | null) => {
+		const left = remaining.get(todo.id)! + URGENT_SPARE_MINUTES;
+		if (due !== null) return left > input.freeUntil(Math.max(now, due));
+		return (
+			input.capacity !== undefined &&
+			todo.dueDate !== null &&
+			left > input.capacity.until(todo.dueDate, todo.dueTime)
+		);
+	};
 	const urgent = candidates
-		.map((todo) => ({ todo, due: dueMinute(todo, date, myDayEnd) }))
-		.filter(
-			(entry): entry is { todo: D; due: number } =>
-				entry.due !== null &&
-				remaining.get(entry.todo.id)! + URGENT_SPARE_MINUTES >
-					input.freeUntil(Math.max(now, entry.due))
-		)
+		.map((todo) => {
+			const due = dueMinute(todo, date, myDayEnd);
+			return { todo, due: due ?? todo.dueTime ?? myDayEnd, noRoom: noRoom(todo, due) };
+		})
+		.filter((entry) => entry.todo.dueDate !== null && entry.noRoom)
 		.sort(
 			(a, b) =>
 				(a.todo.dueDate ?? '').localeCompare(b.todo.dueDate ?? '') ||
@@ -224,7 +254,7 @@ function choose<D extends PickTodo>(input: PickInput<D>): Picked<D> | null {
 	const pool = input.freeLeft + rest.reduce((sum, todo) => sum + spentOf(todo), 0);
 	const need = (todo: D) => {
 		const left = remaining.get(todo.id)!;
-		return Math.max(left / daysLeft(todo, date), Math.min(left, MIN_NEED_MINUTES));
+		return Math.max(left * todayShare(todo, input), Math.min(left, MIN_NEED_MINUTES));
 	};
 	const weight = (todo: D) => need(todo) * (WEIGHT[todo.priority] ?? WEIGHT[3]);
 	const total = rest.reduce((sum, todo) => sum + weight(todo), 0);
@@ -254,7 +284,7 @@ function choose<D extends PickTodo>(input: PickInput<D>): Picked<D> | null {
 	if (rest.length === 1) return { todo, why: 'only', line: 'Nothing else is open.' };
 
 	const days = todo.dueDate === null ? null : daysLeft(todo, date);
-	const perDay = ceilTo5(remaining.get(todo.id)! / (days ?? DAYS_WITHOUT_DUE));
+	const perDay = ceilTo5(remaining.get(todo.id)! * todayShare(todo, input));
 	return {
 		todo,
 		why: 'share',

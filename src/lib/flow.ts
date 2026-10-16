@@ -25,7 +25,7 @@ import {
 	type CheckAbout,
 	type CheckData
 } from '#lib/checks.js';
-import { freeBetween } from '#lib/capacity.js';
+import { capacityOf, freeBetween } from '#lib/capacity.js';
 import type { FlowRow } from '#lib/core/repo.js';
 import { TIME_UP_WINDOWS, timeBoundState, type HeroState } from '#lib/now.js';
 import { LOW_ENERGY_LINE, dayCostLine, pick, type PickTodo } from '#lib/pick.js';
@@ -82,6 +82,8 @@ export interface FlowInput<T extends FlowTask, D extends FlowTodo> {
 	at(minutes: number): number;
 	/** Today's tasks, done ones included. */
 	tasks: T[];
+	/** The tasks of the days after today, for the free time until a to-do is due (`capacity.ts`). Absent: only today is known. */
+	later?: (FlowTask & { date: string })[];
 	/** Every open to-do and the ones finished recently. */
 	todos: D[];
 	/** Today's rows of the flow log. */
@@ -255,6 +257,7 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 	input: FlowInput<T, D>
 ): FlowState<T, D> {
 	const { date, now, nowMs, at, tasks, todos, settings } = input;
+	let capacityMemo: ReturnType<typeof capacityOf> | undefined;
 	const dayStart = at(0);
 	const dayEnd = at(1440);
 	const myDayEnd = at(settings.myDayEnd);
@@ -684,6 +687,17 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 		face
 	);
 
+	/** The free time of the coming days, worked out once, only when a pick needs it. */
+	function capacityNow() {
+		return (capacityMemo ??= capacityOf({
+			tasks: [...tasks.map((task) => ({ ...task, date })), ...(input.later ?? [])],
+			today: date,
+			now,
+			myDayStart: settings.myDayStart,
+			myDayEnd: settings.myDayEnd
+		}));
+	}
+
 	/** The pick for the session starting at `sessionStart`, continuing with the to-do of the session before. */
 	function pickFor(sessionStart: number) {
 		const before = sessionRows.findLast((entry) => entry.start < sessionStart);
@@ -706,6 +720,8 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 			previousId: struggled ? null : (before?.todoId ?? null),
 			freeLeft: freeBetween(tasks, now, settings.myDayEnd),
 			freeUntil: (minute) => freeBetween(tasks, now, minute),
+			// Only a day that has tasks of later days known is judged with them, a plain test day is not
+			capacity: input.later ? capacityNow() : undefined,
 			cooling: coolingAt(steps, sessionStart),
 			shortOnly: lowEnergyAt(steps, sessionStart)
 		});
