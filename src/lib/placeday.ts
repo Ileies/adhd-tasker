@@ -29,6 +29,16 @@ const overlaps = (
 	b: { startTime: number; duration: number }
 ) => a.startTime < endOf(b) && b.startTime < endOf(a);
 
+/**
+ * The task as the user stored it. Anything that edits, completes, deletes or restores a task from a placed copy goes
+ * through this, so showing a task at another time never writes that time. A task that was not placed is returned as is.
+ */
+export function stored<T extends PlaceTask>(task: T | Placed<T>): T {
+	if (!('storedStart' in task)) return task;
+	const { storedStart, movedFor: _movedFor, ...rest } = task;
+	return { ...rest, startTime: storedStart } as unknown as T;
+}
+
 /** Highest priority first, then earlier, then shorter, then lower id, so the placing never flickers. */
 const byPlace = (a: PlaceTask, b: PlaceTask) =>
 	(b.priority || Priority.Medium) - (a.priority || Priority.Medium) ||

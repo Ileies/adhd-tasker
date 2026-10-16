@@ -5,8 +5,8 @@ export type RankTask = Pick<
 	Task,
 	'id' | 'title' | 'startTime' | 'duration' | 'priority' | 'status'
 > &
-	/** Absent in a test that is not about it, and for tasks saved before appointments: a block. */
-	Partial<Pick<Task, 'kind'>>;
+	/** Absent in a test that is not about it, and for tasks saved before appointments: a block that stays. */
+	Partial<Pick<Task, 'kind' | 'shift'>>;
 
 /** Appointments and travel end on their own, they are never missed and never run out unanswered. */
 export const endsOnItsOwn = (task: Pick<RankTask, 'kind'>) =>

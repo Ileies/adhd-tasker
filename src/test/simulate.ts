@@ -14,6 +14,7 @@ import {
 	type FlowTodo
 } from '#lib/flow.js';
 import { rotationTargets } from '#lib/pick.js';
+import { placeDay } from '#lib/placeday.js';
 import { coolingAt, liveRows, skipPatch, stepFor, stepsOf, type Struggle } from '#lib/struggle.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
@@ -91,7 +92,8 @@ export class SimDay {
 			// Half a second into the minute: what a step that follows its answer by a millisecond has happened by now
 			nowMs: at(this.minute) + 500,
 			at,
-			tasks: this.tasks,
+			// The day as a device lives it: tasks that may move have made room
+			tasks: placeDay(this.tasks),
 			todos: this.todos,
 			log: this.log,
 			settings: this.settings

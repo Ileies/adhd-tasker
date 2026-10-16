@@ -1537,6 +1537,56 @@ describe('4.1 an exam with travel and preparation', () => {
 	});
 });
 
+describe('4.5 lunch and a meeting at the same time', () => {
+	const MEETING = 30;
+	const LUNCH = 10;
+	/** Lunch 12:00 to 12:45 that may move by 1 h, a meeting from Google at 12:00 for `minutes`. */
+	const lunchDay = (minutes = 60, shift = 60) =>
+		morning(
+			[
+				simTask(LUNCH, hm(12), 45, { title: 'Lunch', shift }),
+				simTask(MEETING, hm(12), minutes, { title: 'Meeting', kind: 'appointment' })
+			],
+			studies()
+		);
+	const taskId = (day: SimDay, minute: number) => {
+		const { current } = day.runTo(minute);
+		return current.kind === 'task' ? current.task.id : null;
+	};
+
+	test('the meeting has its time and Lunch goes after it when that fits within its shift', () => {
+		const day = lunchDay();
+		expect(taskId(day, hm(12, 30))).toBe(MEETING);
+		expect(taskId(day, hm(13, 10))).toBe(LUNCH);
+	});
+
+	test('Lunch goes before a meeting that runs to 13:30, at 11:15', () => {
+		const day = lunchDay(90);
+		expect(taskId(day, hm(11, 20))).toBe(LUNCH);
+		expect(taskId(day, hm(12, 20))).toBe(MEETING);
+	});
+
+	test('Lunch stays at 12:00 when the meeting is gone, the stored time never changed', () => {
+		const day = new SimDay([simTask(LUNCH, hm(12), 45, { title: 'Lunch', shift: 60 })], studies());
+		day.diligent = false;
+		day.jumpTo(hm(10, 30));
+		day.start();
+		expect(taskId(day, hm(12, 10))).toBe(LUNCH);
+	});
+
+	test('a Lunch that stays is not moved, it overlaps the meeting as before and nothing follows it', () => {
+		const day = lunchDay(60, 0);
+		expect(taskId(day, hm(12, 30))).toBe(LUNCH);
+		expect(taskId(day, hm(13, 10))).toBeNull();
+	});
+
+	test('studying never pushes Lunch: it only fills what is left', () => {
+		const day = lunchDay();
+		expect(taskId(day, hm(11, 30))).toBeNull();
+		expect(taskId(day, hm(13, 20))).toBe(LUNCH);
+	});
+});
+
 describe('sessionTiming', () => {
 	const min = (minutes: number) => minutes * 60_000;
 	const dayEnd = min(23 * 60);

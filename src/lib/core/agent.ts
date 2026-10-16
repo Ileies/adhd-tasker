@@ -17,6 +17,7 @@ import {
 	reactionTools
 } from '#lib/assistant-tools.js';
 import { functionCalls } from '#lib/openai.js';
+import { placeDay } from '#lib/placeday.js';
 import { rank } from '#lib/priority.js';
 import { addDays, minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
 import { formatClock24 } from '#lib/format.js';
@@ -51,10 +52,7 @@ async function contextPrompt(
 	const today = todayIn(timezone, at);
 	const now = minutesNow(timezone, at);
 	const plan = await ctx.repo.tasks.between(today, addDays(today, 1));
-	const ranking = rank(
-		plan.filter((task) => task.date === today),
-		now
-	);
+	const ranking = rank(placeDay(plan.filter((task) => task.date === today)), now);
 	const history = await ctx.repo.events.recent(20);
 	const pending = describePending(await ctx.repo.schedule.pending(), timezone);
 
@@ -223,11 +221,13 @@ export async function watch(ctx: Ctx, settings: Settings) {
 	const at = new Date(nowMs);
 	const today = todayIn(settings.timezone, at);
 	const now = minutesNow(settings.timezone, at);
-	const [todays, open, log] = await Promise.all([
+	const [stored, open, log] = await Promise.all([
 		ctx.repo.tasks.between(today, today),
 		loadTodos(ctx),
 		ctx.repo.flow.day(today)
 	]);
+	// The day as it is lived: tasks that may move have made room, the stored times stay as they are
+	const todays = placeDay(stored);
 	// What prepared for an appointment that started ends at the progress it had
 	const todos = await endPreparation(ctx, open, settings.timezone);
 	const state = flow({

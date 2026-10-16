@@ -483,6 +483,15 @@ describe('watch', () => {
 		expect((await settingsOf(made)).lastCurrentTaskId).toBe(task.id);
 	});
 
+	test('a task that made room for an appointment is not the current one, its stored time stays', async () => {
+		const made = await testCtx();
+		const meeting = await addTask(made.repo, { title: 'Meeting', kind: 'appointment' });
+		const lunch = await addTask(made.repo, { title: 'Lunch', duration: 30, shift: 60 });
+		await watch(made.ctx, await settingsOf(made));
+		expect((await settingsOf(made)).lastCurrentTaskId).toBe(meeting.id);
+		expect((await made.repo.tasks.get(lunch.id))?.startTime).toBe(9 * 60);
+	});
+
 	test('no task at all is stored as 0', async () => {
 		const made = await testCtx();
 		await watch(made.ctx, await settingsOf(made));

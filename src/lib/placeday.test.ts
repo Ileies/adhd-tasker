@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { placeDay, type PlaceTask } from '#lib/placeday.js';
+import { placeDay, stored, type PlaceTask } from '#lib/placeday.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
 const at = (hours: number, minutes = 0) => hours * 60 + minutes;
@@ -102,6 +102,18 @@ describe('placeDay', () => {
 		const once = placeDay([meeting(), lunch()]);
 		const twice = placeDay(once);
 		expect(twice.map((task) => task.startTime)).toEqual(once.map((task) => task.startTime));
+	});
+
+	test('stored gives back the time the user gave, also from a copy with a field changed', () => {
+		const [, placed] = placeDay([meeting(), lunch()]);
+		expect(stored(placed!).startTime).toBe(at(12));
+		expect(stored({ ...placed!, status: TaskStatus.Completed }).startTime).toBe(at(12));
+		expect(stored(placed!)).not.toHaveProperty('movedFor');
+	});
+
+	test('stored leaves a task that was never placed as it is', () => {
+		const task = lunch();
+		expect(stored(task)).toBe(task);
 	});
 
 	test('the input is not changed', () => {
