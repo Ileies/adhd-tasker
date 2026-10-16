@@ -50,7 +50,7 @@ export async function keepSampleDay() {
 	try {
 		await tasker.backend.sample.keep();
 		tasker.sample = [];
-		showToast('The sample week is your plan now');
+		showToast('The sample is your plan now');
 	} catch (error) {
 		showToast(`Could not keep the sample day: ${reasonOf(error)}`);
 	}

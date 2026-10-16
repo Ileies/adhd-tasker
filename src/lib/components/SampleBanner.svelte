@@ -10,7 +10,7 @@
 		class="bg-muted text-muted-foreground flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-sm"
 		role="status"
 	>
-		<span>This is a sample week. Change anything, then keep it or start over.</span>
+		<span>This is a sample day. Change anything, then keep it or start over.</span>
 		<Button variant="link" class="text-foreground h-auto p-0 text-sm" onclick={keepSampleDay}>
 			Keep it as my plan
 		</Button>
