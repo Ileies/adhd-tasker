@@ -25,6 +25,7 @@ import {
 	type CheckAbout,
 	type CheckData
 } from '#lib/checks.js';
+import { freeBetween } from '#lib/capacity.js';
 import type { FlowRow } from '#lib/core/repo.js';
 import { TIME_UP_WINDOWS, timeBoundState, type HeroState } from '#lib/now.js';
 import { LOW_ENERGY_LINE, dayCostLine, pick, type PickTodo } from '#lib/pick.js';
@@ -180,26 +181,6 @@ export function currentKey(current: Current<{ id: number }, { id: number }>): st
 
 const isDone = (item: { status: string; completedAt: number | null }) =>
 	(item.status === TaskStatus.Completed || item.status === 'done') && item.completedAt !== null;
-
-/** Free minutes from `from` to `until` (minutes of today) that no unfinished task holds. */
-function freeBetween(tasks: RankTask[], from: number, until: number): number {
-	if (until <= from) return 0;
-	const spans = tasks
-		.filter((task) => task.status !== TaskStatus.Completed)
-		.map((task) => [
-			Math.max(from, task.startTime),
-			Math.min(until, task.startTime + task.duration)
-		])
-		.filter(([start, end]) => end > start)
-		.sort((a, b) => a[0] - b[0]);
-	let busy = 0;
-	let reached = from;
-	for (const [start, end] of spans) {
-		busy += Math.max(0, end - Math.max(start, reached));
-		reached = Math.max(reached, end);
-	}
-	return until - from - busy;
-}
 
 /** When a session's check is asked, asked again and turns into away, all epoch ms, `null` when it never is. */
 export interface SessionTiming {
