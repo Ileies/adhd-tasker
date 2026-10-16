@@ -3,6 +3,7 @@
 Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
+- `flow-plan.md`: proposed, needs a yes first. To-dos without a time, a flow engine that decides, holds and calls back, appointments with preparation, routines that make room. Changes the core principle and the roadmap order
 - `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code
 - Finished and deleted (git history): the local first plan (`docs/local-first-plan.md` at `a419224`), the UX plan (`docs/ux-plan.md` at `24192b1`) and the daylight theme (`docs/daylight-theme.md` at `56be755`)
 
