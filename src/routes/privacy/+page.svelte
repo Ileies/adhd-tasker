@@ -68,9 +68,9 @@
 		</li>
 		<li>
 			<strong>Your to-dos:</strong> things to do without a time (title, notes, size, due date, how far
-			you are, the minutes you spent, how often you pushed it away and the appointment it prepares for),
-			and the answers you gave while working through them (what you started, a check such as "done" or
-			"a bit", breaks and the times you were away). The answers are kept for 30 days.
+			you are, the minutes you spent, how often, and since which day, you pushed it away and the appointment
+			it prepares for), and the answers you gave while working through them (what you started, a check
+			such as "done" or "a bit", breaks and the times you were away). The answers are kept for 30 days.
 		</li>
 		<li>
 			<strong>Plan snapshots:</strong> when you sign in and your account already has a plan, or you restore
