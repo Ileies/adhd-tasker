@@ -17,6 +17,7 @@
 	import { minutesNow, todayIn } from '#lib/time.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import { DAY_MINUTES, SNAP, overlapLine, phoneGroups } from '#lib/plan.js';
+	import { capacityOf, fittings, overbookedLine } from '#lib/capacity.js';
 	import { placeDay, stored, type Placed } from '#lib/placeday.js';
 	import {
 		QUICK_DURATION as DEFAULT_DURATION,
@@ -103,6 +104,20 @@
 	// The day as it will be lived: tasks that may move have made room. Everything that saves goes through `stored`
 	const dayTasks = $derived(placeDay(tasker.tasks.filter((task) => task.date === selected)));
 	const overlap = $derived(overlapLine(dayTasks));
+	// Will it fit: the free time of every day until each to-do is due (`capacity.ts`)
+	const capacity = $derived(
+		capacityOf({
+			tasks: tasker.tasks,
+			today,
+			now,
+			myDayStart: tasker.settings.myDayStart,
+			myDayEnd: tasker.settings.myDayEnd
+		})
+	);
+	const fits = $derived(fittings(tasker.todos, capacity, today, tasker.settings.myDayEnd));
+	const overbooked = $derived(
+		overbookedLine(tasker.todos, capacity, today, tasker.settings.myDayEnd)
+	);
 	const groups = $derived(phoneGroups(dayTasks, selected === today ? now : null));
 	let mode = $state<'task' | 'alarm'>('task');
 	const setMode = (value: 'task' | 'alarm') => {
@@ -441,6 +456,13 @@
 		</div>
 	{/if}
 
+	{#if overbooked}
+		<div class="bg-warning/15 flex items-center gap-2 border-b px-6 py-2 text-sm" role="status">
+			<TriangleAlert class="size-4 shrink-0" />
+			{overbooked}
+		</div>
+	{/if}
+
 	<!-- Phones show one of the two, the tabs choose -->
 	<div class="border-b px-4 py-2 md:hidden">
 		<SegmentedControl
@@ -459,6 +481,7 @@
 			<TodoPanel
 				todos={tasker.todos}
 				tasks={tasker.tasks.filter((task) => task.kind === 'appointment')}
+				{fits}
 				{today}
 				onOpen={(todo) => (editingTodo = todo)}
 				onNow={doNow}
