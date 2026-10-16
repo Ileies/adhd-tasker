@@ -140,6 +140,25 @@ describe('readDevice', () => {
 	});
 });
 
+describe('readDevice and the sample to-dos', () => {
+	test('the sample to-dos are left out, a to-do of the visitor goes', async () => {
+		const only = await device(async (repo, db) => {
+			const sample = await repo.todos.insert({ title: 'Sample', priority: Priority.Medium });
+			await localMarks(db).writeTodos([sample.id]);
+		});
+		expect(await readDevice(NOW, only, NAME)).toBeNull();
+
+		const withOwn = await device(async (repo, db) => {
+			const sample = await repo.todos.insert({ title: 'Sample', priority: Priority.Medium });
+			await repo.todos.insert({ title: 'Mine', priority: Priority.Medium });
+			await localMarks(db).writeTodos([sample.id]);
+		});
+		expect((await readDevice(NOW, withOwn, NAME))?.file.todos.map((t) => t.title)).toEqual([
+			'Mine'
+		]);
+	});
+});
+
 describe('declineMove', () => {
 	test('is remembered until the visitor is signed out again', async () => {
 		const factory = await device((repo) => repo.tasks.insert(task('A')).then(() => {}));

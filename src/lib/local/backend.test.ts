@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { BackendError } from '#lib/backend.js';
 import type { Hint, Model } from '#lib/core/context.js';
+import { sampleRoutines } from '#lib/core/sample.js';
 import { localBackend } from '#lib/local/backend.js';
 import type { ResponseBody } from '#lib/openai.js';
 import { Priority, TaskStatus } from '#lib/types.js';
@@ -480,7 +481,7 @@ describe('sample day', () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const routines = await backend.routines.load();
-		expect(routines.map((routine) => routine.title)).toEqual([
+		expect(routines.map((routine) => routine.title).slice(0, 5)).toEqual([
 			'Meds',
 			'Breakfast',
 			'Lunch',
@@ -533,8 +534,41 @@ describe('sample day', () => {
 		const created = await backend.sample.start('2026-10-14', 12 * 60);
 		await backend.sample.keep();
 		expect(await backend.sample.clear()).toBe(0);
-		expect(await backend.routines.load()).toHaveLength(5);
+		expect(await backend.routines.load()).toHaveLength(sampleRoutines().length);
 		expect(await backend.tasks.since('2000-01-01')).toHaveLength(created.length);
+	});
+
+	test('the week has to-dos, and an appointment with travel and steps that belong to it', async () => {
+		const { backend } = await setup();
+		await backend.sample.start('2026-10-14', 12 * 60);
+		const tasks = await backend.tasks.since('2026-10-14');
+		const appointment = tasks.find((task) => task.kind === 'appointment')!;
+		const travel = tasks.find((task) => task.kind === 'travel');
+		expect(travel).toMatchObject({ parentId: appointment.id, date: appointment.date });
+		const todos = await backend.todos.load();
+		expect(todos.map((todo) => todo.title)).toContain('Set up ADHD Tasker');
+		const steps = todos.filter((todo) => todo.parentId === appointment.id);
+		expect(steps).toHaveLength(2);
+		for (const step of steps)
+			expect(step).toMatchObject({ dueDate: appointment.date, dueTime: 16 * 60 + 50 });
+	});
+
+	test('clearing removes the to-dos of the sample and leaves one the user made', async () => {
+		const { backend } = await setup();
+		const mine = await backend.todos.create({ title: 'Mine' });
+		await backend.sample.start('2026-10-14', 12 * 60);
+		expect((await backend.todos.load()).length).toBeGreaterThan(1);
+		await backend.sample.clear();
+		expect((await backend.todos.load()).map((todo) => todo.id)).toEqual([mine.id]);
+	});
+
+	test('keeping makes the to-dos the user own', async () => {
+		const { backend } = await setup();
+		await backend.sample.start('2026-10-14', 12 * 60);
+		const count = (await backend.todos.load()).length;
+		await backend.sample.keep();
+		await backend.sample.clear();
+		expect(await backend.todos.load()).toHaveLength(count);
 	});
 
 	test('clearing leaves a routine the user made themselves', async () => {

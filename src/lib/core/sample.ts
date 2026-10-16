@@ -1,14 +1,16 @@
 /**
- * The sample week a first time visitor can try: an ideal, ordinary routine on fixed clock times (focus blocks,
- * chores) for today and the six days after it, with one task per weekday in the evening slot. The essentials
- * (meals, meds, bed) are not in it: they are daily routines (`sampleRoutines`, flow plan 5.3) that the tick
- * makes into tasks like any routine. Whatever the time of day, the next block is a real one, and one single task
- * ("Set up ADHD Tasker") sits in the next break so the setup is part of the day. Pure. The device marks what it
- * created (tasks and routines), so clearing the sample removes exactly these.
+ * The sample week a first time visitor can try, made of the same parts a real week is made of (flow plan phase 8):
+ * routines for what repeats (the essentials and an ideal, ordinary day of focus blocks and chores), to-dos for work
+ * without a time (the first one is "Set up ADHD Tasker", so the setup is part of the day), one task per weekday in
+ * the evening slot, and one appointment with its travel and the steps to prepare for it. The gaps between the
+ * blocks stay empty: Now fills them with the to-do that needs the time. Pure. The device marks what it created
+ * (tasks, routines and to-dos), so clearing the sample removes exactly these.
  */
-import type { NewTask, RoutinePatch } from '#lib/core/repo.js';
+import type { NewTask, NewTodo, RoutinePatch } from '#lib/core/repo.js';
 import { defaultTimes, essentialRoutines } from '#lib/essentials.js';
 import { DAY_MINUTES } from '#lib/plan.js';
+import type { PrepForm } from '#lib/prep.js';
+import type { Repeat } from '#lib/schedule.js';
 import { addDays, type DateKey } from '#lib/time.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
@@ -21,8 +23,6 @@ interface Block {
 	duration: number;
 	priority: Priority;
 	days: Days;
-	/** A break the setup task may take the place of. */
-	flex?: boolean;
 	description?: string;
 }
 
@@ -58,8 +58,7 @@ const ROUTINE: Block[] = [
 		start: at(10),
 		duration: 15,
 		priority: Low,
-		days: 'weekdays',
-		flex: true
+		days: 'weekdays'
 	},
 	{
 		title: 'Emails and messages',
@@ -91,14 +90,7 @@ const ROUTINE: Block[] = [
 		days: 'weekend'
 	},
 
-	{
-		title: 'Short walk outside',
-		start: at(12, 45),
-		duration: 15,
-		priority: Low,
-		days: 'all',
-		flex: true
-	},
+	{ title: 'Short walk outside', start: at(12, 45), duration: 15, priority: Low, days: 'all' },
 
 	{ title: 'Focus: deep work', start: at(13), duration: 90, priority: High, days: 'weekdays' },
 	{
@@ -113,8 +105,7 @@ const ROUTINE: Block[] = [
 		start: at(14, 30),
 		duration: 15,
 		priority: Low,
-		days: 'weekdays',
-		flex: true
+		days: 'weekdays'
 	},
 	{
 		title: 'Emails and loose ends',
@@ -164,6 +155,8 @@ const ROUTINE: Block[] = [
 	{ title: 'Brush teeth', start: at(22, 30), duration: 15, priority: Medium, days: 'all' }
 ];
 
+const REPEAT: Record<Days, Repeat> = { all: 'daily', weekdays: 'weekdays', weekend: 'days:0,6' };
+
 /** The one block that changes with the weekday, in the slot before dinner. Index is `getUTCDay()`, Sunday is 0. */
 const EVENING: { title: string; priority: Priority }[] = [
 	{ title: 'Plan the week: calendar and goals', priority: Medium },
@@ -181,73 +174,107 @@ const EVENING_DURATION = 60;
 /** How many days the sample covers, today included. */
 export const SAMPLE_DAYS = 7;
 
-const SETUP = {
-	title: 'Set up ADHD Tasker',
-	duration: 15,
-	priority: High,
-	description:
-		'Open Settings: pick your sounds, check the hours of My day, choose light or dark. Then tap Done.'
+/** The day of the appointment, counted from today. The evening slot of that day is taken by it. */
+const APPOINTMENT_IN_DAYS = 2;
+
+export const SAMPLE_APPOINTMENT = {
+	title: 'Dentist',
+	start: at(17, 30),
+	duration: 30,
+	priority: Medium
 };
 
-/** The routines of the sample: the essentials at their default times. */
-export const sampleRoutines = (): RoutinePatch[] => essentialRoutines(defaultTimes());
+/** What the appointment needs: half an hour to get there and two small steps, as the prep sheet would make them. */
+export const SAMPLE_PREP: PrepForm = {
+	travel: 30,
+	prepare: null,
+	steps: [
+		{ title: 'Pack ID and the insurance card', minutes: 5 },
+		{ title: 'Brush and floss before you leave', minutes: 10 }
+	]
+};
+
+/** The routines of the sample: the essentials at their default times, then the repeating blocks of an ordinary day. */
+export const sampleRoutines = (): RoutinePatch[] => [
+	...essentialRoutines(defaultTimes()),
+	...ROUTINE.map((block) => ({
+		title: block.title,
+		description: block.description ?? '',
+		startTime: block.start,
+		duration: block.duration,
+		priority: block.priority,
+		repeat: REPEAT[block.days]
+	}))
+];
 
 const weekdayOf = (date: DateKey) => new Date(date + 'T00:00:00Z').getUTCDay();
 
-function appliesOn(days: Days, weekday: number) {
-	const weekend = weekday === 0 || weekday === 6;
-	return days === 'all' || (days === 'weekend') === weekend;
+/**
+ * The tasks that are not routines, for each of the seven days from `today`: the evening block, and on one day the
+ * appointment (the device adds its travel and steps with `prepPlan` and `SAMPLE_PREP`). A task that ended before `now`
+ * today is already done. The night from 23:00 to 07:00 and the gaps are left empty.
+ */
+export function sampleDay(today: DateKey, now: number): (NewTask & { status: TaskStatus })[] {
+	const appointmentDate = addDays(today, APPOINTMENT_IN_DAYS);
+	return Array.from({ length: SAMPLE_DAYS }, (_, index) => {
+		const date = addDays(today, index);
+		const evening = EVENING[weekdayOf(date)];
+		const fields =
+			date === appointmentDate
+				? {
+						title: SAMPLE_APPOINTMENT.title,
+						startTime: SAMPLE_APPOINTMENT.start,
+						duration: SAMPLE_APPOINTMENT.duration,
+						priority: SAMPLE_APPOINTMENT.priority,
+						kind: 'appointment' as const
+					}
+				: {
+						title: evening.title,
+						startTime: EVENING_START,
+						duration: EVENING_DURATION,
+						priority: evening.priority
+					};
+		return {
+			...fields,
+			description: '',
+			date,
+			status:
+				date === today && fields.startTime + fields.duration <= now
+					? TaskStatus.Completed
+					: TaskStatus.Pending
+		};
+	}).filter((task) => task.startTime + task.duration <= DAY_MINUTES);
 }
 
 /**
- * The routine for each of the seven days from `today`. A task that ended before `now` today is already done.
- * The setup task takes the place of the first break that has not started yet (today, else a later day).
- * The gaps between the blocks and the night from 23:00 to 07:00 are left empty: Now fills a gap with what the user
- * has to do (a to-do), or asks what is next.
+ * The to-dos of the sample, work without a time that the flow engine fits into the gaps. The first is the setup, due
+ * today, so the first thing Now picks in a gap is the one that sets the app up.
  */
-export function sampleDay(today: DateKey, now: number): (NewTask & { status: TaskStatus })[] {
-	const days = Array.from({ length: SAMPLE_DAYS }, (_, index) => {
-		const date = addDays(today, index);
-		const weekday = weekdayOf(date);
-		const blocks: Block[] = [
-			...ROUTINE.filter((block) => appliesOn(block.days, weekday)),
-			{
-				...EVENING[weekday],
-				start: EVENING_START,
-				duration: EVENING_DURATION,
-				days: 'all'
-			}
-		];
-		return { date, blocks };
-	});
-
-	const upcoming = days.flatMap(({ date, blocks }, index) =>
-		blocks
-			.filter((block) => block.flex && (index > 0 || block.start >= now))
-			.map((block) => ({ date, block }))
-	);
-	const setupAt = upcoming.sort(
-		(a, b) => a.date.localeCompare(b.date) || a.block.start - b.block.start
-	)[0];
-
-	return days.flatMap(({ date, blocks }) =>
-		blocks
-			.filter((block) => block.start + block.duration <= DAY_MINUTES)
-			.map((block) => {
-				const replaced = setupAt && setupAt.date === date && setupAt.block === block;
-				const task = replaced ? { ...block, ...SETUP } : block;
-				return {
-					title: task.title,
-					description: task.description ?? '',
-					date,
-					startTime: block.start,
-					duration: task.duration,
-					priority: task.priority,
-					status:
-						date === today && block.start + task.duration <= now
-							? TaskStatus.Completed
-							: TaskStatus.Pending
-				};
-			})
-	);
+export function sampleTodos(today: DateKey): NewTodo[] {
+	return [
+		{
+			title: 'Set up ADHD Tasker',
+			description:
+				'Open Settings: pick your sounds, check the hours of My day, choose light or dark. Then tap Done.',
+			priority: High,
+			estimate: 15,
+			dueDate: today,
+			nextStep: 'Open Settings'
+		},
+		{
+			title: 'Buy a birthday gift',
+			description: '',
+			priority: Medium,
+			estimate: 60,
+			dueDate: addDays(today, 4)
+		},
+		{
+			title: 'Taxes: gather the receipts',
+			description: '',
+			priority: Medium,
+			estimate: 180,
+			dueDate: addDays(today, 6)
+		},
+		{ title: 'Answer the old messages', description: '', priority: Low, estimate: 30 }
+	];
 }

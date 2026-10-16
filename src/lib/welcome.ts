@@ -8,6 +8,7 @@ import type { Routine } from '#lib/core/repo.js';
 import { essentialRoutines, type EssentialKey } from '#lib/essentials.js';
 import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
 import { loadRoutines, reloadRoutines } from '#lib/routines.js';
+import { loadTodos } from '#lib/todos.js';
 import type { DateKey } from '#lib/time.js';
 import { showToast } from '#lib/toast.js';
 
@@ -44,8 +45,9 @@ export async function trySampleDay(today: string, minutes: number) {
 		const ids = new Set(created.map((task) => task.id));
 		tasker.tasks = [...tasker.tasks.filter((task) => !ids.has(task.id)), ...created];
 		tasker.sample = [...ids];
-		// The essentials are routines now, the Routines sheet lists them
+		// The week is routines and to-dos too, the Routines sheet and the To do panel list them
 		await loadRoutines().catch(() => {});
+		await loadTodos().catch(() => {});
 	} catch (error) {
 		showToast(`Could not add the sample day: ${reasonOf(error)}`);
 	}
@@ -103,7 +105,8 @@ export async function clearSampleDay() {
 		tasker.sample = [];
 		// The sample's routines are gone, and with them the days they made while the page was open
 		await reloadRoutines().catch(() => {});
-		if (tasker.tasks.length === 0) reopenWelcome();
+		await loadTodos().catch(() => {});
+		if (tasker.tasks.length === 0 && tasker.todos.length === 0) reopenWelcome();
 		showToast('Sample day cleared');
 	} catch (error) {
 		showToast(`Could not clear the sample day: ${reasonOf(error)}`);

@@ -72,6 +72,15 @@ describe('trySampleDay', () => {
 		expect(tasker.firstRun.welcomed).toBe(true);
 	});
 
+	test('the week brings its to-dos into the page, clearing takes them out again', async () => {
+		await useLocalDevice();
+		await trySampleDay('2026-10-14', 12 * 60);
+		expect(tasker.todos.map((todo) => todo.title)).toContain('Set up ADHD Tasker');
+		await clearSampleDay();
+		expect(tasker.todos).toEqual([]);
+		expect(tasker.firstRun.welcomed).toBe(false);
+	});
+
 	test('says why when the device cannot add it', async () => {
 		tasker.backend = remoteBackend;
 		await trySampleDay('2026-10-14', 12 * 60);

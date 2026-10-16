@@ -18,7 +18,8 @@ import { GeocodeError, searchPlaces } from '#lib/core/geocode.js';
 import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
 import type { Repo, Task } from '#lib/core/repo.js';
-import { sampleDay, sampleRoutines } from '#lib/core/sample.js';
+import { SAMPLE_PREP, sampleDay, sampleRoutines, sampleTodos } from '#lib/core/sample.js';
+import { prepPlan } from '#lib/prep.js';
 import type { SampleMarks } from '#lib/local/marks.js';
 import {
 	addUserAlarm,
@@ -82,11 +83,14 @@ export function localBackend(deps: LocalDeps): Backend {
 	const modelFor = deps.modelFor ?? openaiModel;
 	let remembered: number[] = [];
 	let rememberedRoutines: number[] = [];
+	let rememberedTodos: number[] = [];
 	const marks: SampleMarks = deps.marks ?? {
 		read: async () => remembered,
 		write: async (ids) => void (remembered = ids),
 		readRoutines: async () => rememberedRoutines,
-		writeRoutines: async (ids) => void (rememberedRoutines = ids)
+		writeRoutines: async (ids) => void (rememberedRoutines = ids),
+		readTodos: async () => rememberedTodos,
+		writeTodos: async (ids) => void (rememberedTodos = ids)
 	};
 	/** The sample's tasks still in the plan: the marked ones and every day its routines made, however late. */
 	const sampleTasks = async () => {
@@ -302,7 +306,20 @@ export function localBackend(deps: LocalDeps): Backend {
 				// Written straight to the repo, like an import: the user did not plan these, so no event wakes the agent
 				const created: Task[] = [];
 				for (const task of sampleDay(today, minutes)) created.push(await repo.tasks.insert(task));
+				// The appointment comes with its travel and the steps to prepare, as the prep sheet makes them
+				const todos: number[] = [];
+				const appointment = created.find((task) => task.kind === 'appointment');
+				if (appointment) {
+					const { arriveEarlyMinutes } = await repo.settings.get();
+					const prep = prepPlan(appointment, SAMPLE_PREP, arriveEarlyMinutes);
+					if (prep.travel) created.push(await repo.tasks.insert(prep.travel));
+					for (const todo of prep.todos)
+						todos.push((await repo.todos.insert({ ...todo, createdAt: now() })).id);
+				}
 				await marks.write(created.map((task) => task.id));
+				for (const todo of sampleTodos(today))
+					todos.push((await repo.todos.insert({ ...todo, createdAt: now() })).id);
+				await marks.writeTodos(todos);
 				// The essentials are routines: the first one makes the week ahead for all of them
 				const routines: number[] = [];
 				for (const patch of sampleRoutines()) {
@@ -321,8 +338,10 @@ export function localBackend(deps: LocalDeps): Backend {
 				const removed = await sampleTasks();
 				for (const task of removed) await repo.tasks.delete(task.id);
 				for (const id of await marks.readRoutines()) await repo.routines.delete(id);
+				for (const id of await marks.readTodos()) await repo.todos.delete(id);
 				await marks.write([]);
 				await marks.writeRoutines([]);
+				await marks.writeTodos([]);
 				if (removed.length) deps.planChanged?.([...new Set(removed.map((task) => task.date))]);
 				deps.hint({ type: 'routines' });
 				return removed.length;
@@ -330,6 +349,7 @@ export function localBackend(deps: LocalDeps): Backend {
 			async keep() {
 				await marks.write([]);
 				await marks.writeRoutines([]);
+				await marks.writeTodos([]);
 			}
 		},
 
