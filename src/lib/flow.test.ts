@@ -7,8 +7,11 @@ import {
 	heroFromFlow,
 	pinKey,
 	pinStart,
+	ASK_AGAIN_MINUTES,
+	AWAY_MINUTES,
+	EARLY_CHECK_MINUTES,
 	READY_MINUTES,
-	SESSION_MINUTES,
+	sessionTiming,
 	switchLine
 } from '#lib/flow.js';
 import { Priority } from '#lib/types.js';
@@ -30,7 +33,7 @@ describe('4.8 the morning (without the start call)', () => {
 	test('before the user did anything the hero is the morning and the first item shows in Next', () => {
 		const day = new SimDay([simTask(10, hm(8), 15, { title: 'Meds' })], studies());
 		const state = day.runTo(hm(7, 30));
-		expect(state.current).toEqual({ kind: 'away', since: null });
+		expect(state.current).toEqual({ kind: 'away', since: null, todo: null, from: null });
 		expect(state.present).toBe(false);
 		expect(state.next.map((task) => task.title)).toEqual(['Meds']);
 	});
@@ -142,6 +145,7 @@ describe('4.7 nothing left to do', () => {
 		day.start();
 		const state = day.runTo(hm(14, 1));
 		expect(state.current).toEqual({ kind: 'plan' });
+		expect(state.check).toBeNull();
 		expect(state.next.map((task) => task.title)).toEqual(['Dinner']);
 	});
 
@@ -217,15 +221,17 @@ describe('sessions and pins', () => {
 		expect(day.runTo(hm(9, 11)).current).toMatchObject({ kind: 'todo', todo: { id: 2 } });
 	});
 
-	test('the next session starts after its length and is pinned again', () => {
+	test('the next session starts with the answer to the check and is pinned again', () => {
 		const day = started();
-		day.runTo(hm(9, SESSION_MINUTES));
-		const state = day.peek();
+		day.diligent = false;
+		day.runTo(hm(9, 15));
+		day.answer(2, { before: 0, after: 10 });
+		const state = day.runTo(hm(9, 15));
 		if (state.current.kind !== 'todo') throw new Error('expected a to-do');
-		expect(state.current.session.start).toBe(at(hm(9, SESSION_MINUTES)));
+		expect(state.current.session.start).toBe(at(hm(9, 15)));
 		expect(day.log.filter((row) => row.type === 'pin').map((row) => row.key)).toEqual([
 			pinKey(at(hm(9))),
-			pinKey(at(hm(9, SESSION_MINUTES)))
+			pinKey(at(hm(9, 15)))
 		]);
 	});
 
@@ -270,7 +276,7 @@ describe('sessions and pins', () => {
 		const day = started();
 		day.runTo(hm(9, 5));
 		day.choose(4);
-		day.runTo(hm(9, 5 + SESSION_MINUTES));
+		day.runTo(hm(9, 5 + 15));
 		expect(day.peek().current).toMatchObject({ kind: 'todo', todo: { id: 4 } });
 		expect(day.peek().reason).toBe('Staying with it, it still needs the most time today.');
 	});
@@ -389,7 +395,7 @@ describe('calling it a day, night and undo', () => {
 		const start = day.start();
 		day.runTo(hm(9, 1));
 		day.undo(start.id);
-		expect(day.runTo(hm(9, 2)).current).toEqual({ kind: 'away', since: null });
+		expect(day.runTo(hm(9, 2)).current).toMatchObject({ kind: 'away', since: null });
 	});
 
 	test.each([
@@ -452,7 +458,7 @@ describe('the days of the properties', () => {
 		day.start();
 		let last: number | null = null;
 		let changes = 0;
-		day.runTo(hm(9, SESSION_MINUTES - 1), (_minute, state) => {
+		day.runTo(hm(9, 14), (_minute, state) => {
 			if (state.current.kind !== 'todo') return;
 			if (last !== null && last !== state.current.todo.id) changes++;
 			last = state.current.todo.id;
@@ -559,6 +565,7 @@ describe('currentTitle and switchLine', () => {
 			{ kind: 'time-up', ended: task, over: 1, current: null },
 			{ kind: 'ready', next: task },
 			{ kind: 'away', since: null },
+			{ kind: 'away', since: 700, todo, from: 1 },
 			{ kind: 'plan' },
 			{ kind: 'rest', why: 'night' },
 			{ kind: 'rest', why: 'called' }
@@ -581,7 +588,7 @@ describe('heroFromFlow', () => {
 
 	test('the morning is away until the user starts', () => {
 		const day = new SimDay([], studies());
-		expect(hero(day, hm(7, 30))).toEqual({ kind: 'away', since: null });
+		expect(hero(day, hm(7, 30))).toEqual({ kind: 'away', since: null, todo: null, minutes: 0 });
 	});
 
 	test('a session counts down to its planned end, with the next task for the line below', () => {
@@ -589,15 +596,43 @@ describe('heroFromFlow', () => {
 		expect(hero(day, hm(10, 40))).toMatchObject({
 			kind: 'todo',
 			todo: { id: 2 },
-			left: 20,
-			length: 30,
-			next: { title: 'Lunch' }
+			left: 5,
+			length: 15,
+			next: { title: 'Lunch' },
+			check: null
 		});
 	});
 
-	test('the next session starts on its own and the bar fills again', () => {
+	test('after the check the bar fills again for a full session', () => {
 		const day = started();
-		expect(hero(day, hm(11, 5))).toMatchObject({ kind: 'todo', left: 25, length: 30 });
+		expect(hero(day, hm(10, 50))).toMatchObject({
+			kind: 'todo',
+			left: 25,
+			length: 30,
+			check: null
+		});
+	});
+
+	test('when the session is over the hero carries the question', () => {
+		const day = started();
+		day.diligent = false;
+		expect(hero(day, hm(10, 46))).toMatchObject({
+			kind: 'todo',
+			left: 0,
+			check: { level: 0, todo: { id: 2 } }
+		});
+	});
+
+	test('away carries what was running and for how long, up to two hours', () => {
+		const day = started();
+		day.diligent = false;
+		expect(hero(day, hm(10, 52))).toMatchObject({
+			kind: 'away',
+			since: hm(10, 50),
+			todo: { id: 2 },
+			minutes: 22
+		});
+		expect(hero(day, hm(11, 5))).toMatchObject({ kind: 'away', minutes: 35 });
 	});
 
 	test('less than ten minutes before a task the hero says get ready, with the minutes left', () => {
@@ -624,7 +659,396 @@ describe('heroFromFlow', () => {
 		const day = new SimDay([], []);
 		day.jumpTo(hm(10));
 		day.start();
-		expect(hero(day, hm(10, 1))).toEqual({ kind: 'plan' });
+		expect(hero(day, hm(10, 1))).toEqual({ kind: 'plan', check: null });
 		expect(hero(day, hm(23, 30))).toEqual({ kind: 'rest', why: 'night' });
+	});
+});
+
+describe('the check at the end of a session', () => {
+	/** A user who does not answer by themselves: every answer in these tests is written by hand. */
+	const started = (minute = hm(9), tasks = [] as ReturnType<typeof simTask>[]) => {
+		const day = new SimDay(tasks, studies());
+		day.diligent = false;
+		day.jumpTo(minute);
+		day.start();
+		return day;
+	};
+	const todoSession = (day: SimDay) => {
+		const { current } = day.peek();
+		if (current.kind !== 'todo') throw new Error('expected a to-do');
+		return current.session;
+	};
+
+	test('the first session after Start is a warm-up of 15 minutes', () => {
+		const day = started();
+		day.runTo(hm(9, 5));
+		expect(todoSession(day)).toEqual({ start: at(hm(9)), end: at(hm(9, 15)), length: 15 });
+		expect(day.peek().check).toBeNull();
+	});
+
+	test('when it is over the to-do stays and the question is asked', () => {
+		const day = started();
+		const state = day.runTo(hm(9, 15));
+		expect(state.current).toMatchObject({ kind: 'todo', todo: { id: 2 } });
+		expect(state.check).toMatchObject({
+			todo: { id: 2 },
+			level: 0,
+			sessionStart: at(hm(9)),
+			sessionLength: 15,
+			keeps: 0,
+			early: false,
+			sizeAsked: false
+		});
+	});
+
+	test('a check nobody answers is asked again after two minutes', () => {
+		const day = started();
+		expect(day.runTo(hm(9, 14 + ASK_AGAIN_MINUTES)).check?.level).toBe(0);
+		expect(day.runTo(hm(9, 15 + ASK_AGAIN_MINUTES)).check?.level).toBe(1);
+	});
+
+	test('after five minutes the user is away since then, and the hero knows what was running', () => {
+		const day = started();
+		const state = day.runTo(hm(9, 15 + AWAY_MINUTES));
+		expect(state.current).toEqual({
+			kind: 'away',
+			since: hm(9, 20),
+			todo: expect.objectContaining({ id: 2 }),
+			from: at(hm(9))
+		});
+		expect(state.present).toBe(false);
+		expect(state.check).toBeNull();
+	});
+
+	test('while away nothing is asked and nothing is pinned', () => {
+		const day = started();
+		day.runTo(hm(10, 30));
+		expect(day.log.filter((row) => row.type === 'pin')).toHaveLength(1);
+		for (const { minute, state } of day.timeline)
+			if (minute >= hm(9, 20)) expect(state.current.kind).toBe('away');
+	});
+
+	test("I'm back starts a warm-up on a fresh pick", () => {
+		const day = started();
+		day.runTo(hm(10));
+		day.start();
+		const state = day.runTo(hm(10, 1));
+		expect(state.present).toBe(true);
+		expect(todoSession(day)).toMatchObject({ start: at(hm(10)), length: 15 });
+	});
+
+	test('"I was working on it" is a check after away and starts a warm-up too', () => {
+		const day = started();
+		day.runTo(hm(10));
+		day.answer(2, { before: 0, after: 20, minutes: 60, worked: true });
+		day.runTo(hm(10, 1));
+		expect(day.peek().present).toBe(true);
+		expect(todoSession(day).length).toBe(15);
+	});
+
+	test('an answer starts the next session, a full one after a warm-up', () => {
+		const day = started();
+		day.runTo(hm(9, 15));
+		day.answer(2, { before: 0, after: 10 });
+		day.runTo(hm(9, 16));
+		expect(todoSession(day)).toMatchObject({ start: at(hm(9, 15)), length: 30 });
+		expect(day.peek().check).toBeNull();
+	});
+
+	test('two good answers in a row make the next session 45 minutes', () => {
+		const day = started();
+		day.runTo(hm(9, 15));
+		day.answer(2, { before: 0, after: 10 });
+		day.runTo(hm(9, 45));
+		day.answer(2, { before: 10, after: 30 });
+		day.runTo(hm(9, 46));
+		expect(todoSession(day).length).toBe(45);
+	});
+
+	test('a slow answer is not a good one and ends the streak', () => {
+		const day = started();
+		day.runTo(hm(9, 15));
+		day.answer(2, { before: 0, after: 10 });
+		day.runTo(hm(9, 45));
+		day.answer(2, { before: 10, after: 10, slow: true });
+		day.runTo(hm(9, 46));
+		expect(todoSession(day).length).toBe(30);
+	});
+
+	test('after "I couldn\'t focus" the next session is a warm-up again', () => {
+		const day = started();
+		day.runTo(hm(9, 15));
+		day.answer(2, { before: 0, after: 10 });
+		day.runTo(hm(9, 45));
+		day.answer(2, { before: 10, after: 10, pace: 'unfocused', slow: true });
+		day.runTo(hm(9, 46));
+		expect(todoSession(day).length).toBe(15);
+	});
+
+	test('Keep going is counted in a row, and a number ends the count', () => {
+		const day = started();
+		day.runTo(hm(9, 15));
+		day.answer(2, { before: 0, after: 0, keep: true });
+		expect(day.runTo(hm(9, 45)).check?.keeps).toBe(1);
+		day.answer(2, { before: 0, after: 0, keep: true });
+		expect(day.runTo(hm(10, 30)).check?.keeps).toBe(2);
+		day.answer(2, { before: 0, after: 5 });
+		// Two good answers made the session 45 minutes long
+		expect(day.runTo(hm(11, 15)).check?.keeps).toBe(0);
+	});
+
+	test('"How big is all of it?" is asked once per to-do, Not sure included', () => {
+		const day = started();
+		day.runTo(hm(9, 15));
+		day.answer(2, { before: 0, after: 5, size: null });
+		expect(day.runTo(hm(9, 45)).check?.sizeAsked).toBe(true);
+		const other = started();
+		other.runTo(hm(9, 15));
+		expect(other.peek().check?.sizeAsked).toBe(false);
+	});
+
+	test('Do this now has its check too, on the chosen to-do', () => {
+		const day = started();
+		day.runTo(hm(9, 5));
+		day.choose(4);
+		const state = day.runTo(hm(9, 20));
+		expect(state.check).toMatchObject({ todo: { id: 4 }, sessionStart: at(hm(9, 5)) });
+	});
+
+	test('Done on the to-do starts a warm-up and takes the question with it', () => {
+		const day = started();
+		day.runTo(hm(9, 15));
+		day.finishTodo(2);
+		const state = day.runTo(hm(9, 16));
+		expect(state.check).toBeNull();
+		expect(todoSession(day).length).toBe(15);
+	});
+
+	test('a check is never asked outside My day', () => {
+		const day = new SimDay([], studies());
+		day.diligent = false;
+		day.jumpTo(hm(22, 30));
+		day.start();
+		const state = day.runTo(hm(23, 5));
+		expect(state.check).toBeNull();
+		expect(state.current).toEqual({ kind: 'rest', why: 'night' });
+	});
+});
+
+describe('4.6 nobody answers', () => {
+	test('Lunch still takes the screen of an away user, and the day stays away after it', () => {
+		const day = new SimDay([lunch()], studies());
+		day.diligent = false;
+		day.jumpTo(hm(10, 30));
+		day.start();
+		expect(day.runTo(hm(11, 5)).current.kind).toBe('away');
+		const lunchState = day.runTo(hm(12));
+		expect(lunchState.current).toMatchObject({ kind: 'task', task: { id: 10 } });
+		expect(lunchState.present).toBe(false);
+		expect(day.runTo(hm(13, 20)).current).toMatchObject({ kind: 'away', since: hm(10, 50) });
+	});
+
+	test("I'm back after lunch starts a warm-up", () => {
+		const day = new SimDay([lunch()], studies());
+		day.diligent = false;
+		day.jumpTo(hm(10, 30));
+		day.start();
+		day.runTo(hm(13, 20));
+		day.start();
+		day.runTo(hm(13, 21));
+		const state = day.peek();
+		expect(state.present).toBe(true);
+		if (state.current.kind !== 'todo') throw new Error('expected a to-do');
+		expect(state.current.session).toMatchObject({ start: at(hm(13, 20)), length: 15 });
+	});
+
+	test('Done on Lunch brings an away user back', () => {
+		const day = new SimDay([lunch()], studies());
+		day.diligent = false;
+		day.jumpTo(hm(10, 30));
+		day.start();
+		day.runTo(hm(12, 25));
+		day.finishTask(10);
+		const state = day.runTo(hm(12, 26));
+		expect(state.present).toBe(true);
+		expect(state.current.kind).toBe('todo');
+	});
+
+	test('a user who answers every check is never away, whatever the day holds', () => {
+		const day = new SimDay([lunch(), simTask(11, hm(15), 30)], studies());
+		day.jumpTo(hm(7, 30));
+		day.start();
+		day.runTo(hm(22, 59));
+		expect(kinds(day)).not.toContain('away');
+	});
+
+	test('every away is caught within five minutes of the question that went unanswered', () => {
+		const day = new SimDay([], studies());
+		day.diligent = false;
+		day.jumpTo(hm(9));
+		day.start();
+		day.runTo(hm(9, 30));
+		const asked = day.timeline.find(({ state }) => state.check)!;
+		const away = day.timeline.find(({ state }) => state.current.kind === 'away')!;
+		expect(away.minute - asked.minute).toBe(AWAY_MINUTES);
+	});
+
+	test('away never starts during a time-bound item, whatever the day looks like', () => {
+		fc.assert(
+			fc.property(
+				fc.array(
+					fc.record({
+						start: fc.integer({ min: hm(8), max: hm(21) }),
+						duration: fc.integer({ min: 5, max: 90 })
+					}),
+					{ maxLength: 4 }
+				),
+				fc.integer({ min: hm(7), max: hm(20) }),
+				(windows, startMinute) => {
+					const tasks = windows.map((window, index) =>
+						simTask(index + 1, window.start, window.duration)
+					);
+					const day = new SimDay(tasks, studies());
+					day.diligent = false;
+					day.jumpTo(startMinute);
+					day.start();
+					day.runTo(hm(22, 59));
+					for (const { minute, state } of day.timeline) {
+						const inside = tasks.some(
+							(task) => minute >= task.startTime && minute < task.startTime + task.duration
+						);
+						if (inside) expect(state.check).toBeNull();
+						if (state.current.kind === 'away' && state.current.since !== null)
+							for (const task of tasks)
+								expect(
+									state.current.since >= task.startTime &&
+										state.current.since < task.startTime + task.duration
+								).toBe(false);
+					}
+				}
+			)
+		);
+	});
+});
+
+describe('the early check and get ready', () => {
+	const lunchDay = () => {
+		const day = new SimDay([lunch()], studies());
+		day.diligent = false;
+		day.jumpTo(hm(10, 30));
+		day.start();
+		day.runTo(hm(10, 45));
+		day.answer(2, { before: 0, after: 0, keep: true });
+		day.runTo(hm(11, 15));
+		day.answer(2, { before: 0, after: 0, keep: true });
+		return day;
+	};
+
+	test('Lunch is 15 minutes away: the check comes now instead of at the end of the session, asked once', () => {
+		const day = lunchDay();
+		expect(day.runTo(hm(11, 44)).check).toBeNull();
+		const early = day.runTo(hm(12) - EARLY_CHECK_MINUTES).check;
+		expect(early).toMatchObject({ early: true, level: 0, todo: { id: 2 } });
+		expect(day.runTo(hm(11, 48)).check).toMatchObject({ early: true, level: 0 });
+	});
+
+	test('unanswered, it gives way to get ready, and nobody is away', () => {
+		const day = lunchDay();
+		const state = day.runTo(hm(11, 51));
+		expect(state.current).toMatchObject({ kind: 'ready' });
+		expect(state.check).toBeNull();
+		expect(state.present).toBe(true);
+		expect(day.runTo(hm(13, 31)).current.kind).toBe('todo');
+	});
+
+	test('a session that just began is not asked about the item that is coming', () => {
+		const day = lunchDay();
+		day.runTo(hm(11, 40));
+		day.answer(2, { before: 0, after: 5 });
+		expect(day.runTo(hm(11, 48)).check).toBeNull();
+	});
+
+	test('a warm-up that would end inside the get ready minutes is not asked at all', () => {
+		const day = new SimDay([lunch()], studies());
+		day.diligent = false;
+		day.jumpTo(hm(11, 36));
+		day.start();
+		for (let minute = hm(11, 36); minute < hm(11, 50); minute++)
+			expect(day.runTo(minute).check).toBeNull();
+	});
+});
+
+describe('the plan state is asked about too', () => {
+	const planDay = () => {
+		const day = new SimDay([simTask(10, hm(18), 60)]);
+		day.diligent = false;
+		day.jumpTo(hm(14));
+		day.start();
+		return day;
+	};
+
+	test('nothing to pick: "still there?" after the warm-up, asked again, then away', () => {
+		const day = planDay();
+		expect(day.runTo(hm(14, 14)).check).toBeNull();
+		expect(day.runTo(hm(14, 15)).check).toMatchObject({ todo: null, level: 0 });
+		expect(day.runTo(hm(14, 17)).check).toMatchObject({ todo: null, level: 1 });
+		expect(day.runTo(hm(14, 20)).current).toMatchObject({
+			kind: 'away',
+			since: hm(14, 20),
+			todo: null
+		});
+	});
+
+	test('answering it starts the next stretch', () => {
+		const day = planDay();
+		day.runTo(hm(14, 15));
+		day.start();
+		expect(day.runTo(hm(14, 16)).check).toBeNull();
+		expect(day.peek().current.kind).toBe('plan');
+	});
+});
+
+describe('sessionTiming', () => {
+	const min = (minutes: number) => minutes * 60_000;
+	const dayEnd = min(23 * 60);
+
+	test('with nothing coming: the check at the end, again after two minutes, away after five', () => {
+		expect(sessionTiming(min(600), min(30), Infinity, dayEnd)).toEqual({
+			end: min(630),
+			dueAt: min(630),
+			askAgainAt: min(632),
+			awayAt: min(635),
+			early: false
+		});
+	});
+
+	test('an item that is already running holds the minutes: no check at all', () => {
+		const timing = sessionTiming(min(600), min(30), min(600), dayEnd);
+		expect(timing).toMatchObject({ end: min(600), dueAt: null, awayAt: null });
+	});
+
+	test.each([
+		['the end of the session is before the get ready minutes', 600, 30, 660, 630, false],
+		['the end falls inside the get ready minutes', 670, 15, 690, null, false],
+		['the item comes before the end and the session is old enough', 600, 45, 640, 625, true],
+		['the item comes before the end but the session just began', 620, 45, 640, null, false]
+	])('%s', (_name, anchor, length, item, dueAt, early) => {
+		const timing = sessionTiming(min(anchor), min(length), min(item), dayEnd);
+		expect(timing.dueAt).toBe(dueAt === null ? null : min(dueAt));
+		expect(timing.early).toBe(early);
+	});
+
+	test('away never comes after get ready begins', () => {
+		// due at 630, item at 640: ready from 630, so no second ask and no away
+		const timing = sessionTiming(min(600), min(30), min(640), dayEnd);
+		expect(timing.askAgainAt).toBeNull();
+		expect(timing.awayAt).toBeNull();
+	});
+
+	test('a session never runs into the night', () => {
+		expect(sessionTiming(min(22 * 60 + 50), min(30), Infinity, dayEnd)).toMatchObject({
+			end: dayEnd,
+			dueAt: null
+		});
 	});
 });

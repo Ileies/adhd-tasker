@@ -37,7 +37,7 @@ const settings = { overrunMinutes: 15 };
 const stateAt = (tasks: RankTask[], now: number) => timeBoundState(rank(tasks, now), now, settings);
 /** The same as a hero, where no task at a time leaves the plan state. */
 const heroAt = (tasks: RankTask[], now: number): HeroState<RankTask, { title: string }> =>
-	stateAt(tasks, now) ?? { kind: 'plan' };
+	stateAt(tasks, now) ?? { kind: 'plan', check: null };
 
 describe('wrapUpWindow', () => {
 	test.each([
@@ -248,7 +248,8 @@ describe('heroFocus', () => {
 				left: 20,
 				length: 30,
 				line: null,
-				next: null
+				next: null,
+				check: null
 			})
 		).toBeNull();
 	});
@@ -273,14 +274,37 @@ describe('tabTitle', () => {
 		expect(tabTitle(heroAt([a, next], h(10, 2)))).toBe('Time is up - Write intro');
 	});
 
+	const ask = (level: 0 | 1) => ({
+		todo: study,
+		level,
+		dueAt: 0,
+		sessionStart: 0,
+		sessionLength: 30,
+		keeps: 0,
+		early: false,
+		sizeAsked: false
+	});
+	const session = {
+		kind: 'todo',
+		todo: study,
+		left: 18,
+		length: 30,
+		line: null,
+		next: null
+	} as const;
+
 	test.each([
+		['a session', { ...session, check: null }, '18 min - Study B'],
+		['a check', { ...session, left: 0, check: ask(0) }, 'How far? - Study B'],
+		['a check asked again', { ...session, left: 0, check: ask(1) }, 'Still there? - Study B'],
+		['plan', { kind: 'plan', check: null }, "Plan what's next"],
 		[
-			'a session',
-			{ kind: 'todo', todo: study, left: 18, length: 30, line: null, next: null },
-			'18 min - Study B'
+			'plan, asked if the user is there',
+			{ kind: 'plan', check: { ...ask(0), todo: null } },
+			'Still there?'
 		],
-		['plan', { kind: 'plan' }, "Plan what's next"],
-		['the morning', { kind: 'away', since: null }, 'Good morning'],
+		['the morning', { kind: 'away', since: null, todo: null, minutes: 0 }, 'Good morning'],
+		['away', { kind: 'away', since: 700, todo: study, minutes: 20 }, 'Away'],
 		['ready', { kind: 'ready', next: a, left: 8 }, 'Get ready'],
 		['a called day', { kind: 'rest', why: 'called' }, 'Day is done'],
 		['night', { kind: 'rest', why: 'night' }, 'Sleep']

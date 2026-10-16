@@ -4,6 +4,7 @@
  * taps of a scripted user: Start, Done, Do this now, Call it a day, undo. Times are UTC so tests never depend on the
  * machine's timezone.
  */
+import type { CheckData } from '#lib/checks.js';
 import {
 	flow,
 	type FlowLogRow,
@@ -17,7 +18,12 @@ import { Priority, TaskStatus } from '#lib/types.js';
 export const DAY = '2026-10-14';
 export const DAY_START_MS = Date.parse(`${DAY}T00:00:00Z`);
 
-export const SETTINGS: FlowSettings = { myDayStart: 7 * 60, myDayEnd: 23 * 60, overrunMinutes: 15 };
+export const SETTINGS: FlowSettings = {
+	myDayStart: 7 * 60,
+	myDayEnd: 23 * 60,
+	overrunMinutes: 15,
+	checkMinutes: 30
+};
 
 export const at = (minutes: number) => DAY_START_MS + minutes * 60_000;
 
@@ -58,6 +64,8 @@ export function simTodo(id: number, patch: Partial<FlowTodo> = {}): FlowTodo {
 export class SimDay {
 	log: FlowLogRow[] = [];
 	minute: number;
+	/** Answers every check at once. A test of Away sets this to `false`. */
+	diligent = true;
 	/** What was current at every minute that ran, `[minute, key]`, for asserting how a day went. */
 	readonly timeline: { minute: number; state: FlowState<FlowTask, FlowTodo> }[] = [];
 	private nextRow = 1;
@@ -85,11 +93,26 @@ export class SimDay {
 		});
 	}
 
-	/** One tick like a device's: pins what the engine asks for, then answers. */
+	/**
+	 * One tick like a device's: pins what the engine asks for. A diligent user answers a check the minute it is asked
+	 * (Keep going twice, then a few percent), a silent one never does.
+	 */
 	tick(): FlowState<FlowTask, FlowTodo> {
-		const state = this.peek();
-		if (state.pin && !this.log.some((row) => row.key === state.pin!.key))
-			this.write('pin', { todoId: state.pin.todoId, key: state.pin.key });
+		for (let round = 0; round < 4; round++) {
+			const state = this.peek();
+			if (state.pin && !this.log.some((row) => row.key === state.pin!.key))
+				this.write('pin', { todoId: state.pin.todoId, key: state.pin.key });
+			const { check } = this.peek();
+			if (!check || !this.diligent) break;
+			if (check.todo === null) this.start();
+			else {
+				const progress = check.todo.progress;
+				this.answer(
+					check.todo.id,
+					check.keeps < 2 ? { before: progress, after: progress, keep: true } : { after: progress }
+				);
+			}
+		}
 		return this.peek();
 	}
 
@@ -128,6 +151,10 @@ export class SimDay {
 	}
 
 	start = () => this.write('start');
+	/** The answer to a check: `after` is the progress said, the session counted `minutes`. */
+	answer(todoId: number, data: Partial<CheckData> & { after: number }) {
+		return this.write('check', { todoId, data: { before: 0, minutes: 30, ...data } });
+	}
 	choose = (todoId: number) => this.write('choose', { todoId });
 	callItADay = () => this.write('rest');
 	undo = (ref: number) => this.write('undo', { data: { ref } });

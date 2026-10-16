@@ -54,6 +54,25 @@ export interface CheckData {
 	slow?: boolean;
 }
 
+/** A question waiting for an answer, as the flow engine hands it to the hero. */
+export interface Check<D> {
+	/** The to-do the question is about. `null` in the plan state: nothing to ask, only "still there?". */
+	todo: D | null;
+	/** 0: asked. 1: asked again after two minutes ("Still there?"). */
+	level: 0 | 1;
+	/** Epoch ms the question was first asked. */
+	dueAt: number;
+	/** Epoch ms the session this check closes started, and the minutes it was meant to run. */
+	sessionStart: number;
+	sessionLength: number;
+	/** Keep going answers in a row so far. */
+	keeps: number;
+	/** Asked early: a time-bound item is about to start. Asked once. */
+	early: boolean;
+	/** "How big is all of it?" was asked for this to-do already, Not sure included. */
+	sizeAsked: boolean;
+}
+
 export const isPace = (value: unknown): value is Pace => PACES.includes(value as Pace);
 
 const round5 = (value: number) => Math.round(value / 5) * 5;

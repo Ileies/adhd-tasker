@@ -1,3 +1,4 @@
+import type { Check } from '#lib/checks.js';
 import { formatMinutes } from '#lib/format.js';
 import type { RankTask, Ranking } from '#lib/priority.js';
 
@@ -16,14 +17,25 @@ export type HeroState<T extends RankTask, D = never> =
 	| { kind: 'wrapping-up'; task: T; left: number; next: T | null }
 	/** `ended` ran out. With a `current` the hero shows that task under a transition bar, without one it shows time up itself. */
 	| { kind: 'time-up'; ended: T; over: number; current: T | null; next: T | null }
-	/** A session on a to-do: `left` of its `length` minutes. */
-	| { kind: 'todo'; todo: D; left: number; length: number; line: string | null; next: T | null }
+	/** A session on a to-do: `left` of its `length` minutes. With a `check` the session is over and the hero asks how far it is. */
+	| {
+			kind: 'todo';
+			todo: D;
+			left: number;
+			length: number;
+			line: string | null;
+			next: T | null;
+			check: Check<D> | null;
+	  }
 	/** Less than ten minutes before `next`, a time-bound item: nothing new is started. */
 	| { kind: 'ready'; next: T; left: number }
-	/** The day has not started, or the user is away. `since` is null in the morning. */
-	| { kind: 'away'; since: number | null }
-	/** Nothing is open to do: the hero asks what is next. */
-	| { kind: 'plan' }
+	/**
+	 * The day has not started (`since` is null, the morning), or a check went unanswered. `todo` is what the last session
+	 * was on and `minutes` how long it has been running, for "I was working on it".
+	 */
+	| { kind: 'away'; since: number | null; todo: D | null; minutes: number }
+	/** Nothing is open to do: the hero asks what is next, and after a while whether the user is still there. */
+	| { kind: 'plan'; check: Check<D> | null }
 	| { kind: 'rest'; why: 'night' | 'called' };
 
 export interface HeroSettings {
@@ -90,6 +102,8 @@ export function tabTitle<T extends RankTask, D extends { title: string }>(
 		case 'wrapping-up':
 			return `${formatMinutes(hero.left)} - ${hero.task.title}`;
 		case 'todo':
+			if (hero.check)
+				return `${hero.check.level === 1 ? 'Still there?' : 'How far?'} - ${hero.todo.title}`;
 			return `${formatMinutes(hero.left)} - ${hero.todo.title}`;
 		case 'time-up':
 			return `Time is up - ${hero.ended.title}`;
@@ -98,7 +112,7 @@ export function tabTitle<T extends RankTask, D extends { title: string }>(
 		case 'away':
 			return hero.since === null ? 'Good morning' : 'Away';
 		case 'plan':
-			return "Plan what's next";
+			return hero.check ? 'Still there?' : "Plan what's next";
 		case 'rest':
 			return hero.why === 'night' ? 'Sleep' : 'Day is done';
 	}
