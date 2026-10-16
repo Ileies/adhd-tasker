@@ -6,6 +6,7 @@
 import { checkPatch, isSlow, parseCheckData, type CheckData } from '#lib/checks.js';
 import { AssistantError, type Ctx } from '#lib/core/context.js';
 import type { FlowRow, FlowType } from '#lib/core/repo.js';
+import { parseStepData, skipPatch } from '#lib/struggle.js';
 import { todayIn } from '#lib/time.js';
 
 export const FLOW_TYPES: readonly FlowType[] = [
@@ -17,6 +18,7 @@ export const FLOW_TYPES: readonly FlowType[] = [
 	'stuck',
 	'break',
 	'back',
+	'face',
 	'rest',
 	'undo'
 ];
@@ -63,6 +65,26 @@ async function applyCheck(ctx: Ctx, todoId: number | null, raw: object): Promise
 }
 
 /**
+ * Pushing a to-do away counts a skip (and the day of the first one), a Face it answer ends the count. The to-do must be
+ * open, the same as for a check.
+ */
+async function applyStep(
+	ctx: Ctx,
+	type: 'rotate' | 'face',
+	todoId: number | null,
+	date: string
+): Promise<void> {
+	if (todoId === null) throw new AssistantError(`a ${type} is about a to-do`, 400);
+	const todo = await ctx.repo.todos.get(todoId);
+	if (!todo || todo.status !== 'open') throw new AssistantError('To-do not found', 404);
+	await ctx.repo.todos.update(
+		todoId,
+		type === 'rotate' ? skipPatch(todo, date) : { skips: 0, skipSince: null }
+	);
+	ctx.hint({ type: 'todos' });
+}
+
+/**
  * Writes one answer. `body` is `{ type, todoId?, taskId?, data?, key?, at? }`. A pin needs its `pin:<ms>` key,
  * every other type is a new row each time. Answers `null` when the key is already logged (two screens, one pick).
  */
@@ -85,6 +107,8 @@ export async function recordFlow(ctx: Ctx, body: unknown): Promise<FlowRow | nul
 		if (typeof input.key !== 'string' || !PIN_KEY.test(input.key))
 			throw new AssistantError('a pin needs a key like pin:<ms>', 400);
 		key = input.key;
+		// A pin says only whether its session is a Face it session
+		data = (data as Record<string, unknown>).face === true ? { face: true } : {};
 	}
 
 	const serverNow = ctx.now();
@@ -95,10 +119,26 @@ export async function recordFlow(ctx: Ctx, body: unknown): Promise<FlowRow | nul
 			? Math.round(input.at)
 			: serverNow;
 	const { timezone } = await ctx.repo.settings.get();
+	const date = todayIn(timezone, new Date(at));
+
+	if (
+		type === 'rotate' ||
+		type === 'break' ||
+		type === 'stuck' ||
+		type === 'face' ||
+		type === 'back'
+	) {
+		const parsed = parseStepData(type, data as Record<string, unknown>);
+		if (!parsed.ok) throw new AssistantError(parsed.error, 400);
+		data = parsed.value;
+		if (type === 'rotate' || type === 'face') await applyStep(ctx, type, todoId, date);
+		else if (type === 'stuck' && todoId !== null && !(await ctx.repo.todos.get(todoId)))
+			throw new AssistantError('To-do not found', 404);
+	}
 
 	const row = await ctx.repo.flow.insert({
 		at,
-		date: todayIn(timezone, new Date(at)),
+		date,
 		type,
 		todoId,
 		taskId: idOf(input.taskId, 'taskId'),

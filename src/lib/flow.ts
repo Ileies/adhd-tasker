@@ -10,7 +10,11 @@
  * Time-bound items first, then sessions on the to-do `pick()` chooses. A session starts at a point of the user (Start,
  * a check answered, Done, Do this now) or when a time-bound item ends, and runs for the check interval. Then the check
  * is due: "How far is Study B?". Unanswered it is asked again after two minutes and after five the user is away.
- * Presence is not stored, the fold below derives it. Breaks and rotation come with the next phase.
+ * Presence is not stored, the fold below derives it.
+ *
+ * Breaks and rotations are answers too: when a struggle happens the device decides what to do about it
+ * (`struggle.ts`) and writes a `rotate` or `break` row, so this replay never has to guess it again. A rotation starts a
+ * warm-up session on another to-do (the one left cools down), a break is a stretch of its own that ends with a question.
  */
 import {
 	ANSWER_GRACE_MINUTES,
@@ -18,12 +22,25 @@ import {
 	sessionMinutes,
 	workedMinutes,
 	type Check,
+	type CheckAbout,
 	type CheckData
 } from '#lib/checks.js';
 import type { FlowRow } from '#lib/core/repo.js';
 import { TIME_UP_WINDOWS, timeBoundState, type HeroState } from '#lib/now.js';
-import { pick, type PickTodo } from '#lib/pick.js';
+import { LOW_ENERGY_LINE, dayCostLine, pick, type PickTodo } from '#lib/pick.js';
 import { rank, type RankTask } from '#lib/priority.js';
+import {
+	FACE_IT_MINUTES,
+	OFFER_AFTER_MINUTES,
+	coolingAt,
+	faceLine,
+	heldStep,
+	lowEnergyAt,
+	needsFaceIt,
+	stepsOf,
+	STRUGGLES,
+	type Struggle
+} from '#lib/struggle.js';
 import { TaskStatus } from '#lib/types.js';
 
 /** Less than this many minutes before a time-bound item nothing new is started: the hero says get ready. */
@@ -38,6 +55,8 @@ export const ASK_AGAIN_MINUTES = 2;
 export const AWAY_MINUTES = 5;
 
 const MINUTE_MS = 60_000;
+/** An answer and the step the app takes because of it are written a moment apart: this counts as one moment. */
+const SAME_MOMENT_MS = 1000;
 
 export type FlowTask = RankTask & { completedAt: number | null };
 export type FlowTodo = PickTodo & { completedAt: number | null };
@@ -82,7 +101,23 @@ export type Current<T, D> =
 	| { kind: 'task'; task: T; left: number; wrapping: boolean }
 	/** `ended` ran out unanswered. With a `current` that task shows under a transition bar. */
 	| { kind: 'time-up'; ended: T; over: number; current: T | null }
-	| { kind: 'todo'; todo: D; session: Session }
+	/** `face`: the to-do was pushed away again and again, this session is its ten minutes with nothing to switch to. */
+	| { kind: 'todo'; todo: D; session: Session; face: boolean }
+	/**
+	 * A break, `start` to `end` in epoch ms. Once it is over the check asks what is next: `todo` is where it goes back to
+	 * (`null` while the break runs). `activity` is an id of `breaks.ts`, `last`: the break the ladder ends the day's focus with.
+	 */
+	| {
+			kind: 'break';
+			start: number;
+			end: number;
+			minutes: number;
+			activity: string;
+			last: boolean;
+			/** The row of the break: undoing it is "Keep working instead". */
+			rowId: number;
+			todo: D | null;
+	  }
 	/** Less than ten minutes before the next time-bound item. */
 	| { kind: 'ready'; next: T }
 	/**
@@ -104,10 +139,17 @@ export interface FlowState<T, D> {
 	missed: T[];
 	/** Why this is current, one line, `null` when the user chose it or nothing needs saying. */
 	reason: string | null;
-	/** A session whose to-do nobody pinned yet. The first device or tick to see it writes this row. */
-	pin: { key: string; todoId: number } | null;
+	/** A session whose to-do nobody pinned yet. The first device or tick to see it writes this row, `face` goes in its data. */
+	pin: { key: string; todoId: number; face: boolean } | null;
 	/** The user is here: they started the day and no check has gone unanswered since. */
 	present: boolean;
+	/**
+	 * "Give it 5 minutes first": a step that waits until `until` (epoch ms) unless the user does something before.
+	 * `rowId` is the row to undo to stay on the to-do.
+	 */
+	held: { until: number; step: 'rotate' | 'break'; rowId: number } | null;
+	/** What Call it a day costs for the to-do of this session, `null` when it costs nothing. */
+	cost: string | null;
 }
 
 /** `pin:<session start ms>`, with `:<n>` when the first pins of that session point at a to-do that is gone. */
@@ -179,7 +221,9 @@ export function sessionTiming(
 	anchor: number,
 	lengthMs: number,
 	cut: number,
-	dayEnd: number
+	dayEnd: number,
+	/** A break is not asked about early: the item simply takes the minutes. */
+	allowEarly = true
 ): SessionTiming {
 	const natural = anchor + lengthMs;
 	const end = Math.min(natural, cut, dayEnd);
@@ -188,7 +232,7 @@ export function sessionTiming(
 
 	const readyAt = cut - READY_MINUTES * MINUTE_MS;
 	const earlyAt = cut - EARLY_CHECK_MINUTES * MINUTE_MS;
-	if (earlyAt < natural && earlyAt - anchor >= EARLY_CHECK_GAP_MINUTES * MINUTE_MS)
+	if (allowEarly && earlyAt < natural && earlyAt - anchor >= EARLY_CHECK_GAP_MINUTES * MINUTE_MS)
 		return earlyAt < dayEnd ? { ...none, dueAt: earlyAt, early: true } : none;
 	if (natural >= readyAt || natural >= dayEnd) return none;
 
@@ -212,6 +256,10 @@ interface Stretch {
 	good: number;
 	/** Keep going answers in a row up to here. */
 	keeps: number;
+	/** A break instead of a session on a to-do. */
+	brk: { minutes: number; activity: string; last: boolean; rowId: number } | null;
+	/** The session is a Face it session, its pin says so. */
+	face: boolean;
 }
 
 interface Point {
@@ -235,17 +283,20 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 	const undone = new Set(input.log.filter((row) => row.type === 'undo').map((row) => row.data.ref));
 	const rows = input.log.filter((row) => row.type !== 'undo' && !undone.has(row.id));
 	const undoRows = input.log.filter((row) => row.type === 'undo');
-	const startRows = rows.filter((row) => row.type === 'start' || row.type === 'choose');
+	// What the user answered that begins a stretch: start, choose, back, a face it answer
+	const startRows = rows.filter((row) => ['start', 'choose', 'back', 'face'].includes(row.type));
 	const checkRows = rows.filter((row) => row.type === 'check');
 
 	const doneAts = [...tasks, ...todos]
 		.filter((item) => isDone(item) && inDay(item.completedAt))
 		.map((item) => item.completedAt!);
+	// Rotations and breaks that are in force, a held one only while the user did nothing else meanwhile
+	const steps = stepsOf(rows, doneAts);
 
 	const ranking = rank(tasks, now);
 	const timeBound = timeBoundState(ranking, now, settings);
 	const base = { next: ranking.upcoming, missed: ranking.missed, check: null };
-	const none = { reason: null, pin: null };
+	const none = { reason: null, pin: null, held: null, cost: null };
 
 	// The time-bound items as the sessions see them: where they start, when they are over, when they were finished
 	const items = tasks.map((task) => ({
@@ -274,6 +325,8 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 	const points: Point[] = [
 		...startRows.map((row) => ({ at: row.at, user: true, row })),
 		...checkRows.map((row) => ({ at: row.at, user: true, row })),
+		// A rotation or a break counts from the minute it takes effect, which is later than the tap when it is held
+		...steps.map((step) => ({ at: step.at, user: true, row: step.row })),
 		...doneAts.map((doneAt) => ({ at: doneAt, user: true, row: null })),
 		...undoRows.map((row) => ({ at: row.at, user: false, row })),
 		// A task that ran out unanswered gives the screen back when its time up is over
@@ -285,13 +338,44 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 		.sort((a, b) => a.at - b.at || Number(b.user) - Number(a.user));
 
 	const lengthOf = (stretch: Stretch) =>
-		sessionMinutes({ checkMinutes: settings.checkMinutes, warm: stretch.warm, good: stretch.good });
+		stretch.brk
+			? stretch.brk.minutes
+			: stretch.face
+				? FACE_IT_MINUTES
+				: sessionMinutes({
+						checkMinutes: settings.checkMinutes,
+						warm: stretch.warm,
+						good: stretch.good
+					});
 	const timingOf = (stretch: Stretch) =>
-		sessionTiming(stretch.anchor, lengthOf(stretch) * MINUTE_MS, cutOf(stretch.anchor), myDayEnd);
+		sessionTiming(
+			stretch.anchor,
+			lengthOf(stretch) * MINUTE_MS,
+			cutOf(stretch.anchor),
+			myDayEnd,
+			stretch.brk === null
+		);
+	/** A session whose pin says Face it. */
+	const faceAt = (anchor: number) =>
+		rows.some(
+			(row) => row.type === 'pin' && pinStart(row.key) === anchor && row.data.face === true
+		);
+	/** A warm-up stretch from `anchor`: back from a break, a rotation, a Done, a time-bound item that ended. */
+	const warmFrom = (anchor: number, patch: Partial<Stretch> = {}): Stretch => ({
+		anchor,
+		warm: true,
+		good: 0,
+		keeps: 0,
+		brk: null,
+		face: faceAt(anchor),
+		...patch
+	});
 
 	let present = false as boolean;
 	let stretch = null as Stretch | null;
 	let awayAt = null as number | null;
+	/** Since when the user has been here without a break or a pause: the offer of a break counts from it. */
+	let presentSince = 0;
 	/** Every stretch of the day, to count the time of its session. `away`: nobody answered its check. */
 	const stretches: { anchor: number; length: number; away: boolean }[] = [];
 
@@ -312,23 +396,35 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 	for (const point of points) {
 		settle(point.at);
 		if (!point.user) {
-			if (present) begin({ anchor: point.at, warm: true, good: 0, keeps: 0 });
+			if (present) begin(warmFrom(point.at));
 			continue;
 		}
 		const before: Stretch | null = present ? stretch : null;
 		const data = point.row?.type === 'check' ? (point.row.data as Partial<CheckData>) : null;
+		if (!present) presentSince = point.at;
 		present = true;
 		awayAt = null;
-		begin(
-			data
-				? {
-						anchor: point.at,
-						warm: data.pace === 'unfocused' || data.worked === true,
-						good: isGoodAnswer(data) && data.worked !== true ? (before?.good ?? 0) + 1 : 0,
-						keeps: data.keep === true ? (before?.keeps ?? 0) + 1 : 0
+		if (point.row?.type === 'break') {
+			const minutes = point.row.data.minutes;
+			begin(
+				warmFrom(point.at, {
+					brk: {
+						minutes: typeof minutes === 'number' && minutes >= 1 ? Math.round(minutes) : 10,
+						activity: String(point.row.data.activity ?? ''),
+						last: point.row.data.last === true,
+						rowId: point.row.id
 					}
-				: { anchor: point.at, warm: true, good: 0, keeps: 0 }
-		);
+				})
+			);
+		} else if (data) {
+			begin(
+				warmFrom(point.at, {
+					warm: data.pace === 'unfocused' || data.worked === true,
+					good: isGoodAnswer(data) && data.worked !== true ? (before?.good ?? 0) + 1 : 0,
+					keeps: data.keep === true ? (before?.keeps ?? 0) + 1 : 0
+				})
+			);
+		} else begin(warmFrom(point.at));
 	}
 	settle(nowMs);
 
@@ -365,12 +461,13 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 	if (lastRest && (!lastChoice || lastChoice.at < lastRest.at))
 		return { ...rest, present, current: { kind: 'rest', why: 'called' } };
 
-	// Sessions so far today: what was pinned or chosen
+	// Sessions so far today: what was pinned or chosen. A pin of a session that never happened (its rotation was undone) is no session.
+	const anchors = new Set(stretches.map((entry) => entry.anchor));
 	const sessionRows = rows
 		.flatMap((row) => {
 			const rowStart =
 				row.type === 'choose' ? row.at : row.type === 'pin' ? pinStart(row.key) : null;
-			return rowStart === null || row.todoId === null
+			return rowStart === null || row.todoId === null || !anchors.has(rowStart)
 				? []
 				: [{ start: rowStart, todoId: row.todoId, at: row.at }];
 		})
@@ -422,7 +519,6 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 	const timing = timingOf(running);
 	const length = lengthOf(running);
 	const start = running.anchor;
-	const session: Session = { start, end: timing.end, length };
 
 	// The minutes each to-do has had today: from its pin to the next point, never more than its length plus the grace
 	const lengths = new Map(stretches.map((entry) => [entry.anchor, entry]));
@@ -455,70 +551,176 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 		if (row.todoId !== null && row.data.worked === true && typeof row.data.minutes === 'number')
 			spent.set(row.todoId, (spent.get(row.todoId) ?? 0) + row.data.minutes);
 
+	/** The session of the stretch as it is, or as a Face it session when the pick says so before its pin is written. */
+	const frameFor = (face: boolean) => {
+		if (!face || running.face) return { timing, length, end: timing.end };
+		const faced = sessionTiming(start, FACE_IT_MINUTES * MINUTE_MS, cutOf(start), myDayEnd);
+		return { timing: faced, length: FACE_IT_MINUTES, end: faced.end };
+	};
+
+	// The break offered after a long stretch of work: counted from when the user came, the last break or the last offer
+	const lastBreakEnd = Math.max(
+		0,
+		...steps
+			.filter((step) => step.row.type === 'break' && step.at <= nowMs)
+			.map((step) => step.at + Number(step.row.data.minutes ?? 0) * MINUTE_MS)
+	);
+	const lastOffer = checkRows.findLast((row) => row.data.offered === true)?.at ?? 0;
+	const workedSince = Math.min(nowMs, Math.max(presentSince, lastBreakEnd, lastOffer));
+
 	/** The question, once its time came. */
-	const checkFor = (todo: D | null): Check<D> | null => {
-		if (timing.dueAt === null || nowMs < timing.dueAt) return null;
+	const checkFor = (
+		todo: D | null,
+		about: CheckAbout,
+		frame: ReturnType<typeof frameFor>
+	): Check<D> | null => {
+		const { timing: due } = frame;
+		if (due.dueAt === null || nowMs < due.dueAt) return null;
 		return {
+			about,
 			todo,
-			level: timing.askAgainAt !== null && nowMs >= timing.askAgainAt ? 1 : 0,
-			dueAt: timing.dueAt,
+			level: due.askAgainAt !== null && nowMs >= due.askAgainAt ? 1 : 0,
+			dueAt: due.dueAt,
 			sessionStart: start,
-			sessionLength: length,
-			keeps: running.keeps,
-			early: timing.early,
+			sessionLength: frame.length,
+			keeps: about === 'progress' ? running.keeps : 0,
+			early: due.early,
 			sizeAsked:
 				todo !== null &&
-				checkRows.some((row) => row.todoId === todo.id && row.data.size !== undefined)
+				checkRows.some((row) => row.todoId === todo.id && row.data.size !== undefined),
+			offerBreak:
+				about === 'progress' &&
+				todo !== null &&
+				!due.early &&
+				nowMs - workedSince >= OFFER_AFTER_MINUTES * MINUTE_MS
+		};
+	};
+
+	const held = heldStep(steps, nowMs);
+	const heldNow = held
+		? {
+				until: held.until,
+				step: held.step.row.type as 'rotate' | 'break',
+				rowId: held.step.row.id
+			}
+		: null;
+
+	// A break: the activity while it runs, then the question what is next
+	if (running.brk) {
+		const { brk } = running;
+		const end = start + brk.minutes * MINUTE_MS;
+		const over = nowMs >= end;
+		const frame = frameFor(false);
+		// Where it goes back to: nothing is cooling down any more, a break ended every cool down
+		const next = over ? ((pickFor(nowMs)?.todo as D | undefined) ?? null) : null;
+		return {
+			...rest,
+			present,
+			check: over ? checkFor(next, brk.last ? 'day' : 'break', frame) : null,
+			current: {
+				kind: 'break',
+				start,
+				end,
+				minutes: brk.minutes,
+				activity: brk.activity,
+				last: brk.last,
+				rowId: brk.rowId,
+				todo: next
+			}
+		};
+	}
+
+	/** Where a session was rotated to, the line says what was left. */
+	const rotation = steps.find((step) => step.row.type === 'rotate' && step.at === start);
+	const leftTitle = rotation ? todos.find((todo) => todo.id === rotation.row.todoId)?.title : null;
+
+	/** The state of a session on `todo`. */
+	const sessionOn = (
+		todo: D,
+		line: string | null,
+		pin: FlowState<T, D>['pin'],
+		face: boolean
+	): FlowState<T, D> => {
+		const frame = frameFor(face);
+		const left = rotation && rotation.row.todoId !== todo.id ? leftTitle : null;
+		return {
+			...rest,
+			present,
+			reason: face
+				? faceLine(todo.title, todo.skips ?? 0)
+				: left
+					? `Switched from ${left}. ${line === LOW_ENERGY_LINE ? line : 'It comes back later.'}`
+					: line,
+			check: checkFor(todo, face ? 'face' : 'progress', frame),
+			pin,
+			held: heldNow,
+			cost: face ? null : dayCostLine(todo, date, spent.get(todo.id) ?? 0),
+			current: {
+				kind: 'todo',
+				todo,
+				session: { start, end: frame.end, length: frame.length },
+				face
+			}
 		};
 	};
 
 	// Chosen by the user at this very moment ("Do this now")
 	const choice = rows.find((row) => row.type === 'choose' && row.at === start);
 	const chosen = open(choice?.todoId ?? null);
-	if (choice && chosen)
-		return {
-			...rest,
-			present,
-			check: checkFor(chosen as D),
-			current: { kind: 'todo', todo: chosen as D, session }
-		};
+	if (choice && chosen) return sessionOn(chosen as D, null, null, false);
 
 	// Pinned: the first pin of this session that still points at an open to-do wins
 	const pinned = pinnedFor(start);
 	if (pinned.todo) {
 		const decided = pickFor(start);
-		return {
-			...rest,
-			present,
-			reason: decided && decided.todo.id === pinned.todo.id ? decided.line : null,
-			check: checkFor(pinned.todo),
-			current: { kind: 'todo', todo: pinned.todo, session }
-		};
+		return sessionOn(
+			pinned.todo,
+			decided && decided.todo.id === pinned.todo.id ? decided.line : null,
+			null,
+			running.face
+		);
 	}
 
 	const decided = pickFor(start);
-	if (!decided) return { ...rest, present, check: checkFor(null), current: { kind: 'plan' } };
-	return {
-		...rest,
-		present,
-		reason: decided.line,
-		check: checkFor(decided.todo as D),
-		pin: { key: pinKey(start, pinned.attempt), todoId: decided.todo.id },
-		current: { kind: 'todo', todo: decided.todo as D, session }
-	};
+	if (!decided)
+		return {
+			...rest,
+			present,
+			check: checkFor(null, 'progress', frameFor(false)),
+			current: { kind: 'plan' }
+		};
+	const face = needsFaceIt(decided.todo, date);
+	return sessionOn(
+		decided.todo as D,
+		decided.line,
+		{ key: pinKey(start, pinned.attempt), todoId: decided.todo.id, face },
+		face
+	);
 
 	/** The pick for the session starting at `sessionStart`, continuing with the to-do of the session before. */
 	function pickFor(sessionStart: number) {
 		const before = sessionRows.findLast((entry) => entry.start < sessionStart);
+		// What the answer that began this session brought with it follows it by a moment
+		const upTo = sessionStart + SAME_MOMENT_MS;
+		const between = (time: number) => before !== undefined && time >= before.start && time <= upTo;
+		// A session that ended in a struggle does not continue: nobody should have to choose what comes next, and not the
+		// same. It is the step the app took that says so, so a user who undid it stays on the to-do.
+		const struggled = steps.some(
+			(step) =>
+				between(step.at) &&
+				(step.row.type === 'rotate' || STRUGGLES.includes(step.row.data.why as Struggle))
+		);
 		return pick({
 			todos,
 			date,
 			now,
 			myDayEnd: settings.myDayEnd,
 			spent,
-			previousId: before?.todoId ?? null,
+			previousId: struggled ? null : (before?.todoId ?? null),
 			freeLeft: freeBetween(tasks, now, settings.myDayEnd),
-			freeUntil: (minute) => freeBetween(tasks, now, minute)
+			freeUntil: (minute) => freeBetween(tasks, now, minute),
+			cooling: coolingAt(steps, sessionStart),
+			shortOnly: lowEnergyAt(steps, sessionStart)
 		});
 	}
 }
@@ -553,9 +755,23 @@ export function heroFromFlow<T extends FlowTask, D>(
 				length: Math.max(1, Math.round((session.end - session.start) / MINUTE_MS)),
 				line: state.reason,
 				next,
-				check: state.check
+				check: state.check,
+				face: current.face,
+				held: state.held,
+				cost: state.cost
 			};
 		}
+		case 'break':
+			return {
+				kind: 'break',
+				todo: current.todo,
+				left: Math.max(0, Math.ceil((current.end - nowMs) / MINUTE_MS)),
+				minutes: current.minutes,
+				activity: current.activity,
+				last: current.last,
+				rowId: current.rowId,
+				check: state.check
+			};
 		case 'ready':
 			return { kind: 'ready', next: current.next, left: current.next.startTime - now };
 		case 'away':
@@ -598,6 +814,8 @@ export function switchLine(state: Pick<FlowState<unknown, unknown>, 'current' | 
 			return 'Time ran out for the previous task';
 		case 'todo':
 			return state.reason ?? 'The next session started';
+		case 'break':
+			return current.todo ? 'The break is over' : 'A break started';
 		case 'ready':
 			return 'The next item is about to start';
 		case 'away':

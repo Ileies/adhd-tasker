@@ -85,6 +85,98 @@ describe('recordFlow', () => {
 	});
 });
 
+describe('recordFlow, rotations, breaks and Face it', () => {
+	const made = async () => {
+		const set = await testCtx();
+		const todo = await createTodo(set.ctx, { title: 'Study B' });
+		return { ...set, todo };
+	};
+
+	test('a rotation counts a skip on the to-do and the day of the first one', async () => {
+		const { ctx, repo, todo } = await made();
+		await recordFlow(ctx, { type: 'rotate', todoId: todo.id, data: { why: 'unfocused' } });
+		expect(await repo.todos.get(todo.id)).toMatchObject({ skips: 1, skipSince: '2026-10-14' });
+		await recordFlow(ctx, { type: 'rotate', todoId: todo.id, data: { why: 'else' } });
+		expect(await repo.todos.get(todo.id)).toMatchObject({ skips: 2, skipSince: '2026-10-14' });
+	});
+
+	test('moving forward ends the count', async () => {
+		const { ctx, repo, todo } = await made();
+		await recordFlow(ctx, { type: 'rotate', todoId: todo.id, data: { why: 'else' } });
+		await recordFlow(ctx, {
+			type: 'check',
+			todoId: todo.id,
+			data: { before: 0, after: 20, minutes: 30 }
+		});
+		expect(await repo.todos.get(todo.id)).toMatchObject({ skips: 0, skipSince: null });
+	});
+
+	test('a Face it answer ends the count too', async () => {
+		const { ctx, repo, todo } = await made();
+		await recordFlow(ctx, { type: 'rotate', todoId: todo.id, data: { why: 'else' } });
+		await recordFlow(ctx, { type: 'face', todoId: todo.id, data: { answer: 'fine' } });
+		expect(await repo.todos.get(todo.id)).toMatchObject({ skips: 0, skipSince: null });
+	});
+
+	test('a break is stored with its minutes and activity, unknown keys are dropped', async () => {
+		const { ctx } = await made();
+		const row = await recordFlow(ctx, {
+			type: 'break',
+			data: { minutes: 10, activity: 'water', why: 'asked', secret: 'x' }
+		});
+		expect(row?.data).toEqual({ minutes: 10, activity: 'water', why: 'asked' });
+	});
+
+	test('"I\'m back" and a stuck tap are stored', async () => {
+		const { ctx, todo } = await made();
+		expect(await recordFlow(ctx, { type: 'back' })).toMatchObject({ type: 'back', data: {} });
+		const stuck = await recordFlow(ctx, {
+			type: 'stuck',
+			todoId: todo.id,
+			data: { reason: 'cant-start' }
+		});
+		expect(stuck?.data).toEqual({ reason: 'cant-start' });
+	});
+
+	test('a pin keeps only whether its session is Face it', async () => {
+		const { ctx } = await made();
+		const row = await recordFlow(ctx, {
+			type: 'pin',
+			todoId: 1,
+			key: 'pin:5',
+			data: { face: true, extra: 1 }
+		});
+		expect(row?.data).toEqual({ face: true });
+	});
+
+	test.each([
+		[
+			'a rotation of a to-do that does not exist',
+			{ type: 'rotate', todoId: 99, data: { why: 'else' } },
+			404
+		],
+		['a rotation without a to-do', { type: 'rotate', data: { why: 'else' } }, 400],
+		['a rotation for a made up reason', { type: 'rotate', todoId: 1, data: { why: 'bored' } }, 400],
+		['a break of no minutes', { type: 'break', data: { minutes: 0 } }, 400],
+		['a stuck tap with no reason', { type: 'stuck', todoId: 1, data: {} }, 400],
+		[
+			'a stuck tap about a to-do that does not exist',
+			{ type: 'stuck', todoId: 99, data: { reason: 'break' } },
+			404
+		],
+		[
+			'a face it answer that is not offered',
+			{ type: 'face', todoId: 1, data: { answer: 'later' } },
+			400
+		],
+		['a face it answer without a to-do', { type: 'face', data: { answer: 'fine' } }, 400]
+	])('%s is refused', async (_name, body, status) => {
+		const { ctx } = await made();
+		expect((await failure(recordFlow(ctx, body))).status).toBe(status);
+		expect(await loadFlow(ctx, '2026-10-14')).toEqual([]);
+	});
+});
+
 describe('recordFlow, an answered check', () => {
 	const asked = async (estimate: number | null = 300) => {
 		const made = await testCtx();

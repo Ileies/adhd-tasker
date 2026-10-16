@@ -245,7 +245,8 @@ export async function watch(ctx: Ctx, settings: Settings) {
 			date: today,
 			type: 'pin',
 			todoId: state.pin.todoId,
-			key: state.pin.key
+			key: state.pin.key,
+			data: state.pin.face ? { face: true } : {}
 		});
 		if (written) ctx.hint({ type: 'flow' });
 	}

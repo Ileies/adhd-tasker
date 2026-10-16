@@ -249,7 +249,10 @@ describe('heroFocus', () => {
 				length: 30,
 				line: null,
 				next: null,
-				check: null
+				check: null,
+				face: false,
+				held: null,
+				cost: null
 			})
 		).toBeNull();
 	});
@@ -275,6 +278,7 @@ describe('tabTitle', () => {
 	});
 
 	const ask = (level: 0 | 1) => ({
+		about: 'progress' as const,
 		todo: study,
 		level,
 		dueAt: 0,
@@ -282,7 +286,8 @@ describe('tabTitle', () => {
 		sessionLength: 30,
 		keeps: 0,
 		early: false,
-		sizeAsked: false
+		sizeAsked: false,
+		offerBreak: false
 	});
 	const session = {
 		kind: 'todo',
@@ -290,13 +295,28 @@ describe('tabTitle', () => {
 		left: 18,
 		length: 30,
 		line: null,
-		next: null
+		next: null,
+		face: false,
+		held: null,
+		cost: null
+	} as const;
+	const onBreak = {
+		kind: 'break',
+		todo: null,
+		left: 6,
+		minutes: 10,
+		activity: 'water',
+		last: false,
+		rowId: 1
 	} as const;
 
 	test.each([
 		['a session', { ...session, check: null }, '18 min - Study B'],
 		['a check', { ...session, left: 0, check: ask(0) }, 'How far? - Study B'],
 		['a check asked again', { ...session, left: 0, check: ask(1) }, 'Still there? - Study B'],
+		['a break', { ...onBreak, check: null }, 'Break 6 min'],
+		['a break that is over', { ...onBreak, left: 0, check: ask(0) }, 'Break is over'],
+		['a break asked again', { ...onBreak, left: 0, check: ask(1) }, 'Still there?'],
 		['plan', { kind: 'plan', check: null }, "Plan what's next"],
 		[
 			'plan, asked if the user is there',

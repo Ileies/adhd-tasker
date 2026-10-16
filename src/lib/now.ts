@@ -26,6 +26,27 @@ export type HeroState<T extends RankTask, D = never> =
 			line: string | null;
 			next: T | null;
 			check: Check<D> | null;
+			/** The to-do is faced: ten minutes with nothing to switch to. */
+			face: boolean;
+			/** "Give it 5 minutes first": the switch happens at `until` (epoch ms) unless the user stays. */
+			held: { until: number; step: 'rotate' | 'break'; rowId: number } | null;
+			/** What stopping for the day would cost, `null` when it costs nothing. */
+			cost: string | null;
+	  }
+	/**
+	 * A break: the `activity` (an id of `breaks.ts`) with `left` of its `minutes`. Once it is over the `check` asks what is
+	 * next, `todo` is where it goes back to.
+	 */
+	| {
+			kind: 'break';
+			todo: D | null;
+			left: number;
+			minutes: number;
+			activity: string;
+			last: boolean;
+			/** The row of the break, "Keep working instead" undoes it. */
+			rowId: number;
+			check: Check<D> | null;
 	  }
 	/** Less than ten minutes before `next`, a time-bound item: nothing new is started. */
 	| { kind: 'ready'; next: T; left: number }
@@ -105,6 +126,9 @@ export function tabTitle<T extends RankTask, D extends { title: string }>(
 			if (hero.check)
 				return `${hero.check.level === 1 ? 'Still there?' : 'How far?'} - ${hero.todo.title}`;
 			return `${formatMinutes(hero.left)} - ${hero.todo.title}`;
+		case 'break':
+			if (hero.check) return hero.check.level === 1 ? 'Still there?' : 'Break is over';
+			return `Break ${formatMinutes(hero.left)}`;
 		case 'time-up':
 			return `Time is up - ${hero.ended.title}`;
 		case 'ready':
