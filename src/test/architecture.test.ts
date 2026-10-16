@@ -237,6 +237,12 @@ describe('network access', () => {
 		expect(privacy?.content).toContain('Then your plan, routines, to-dos');
 	});
 
+	test('the Privacy page says what "Suggest steps" and the assistant on its own send to OpenAI', () => {
+		const privacy = appCode.find(({ path }) => path === 'src/routes/privacy/+page.svelte');
+		expect(privacy?.content).toContain('"Suggest steps"');
+		expect(privacy?.content).toContain('looks at an event on its own');
+	});
+
 	test('the Privacy page names the to-dos and how long the answers to them are kept', () => {
 		const privacy = appCode.find(({ path }) => path === 'src/routes/privacy/+page.svelte');
 		expect(privacy?.content).toContain('Your to-dos');

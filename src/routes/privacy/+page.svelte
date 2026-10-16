@@ -105,8 +105,8 @@
 		</li>
 		<li>
 			<strong>Assistant records</strong>, if you use the assistant: every change it made to your
-			plan with its reason (so you can undo it), the events it reacted to, its notes and questions
-			to you, and how many tokens each call used.
+			plan, to-dos or routines with its reason (so you can undo it), the events it reacted to, its
+			notes and questions to you, and how many tokens each call used.
 		</li>
 		<li>
 			<strong>Linked Google services:</strong> which services you allowed, and the refresh token Google
@@ -178,8 +178,10 @@
 			> applies.
 		</li>
 		<li>
-			<strong>OpenAI</strong>, only if you add your own key. Then your plan, chat messages and voice
-			recordings are sent to OpenAI with your key whenever the assistant works, under your own
+			<strong>OpenAI</strong>, only if you add your own key. Then your plan, routines, to-dos, chat
+			messages and voice recordings are sent to OpenAI with your key whenever the assistant works
+			(also when it looks at an event on its own, and when you press "Suggest steps" for an
+			appointment, which sends its title, day and time and the steps already there), under your own
 			OpenAI account and
 			<a
 				class="underline"
