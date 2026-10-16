@@ -165,6 +165,8 @@ describe('startAgent', () => {
 		const repo = dbRepo(TEST_EMAIL);
 		const { requests } = fakeFetch({ [route]: () => Response.json(text('Nothing to add.')) });
 		jest.useFakeTimers();
+		// Fake timers start from the real clock, and after 22:00 the quiet hours would silence the reaction
+		jest.setSystemTime(new Date(NOW));
 		try {
 			startAgent();
 			await repo.events.insert({
