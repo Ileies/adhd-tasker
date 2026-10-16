@@ -99,23 +99,26 @@ describe('sampleRoutines', () => {
 	test('the essentials come first, then the repeating blocks of an ordinary day', () => {
 		const titles = sampleRoutines().map((routine) => routine.title);
 		expect(titles.slice(0, 5)).toEqual(['Meds', 'Breakfast', 'Lunch', 'Dinner', 'Go to bed']);
-		expect(titles).toContain('Focus: the most important task');
+		expect(titles).toContain('Emails and messages');
 		expect(titles).toContain('Exercise or a long walk');
 	});
 
-	test('focus blocks repeat on weekdays, the weekend has its own', () => {
+	test('emails repeat on weekdays, the weekend has its own blocks', () => {
 		const repeat = (title: string) =>
 			sampleRoutines().find((routine) => routine.title === title)?.repeat;
-		expect(repeat('Focus: deep work')).toBe('weekdays');
+		expect(repeat('Emails and loose ends')).toBe('weekdays');
 		expect(repeat('A hobby or a project')).toBe('days:0,6');
 		expect(repeat('Brush teeth')).toBe('daily');
 	});
 
-	test('a weekday has three focus blocks and a Saturday none', () => {
-		const focusOn = (date: string) =>
-			routineTasks(date).filter((task) => task.title.startsWith('Focus')).length;
-		expect(focusOn(TODAY)).toBe(3);
-		expect(focusOn(addDays(TODAY, 3))).toBe(0);
+	test('no block is made for the work itself, a weekday keeps three long stretches for to-dos', () => {
+		expect(sampleRoutines().some((routine) => routine.title?.startsWith('Focus'))).toBe(false);
+		const day = routineTasks(TODAY).toSorted((a, b) => a.startTime - b.startTime);
+		const gaps = day.flatMap((task, index) => {
+			const next = day[index + 1];
+			return next ? [next.startTime - (task.startTime + task.duration)] : [];
+		});
+		expect(gaps.filter((gap) => gap >= 60).length).toBeGreaterThanOrEqual(3);
 	});
 
 	test('there are few enough for the limit of 50', () => {

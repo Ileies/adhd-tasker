@@ -1,6 +1,6 @@
 /**
  * The sample week a first time visitor can try, made of the same parts a real week is made of (flow plan phase 8):
- * routines for what repeats (the essentials and an ideal, ordinary day of focus blocks and chores), to-dos for work
+ * routines for what repeats (the essentials and an ordinary day of chores, emails and breaks, no block for the work itself), to-dos for work
  * without a time (the first one is "Set up ADHD Tasker", so the setup is part of the day), one task per weekday in
  * the evening slot, and one appointment with its travel and the steps to prepare for it. The gaps between the
  * blocks stay empty: Now fills them with the to-do that needs the time. Pure. The device marks what it created
@@ -47,13 +47,6 @@ const ROUTINE: Block[] = [
 	},
 
 	{
-		title: 'Focus: the most important task',
-		start: at(8, 30),
-		duration: 90,
-		priority: High,
-		days: 'weekdays'
-	},
-	{
 		title: 'Break: stretch and water',
 		start: at(10),
 		duration: 15,
@@ -67,14 +60,6 @@ const ROUTINE: Block[] = [
 		priority: Medium,
 		days: 'weekdays'
 	},
-	{
-		title: 'Focus: the second task',
-		start: at(11),
-		duration: 60,
-		priority: High,
-		days: 'weekdays'
-	},
-
 	{
 		title: 'Tidy up: dishes, trash, desk',
 		start: at(8, 30),
@@ -92,7 +77,6 @@ const ROUTINE: Block[] = [
 
 	{ title: 'Short walk outside', start: at(12, 45), duration: 15, priority: Low, days: 'all' },
 
-	{ title: 'Focus: deep work', start: at(13), duration: 90, priority: High, days: 'weekdays' },
 	{
 		title: 'Go out: friends, sport or fresh air',
 		start: at(13),
