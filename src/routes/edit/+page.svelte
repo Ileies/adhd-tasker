@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Check, CircleHelp, Plus, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
+	import { Check, CircleHelp, Plus, Repeat, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
 	import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
 	import { addAlarm, cancelAlarm, loadSchedule, switchAlarm } from '#lib/alarms.js';
 	import { dayPanelAlarms } from '#lib/alarmview.js';
@@ -24,12 +24,14 @@
 		quickPreview,
 		quickTaskKind
 	} from '#lib/quickadd.js';
+	import { quickRoutinePreview } from '#lib/quickroutine.js';
 	import type { TaskKind } from '#lib/core/repo.js';
 	import { joinHeard } from '#lib/taskform.js';
 	import { priorityStyle } from '#lib/urgency.js';
 	import { loadAllDay } from '#lib/calendar.js';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
+	import RoutinesSheet, { type RoutinesView } from '#lib/components/RoutinesSheet.svelte';
 	import TodoPanel from '#lib/components/TodoPanel.svelte';
 	import TodoSheet from '#lib/components/TodoSheet.svelte';
 	import QuickAddHelp from '#lib/components/QuickAddHelp.svelte';
@@ -64,6 +66,7 @@
 
 	let editing = $state<Alarm | null>(null);
 	let helpOpen = $state(false);
+	let routines = $state<RoutinesView>({ open: false, editing: null });
 
 	async function switchAlarmFor(alarm: Alarm, enabled: boolean) {
 		const failure = await switchAlarm(alarm, enabled);
@@ -114,7 +117,8 @@
 	const preview = $derived(
 		mode === 'alarm'
 			? (alarmPreview ?? (quick.trim() ? 'Add a time: 7:00, 8am or in 10 min' : null))
-			: quickPreview(quick, selected, selected === today ? now : null, today, chosenKind)
+			: (quickRoutinePreview(quick, today, chosenKind) ??
+					quickPreview(quick, selected, selected === today ? now : null, today, chosenKind))
 	);
 	let doneOpen = $state(false);
 
@@ -378,6 +382,17 @@
 				class="h-11 px-5 md:h-10"
 				disabled={mode === 'alarm' ? !alarmFields : !quick.trim()}>Add</Button
 			>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				class="text-muted-foreground size-11 shrink-0 md:size-10"
+				aria-label="Routines"
+				title="Routines: tasks that repeat"
+				onclick={() => (routines = { open: true, editing: null })}
+			>
+				<Repeat />
+			</Button>
 			<!-- A quiet icon at the far end. The phone shows a list, not a timeline, so it has no layout to choose -->
 			<Button
 				type="button"
@@ -522,7 +537,12 @@
 	</div>
 </div>
 
-<TaskForm bind:form onDelete={remove} />
+<TaskForm
+	bind:form
+	onDelete={remove}
+	onRoutine={(routine) => (routines = { open: true, editing: routine })}
+/>
+<RoutinesSheet bind:view={routines} />
 <TodoSheet bind:todo={editingTodo} />
 <AlarmForm bind:alarm={editing} />
 <QuickAddHelp

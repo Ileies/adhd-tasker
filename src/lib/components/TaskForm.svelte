@@ -15,7 +15,18 @@
 	} from '#lib/taskform.js';
 	import { needsPrep } from '#lib/prep.js';
 	import { priorityStyle } from '#lib/urgency.js';
-	import { Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2 } from '@lucide/svelte';
+	import {
+		Check,
+		ChevronLeft,
+		ChevronRight,
+		Plus,
+		Repeat,
+		RotateCcw,
+		Trash2
+	} from '@lucide/svelte';
+	import type { Routine } from '#lib/core/repo.js';
+	import { routineOf } from '#lib/routineform.js';
+	import { repeatText } from '#lib/schedule.js';
 	import MicButton from '#lib/components/MicButton.svelte';
 	import { canTalk } from '#lib/speech.js';
 	import NumberInput from '#lib/components/NumberInput.svelte';
@@ -25,8 +36,16 @@
 	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 
-	const { form = $bindable(), onDelete }: { form: TaskForm; onDelete?: (task: Task) => void } =
-		$props();
+	const {
+		form = $bindable(),
+		onDelete,
+		onRoutine
+	}: {
+		form: TaskForm;
+		onDelete?: (task: Task) => void;
+		/** Opens the routine a task was made from. Without it the sheet does not mention the routine. */
+		onRoutine?: (routine: Routine) => void;
+	} = $props();
 
 	const priorities = [
 		Priority.Low,
@@ -60,6 +79,17 @@
 	const offerPrep = $derived(
 		form.isEditing && form.selectedTask ? needsPrep(form.selectedTask, tasker.todos, today) : false
 	);
+
+	/** The routine this day came from: a change here is for this day only, the routine has its own sheet. */
+	const routine = $derived(
+		form.isEditing && form.selectedTask ? routineOf(form.selectedTask, tasker.routines) : null
+	);
+
+	function openRoutine() {
+		if (!routine || !onRoutine) return;
+		form.showTaskForm = false;
+		onRoutine(routine);
+	}
 
 	function openPrep() {
 		const appointment = form.selectedTask;
@@ -356,6 +386,18 @@
 					<Plus />
 					Prepare for it
 				</Button>
+			{/if}
+
+			{#if routine && onRoutine}
+				<div class="flex flex-wrap items-center gap-x-3 text-sm">
+					<p class="text-muted-foreground">
+						{repeatText(routine.repeat)}. A change here is for this day only.
+					</p>
+					<Button variant="ghost" size="sm" type="button" onclick={openRoutine}>
+						<Repeat />
+						Edit the routine
+					</Button>
+				</div>
 			{/if}
 
 			{#if failure}
