@@ -4,7 +4,7 @@ import { BackendError } from '#lib/backend.js';
 import type { Hint, Model } from '#lib/core/context.js';
 import { localBackend } from '#lib/local/backend.js';
 import type { ResponseBody } from '#lib/openai.js';
-import { Priority } from '#lib/types.js';
+import { Priority, TaskStatus } from '#lib/types.js';
 import { GEOCODE_URL } from '#lib/core/geocode.js';
 import { testCtx } from '#test/ctx.js';
 import { fakeFetch } from '#test/fakes.js';
@@ -426,6 +426,83 @@ describe('sample day', () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60);
 		expect((await backend.activity.load()).events).toEqual([]);
+	});
+
+	test('the essentials are daily routines that made the next 14 days, meals may move', async () => {
+		const { backend } = await setup();
+		await backend.sample.start('2026-10-14', 12 * 60);
+		const routines = await backend.routines.load();
+		expect(routines.map((routine) => routine.title)).toEqual([
+			'Meds',
+			'Breakfast',
+			'Lunch',
+			'Dinner',
+			'Go to bed'
+		]);
+		expect(routines.find((routine) => routine.title === 'Lunch')).toMatchObject({
+			repeat: 'daily',
+			startTime: 12 * 60,
+			shift: 60
+		});
+		const lunches = (await backend.tasks.since('2026-10-14')).filter(
+			(task) => task.title === 'Lunch'
+		);
+		expect(lunches).toHaveLength(14);
+	});
+
+	test('what ended before now today is done, also for the routines', async () => {
+		const { backend } = await setup();
+		await backend.sample.start('2026-10-14', 12 * 60 + 8);
+		const today = await backend.tasks.load('2026-10-14');
+		const status = (title: string) => today.find((task) => task.title === title)?.status;
+		expect(status('Breakfast')).toBe(TaskStatus.Completed);
+		expect(status('Lunch')).toBe(TaskStatus.Pending);
+		expect(status('Dinner')).toBe(TaskStatus.Pending);
+	});
+
+	test('a day a routine makes later is part of the sample and goes with it', async () => {
+		const { backend, repo } = await setup();
+		const created = await backend.sample.start('2026-10-14', 12 * 60);
+		const [lunch] = (await backend.routines.load()).filter((routine) => routine.title === 'Lunch');
+		const later = await repo.tasks.insert({
+			title: 'Lunch',
+			description: '',
+			date: '2026-11-20',
+			startTime: 12 * 60,
+			duration: 45,
+			priority: 5,
+			status: TaskStatus.Pending,
+			routineId: lunch.id
+		});
+		expect(await backend.sample.ids()).toContain(later.id);
+		expect(await backend.sample.clear()).toBe(created.length + 1);
+		expect(await backend.routines.load()).toEqual([]);
+		expect(await backend.tasks.since('2000-01-01')).toEqual([]);
+	});
+
+	test('keeping makes the routines the user own, clearing then removes nothing', async () => {
+		const { backend } = await setup();
+		const created = await backend.sample.start('2026-10-14', 12 * 60);
+		await backend.sample.keep();
+		expect(await backend.sample.clear()).toBe(0);
+		expect(await backend.routines.load()).toHaveLength(5);
+		expect(await backend.tasks.since('2000-01-01')).toHaveLength(created.length);
+	});
+
+	test('clearing leaves a routine the user made themselves', async () => {
+		const { backend } = await setup();
+		const mine = await backend.routines.create({
+			title: 'Water plants',
+			startTime: 9 * 60,
+			duration: 15,
+			repeat: 'weekdays'
+		});
+		await backend.sample.start('2026-10-14', 12 * 60);
+		await backend.sample.clear();
+		expect((await backend.routines.load()).map((routine) => routine.id)).toEqual([mine.id]);
+		expect(
+			(await backend.tasks.since('2000-01-01')).every((task) => task.routineId === mine.id)
+		).toBe(true);
 	});
 });
 

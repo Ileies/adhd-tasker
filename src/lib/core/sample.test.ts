@@ -1,15 +1,36 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { sampleDay, SAMPLE_DAYS } from '#lib/core/sample.js';
+import type { Routine } from '#lib/core/repo.js';
+import { sampleDay, sampleRoutines, SAMPLE_DAYS } from '#lib/core/sample.js';
 import { DAY_MINUTES } from '#lib/plan.js';
 import { rank } from '#lib/priority.js';
+import { routineTask } from '#lib/recurrence.js';
 import { addDays } from '#lib/time.js';
 import { TaskStatus } from '#lib/types.js';
 
 const TODAY = '2026-10-14'; // a Wednesday
 const SETUP = 'Set up ADHD Tasker';
 const withIds = (now: number) => sampleDay(TODAY, now).map((task, id) => ({ ...task, id }));
+/** What the tick makes of the sample's routines for `date`, with ids of their own. */
+const routineDays = (date: string) =>
+	sampleRoutines().map((patch, index) => ({
+		...routineTask(
+			{
+				id: index + 1,
+				description: '',
+				kind: 'block',
+				firstDay: TODAY,
+				lastDay: null,
+				through: null,
+				shift: 0,
+				...patch
+			} as Routine,
+			date
+		),
+		status: TaskStatus.Pending,
+		id: 1000 + index
+	}));
 const minute = fc.integer({ min: 0, max: DAY_MINUTES - 1 });
 
 describe('sampleDay', () => {
@@ -20,11 +41,40 @@ describe('sampleDay', () => {
 		);
 	});
 
-	test('a full day: lunch is running at 12:08 and the walk is next', () => {
-		const today = withIds(12 * 60 + 8).filter((task) => task.date === TODAY);
+	test('a full day: lunch (a routine) is running at 12:08 and the setup is next', () => {
+		const today = [...withIds(12 * 60 + 8), ...routineDays(TODAY)].filter(
+			(task) => task.date === TODAY
+		);
 		expect(today.length).toBeGreaterThanOrEqual(15);
 		const ranked = rank(today, 12 * 60 + 8);
 		expect(ranked.current?.title).toBe('Lunch');
+		expect(ranked.upcoming[0]?.title).toBe(SETUP);
+	});
+
+	test('the essentials are routines, not tasks of the sample', () => {
+		const titles = new Set(sampleDay(TODAY, 0).map((task) => task.title));
+		for (const routine of sampleRoutines()) expect(titles.has(routine.title!)).toBe(false);
+		expect(sampleRoutines().map((routine) => routine.title)).toEqual([
+			'Meds',
+			'Breakfast',
+			'Lunch',
+			'Dinner',
+			'Go to bed'
+		]);
+	});
+
+	test('tasks and the routines of a day never overlap', () => {
+		for (let offset = 0; offset < SAMPLE_DAYS; offset++) {
+			const date = addDays(TODAY, offset);
+			const day = [...sampleDay(TODAY, 0), ...routineDays(date)]
+				.filter((task) => task.date === date)
+				.toSorted((a, b) => a.startTime - b.startTime);
+			for (const [index, task] of day.entries())
+				if (index > 0)
+					expect(task.startTime).toBeGreaterThanOrEqual(
+						day[index - 1].startTime + day[index - 1].duration
+					);
+		}
 	});
 
 	test('the setup task is the next break, once in the whole week', () => {

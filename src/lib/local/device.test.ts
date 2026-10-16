@@ -81,6 +81,47 @@ describe('readDevice', () => {
 		expect(JSON.stringify((await readDevice(NOW, factory, NAME))?.file)).not.toContain('sk-mine');
 	});
 
+	test('the sample routines and every day they made are left out, a routine of the visitor goes', async () => {
+		const factory = await device(async (repo, db) => {
+			const sample = await repo.routines.insert({
+				title: 'Lunch',
+				priority: 5,
+				startTime: 720,
+				duration: 45,
+				repeat: 'daily',
+				firstDay: '2026-10-14'
+			});
+			await repo.tasks.insert({ ...task('Lunch', '2026-10-14', 720), routineId: sample.id });
+			await repo.tasks.insert({ ...task('Lunch', '2026-11-30', 720), routineId: sample.id });
+			await localMarks(db).writeRoutines([sample.id]);
+		});
+		expect(await readDevice(NOW, factory, NAME)).toBeNull();
+
+		const withOwn = await device(async (repo, db) => {
+			const sample = await repo.routines.insert({
+				title: 'Lunch',
+				priority: 5,
+				startTime: 720,
+				duration: 45,
+				repeat: 'daily',
+				firstDay: '2026-10-14'
+			});
+			await repo.tasks.insert({ ...task('Lunch', '2026-10-14', 720), routineId: sample.id });
+			await repo.routines.insert({
+				title: 'Gym',
+				priority: 3,
+				startTime: 1080,
+				duration: 60,
+				repeat: 'weekdays',
+				firstDay: '2026-10-14'
+			});
+			await localMarks(db).writeRoutines([sample.id]);
+		});
+		const file = (await readDevice(NOW, withOwn, NAME))?.file;
+		expect(file?.routines.map((routine) => routine.title)).toEqual(['Gym']);
+		expect(file?.tasks).toEqual([]);
+	});
+
 	test('the sample day is left out, and a device with only the sample has nothing to move', async () => {
 		const factory = await device(async (repo, db) => {
 			const sample = await repo.tasks.insert(task('Sample'));
@@ -122,6 +163,7 @@ describe('clearDevice', () => {
 			await repo.tasks.insert(task('Mine'));
 			const sample = await repo.tasks.insert(task('Sample', '2026-10-14', 700));
 			await localMarks(db).write([sample.id]);
+			await localMarks(db).writeRoutines([3]);
 			await repo.schedule.insert({
 				kind: 'alarm',
 				fireAt: NOW + DAY,
@@ -147,6 +189,7 @@ describe('clearDevice', () => {
 		expect(await repo.schedule.pending()).toEqual([]);
 		expect(await repo.cards.open()).toBeNull();
 		expect(await localMarks(db).read()).toEqual([]);
+		expect(await localMarks(db).readRoutines()).toEqual([]);
 		expect(await repo.settings.get()).toMatchObject({
 			showClock: true,
 			openaiKey: 'sk-mine',

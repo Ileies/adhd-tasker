@@ -1,28 +1,36 @@
 /**
- * Which tasks the device made as a sample day. The mark is the id kept in the settings store under its
- * own key (`sample`), so the plan itself carries nothing that is not a task and the database needs no
- * new version. A sample task the user edited stays a sample until it is cleared.
+ * Which tasks and routines the device made as a sample day. The mark is the ids kept in the settings store under
+ * their own keys (`sample`, `sample-routines`), so the plan itself carries nothing that is not a task and the
+ * database needs no new version. A sample task the user edited stays a sample until it is cleared. The tasks a
+ * sample routine makes later are found by their `routineId`, they need no mark.
  */
 import { done, transact } from '#lib/local/db.js';
 
-const KEY = 'sample';
+const TASKS = 'sample';
+const ROUTINES = 'sample-routines';
 
 export interface SampleMarks {
 	read(): Promise<number[]>;
 	write(ids: number[]): Promise<void>;
+	readRoutines(): Promise<number[]>;
+	writeRoutines(ids: number[]): Promise<void>;
 }
 
 export function localMarks(db: IDBDatabase): SampleMarks {
+	const readKey = (key: string) =>
+		transact(db, ['settings'], 'readonly', async (tx) =>
+			((await done<number[] | undefined>(tx.objectStore('settings').get(key))) ?? []).slice()
+		);
+	const writeKey = (key: string, ids: number[]) =>
+		transact(db, ['settings'], 'readwrite', async (tx) => {
+			const store = tx.objectStore('settings');
+			if (ids.length) await done(store.put(ids, key));
+			else await done(store.delete(key));
+		});
 	return {
-		read: () =>
-			transact(db, ['settings'], 'readonly', async (tx) =>
-				((await done<number[] | undefined>(tx.objectStore('settings').get(KEY))) ?? []).slice()
-			),
-		write: (ids) =>
-			transact(db, ['settings'], 'readwrite', async (tx) => {
-				const store = tx.objectStore('settings');
-				if (ids.length) await done(store.put(ids, KEY));
-				else await done(store.delete(KEY));
-			})
+		read: () => readKey(TASKS),
+		write: (ids) => writeKey(TASKS, ids),
+		readRoutines: () => readKey(ROUTINES),
+		writeRoutines: (ids) => writeKey(ROUTINES, ids)
 	};
 }

@@ -25,6 +25,16 @@ describe('sample marks', () => {
 		expect(await marks.read()).toEqual([]);
 	});
 
+	test('the routines have a record of their own', async () => {
+		const marks = localMarks(await open());
+		await marks.write([1, 2]);
+		await marks.writeRoutines([7]);
+		expect(await marks.readRoutines()).toEqual([7]);
+		await marks.writeRoutines([]);
+		expect(await marks.readRoutines()).toEqual([]);
+		expect(await marks.read()).toEqual([1, 2]);
+	});
+
 	test('do not disturb the settings that share the store', async () => {
 		const db = await open();
 		await localRepo(db).settings.update({ showClock: true });

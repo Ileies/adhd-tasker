@@ -90,13 +90,18 @@ export async function readDevice(
 ): Promise<DeviceData | null> {
 	return withDevice(factory, name, null, async (db) => {
 		const repo = localRepo(db);
-		const sample = new Set(await localMarks(db).read());
+		const marks = localMarks(db);
+		const sample = new Set(await marks.read());
+		// The tasks a sample routine made are the sample's too, whatever day they were made on
+		const sampleRoutines = new Set(await marks.readRoutines());
 		const settings = await repo.settings.get();
 		const file = assembleExport({
 			settings,
-			tasks: (await repo.tasks.between(FIRST_DAY)).filter((task) => !sample.has(task.id)),
+			tasks: (await repo.tasks.between(FIRST_DAY)).filter(
+				(task) => !sample.has(task.id) && !sampleRoutines.has(task.routineId ?? 0)
+			),
 			todos: await repo.todos.all(),
-			routines: await repo.routines.all(),
+			routines: (await repo.routines.all()).filter((routine) => !sampleRoutines.has(routine.id)),
 			schedule: await repo.schedule.pending(),
 			now
 		});
@@ -123,6 +128,7 @@ export async function clearDevice(
 		await transact(db, [...PLAN_STORES, 'settings'], 'readwrite', async (tx) => {
 			await done(tx.objectStore('settings').put({ file, at: now } satisfies DeviceBackup, BACKUP));
 			await done(tx.objectStore('settings').delete('sample'));
+			await done(tx.objectStore('settings').delete('sample-routines'));
 			await done(tx.objectStore('settings').delete(DECLINED));
 			for (const store of PLAN_STORES) await done(tx.objectStore(store).clear());
 		});

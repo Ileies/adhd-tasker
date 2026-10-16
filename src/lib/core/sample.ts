@@ -1,11 +1,13 @@
 /**
- * The sample week a first time visitor can try: an ideal, ordinary routine on fixed clock times (meals, meds,
- * focus blocks, chores, bed time) for today and the six days after it, with one task per weekday in the
- * evening slot. Whatever the time of day, the next block is a real one, and one single task ("Set up ADHD
- * Tasker") sits in the next break so the setup is part of the day. Pure. The device marks what it created,
- * so clearing the sample removes exactly these.
+ * The sample week a first time visitor can try: an ideal, ordinary routine on fixed clock times (focus blocks,
+ * chores) for today and the six days after it, with one task per weekday in the evening slot. The essentials
+ * (meals, meds, bed) are not in it: they are daily routines (`sampleRoutines`, flow plan 5.3) that the tick
+ * makes into tasks like any routine. Whatever the time of day, the next block is a real one, and one single task
+ * ("Set up ADHD Tasker") sits in the next break so the setup is part of the day. Pure. The device marks what it
+ * created (tasks and routines), so clearing the sample removes exactly these.
  */
-import type { NewTask } from '#lib/core/repo.js';
+import type { NewTask, RoutinePatch } from '#lib/core/repo.js';
+import { defaultTimes, essentialRoutines } from '#lib/essentials.js';
 import { DAY_MINUTES } from '#lib/plan.js';
 import { addDays, type DateKey } from '#lib/time.js';
 import { Priority, TaskStatus } from '#lib/types.js';
@@ -28,7 +30,6 @@ const at = (hour: number, minute = 0) => hour * 60 + minute;
 const { Low, Medium, High } = Priority;
 
 const ROUTINE: Block[] = [
-	{ title: 'Meds and a glass of water', start: at(7), duration: 15, priority: High, days: 'all' },
 	{
 		title: 'Shower and get dressed',
 		start: at(7, 15),
@@ -36,7 +37,6 @@ const ROUTINE: Block[] = [
 		priority: Medium,
 		days: 'all'
 	},
-	{ title: 'Breakfast', start: at(7, 45), duration: 30, priority: High, days: 'all' },
 	{
 		title: 'Plan the day',
 		start: at(8, 15),
@@ -91,7 +91,6 @@ const ROUTINE: Block[] = [
 		days: 'weekend'
 	},
 
-	{ title: 'Lunch', start: at(12), duration: 45, priority: High, days: 'all' },
 	{
 		title: 'Short walk outside',
 		start: at(12, 45),
@@ -132,7 +131,6 @@ const ROUTINE: Block[] = [
 		days: 'all'
 	},
 
-	{ title: 'Cook and eat dinner', start: at(18), duration: 60, priority: High, days: 'all' },
 	{ title: 'Clean the kitchen', start: at(19), duration: 15, priority: Medium, days: 'all' },
 	{
 		title: 'Pack your bag and lay out clothes',
@@ -163,14 +161,7 @@ const ROUTINE: Block[] = [
 		priority: Low,
 		days: 'all'
 	},
-	{
-		title: 'Brush teeth and take meds',
-		start: at(22, 30),
-		duration: 15,
-		priority: High,
-		days: 'all'
-	},
-	{ title: 'Go to bed', start: at(22, 45), duration: 15, priority: High, days: 'all' }
+	{ title: 'Brush teeth', start: at(22, 30), duration: 15, priority: Medium, days: 'all' }
 ];
 
 /** The one block that changes with the weekday, in the slot before dinner. Index is `getUTCDay()`, Sunday is 0. */
@@ -197,6 +188,9 @@ const SETUP = {
 	description:
 		'Open Settings: pick your sounds, check the hours of My day, choose light or dark. Then tap Done.'
 };
+
+/** The routines of the sample: the essentials at their default times. */
+export const sampleRoutines = (): RoutinePatch[] => essentialRoutines(defaultTimes());
 
 const weekdayOf = (date: DateKey) => new Date(date + 'T00:00:00Z').getUTCDay();
 

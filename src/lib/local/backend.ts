@@ -17,7 +17,7 @@ import { GeocodeError, searchPlaces } from '#lib/core/geocode.js';
 import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
 import type { Repo, Task } from '#lib/core/repo.js';
-import { sampleDay } from '#lib/core/sample.js';
+import { sampleDay, sampleRoutines } from '#lib/core/sample.js';
 import type { SampleMarks } from '#lib/local/marks.js';
 import {
 	addUserAlarm,
@@ -30,6 +30,7 @@ import { speak as speakWith, transcribe as transcribeWith } from '#lib/core/voic
 import { openaiModel } from '#lib/openai.js';
 import { clientSettings, parseSettingsPatch } from '#lib/settings.js';
 import { isValidTimezone } from '#lib/time.js';
+import { TaskStatus } from '#lib/types.js';
 
 export interface LocalDeps {
 	repo: Repo;
@@ -78,9 +79,25 @@ export function localBackend(deps: LocalDeps): Backend {
 	const now = deps.now ?? Date.now;
 	const modelFor = deps.modelFor ?? openaiModel;
 	let remembered: number[] = [];
+	let rememberedRoutines: number[] = [];
 	const marks: SampleMarks = deps.marks ?? {
 		read: async () => remembered,
-		write: async (ids) => void (remembered = ids)
+		write: async (ids) => void (remembered = ids),
+		readRoutines: async () => rememberedRoutines,
+		writeRoutines: async (ids) => void (rememberedRoutines = ids)
+	};
+	/** The sample's tasks still in the plan: the marked ones and every day its routines made, however late. */
+	const sampleTasks = async () => {
+		const routines = new Set(await marks.readRoutines());
+		const found = new Map<number, Task>();
+		for (const id of await marks.read()) {
+			const task = await repo.tasks.get(id);
+			if (task) found.set(id, task);
+		}
+		if (routines.size > 0)
+			for (const task of await repo.tasks.between('0000-01-01'))
+				if (routines.has(task.routineId ?? 0)) found.set(task.id, task);
+		return [...found.values()];
 	};
 	const chatRate = rateLimit(RATE, 'Too many requests, wait a few minutes');
 	const voiceRate = rateLimit(VOICE_RATE, 'Too many voice requests, wait a few minutes');
@@ -263,37 +280,43 @@ export function localBackend(deps: LocalDeps): Backend {
 
 		sample: {
 			async ids() {
-				const present: number[] = [];
-				for (const id of await marks.read()) if (await repo.tasks.get(id)) present.push(id);
-				return present;
+				return (await sampleTasks()).map((task) => task.id);
 			},
 			async start(today, minutes) {
 				// A second tap on the same button adds nothing
-				const existing: Task[] = [];
-				for (const id of await marks.read()) {
-					const task = await repo.tasks.get(id);
-					if (task) existing.push(task);
-				}
+				const existing = await sampleTasks();
 				if (existing.length) return existing;
 				// Written straight to the repo, like an import: the user did not plan these, so no event wakes the agent
 				const created: Task[] = [];
 				for (const task of sampleDay(today, minutes)) created.push(await repo.tasks.insert(task));
 				await marks.write(created.map((task) => task.id));
+				// The essentials are routines: the first one makes the week ahead for all of them
+				const routines: number[] = [];
+				for (const patch of sampleRoutines()) {
+					routines.push((await createRoutine(ctx(), { ...patch, firstDay: today })).id);
+					await marks.writeRoutines(routines);
+				}
+				// Like the rest of the sample, what ended before now today is done already
+				for (const task of await sampleTasks()) {
+					if (task.date === today && task.startTime + task.duration <= minutes)
+						await repo.tasks.update(task.id, { status: TaskStatus.Completed });
+				}
 				deps.planChanged?.([today]);
-				return created;
+				return sampleTasks();
 			},
 			async clear() {
-				const removed: Task[] = [];
-				for (const id of await marks.read()) {
-					const gone = await repo.tasks.delete(id);
-					if (gone) removed.push(gone);
-				}
+				const removed = await sampleTasks();
+				for (const task of removed) await repo.tasks.delete(task.id);
+				for (const id of await marks.readRoutines()) await repo.routines.delete(id);
 				await marks.write([]);
+				await marks.writeRoutines([]);
 				if (removed.length) deps.planChanged?.([...new Set(removed.map((task) => task.date))]);
+				deps.hint({ type: 'routines' });
 				return removed.length;
 			},
 			async keep() {
 				await marks.write([]);
+				await marks.writeRoutines([]);
 			}
 		},
 
