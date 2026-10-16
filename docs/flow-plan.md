@@ -1,6 +1,6 @@
 # Flow Plan
 
-Status: proposed, 2026-10-16, written against `9e3c0a8`. Nothing in it is built. It changes the core of the app (what is current), so it needs a yes before work starts. Section 13 lists the decisions, section 12 the effect on `roadmap-1.0.md`.
+Status: accepted, 2026-10-16, written against `9e3c0a8`, all 14 decisions of section 13 taken as recommended. Phase 1 (1.1 to 1.4 in the phase list) is built: to-dos and the flow log in both backends, `flow.ts` and `pick.ts`, the Now hero on the engine, Plan with the To do panel and the to-do sheet, quick add for to-dos with due dates, the triage's "Do it when there is time", the sample without "Free time". Phases 2 to 8 are not started. Section 12 lists the effect on `roadmap-1.0.md`.
 
 ## 1. In short
 
