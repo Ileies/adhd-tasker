@@ -3,6 +3,7 @@ import { loadDay, playTone } from '#lib';
 import { pollAgent } from '#lib/agent.js';
 import { deviceId, loadSchedule, playsSound, ring } from '#lib/alarms.js';
 import { refreshAfterImport } from '#lib/data.js';
+import { loadFlow, loadTodos } from '#lib/todos.js';
 import { showToast } from '#lib/toast.js';
 import type { Tone } from '#lib/tones.js';
 
@@ -34,6 +35,10 @@ export function handleHint(message: Message) {
 			return location.reload();
 		case 'agent':
 			return void pollAgent().catch(() => {});
+		case 'todos':
+			return void loadTodos().catch(() => {});
+		case 'flow':
+			return void loadFlow().catch(() => {});
 		case 'schedule':
 			return void loadSchedule().catch(() => {});
 		case 'alarm':
@@ -69,6 +74,8 @@ export function startStream() {
 		if (document.hidden) return;
 		pollAgent().catch(() => {});
 		loadSchedule().catch(() => {});
+		loadTodos().catch(() => {});
+		loadFlow().catch(() => {});
 	};
 
 	source.onopen = () => {

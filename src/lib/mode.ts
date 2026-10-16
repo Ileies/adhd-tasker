@@ -7,7 +7,7 @@ import { pollAgent } from '#lib/agent.js';
 import { deviceId, loadSchedule } from '#lib/alarms.js';
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError } from '#lib/backend.js';
-import type { Task } from '#lib/core/repo.js';
+import type { FlowRow, Task, Todo } from '#lib/core/repo.js';
 import { deferredBackend } from '#lib/local/deferred.js';
 import { forgetDecline } from '#lib/local/device.js';
 import { startLocalRuntime } from '#lib/local/runtime.js';
@@ -22,11 +22,19 @@ const FOLLOWER = 'follower';
 export const STORAGE_PROBLEM =
 	'This browser does not let the app keep your plan on this device. Allow site data for this page, or sign in to keep your plan on the server.';
 
-export function useAccount(email: string, settings: ClientSettings, tasks: Task[]) {
+export function useAccount(
+	email: string,
+	settings: ClientSettings,
+	tasks: Task[],
+	todos: Todo[] = [],
+	flow: { date: string | null; rows: FlowRow[] } = { date: null, rows: [] }
+) {
 	tasker.backend = remoteBackend;
 	tasker.account.email = email;
 	tasker.settings = settings;
 	tasker.tasks = tasks;
+	tasker.todos = todos;
+	tasker.flow = flow;
 	tasker.account.ready = true;
 }
 
@@ -63,10 +71,15 @@ export function beginGuest(): () => void {
 			// From yesterday on, like the layout load of an account, so the Plan screen has its neighbours
 			const from = addDays(todayIn(tasker.settings.timezone ?? deviceTimezone()), -1);
 			// Independent reads, so Now does not wait for one after the other
-			[tasker.tasks, tasker.sample] = await Promise.all([
+			const today = todayIn(tasker.settings.timezone ?? deviceTimezone());
+			let rows: FlowRow[];
+			[tasker.tasks, tasker.sample, tasker.todos, rows] = await Promise.all([
 				runtime.backend.tasks.since(from),
-				runtime.backend.sample.ids()
+				runtime.backend.sample.ids(),
+				runtime.backend.todos.load(),
+				runtime.backend.flow.load(today)
 			]);
+			tasker.flow = { date: today, rows };
 			// Signed out again: the next sign in asks anew about the plan on this device
 			void forgetDecline().catch(() => {});
 			tasker.account.ready = true;

@@ -7,6 +7,7 @@ import { remoteBackend } from '#lib/remote-backend.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import type { AllDayLine } from '#lib/core/calendar.js';
 import type { Comparison } from '#lib/core/merge.js';
+import type { FlowRow, Todo } from '#lib/core/repo.js';
 import { clientSettings, type ClientSettings } from '#lib/settings.js';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
@@ -62,6 +63,10 @@ export const tasker: {
 	/** The user's settings as the screens use them, kept in step with the backend after every save. */
 	settings: ClientSettings;
 	tasks: Task[];
+	/** Open to-dos and the ones finished in the last day and a half. */
+	todos: Todo[];
+	/** What the user answered on `date` (their today), oldest first. The flow engine replays it, nothing else is stored. */
+	flow: { date: string | null; rows: FlowRow[] };
 	isMuted: boolean;
 	/** Epoch ms when a timed mute ends and sound returns on its own, null while muted without an end. */
 	mutedUntil: number | null;
@@ -106,6 +111,8 @@ export const tasker: {
 	account: { email: null, ready: false, problem: null },
 	settings: clientSettings(DEFAULT_SETTINGS),
 	tasks: [],
+	todos: [],
+	flow: { date: null, rows: [] },
 	isMuted: false,
 	mutedUntil: null,
 	volume: 100,

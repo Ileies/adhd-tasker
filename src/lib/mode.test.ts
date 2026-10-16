@@ -7,7 +7,7 @@ import { declineMove, readDevice } from '#lib/local/device.js';
 import { localRepo } from '#lib/local/repo.js';
 import { DATABASE_NAME } from '#lib/local/runtime.js';
 import { remoteBackend } from '#lib/remote-backend.js';
-import { todayIn } from '#lib/time.js';
+import { deviceTimezone, todayIn } from '#lib/time.js';
 import { Priority } from '#lib/types.js';
 import { freshIndexedDb } from '#test/idb.js';
 
@@ -58,6 +58,17 @@ describe('useAccount', () => {
 		expect(tasker.settings.hasOpenaiKey).toBe(true);
 		expect(tasker.account.ready).toBe(true);
 	});
+
+	test('carries the to-dos and the answers of today the layout load brought', () => {
+		const todo = { id: 1, title: 'Taxes' } as never;
+		const row = { id: 2, type: 'rest' } as never;
+		useAccount('ada@example.com', { ...DEFAULT_SETTINGS } as never, [], [todo], {
+			date: '2026-10-14',
+			rows: [row]
+		});
+		expect(tasker.todos).toEqual([todo]);
+		expect(tasker.flow).toEqual({ date: '2026-10-14', rows: [row] });
+	});
 });
 
 describe('beginGuest', () => {
@@ -79,6 +90,36 @@ describe('beginGuest', () => {
 		expect(tasker.account.email).toBeNull();
 		expect(tasker.account.problem).toBeNull();
 		expect(tasker.tasks.map((task) => task.title)).toEqual(['Write intro']);
+	});
+
+	test('reads the to-dos and the answers of today from the device', async () => {
+		const factory = freshIndexedDb();
+		useFactory(factory);
+		const db = await openLocalDb(factory, DATABASE_NAME);
+		const repo = localRepo(db);
+		await repo.todos.insert({
+			title: 'Taxes',
+			description: '',
+			priority: Priority.Medium,
+			estimate: null,
+			learned: false,
+			progress: 0,
+			spentMinutes: 0,
+			skips: 0,
+			dueDate: null,
+			dueTime: null,
+			parentId: null,
+			notBefore: null,
+			nextStep: null,
+			createdAt: 1
+		});
+		await repo.flow.insert({ at: Date.now(), date: todayIn(deviceTimezone()), type: 'rest' });
+		db.close();
+		guest();
+		await ready();
+		expect(tasker.todos.map((todo) => todo.title)).toEqual(['Taxes']);
+		expect(tasker.flow.date).toBe(todayIn(deviceTimezone()));
+		expect(tasker.flow.rows.map((row) => row.type)).toEqual(['rest']);
 	});
 
 	test('forgets that the user kept their account plan, so the next sign in asks anew', async () => {
