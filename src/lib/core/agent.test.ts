@@ -492,6 +492,26 @@ describe('watch', () => {
 		expect((await made.repo.tasks.get(lunch.id))?.startTime).toBe(9 * 60);
 	});
 
+	test('a routine that is behind makes its days, and a routine task at its time is current', async () => {
+		const made = await testCtx();
+		const lunch = await made.repo.routines.insert({
+			title: 'Lunch',
+			priority: 2,
+			startTime: 9 * 60,
+			duration: 45,
+			repeat: 'daily',
+			firstDay: '2026-10-14'
+		});
+		await watch(made.ctx, await settingsOf(made));
+		const tasks = await made.repo.tasks.between('0000-01-01');
+		expect(tasks).toHaveLength(14);
+		expect((await settingsOf(made)).lastCurrentTaskId).toBe(tasks[0].id);
+		expect((await made.repo.routines.get(lunch.id))?.through).toBe('2026-10-27');
+		// The next tick has nothing left to make
+		await watch(made.ctx, await settingsOf(made));
+		expect(await made.repo.tasks.between('0000-01-01')).toHaveLength(14);
+	});
+
 	test('no task at all is stored as 0', async () => {
 		const made = await testCtx();
 		await watch(made.ctx, await settingsOf(made));

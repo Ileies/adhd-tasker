@@ -3,6 +3,7 @@ import type { Ctx } from '#lib/core/context.js';
 import { describe, runTool, type Change } from '#lib/core/assistant.js';
 import { emit } from '#lib/core/events.js';
 import type { Settings } from '#lib/core/repo.js';
+import { makeRoutines } from '#lib/core/routines.js';
 import { describePending, runScheduleTool } from '#lib/core/schedule.js';
 import { loadTodos } from '#lib/core/todos.js';
 import { dayStart, recordUsage } from '#lib/core/usage.js';
@@ -221,6 +222,8 @@ export async function watch(ctx: Ctx, settings: Settings) {
 	const at = new Date(nowMs);
 	const today = todayIn(settings.timezone, at);
 	const now = minutesNow(settings.timezone, at);
+	// A routine that is behind makes its days first, so today is whole before anything looks at it
+	await makeRoutines(ctx, today);
 	const [stored, open, log] = await Promise.all([
 		ctx.repo.tasks.between(today, today),
 		loadTodos(ctx),
