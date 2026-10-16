@@ -4,10 +4,10 @@
 	import { clearSampleDay } from '#lib/welcome.js';
 </script>
 
-<!-- On every screen while the plan holds the sample day, so it can always be left in one tap -->
+<!-- At the bottom of every screen while the plan holds the sample day: the top bar hides and floats over the page, so it must not sit there -->
 {#if tasker.sample.length > 0}
 	<div
-		class="bg-muted text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm"
+		class="bg-muted text-muted-foreground flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-sm"
 		role="status"
 	>
 		<span>This is a sample day. Edit it freely, nothing here is yours yet.</span>
