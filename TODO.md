@@ -3,16 +3,17 @@
 Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
-- `flow-plan.md`: accepted, phases 1 to 5 built (to-dos, the flow engine, the Now and Plan screens on it, the check, Away and the calls, rotation, breaks and holding on, appointments with travel and preparation, tasks that make room and repeat). Next: phase 6 (the assistant joins). To-dos without a time, a flow engine that decides, holds and calls back, appointments with preparation, routines that make room
+- `flow-plan.md`: accepted, phases 1 to 6 built (to-dos, the flow engine, the Now and Plan screens on it, the check, Away and the calls, rotation, breaks and holding on, appointments with travel and preparation, tasks that make room and repeat, the assistant with to-do and routine tools, steps for an appointment and next steps). Next: phase 7 (will it fit). To-dos without a time, a flow engine that decides, holds and calls back, appointments with preparation, routines that make room
 - `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code
 - Finished and deleted (git history): the local first plan (`docs/local-first-plan.md` at `a419224`), the UX plan (`docs/ux-plan.md` at `24192b1`) and the daylight theme (`docs/daylight-theme.md` at `56be755`)
 
 ## Now
 
-- Routines and the first run essentials exist now (flow plan 5.2 and 5.3, `docs/roadmap-1.0.md` C1 and E6). Still open: the essentials step for a new account (only a guest sees the welcome), and a floor the AI cannot trade below without asking for sleep, food and water (phase 6)
+- Routines and the first run essentials exist now (flow plan 5.2 and 5.3, `docs/roadmap-1.0.md` C1 and E6). Still open: the essentials step for a new account (only a guest sees the welcome), and the floor of sleep, food and water, which the assistant only keeps as a rule in its prompt and tool descriptions (phase 6): nothing in code stops a model from deleting Meds when the user asks, a hard check would need to know which routines are essentials
+- Assistant, phase 6, by hand with a real key: "Suggest steps" for an appointment, an imported appointment answered by a question and by `add_prep_steps` in act, "It feels too big" on a to-do, a rotation, a routine made and undone in the chat. Only fakes so far. A guest who saved their settings before keeps their old list of events (`aiEvents`), an account gets the two new events from `scripts/add-flow-events.ts`
 - Pick the next plan. Suggested by the checks plan: its phases 4 and 5 (core guardrails, route matrices)
 - Visual pass, by eye on a wide screen, a phone and as a guest (the UX plan was built from code, not screenshots): one type scale (display, clock, body large, body, small, no one-off sizes), a visible focus ring on every interactive element including timeline blocks and rail items, 44 px targets on phones (rail buttons at `size="sm"`, the timeline done circle), sentence case and no jargon in copy, same section spacing on every page, the page title in the bar
-- Deploy phases 1 to 5 of the flow plan (to-dos, the flow log, the check, rotation and breaks, appointments, tasks that make room, routines): on the server run `DATABASE_URL=<server db> bun scripts/add-todos.ts`, `bun scripts/add-flow-settings.ts`, `bun scripts/add-appointments.ts`, `bun scripts/add-shift.ts` and `bun scripts/add-routines.ts` the same way (they add `check_minutes`, `start_work_at`, `break_minutes`, `todos.skip_since`, `tasks.kind`, `tasks.parent_id`, `arrive_early_minutes`, `tasks.shift`, `tasks.routine_id` and the `routines` table), then `bun run deploy --schema-applied`. The server (`ssh home`) was not reachable from the dev machine on 2026-10-16
+- Deploy phases 1 to 6 of the flow plan (to-dos, the flow log, the check, rotation and breaks, appointments, tasks that make room, routines, the assistant): on the server run `DATABASE_URL=<server db> bun scripts/add-todos.ts`, `bun scripts/add-flow-settings.ts`, `bun scripts/add-appointments.ts`, `bun scripts/add-shift.ts`, `bun scripts/add-routines.ts` and `bun scripts/add-flow-events.ts` the same way (they add `check_minutes`, `start_work_at`, `break_minutes`, `todos.skip_since`, `tasks.kind`, `tasks.parent_id`, `arrive_early_minutes`, `tasks.shift`, `tasks.routine_id`, the `routines` table, and the two new events to every user who never changed the list), then `bun run deploy --schema-applied`. The server (`ssh home`) was not reachable from the dev machine on 2026-10-16
 - Production schema deploy of the UX settings fields (`myDayStart`, `myDayEnd`, `checkInMinutes`): `bun run deploy --db-push`
 
 - Google Calendar, real run: import, move, done and a forced conflict on a real calendar, by hand (only fakes so far)
@@ -23,7 +24,7 @@ Plans in `docs/`:
 
 ## Later
 
-- Travel for imported appointments is only added through the prep sheet or "Prepare for it" in the task sheet, nothing offers it on its own until the assistant answers `appointment.added` (flow plan phase 6). "Leave now" rings only on an open page: with Web Push (B2) the start of travel can be a real alarm
+- Travel for imported appointments is only added through the prep sheet or "Prepare for it" in the task sheet, nothing offers it on its own except the assistant's answer to `appointment.added`, which offers preparation steps and no travel. "Leave now" rings only on an open page: with Web Push (B2) the start of travel can be a real alarm
 - Travel and preparation are not written to Google Calendar yet (the setting "Add my own tasks" covers tasks the user made, not travel)
 
 - Calendar write gaps: assistant and agent edits are not written to Google, Google-side edits to an event the app made do not flow back, existing tasks are not copied when "Add my own tasks" is turned on, stopping the sync also ends that setting, read-only (midnight) tasks are not marked in the UI, the unlink case `revoked: false` has no UI
