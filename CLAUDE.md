@@ -193,6 +193,7 @@ Everything is synthesized with the Web Audio API on one shared `AudioContext` (`
 
 ## Known Gaps
 
+- Only alarms repeat. Tasks do not: the sample day is a routine of plain tasks for 7 days, and a user who keeps it plans on after that. Recurring tasks are planned for 1.0 (roadmap C1), the sample is then rebuilt from them
 - The refresh token is stored encrypted (`google_tokens`). Only Calendar uses it. Tasks and Keep are still offered in `GOOGLE_SERVICES` but nothing uses them: remove them before submitting the Google verification. Google Clock has no API
 - Calendar write is not tried against real Google yet. Assistant and agent edits are not written to Google, Google-side edits to an event the app made do not flow back, existing tasks are not copied when "Add my own tasks" is turned on, and stopping the sync also ends that setting
 - A guest's agent and alarms run only in a leading, open tab (no Web Push). Reminders and the overrun tap only reach an open Now screen. `reminders`, `enableFocusMode`, `enableOverdueNotifications` are unused
