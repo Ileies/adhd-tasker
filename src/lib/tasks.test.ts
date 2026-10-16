@@ -18,6 +18,7 @@ const task = (id: number, patch: Partial<Task> = {}): Task => ({
 	completedAt: null,
 	kind: 'block',
 	parentId: null,
+	shift: 0,
 	...patch
 });
 

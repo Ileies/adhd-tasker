@@ -71,7 +71,8 @@ export const tasks = sqliteTable('tasks', {
 	status: text('status').$type<TaskStatus>().default(TaskStatus.Pending).notNull(),
 	completedAt: integer('completed_at'), // epoch ms of Done, null while open
 	kind: text('kind').$type<TaskKind>().default('block').notNull(), // block (the user's own time), appointment (ends on its own), travel (to an appointment)
-	parentId: integer('parent_id') // the appointment a travel task leads to, not a foreign key: deleting the appointment deletes its travel in the rules
+	parentId: integer('parent_id'), // the appointment a travel task leads to, not a foreign key: deleting the appointment deletes its travel in the rules
+	shift: integer('shift').default(0).notNull() // minutes a task of the user's own may move to make room, 0 stays
 });
 
 /**

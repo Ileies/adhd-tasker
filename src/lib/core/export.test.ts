@@ -156,11 +156,27 @@ describe('buildExport', () => {
 describe('parseExport', () => {
 	test('a valid file comes back as it is', () => {
 		const valid = file({
-			tasks: [{ ...task, kind: 'block', parent: null }],
+			tasks: [{ ...task, kind: 'block', parent: null, shift: 30 }],
 			alarms: [alarm],
 			settings: { showClock: true, timezone: 'Europe/Berlin' }
 		});
 		expect(parseExport(JSON.parse(JSON.stringify(valid)))).toEqual({ ok: true, value: valid });
+	});
+
+	test('a file from before shifting makes every task stay', () => {
+		expect(parseExport(file({ tasks: [task] }))).toMatchObject({
+			ok: true,
+			value: { tasks: [{ shift: 0 }] }
+		});
+	});
+
+	test.each([
+		['too far', 500],
+		['fractional', 7.5],
+		['text', '60']
+	])('a shift that is %s means the task stays', (_name, shift) => {
+		const result = parseExport(file({ tasks: [{ ...task, shift } as unknown as typeof task] }));
+		expect(result).toMatchObject({ ok: true, value: { tasks: [{ shift: 0 }] } });
 	});
 
 	test('a file from before appointments makes every task a block', () => {
@@ -315,6 +331,16 @@ describe('appointments in a file', () => {
 	});
 });
 
+describe('shifting in a file', () => {
+	test('how far a task may move survives an export and an import', async () => {
+		const from = (await testCtx()).repo;
+		await from.tasks.insert({ ...task, title: 'Lunch', shift: 60 });
+		const to = (await testCtx()).repo;
+		await importExport(to, file(await buildExport(from, NOW)), NOW);
+		expect((await to.tasks.between('0000-01-01'))[0]?.shift).toBe(60);
+	});
+});
+
 describe('importExport', () => {
 	test('adds the tasks and alarms and applies the settings', async () => {
 		const { repo } = await testCtx();
@@ -324,7 +350,7 @@ describe('importExport', () => {
 			NOW
 		);
 		expect(result).toEqual({ tasks: 1, skipped: 0, alarms: 1, todos: 0 });
-		expect(await plan(repo)).toEqual([{ ...task, kind: 'block', parentId: null }]);
+		expect(await plan(repo)).toEqual([{ ...task, kind: 'block', parentId: null, shift: 0 }]);
 		expect((await repo.schedule.pending())[0]).toMatchObject({
 			label: 'Stretch',
 			createdBy: 'user'

@@ -25,12 +25,13 @@ const switchedOn = (row: ScheduleEntry): ScheduleEntry => ({
 	enabled: row.enabled !== false
 });
 
-/** A task saved before `completedAt`, `kind` or `parentId` existed has none: it is a task of the user's own. */
+/** A task saved before `completedAt`, `kind`, `parentId` or `shift` existed has none: it is a task of the user's own that stays. */
 const asTask = (row: Task): Task => ({
 	...row,
 	completedAt: row.completedAt ?? null,
 	kind: row.kind ?? 'block',
-	parentId: row.parentId ?? null
+	parentId: row.parentId ?? null,
+	shift: row.shift ?? 0
 });
 
 /** The repo of this device's guest. `email` is only a label, nothing is scoped by it. */
@@ -80,7 +81,8 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 						status: task.status ?? TaskStatus.Pending,
 						completedAt: task.completedAt ?? null,
 						kind: task.kind ?? 'block',
-						parentId: task.parentId ?? null
+						parentId: task.parentId ?? null,
+						shift: task.shift ?? 0
 					};
 					const id = (await done(store.add(row))) as number;
 					return { ...row, id };

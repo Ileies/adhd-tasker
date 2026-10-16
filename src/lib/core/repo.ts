@@ -30,14 +30,20 @@ export interface Task {
 	kind: TaskKind;
 	/** The appointment a travel task leads to, `null` for everything else. */
 	parentId: number | null;
+	/** How far in minutes a task of the user's own may move to make room for an appointment, 0 stays (`#lib/placeday.js`). */
+	shift: number;
 }
 
-/** What a new task needs, the repo assigns the id. `status` defaults to pending, `completedAt` and `parentId` to null, `kind` to block. */
-export type NewTask = Omit<Task, 'id' | 'status' | 'completedAt' | 'kind' | 'parentId'> & {
+/** What a new task needs, the repo assigns the id. `status` defaults to pending, `completedAt` and `parentId` to null, `kind` to block, `shift` to 0. */
+export type NewTask = Omit<
+	Task,
+	'id' | 'status' | 'completedAt' | 'kind' | 'parentId' | 'shift'
+> & {
 	status?: TaskStatus;
 	completedAt?: number | null;
 	kind?: TaskKind;
 	parentId?: number | null;
+	shift?: number;
 };
 export type TaskPatch = Partial<Omit<Task, 'id'>>;
 

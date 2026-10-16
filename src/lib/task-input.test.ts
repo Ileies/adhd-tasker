@@ -78,6 +78,27 @@ describe('parseTaskInput kinds', () => {
 	});
 });
 
+describe('parseTaskInput shift', () => {
+	test('how far a task may move is read when given', () => {
+		const result = parseTaskInput({ ...valid, shift: 60 }, 'create');
+		expect(result.ok && result.value).toMatchObject({ shift: 60 });
+	});
+
+	test('it is left out when not given, the rules fill 0', () => {
+		const result = parseTaskInput(valid, 'create');
+		expect(result.ok && result.value).not.toHaveProperty('shift');
+	});
+
+	test.each([
+		['a negative shift', -15],
+		['a fractional shift', 7.5],
+		['a shift that is too far', 241],
+		['a shift that is not a number', '60']
+	])('rejects %s', (_name, shift) => {
+		expect(parseTaskInput({ ...valid, shift }, 'create').ok).toBe(false);
+	});
+});
+
 describe('parseTaskInput update', () => {
 	test('only the given fields end up in the patch', () => {
 		expect(parseTaskInput({ id: 3, startTime: 600, status: 'completed' }, 'update')).toEqual({

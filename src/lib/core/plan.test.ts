@@ -30,6 +30,19 @@ describe('createPlanTask', () => {
 		expect(await repo.events.recent(5)).toMatchObject([{ type: 'task.created', origin: 'user' }]);
 	});
 
+	test('a task stays unless it says how far it may move', async () => {
+		const { ctx } = await testCtx();
+		expect((await createPlanTask(ctx, valid)).shift).toBe(0);
+		expect((await createPlanTask(ctx, { ...valid, shift: 60 })).shift).toBe(60);
+	});
+
+	test('how far a task may move can be changed later', async () => {
+		const { ctx, repo } = await testCtx();
+		const created = await createPlanTask(ctx, valid);
+		await updatePlanTask(ctx, { id: created.id, shift: 30 });
+		expect((await repo.tasks.get(created.id))?.shift).toBe(30);
+	});
+
 	test('asks the agent to look at the new event', async () => {
 		const { ctx, state } = await testCtx();
 		await createPlanTask(ctx, valid);

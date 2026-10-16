@@ -20,7 +20,8 @@ const exam: Task = {
 	status: TaskStatus.Pending,
 	completedAt: null,
 	kind: 'appointment',
-	parentId: null
+	parentId: null,
+	shift: 0
 };
 const travel: Task = {
 	...exam,

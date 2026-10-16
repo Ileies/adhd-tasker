@@ -8,12 +8,13 @@ import {
 	type TaskPatch
 } from '#lib/assistant-tools.js';
 import type { TaskKind } from '#lib/core/repo.js';
+import { MAX_SHIFT } from '#lib/placeday.js';
 import { isDateKey } from '#lib/time.js';
 
 export const TASK_KINDS: readonly TaskKind[] = ['block', 'appointment', 'travel'];
 
-/** What the screens may send: the assistant's fields plus the kind of task and the appointment travel leads to. */
-export type TaskInput = TaskPatch & { kind?: TaskKind; parentId?: number | null };
+/** What the screens may send: the assistant's fields plus the kind of task, the appointment travel leads to and how far it may move. */
+export type TaskInput = TaskPatch & { kind?: TaskKind; parentId?: number | null; shift?: number };
 
 /**
  * What the Plan and Now screens may send to `/edit`. The same rules as the assistant's tools
@@ -70,6 +71,12 @@ export function parseTaskInput(body: unknown, mode: 'create' | 'update'): Parsed
 		if (parent !== null && parseTaskId(parent) === undefined)
 			return fail('parentId must be a task id or null');
 		patch.parentId = parent as number | null;
+	}
+	if (input.shift !== undefined) {
+		const shift = input.shift;
+		if (typeof shift !== 'number' || !Number.isInteger(shift) || shift < 0 || shift > MAX_SHIFT)
+			return fail(`shift must be whole minutes from 0 to ${MAX_SHIFT}`);
+		patch.shift = shift;
 	}
 	if (mode === 'update' && Object.keys(patch).length === 0) return fail('nothing to change');
 	if (

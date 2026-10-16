@@ -151,6 +151,20 @@ export function describeRepo(name: string, harness: RepoHarness) {
 		});
 	});
 
+	describe(`${name}: shift`, () => {
+		test('a new task stays by default', async () => {
+			const created = await repo.tasks.insert(task());
+			expect(created.shift).toBe(0);
+			expect((await repo.tasks.get(created.id))?.shift).toBe(0);
+		});
+
+		test('how far a task may move is kept and can be changed', async () => {
+			const created = await repo.tasks.insert(task({ shift: 60 }));
+			expect((await repo.tasks.get(created.id))?.shift).toBe(60);
+			expect((await repo.tasks.update(created.id, { shift: 15 }))?.shift).toBe(15);
+		});
+	});
+
 	describe(`${name}: todos`, () => {
 		const todo = (overrides: Partial<NewTodo> = {}): NewTodo => ({
 			title: 'Study Math',

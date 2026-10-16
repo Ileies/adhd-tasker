@@ -28,6 +28,7 @@ export async function createPlanTask(ctx: Ctx, body: unknown): Promise<Task> {
 		priority: fields.priority!,
 		kind,
 		parentId,
+		shift: fields.shift ?? 0,
 		...(fields.status && { status: fields.status as TaskStatus }),
 		...completionStamp(null, fields.status, ctx.now())
 	});

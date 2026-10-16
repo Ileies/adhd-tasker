@@ -4,6 +4,7 @@
  * file moves a guest's plan into an account (local first plan 5.3). It never holds the OpenAI key, the
  * assistant's log or anything that belongs to one machine (display device, linked Google services).
  */
+import { MAX_SHIFT } from '#lib/placeday.js';
 import type {
 	FlowRow,
 	FlowType,
@@ -36,7 +37,12 @@ export const EXPORT_LIMITS = {
 	alarms: SCHEDULE_LIMITS.maxAlarms
 } as const;
 
-export type ExportedTask = Omit<Required<NewTask>, 'completedAt' | 'kind' | 'parentId'> & {
+export type ExportedTask = Omit<
+	Required<NewTask>,
+	'completedAt' | 'kind' | 'parentId' | 'shift'
+> & {
+	/** How far the task may move for an appointment. A file from before that has none: it stays. */
+	shift?: number;
 	/** Epoch ms of Done. A file from version 1 has none. */
 	completedAt?: number | null;
 	/** A file from before appointments has none: every task is a block. */
@@ -155,7 +161,8 @@ export function assembleExport(rows: {
 			status: task.status,
 			completedAt: task.completedAt,
 			kind: task.kind,
-			parent: taskIndex(task.parentId)
+			parent: taskIndex(task.parentId),
+			shift: task.shift
 		})),
 		todos: todos.map((todo) => ({
 			title: todo.title,
@@ -258,6 +265,14 @@ const TASK_KINDS: readonly TaskKind[] = ['block', 'appointment', 'travel'];
 const readKind = (item: unknown): TaskKind =>
 	isRecord(item) && TASK_KINDS.includes(item.kind as TaskKind) ? (item.kind as TaskKind) : 'block';
 
+/** How far a task may move. Anything that is not a whole number of minutes in range means it stays. */
+const readShift = (item: unknown): number => {
+	const shift = isRecord(item) ? item.shift : 0;
+	return typeof shift === 'number' && Number.isInteger(shift) && shift >= 0 && shift <= MAX_SHIFT
+		? shift
+		: 0;
+};
+
 /** The appointment a travel task leads to, an index into the file's tasks. Anything else is no parent. */
 const readParent = (item: unknown, taskCount: number): number | null => {
 	const parent = isRecord(item) ? item.parent : null;
@@ -326,7 +341,7 @@ export function parseExport(raw: unknown): Parsed {
 	for (const [index, item] of raw.tasks.entries()) {
 		// The kind and the parent have their own reading below, an unknown kind is a block rather than a refused file
 		const parsed = parseTaskInput(
-			isRecord(item) ? { ...item, kind: undefined, parentId: undefined } : item,
+			isRecord(item) ? { ...item, kind: undefined, parentId: undefined, shift: undefined } : item,
 			'create'
 		);
 		if (!parsed.ok) return fail(`Task ${index + 1} is not valid: ${parsed.error}`);
@@ -341,7 +356,8 @@ export function parseExport(raw: unknown): Parsed {
 			status: (task.status as TaskStatus | undefined) ?? TaskStatus.Pending,
 			completedAt: readMoment(isRecord(item) ? item.completedAt : null),
 			kind: readKind(item),
-			parent: readParent(item, raw.tasks.length)
+			parent: readParent(item, raw.tasks.length),
+			shift: readShift(item)
 		});
 	}
 
