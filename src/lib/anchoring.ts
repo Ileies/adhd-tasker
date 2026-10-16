@@ -96,3 +96,32 @@ export function reminderDue<T extends RankTask>(
 /** Stops one moment from sounding twice. */
 export const momentKey = (kind: 'overrun' | 'reminder' | 'wrap-up', date: string, task: RankTask) =>
 	`${kind}:${date}:${task.id}:${task.startTime}:${task.duration}`;
+
+/** The morning call, minutes after "Start working at": the chime, asked again after two minutes, then every quarter of an hour. */
+export const START_CALL_AGAIN_MINUTES = 2;
+export const START_CALL_EVERY_MINUTES = 15;
+/** Away calls back this often while the user is gone. */
+export const AWAY_CALL_EVERY_MINUTES = 30;
+
+export interface CallMoment {
+	/** Changes every time the call sounds again, so a moment never sounds twice. */
+	index: number;
+	tone: 'reminder' | 'nudge';
+}
+
+/**
+ * The latest moment of the start call, `null` before it begins. The first is the soft chime, the second a nudge
+ * ("asked again like a check"), then the chime every 15 minutes until the user taps Start.
+ */
+export function startCallMoment(minutesSinceStart: number): CallMoment | null {
+	if (minutesSinceStart < 0) return null;
+	if (minutesSinceStart < START_CALL_AGAIN_MINUTES) return { index: 0, tone: 'reminder' };
+	if (minutesSinceStart < START_CALL_EVERY_MINUTES) return { index: 1, tone: 'nudge' };
+	return { index: 1 + Math.floor(minutesSinceStart / START_CALL_EVERY_MINUTES), tone: 'reminder' };
+}
+
+/** The latest soft call back for a user who has been away for `minutesAway`, `null` before the first. */
+export function awayCallMoment(minutesAway: number): CallMoment | null {
+	const index = Math.floor(minutesAway / AWAY_CALL_EVERY_MINUTES);
+	return index >= 1 ? { index, tone: 'reminder' } : null;
+}

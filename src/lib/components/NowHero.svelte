@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { Check } from '@lucide/svelte';
 	import { STUCK_REASONS, type StuckAction, type StuckReason } from '#lib/anchoring.js';
+	import { sessionSpent, type CheckData } from '#lib/checks.js';
 	import type { Todo } from '#lib/core/repo.js';
 	import type { Task } from '#lib/types.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
+	import HeroCheck from '#lib/components/HeroCheck.svelte';
 	import HeroMenu from '#lib/components/HeroMenu.svelte';
 	import TodoMenu from '#lib/components/TodoMenu.svelte';
 	import SilenceLine from '#lib/components/SilenceLine.svelte';
@@ -43,6 +45,9 @@
 		onTodoDone,
 		onTodoEdit,
 		onTodoDrop,
+		onCheck,
+		onBack,
+		calling = false,
 		noteCount = 0,
 		dark = false
 	}: {
@@ -82,6 +87,12 @@
 		onTodoDone?: (todo: Todo) => void;
 		onTodoEdit?: (todo: Todo) => void;
 		onTodoDrop?: (todo: Todo) => void;
+		/** The answer to "How far is it?", also after "I was working on it". */
+		onCheck?: (todo: Todo, data: CheckData) => void;
+		/** "I'm back" after away, "I'm here" when asked in the plan state. */
+		onBack?: () => void;
+		/** It is past the time to start and nobody did: the morning calls. */
+		calling?: boolean;
 		/** Open assistant cards, shown as one line that jumps to them on phones. */
 		noteCount?: number;
 		/** Black surface: it is night and nothing is planned for now. */
@@ -121,7 +132,15 @@
 			: null
 	);
 	// The morning with nothing to start, and the plan state, ask what is next
-	const asking = $derived(hero.kind === 'plan' || (hero.kind === 'away' && todoCount === 0));
+	const asking = $derived(
+		hero.kind === 'plan' || (hero.kind === 'away' && hero.since === null && todoCount === 0)
+	);
+	// The check of a session on a to-do, and the question after "I was working on it"
+	const check = $derived(hero.kind === 'todo' ? hero.check : null);
+	let reporting = $state(false);
+	$effect(() => {
+		if (hero.kind !== 'away') reporting = false;
+	});
 
 	// The stuck panel belongs to one item, it closes when another one becomes current
 	let stuckFor = $state<{ key: string; reason: StuckReason | null; timer: boolean } | null>(null);
@@ -140,19 +159,26 @@
 	const sessionRemaining = $derived(
 		hero.kind === 'todo' ? Math.min(100, Math.max(0, (100 * hero.left) / hero.length)) : 0
 	);
-	const surface = $derived(
-		done !== null
-			? urgencySurface[0]
-			: dark
-				? 'bg-black text-white'
-				: timeUp
-					? urgencySurface[urgencyLevel(timeUp.ended.priority, -timeUp.over, timeUp.ended.duration)]
-					: task
-						? urgencySurface[urgencyLevel(task.priority, left, task.duration)]
-						: todo && hero.kind === 'todo'
-							? urgencySurface[urgencyLevel(todo.priority, hero.length, hero.length)]
-							: urgencySurface[0]
-	);
+	function surfaceOf(): string {
+		if (done !== null) return urgencySurface[0];
+		if (dark) return 'bg-black text-white';
+		if (timeUp)
+			return urgencySurface[
+				urgencyLevel(timeUp.ended.priority, -timeUp.over, timeUp.ended.duration)
+			];
+		if (task) return urgencySurface[urgencyLevel(task.priority, left, task.duration)];
+		if (todo && hero.kind === 'todo') {
+			// Asked again, the hero crossfades to the attention color
+			const level = urgencyLevel(todo.priority, hero.length, hero.length);
+			return urgencySurface[Math.max(level, hero.check?.level === 1 ? 2 : 0) as 0 | 1 | 2 | 3];
+		}
+		// Plan what's next is asked in the attention color, the words say the same
+		if (hero.kind === 'plan') return urgencySurface[2];
+		if (hero.kind === 'away')
+			return hero.since === null ? urgencySurface[calling ? 2 : 0] : 'bg-muted text-foreground';
+		return urgencySurface[0];
+	}
+	const surface = $derived(surfaceOf());
 
 	const doneClass =
 		"bg-foreground text-background hover:bg-foreground/85 h-16 px-10 text-xl [&_svg:not([class*='size-'])]:size-6";
@@ -394,34 +420,62 @@
 				<PriorityMeter priority={item.priority} showLabel={false} />
 			</div>
 
+			{#if check}
+				<p class="text-2xl font-semibold">
+					{check.level === 1 ? 'Still there? ' : ''}{check.early && next
+						? `${next.title} at ${formatClock(next.startTime)}. `
+						: ''}How far is it?
+				</p>
+			{/if}
+
 			<h1 class="text-display line-clamp-3 font-bold break-words">{item.title}</h1>
 
-			{#if item.nextStep}
+			{#if item.nextStep && !check}
 				<p class="max-w-3xl text-xl leading-relaxed md:text-2xl">
 					<span class="opacity-80">Next step:</span>
 					{item.nextStep}
 				</p>
 			{/if}
 
-			<div>
-				<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
-				<div class="mt-1 text-lg opacity-90">left in this session</div>
-			</div>
+			{#if check}
+				<!-- The question owns the hero, the progress takes the place of the time -->
+				<div>
+					<div class="tabular text-clock font-bold">{item.progress} %</div>
+					{#if item.estimate !== null}
+						<div class="mt-1 text-lg opacity-90">
+							{formatMinutes(item.spentMinutes)} of about {formatMinutes(item.estimate)}
+						</div>
+					{/if}
+				</div>
+				<HeroCheck
+					todo={item}
+					sessionLength={check.sessionLength}
+					keeps={check.keeps}
+					sizeAsked={check.sizeAsked}
+					minutes={() => sessionSpent(check.sessionStart, Date.now(), check.sessionLength)}
+					onAnswer={(data) => onCheck?.(item, data)}
+				/>
+			{:else}
+				<div>
+					<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
+					<div class="mt-1 text-lg opacity-90">left in this session</div>
+				</div>
 
-			<div
-				class="h-4 w-full overflow-hidden rounded-full bg-current/20"
-				role="progressbar"
-				aria-valuenow={Math.round(sessionRemaining)}
-				aria-valuemin={0}
-				aria-valuemax={100}
-				aria-valuetext={formatLeft(hero.left)}
-				aria-label="Time left in this session"
-			>
 				<div
-					class="h-full rounded-full bg-current transition-[width] duration-1000"
-					style="width: {sessionRemaining}%"
-				></div>
-			</div>
+					class="h-4 w-full overflow-hidden rounded-full bg-current/20"
+					role="progressbar"
+					aria-valuenow={Math.round(sessionRemaining)}
+					aria-valuemin={0}
+					aria-valuemax={100}
+					aria-valuetext={formatLeft(hero.left)}
+					aria-label="Time left in this session"
+				>
+					<div
+						class="h-full rounded-full bg-current transition-[width] duration-1000"
+						style="width: {sessionRemaining}%"
+					></div>
+				</div>
+			{/if}
 
 			<!-- How far the whole to-do is, a quiet line, never a score -->
 			<div
@@ -485,6 +539,14 @@
 				</p>
 			{/if}
 		</div>
+	{:else if hero.kind === 'plan' && hero.check}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+			<h1 class="text-display font-bold">Still there?</h1>
+			<p class="text-xl opacity-90 md:text-2xl">Nothing is open right now.</p>
+			<div>
+				<Button size="lg" class={doneClass} onclick={() => onBack?.()}>I'm here</Button>
+			</div>
+		</div>
 	{:else if asking && onQuickAdd}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
 			<h1 class="text-display font-bold">
@@ -525,17 +587,59 @@
 			</div>
 			{@render reasonLine()}
 		</div>
+	{:else if hero.kind === 'away' && hero.since !== null}
+		{@const gone = hero.todo}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+			<h1 class="text-display font-bold">Away since {formatClock(hero.since)}</h1>
+			{#if gone && reporting}
+				<p class="text-2xl font-semibold">How far is {gone.title}?</p>
+				<HeroCheck
+					todo={gone}
+					sessionLength={hero.minutes}
+					sizeAsked={true}
+					worked
+					minutes={() => (hero.kind === 'away' ? hero.minutes : 0)}
+					onAnswer={(data) => onCheck?.(gone, data)}
+				/>
+			{:else}
+				{#if gone}
+					<p class="text-xl opacity-90 md:text-2xl">{gone.title} is waiting.</p>
+				{/if}
+				<div class="flex flex-wrap items-center gap-3">
+					<Button size="lg" class={doneClass} onclick={() => onBack?.()}>I'm back</Button>
+					{#if gone}
+						<Button
+							size="lg"
+							variant="outline"
+							class={secondaryClass}
+							onclick={() => (reporting = true)}
+						>
+							I was working on it
+						</Button>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	{:else if hero.kind === 'away'}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
-			<h1 class="text-display font-bold">Good morning</h1>
+			<h1 class="text-display font-bold">{calling ? 'Time to start' : 'Good morning'}</h1>
 			{#if firstUp}
 				<p class="text-xl opacity-90 md:text-2xl">
 					First: <span class="tabular font-semibold">{formatClock(firstUp.startTime)}</span>
 					{firstUp.title}
 				</p>
 			{/if}
-			<div>
+			<div class="flex flex-wrap items-center gap-x-6 gap-y-3">
 				<Button size="lg" class={doneClass} onclick={() => onStart?.()}>Start</Button>
+				{#if calling}
+					<Button
+						variant="ghost"
+						class="px-0 text-lg hover:bg-transparent hover:underline"
+						onclick={() => onRest?.()}
+					>
+						Call it a day
+					</Button>
+				{/if}
 			</div>
 		</div>
 	{:else if hero.kind === 'rest'}

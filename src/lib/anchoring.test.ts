@@ -2,10 +2,12 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	STUCK_REASONS,
+	awayCallMoment,
 	findStuckReason,
 	hyperfocusDue,
 	momentKey,
-	reminderDue
+	reminderDue,
+	startCallMoment
 } from '#lib/anchoring.js';
 import { parseAlarm } from '#lib/schedule.js';
 import { Priority, TaskStatus } from '#lib/types.js';
@@ -90,5 +92,34 @@ describe('STUCK_REASONS', () => {
 
 	test('every reason has its own id', () => {
 		expect(new Set(STUCK_REASONS.map((reason) => reason.id)).size).toBe(STUCK_REASONS.length);
+	});
+});
+
+describe('the start call', () => {
+	test.each([
+		['before the time to start', -1, null],
+		['at the time to start: the chime', 0, { index: 0, tone: 'reminder' }],
+		['asked again after two minutes: the nudge', 2, { index: 1, tone: 'nudge' }],
+		['the nudge holds until the quarter hour', 14, { index: 1, tone: 'nudge' }],
+		['then the chime every 15 minutes', 15, { index: 2, tone: 'reminder' }],
+		['and again', 30, { index: 3, tone: 'reminder' }]
+	] as const)('%s', (_name, minutes, moment) => {
+		expect(startCallMoment(minutes)).toEqual(moment);
+	});
+
+	test('a moment is the same for every minute that belongs to it, so it sounds once', () => {
+		expect(startCallMoment(16)).toEqual(startCallMoment(29));
+		expect(startCallMoment(29)).not.toEqual(startCallMoment(30));
+	});
+});
+
+describe('the call back from away', () => {
+	test.each([
+		['when it just began', 0, null],
+		['before half an hour', 29, null],
+		['after half an hour', 30, { index: 1, tone: 'reminder' }],
+		['and the next half hour', 61, { index: 2, tone: 'reminder' }]
+	] as const)('%s', (_name, minutes, moment) => {
+		expect(awayCallMoment(minutes)).toEqual(moment);
 	});
 });

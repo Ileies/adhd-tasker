@@ -19,7 +19,15 @@
 	} from '#lib';
 	import { playsSound, startTimer } from '#lib/alarms.js';
 	import { reportStuck } from '#lib/agent.js';
-	import { hyperfocusDue, momentKey, reminderDue, type StuckAction } from '#lib/anchoring.js';
+	import {
+		awayCallMoment,
+		hyperfocusDue,
+		momentKey,
+		reminderDue,
+		startCallMoment,
+		type StuckAction
+	} from '#lib/anchoring.js';
+	import type { CheckData } from '#lib/checks.js';
 	import type { Todo } from '#lib/core/repo.js';
 	import { currentKey, flow, heroFromFlow, switchLine } from '#lib/flow.js';
 	import {
@@ -41,6 +49,7 @@
 	import {
 		addQuickLine,
 		addTodo,
+		answerCheck,
 		chooseTodo,
 		dropTodo,
 		finishTodo,
@@ -106,6 +115,10 @@
 			hero.kind === 'wrapping-up' ||
 			hero.kind === 'todo' ||
 			(hero.kind === 'time-up' && hero.current !== null)
+	);
+	// Past the time to start and nobody did: the morning calls until Start
+	const calling = $derived(
+		hero.kind === 'away' && hero.since === null && now >= settings.startWorkAt
 	);
 	const openTodos = $derived(todos.filter((todo) => isCandidate(todo, today)).length);
 	const doneCount = $derived(
@@ -190,6 +203,37 @@
 			if (!sounded.has(key)) {
 				sounded.add(key);
 				if (!quiet) playTone('nudge');
+			}
+		}
+
+		// A question is asked with the soft chime and asked again with the nudge
+		const asked = flowState.check;
+		if (asked) {
+			const key = `check:${asked.dueAt}:${asked.level}`;
+			if (!sounded.has(key)) {
+				sounded.add(key);
+				if (!quiet) {
+					if (asked.level === 1) playTone('nudge');
+					else playSound('reminder');
+				}
+			}
+		}
+
+		// The calls whose job is to bring the user back: the morning one, and the one from away every half hour
+		const call =
+			hero.kind === 'away' && hero.since === null
+				? startCallMoment(now - settings.startWorkAt)
+				: hero.kind === 'away' && hero.since !== null
+					? awayCallMoment(now - hero.since)
+					: null;
+		if (call) {
+			const key = `call:${today}:${hero.kind === 'away' && hero.since === null ? 'start' : 'away'}:${call.index}`;
+			if (!sounded.has(key)) {
+				sounded.add(key);
+				if (!quiet) {
+					if (call.tone === 'nudge') playTone('nudge');
+					else playSound('reminder');
+				}
 			}
 		}
 	});
@@ -339,6 +383,14 @@
 		void recordAnswer({ type: 'start' });
 	}
 
+	/** "I'm back" after away, "I'm here" when asked in the plan state: the same row as Start. */
+	const back = start;
+
+	/** "How far is it?" answered: the to-do changes at once and the next session starts. */
+	function check(todo: Todo, data: CheckData) {
+		void answerCheck(todo, data);
+	}
+
 	/** "Call it a day": the hero rests until the user comes back. */
 	function rest() {
 		void recordAnswer({ type: 'rest' });
@@ -447,6 +499,9 @@
 			onTodoDone={completeTodo}
 			onTodoEdit={(todo) => (editingTodo = todo)}
 			onTodoDrop={dropTodo}
+			onCheck={check}
+			onBack={back}
+			{calling}
 			noteCount={tasker.agent.cards.length}
 			dark={heroDark(hero)}
 		/>
