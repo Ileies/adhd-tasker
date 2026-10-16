@@ -100,6 +100,7 @@ const SETTING_KEYS = [
 	'myDayStart',
 	'myDayEnd',
 	'checkMinutes',
+	'breakMinutes',
 	'startWorkAt'
 ] as const satisfies readonly (keyof SettingsPatch)[];
 
@@ -158,6 +159,7 @@ export function assembleExport(rows: {
 			progress: todo.progress,
 			spentMinutes: todo.spentMinutes,
 			skips: todo.skips,
+			skipSince: todo.skipSince,
 			dueDate: todo.dueDate,
 			dueTime: todo.dueTime,
 			parent: taskIndex(todo.parentId),
@@ -273,6 +275,10 @@ function parseTodoEntry(raw: unknown, taskCount: number): ExportedTodo | string 
 		progress: todo.progress ?? 0,
 		spentMinutes: whole(raw.spentMinutes, 0, 1_000_000),
 		skips: whole(raw.skips, 0, 1000),
+		skipSince:
+			typeof raw.skipSince === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.skipSince)
+				? raw.skipSince
+				: null,
 		dueDate: todo.dueDate ?? null,
 		dueTime: todo.dueTime ?? null,
 		parent: typeof parent === 'number' ? parent : null,

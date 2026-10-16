@@ -30,6 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	myDayStart: 420, // 07:00, the timeline folds the hours outside My day
 	myDayEnd: 1380, // 23:00
 	checkMinutes: 30, // a session on a to-do runs this long, then the app asks how far it is
+	breakMinutes: 10, // a break the app starts or the user asks for
 	startWorkAt: 540, // 09:00, the morning call until the user taps Start
 	locationLat: null, // no location: the theme follows the main city of the timezone
 	locationLon: null,

@@ -56,6 +56,7 @@ const todo = {
 	progress: 25,
 	spentMinutes: 90,
 	skips: 1,
+	skipSince: '2026-11-04',
 	dueDate: '2026-11-05',
 	dueTime: 665,
 	parent: null,
@@ -509,6 +510,13 @@ describe('to-dos in an export', () => {
 			skips: 0,
 			learned: true
 		});
+	});
+
+	test('the day of the first skip is kept when it is a date and dropped when it is not', () => {
+		const kept = parseExport(file({ todos: [{ ...todo, skipSince: '2026-10-12' }] }));
+		expect(kept.ok && kept.value.todos[0].skipSince).toBe('2026-10-12');
+		const dropped = parseExport(file({ todos: [{ ...todo, skipSince: 'yesterday' as never }] }));
+		expect(dropped.ok && dropped.value.todos[0].skipSince).toBeNull();
 	});
 
 	test('an unknown status becomes open', () => {

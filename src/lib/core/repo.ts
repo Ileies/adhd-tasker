@@ -49,6 +49,8 @@ export interface Todo {
 	spentMinutes: number;
 	/** Pushed away without progress in between, see the flow plan 5.14. */
 	skips: number;
+	/** The day of the first of those skips, so a to-do is faced only when it was pushed away on more than one day. */
+	skipSince: string | null;
 	/** YYYY-MM-DD in the user's timezone. */
 	dueDate: string | null;
 	/** Minutes since midnight, `null` means the end of My day. */
@@ -77,6 +79,7 @@ export type FlowType =
 	| 'stuck'
 	| 'break'
 	| 'back'
+	| 'face'
 	| 'rest'
 	| 'undo';
 
@@ -126,6 +129,8 @@ export interface Settings {
 	myDayEnd: number;
 	/** How long a session runs before the app asks how it is going (`docs/flow-plan.md` 5.2). */
 	checkMinutes: number;
+	/** How long a break runs, the ladder's second break and the offered one are set from it (`docs/flow-plan.md` 5.7). */
+	breakMinutes: number;
 	/** Minutes since midnight: from here on the app calls until the user starts (`docs/flow-plan.md` 5.14). */
 	startWorkAt: number;
 	/** Where the user is, for the theme. All four are set or all are `null` (see `#lib/location.js`). */

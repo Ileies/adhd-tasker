@@ -52,6 +52,7 @@
 				<ReminderSettingsForm
 					checkIn={settings.checkInMinutes}
 					ask={settings.checkMinutes}
+					breakFor={settings.breakMinutes}
 					reminders={settings.enableReminders}
 					advance={settings.reminderAdvanceTime}
 					hyperfocus={settings.hyperfocusAlarm}

@@ -48,6 +48,7 @@ export const users = sqliteTable('users', {
 	myDayStart: integer('my_day_start').default(D.myDayStart).notNull(), // minutes since midnight, the timeline folds the hours outside
 	myDayEnd: integer('my_day_end').default(D.myDayEnd).notNull(),
 	checkMinutes: integer('check_minutes').default(D.checkMinutes).notNull(), // a session on a to-do runs this long before the check
+	breakMinutes: integer('break_minutes').default(D.breakMinutes).notNull(), // how long a break runs
 	startWorkAt: integer('start_work_at').default(D.startWorkAt).notNull(), // minutes since midnight, the morning call until Start
 	locationLat: real('location_lat'), // rounded to 2 decimals, null: not known (never the internet address itself)
 	locationLon: real('location_lon'),
@@ -89,6 +90,7 @@ export const todos = sqliteTable('todos', {
 	progress: integer('progress').default(0).notNull(), // 0 to 100
 	spentMinutes: integer('spent_minutes').default(0).notNull(),
 	skips: integer('skips').default(0).notNull(), // pushed away without progress in between
+	skipSince: text('skip_since'), // YYYY-MM-DD of the first of those skips
 	dueDate: text('due_date'), // YYYY-MM-DD
 	dueTime: integer('due_time'), // minutes since midnight, null: the end of My day
 	parentId: integer('parent_id'), // the appointment this prepares for

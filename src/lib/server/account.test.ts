@@ -323,6 +323,7 @@ describe('to-dos in a move', () => {
 		progress: 25,
 		spentMinutes: 90,
 		skips: 0,
+		skipSince: null,
 		dueDate: '2026-11-05',
 		dueTime: null,
 		parent,

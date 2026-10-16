@@ -121,6 +121,7 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 						progress: 0,
 						spentMinutes: 0,
 						skips: 0,
+						skipSince: null,
 						dueDate: null,
 						dueTime: null,
 						parentId: null,

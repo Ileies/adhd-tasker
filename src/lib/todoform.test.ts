@@ -15,6 +15,7 @@ const todo = (id: number, patch: Partial<Todo> = {}): Todo => ({
 	progress: 0,
 	spentMinutes: 0,
 	skips: 0,
+	skipSince: null,
 	dueDate: null,
 	dueTime: null,
 	parentId: null,

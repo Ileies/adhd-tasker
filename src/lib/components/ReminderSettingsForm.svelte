@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { saveSettings } from '#lib/autosave.js';
 	import {
+		BREAK_MINUTES_PRESETS,
 		CHECK_IN_PRESETS,
 		CHECK_MINUTES_PRESETS,
 		HEADS_UP_PRESETS,
@@ -14,6 +15,7 @@
 	const {
 		checkIn,
 		ask,
+		breakFor,
 		reminders,
 		advance,
 		hyperfocus,
@@ -22,6 +24,7 @@
 	}: {
 		checkIn: number;
 		ask: number;
+		breakFor: number;
 		reminders: boolean;
 		advance: number;
 		hyperfocus: boolean;
@@ -50,6 +53,16 @@
 			options={chips(CHECK_MINUTES_PRESETS, ask)}
 			value={ask}
 			onselect={(checkMinutes) => put({ checkMinutes })}
+		/>
+	</div>
+
+	<div class="space-y-3">
+		<p class="font-medium">Break length</p>
+		<PresetChips
+			label="Minutes a break lasts"
+			options={chips(BREAK_MINUTES_PRESETS, breakFor)}
+			value={breakFor}
+			onselect={(breakMinutes) => put({ breakMinutes })}
 		/>
 	</div>
 
