@@ -28,7 +28,6 @@
 	import SoundMenu from '#lib/components/SoundMenu.svelte';
 	import UndoToast from '#lib/components/UndoToast.svelte';
 	import AlarmBanner from '#lib/components/AlarmBanner.svelte';
-	import QuickAlarmBar from '#lib/components/QuickAlarmBar.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
 	import { browser } from '$app/env';
@@ -308,8 +307,4 @@
 			{/key}
 		{/if}
 	</main>
-
-	{#if overlay && !tasker.move.comparison}
-		<QuickAlarmBar hidden={barHidden} />
-	{/if}
 </div>

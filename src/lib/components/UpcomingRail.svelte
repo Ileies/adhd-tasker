@@ -3,6 +3,7 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import AgentStrip from '#lib/components/AgentStrip.svelte';
+	import QuickAlarmBar from '#lib/components/QuickAlarmBar.svelte';
 	import SilenceLine from '#lib/components/SilenceLine.svelte';
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import { tasker } from '#lib/app.svelte.js';
@@ -145,6 +146,9 @@
 		</p>
 	{/if}
 
-	<!-- On phones the line is in the hero, the rail sits below the fold -->
-	<SilenceLine class="text-muted-foreground mt-auto hidden lg:flex" />
+	<div class="mt-auto flex flex-col gap-4">
+		<QuickAlarmBar />
+		<!-- On phones the line is in the hero, the rail sits below the fold -->
+		<SilenceLine class="text-muted-foreground hidden lg:flex" />
+	</div>
 </aside>
