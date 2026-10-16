@@ -2,10 +2,13 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	MIN_TRAVEL_MINUTES,
+	leaveLine,
 	moveTravel,
 	needsPrep,
 	prepDue,
 	prepOf,
+	prepPlan,
+	prepSummary,
 	prepTitle,
 	removedLine,
 	shiftDue,
@@ -168,6 +171,111 @@ describe('lines and lookups', () => {
 		expect(prepOf(todos, 7).map((todo) => todo.id)).toEqual([1]);
 		expect(travelOf(tasks, 7)?.id).toBe(11);
 		expect(travelOf(tasks, 8)).toBeUndefined();
+	});
+});
+
+describe('prepPlan', () => {
+	const appointment = {
+		id: 7,
+		title: 'Exam Math',
+		date: '2026-11-05',
+		startTime: 12 * 60,
+		priority: 5
+	};
+
+	test('the exam of the plan: 45 minutes of travel and 10 hours of preparation', () => {
+		const plan = prepPlan(appointment, { travel: 45, prepare: 600, steps: [] }, 10);
+		expect(plan.travel).toEqual({
+			title: 'Travel to Exam Math',
+			description: '',
+			date: '2026-11-05',
+			startTime: 11 * 60 + 5,
+			duration: 45,
+			priority: 5,
+			kind: 'travel',
+			parentId: 7
+		});
+		expect(plan.todos).toEqual([
+			{
+				title: 'Prepare: Exam Math',
+				priority: 5,
+				estimate: 600,
+				parentId: 7,
+				dueDate: '2026-11-05',
+				dueTime: 11 * 60 + 5
+			}
+		]);
+		expect(plan.problem).toBeNull();
+	});
+
+	test('without travel the preparation is due when the appointment starts', () => {
+		const plan = prepPlan(appointment, { travel: null, prepare: 120, steps: [] }, 10);
+		expect(plan.travel).toBeNull();
+		expect(plan.todos[0]).toMatchObject({ dueDate: '2026-11-05', dueTime: 12 * 60 });
+	});
+
+	test('steps typed in are to-dos of the appointment, without a title they are dropped', () => {
+		const plan = prepPlan(
+			appointment,
+			{
+				travel: 30,
+				prepare: null,
+				steps: [
+					{ title: ' Pack ID and pens ', minutes: 10 },
+					{ title: '   ', minutes: 5 },
+					{ title: 'Charge the calculator', minutes: null }
+				]
+			},
+			0
+		);
+		expect(plan.todos.map((todo) => [todo.title, todo.estimate, todo.dueTime])).toEqual([
+			['Pack ID and pens', 10, 11 * 60 + 30],
+			['Charge the calculator', null, 11 * 60 + 30]
+		]);
+	});
+
+	test('travel that does not fit before the appointment is said, the rest still goes in', () => {
+		const early = { ...appointment, startTime: 12 };
+		const plan = prepPlan(early, { travel: 45, prepare: 60, steps: [] }, 10);
+		expect(plan.travel).toBeNull();
+		expect(plan.problem).toBe('There is no room before it for that much travel');
+		expect(plan.todos).toHaveLength(1);
+	});
+
+	test('an empty sheet makes nothing', () => {
+		const plan = prepPlan(appointment, { travel: null, prepare: null, steps: [] }, 10);
+		expect(plan).toEqual({ travel: null, todos: [], problem: null });
+		expect(prepSummary(plan, 'Exam Math')).toBeNull();
+	});
+});
+
+describe('prepSummary', () => {
+	test.each([
+		[{ travel: {}, todos: [{}, {}] }, 'Added travel and 2 to-dos for Exam Math'],
+		[{ travel: null, todos: [{}] }, 'Added 1 to-do for Exam Math'],
+		[{ travel: {}, todos: [] }, 'Added travel for Exam Math']
+	])('%j says %s', (plan, line) => {
+		expect(prepSummary(plan as unknown as Parameters<typeof prepSummary>[0], 'Exam Math')).toBe(
+			line
+		);
+	});
+});
+
+describe('leaveLine', () => {
+	const tasks = [{ id: 7, title: 'Exam Math', startTime: 12 * 60 }];
+
+	test('travel says to leave and where it leads', () => {
+		expect(leaveLine({ kind: 'travel', parentId: 7 }, tasks)).toBe(
+			'Leave now. Exam Math at 12:00.'
+		);
+	});
+
+	test.each([
+		['a task of the user', { kind: 'block' as const, parentId: null }],
+		['an appointment', { kind: 'appointment' as const, parentId: null }],
+		['travel whose appointment is not known', { kind: 'travel' as const, parentId: 99 }]
+	])('%s says nothing', (_name, task) => {
+		expect(leaveLine(task, tasks)).toBeNull();
 	});
 });
 

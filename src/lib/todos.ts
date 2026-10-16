@@ -5,7 +5,7 @@
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError, type FlowAnswer } from '#lib/backend.js';
 import { checkPatch, isSlow, type CheckData } from '#lib/checks.js';
-import type { FlowRow, Todo, TodoPatch } from '#lib/core/repo.js';
+import type { FlowRow, Task, TaskKind, Todo, TodoPatch } from '#lib/core/repo.js';
 import { rotationTargets } from '#lib/pick.js';
 import { quickKind, quickTodo } from '#lib/quickadd.js';
 import {
@@ -57,10 +57,13 @@ export async function addQuickLine(
 	text: string,
 	date: string,
 	now: number | null,
-	today: string = date
-): Promise<{ kind: 'task' } | { kind: 'todo'; todo: Todo } | null> {
-	if (quickKind(text) === 'task')
-		return (await addQuickTask(text, date, now, today)) ? { kind: 'task' } : null;
+	today: string = date,
+	chosen: TaskKind | null = null
+): Promise<{ kind: 'task'; task: Task } | { kind: 'todo'; todo: Todo } | null> {
+	if (quickKind(text) === 'task') {
+		const task = await addQuickTask(text, date, now, today, chosen);
+		return task ? { kind: 'task', task } : null;
+	}
 	const fields = quickTodo(text, today);
 	if (!fields) return null;
 	try {

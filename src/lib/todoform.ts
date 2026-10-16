@@ -3,7 +3,7 @@
  * under a row and the order of the list. Pure.
  */
 import { dueWords } from '#lib/dates.js';
-import type { Todo, TodoPatch } from '#lib/core/repo.js';
+import type { Task, Todo, TodoPatch } from '#lib/core/repo.js';
 import { formatDuration } from '#lib/format.js';
 import type { Priority } from '#lib/types.js';
 
@@ -78,6 +78,43 @@ export function todoLine(todo: Todo, today: string): string {
 		parts.push(`${todo.progress} %`);
 	}
 	return parts.join(', ');
+}
+
+/** An appointment with the to-dos that prepare for it. */
+export interface PanelGroup {
+	appointment: Pick<Task, 'id' | 'title' | 'date' | 'startTime'>;
+	todos: Todo[];
+}
+
+/**
+ * The panel's two parts: "For appointments" (under the appointment, the nearest first) and "Other". A to-do whose
+ * appointment is not known (deleted, or too far away to be loaded) is listed with the others.
+ */
+export function panelGroups(
+	todos: Todo[],
+	tasks: Pick<Task, 'id' | 'title' | 'date' | 'startTime'>[]
+): { forAppointments: PanelGroup[]; other: Todo[] } {
+	const listed = panelTodos(todos);
+	const known = new Map(tasks.map((task) => [task.id, task]));
+	const groups = new Map<number, PanelGroup>();
+	const other: Todo[] = [];
+	for (const todo of listed) {
+		const appointment = todo.parentId === null ? undefined : known.get(todo.parentId);
+		if (!appointment) {
+			other.push(todo);
+			continue;
+		}
+		const group = groups.get(appointment.id) ?? { appointment, todos: [] };
+		group.todos.push(todo);
+		groups.set(appointment.id, group);
+	}
+	const forAppointments = [...groups.values()].sort(
+		(a, b) =>
+			a.appointment.date.localeCompare(b.appointment.date) ||
+			a.appointment.startTime - b.appointment.startTime ||
+			a.appointment.id - b.appointment.id
+	);
+	return { forAppointments, other };
 }
 
 /** The to-dos the panel lists: the open ones, what is due first and what matters most on top. */

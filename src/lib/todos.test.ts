@@ -122,7 +122,10 @@ describe('addQuickLine', () => {
 			[`POST ${BASE}/edit`]: async (request) =>
 				Response.json({ ...(await request.json()), id: 4, status: 'pending' })
 		});
-		expect(await addQuickLine('Call dentist 14:30', '2026-10-14', 540)).toEqual({ kind: 'task' });
+		expect(await addQuickLine('Call dentist 14:30', '2026-10-14', 540)).toMatchObject({
+			kind: 'task',
+			task: { id: 4, title: 'Call dentist' }
+		});
 		expect(tasker.todos).toHaveLength(3);
 	});
 

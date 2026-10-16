@@ -106,6 +106,8 @@ export const tasker: {
 	calendar: { allDay: AllDayLine[] };
 	/** The day Plan shows, null until Plan opens. The bar holds the day switcher, so the state is shared. */
 	plan: { date: string | null };
+	/** The appointment the prep sheet is open for, `null` while it is closed. Any screen that makes one opens it. */
+	prep: { appointment: Task | null };
 } = $state({
 	backend: remoteBackend,
 	account: { email: null, ready: false, problem: null },
@@ -129,5 +131,6 @@ export const tasker: {
 	sample: [],
 	move: { comparison: null, hasKey: false, busy: false, error: null },
 	calendar: { allDay: [] },
-	plan: { date: null }
+	plan: { date: null },
+	prep: { appointment: null }
 });

@@ -5,7 +5,7 @@
  * Travel is a task of its own (`kind` travel, `parentId` the appointment) that ends `arriveEarly` minutes before the
  * appointment starts. A prep to-do is due when the travel starts (the appointment itself without travel).
  */
-import type { Task, Todo } from '#lib/core/repo.js';
+import type { NewTask, NewTodo, Task, Todo } from '#lib/core/repo.js';
 import { formatClock } from '#lib/format.js';
 import { daysBetween } from '#lib/pick.js';
 import { addDays, type DateKey } from '#lib/time.js';
@@ -83,6 +83,21 @@ export function shiftDue(
 /** The line a to-do keeps when its appointment is deleted: it stays due when it was. */
 export const removedLine = (appointmentTitle: string) => `${appointmentTitle} was removed`;
 
+/**
+ * What the screen says while travel runs: "Leave now. Exam Math at 12:00." The moment that matters is the start of
+ * it, so the words say leave, not "travel". `null` for anything that is not travel to an appointment that is known.
+ */
+export function leaveLine(
+	travel: Pick<Task, 'kind' | 'parentId'>,
+	tasks: Pick<Task, 'id' | 'title' | 'startTime'>[]
+): string | null {
+	if (travel.kind !== 'travel') return null;
+	const appointment = tasks.find((task) => task.id === travel.parentId);
+	return appointment
+		? `Leave now. ${appointment.title} at ${formatClock(appointment.startTime)}.`
+		: null;
+}
+
 /** The prep to-dos of an appointment. */
 export const prepOf = <T extends Pick<Todo, 'parentId'>>(todos: T[], appointmentId: number): T[] =>
 	todos.filter((todo) => todo.parentId === appointmentId);
@@ -111,4 +126,79 @@ export function needsPrep(
 	const away = daysBetween(today, appointment.date);
 	if (away < 0 || away > PREP_WINDOW_DAYS) return false;
 	return prepOf(todos, appointment.id).length === 0;
+}
+
+/** What the prep sheet asks: how long to get there, how long to prepare, and any steps typed in beyond that. */
+export interface PrepForm {
+	/** Minutes of travel, `null` for none. */
+	travel: number | null;
+	/** Minutes of preparation as one to-do, `null` for none. */
+	prepare: number | null;
+	/** Steps typed in, each becomes a to-do of the appointment. */
+	steps: { title: string; minutes: number | null }[];
+}
+
+/** What adding the sheet makes. */
+export interface PrepPlan {
+	travel: NewTask | null;
+	todos: (Pick<NewTodo, 'title' | 'priority'> &
+		Required<Pick<NewTodo, 'parentId' | 'dueDate' | 'dueTime'>> &
+		Pick<NewTodo, 'estimate'>)[];
+	/** Why the travel was left out although it was asked for, `null` when nothing was wrong. */
+	problem: string | null;
+}
+
+/**
+ * The travel task and the to-dos the sheet makes for an appointment. Everything is due when the travel starts, the
+ * appointment itself without travel. Steps without a title are dropped.
+ */
+export function prepPlan(
+	appointment: Pick<Task, 'id' | 'title' | 'date' | 'startTime' | 'priority'>,
+	form: PrepForm,
+	arriveEarly: number
+): PrepPlan {
+	const placed =
+		form.travel === null ? null : travelPlacement(appointment, form.travel, arriveEarly);
+	const travel: NewTask | null = placed && {
+		title: travelTitle(appointment.title),
+		description: '',
+		...placed,
+		priority: appointment.priority,
+		kind: 'travel',
+		parentId: appointment.id
+	};
+	const due = prepDue(appointment, placed);
+	const make = (title: string, estimate: number | null) => ({
+		title,
+		priority: appointment.priority,
+		estimate,
+		parentId: appointment.id,
+		...due
+	});
+	const todos = [
+		...(form.prepare === null ? [] : [make(prepTitle(appointment.title), form.prepare)]),
+		...form.steps
+			.map((step) => ({ title: step.title.trim(), minutes: step.minutes }))
+			.filter((step) => step.title !== '')
+			.map((step) => make(step.title, step.minutes))
+	];
+	return {
+		travel,
+		todos,
+		problem:
+			form.travel !== null && placed === null
+				? 'There is no room before it for that much travel'
+				: null
+	};
+}
+
+/** The sentence that says what the sheet added: "Added travel and 2 to-dos for Exam Math". */
+export function prepSummary(plan: Pick<PrepPlan, 'travel' | 'todos'>, appointmentTitle: string) {
+	const parts = [
+		...(plan.travel ? ['travel'] : []),
+		...(plan.todos.length > 0
+			? [`${plan.todos.length} to-do${plan.todos.length === 1 ? '' : 's'}`]
+			: [])
+	];
+	return parts.length === 0 ? null : `Added ${parts.join(' and ')} for ${appointmentTitle}`;
 }

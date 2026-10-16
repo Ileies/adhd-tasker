@@ -1,4 +1,4 @@
-import type { NewTask, TodoPatch } from '#lib/core/repo.js';
+import type { NewTask, TaskKind, TodoPatch } from '#lib/core/repo.js';
 import { dueWords, takeDate } from '#lib/dates.js';
 import { formatClock, formatDuration } from '#lib/format.js';
 import { DAY_MINUTES, SNAP } from '#lib/plan.js';
@@ -97,6 +97,60 @@ export function parseQuickTask(text: string, today?: DateKey): QuickTask {
 	};
 }
 
+/** Words that mark a line as an appointment: somebody else's time, it ends on its own (`docs/flow-plan.md` 5.10). */
+export const APPOINTMENT_WORDS = [
+	'exam',
+	'test',
+	'meeting',
+	'appointment',
+	'doctor',
+	'dentist',
+	'interview',
+	'lecture',
+	'class',
+	'flight',
+	'train'
+];
+/** "Call dentist" is an errand of the user's own, "Dentist 14:30" is a visit: these first words keep it a task. */
+const ERRAND_WORDS = [
+	'call',
+	'email',
+	'text',
+	'book',
+	'cancel',
+	'reschedule',
+	'prepare',
+	'study',
+	'write',
+	'read',
+	'buy',
+	'pay',
+	'order',
+	'ask',
+	'remind'
+];
+
+/**
+ * Whether the words of a title say it is an appointment. A wrong task at a time costs one "Did you do it?", a wrong
+ * appointment would silently skip it, so the list is short and an errand ("Call dentist") stays a task.
+ */
+export function looksLikeAppointment(title: string): boolean {
+	const words = title.toLowerCase().match(/[a-z]+/g) ?? [];
+	const [first] = words;
+	if (first === undefined || ERRAND_WORDS.includes(first)) return false;
+	return words.some((word) => APPOINTMENT_WORDS.includes(word));
+}
+
+/**
+ * What a line with a time makes: a task of the user's own or an appointment, chosen by the words unless the user
+ * tapped the chip. `null` for a line without a time or a title, that one is a to-do.
+ */
+export function quickTaskKind(text: string, chosen: TaskKind | null = null): TaskKind | null {
+	const parsed = parseQuickTask(text);
+	if (parsed.startTime === null || !parsed.title) return null;
+	return chosen ?? (looksLikeAppointment(parsed.title) ? 'appointment' : 'block');
+}
+
 /**
  * What a quick add line makes: a time means a task at a time, everything else is a to-do (it has no time, the
  * app finds the time for it). A line names a time only with a clock time.
@@ -130,7 +184,8 @@ export function quickTask(
 	text: string,
 	date: string,
 	now: number | null,
-	today: DateKey = date
+	today: DateKey = date,
+	chosen: TaskKind | null = null
 ): NewTask | null {
 	const parsed = parseQuickTask(text, today);
 	if (!parsed.title) return null;
@@ -147,7 +202,9 @@ export function quickTask(
 		date: taskDate,
 		startTime: Math.min(parsed.startTime ?? fallback, DAY_MINUTES - duration),
 		duration,
-		priority: Priority.Medium
+		priority: Priority.Medium,
+		// A line without a time is no appointment, whatever its words say
+		kind: parsed.startTime === null ? 'block' : (quickTaskKind(text, chosen) ?? 'block')
 	};
 }
 
@@ -159,7 +216,8 @@ export function quickPreview(
 	text: string,
 	date: string,
 	now: number | null,
-	today: DateKey = date
+	today: DateKey = date,
+	chosen: TaskKind | null = null
 ): string | null {
 	const parsed = parseQuickTask(text, today);
 	if (!parsed.title) return null;
@@ -173,8 +231,9 @@ export function quickPreview(
 		].filter(Boolean);
 		return `To-do${parts.length > 0 ? `, ${parts.join(', ')}` : ''}`;
 	}
-	const task = quickTask(text, date, now, today);
+	const task = quickTask(text, date, now, today, chosen);
 	if (!task) return null;
 	const day = task.date === date ? '' : `${formatDay(task.date, today)}, `;
-	return `Task, ${day}${formatClock(task.startTime)} to ${formatClock(task.startTime + task.duration)}, ${formatDuration(task.duration)}`;
+	const what = task.kind === 'appointment' ? 'Appointment' : 'Task';
+	return `${what}, ${day}${formatClock(task.startTime)} to ${formatClock(task.startTime + task.duration)}, ${formatDuration(task.duration)}`;
 }

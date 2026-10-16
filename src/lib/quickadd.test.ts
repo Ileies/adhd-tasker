@@ -1,7 +1,15 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { parseQuickTask, quickKind, quickPreview, quickTask, quickTodo } from '#lib/quickadd.js';
+import {
+	looksLikeAppointment,
+	parseQuickTask,
+	quickKind,
+	quickPreview,
+	quickTask,
+	quickTaskKind,
+	quickTodo
+} from '#lib/quickadd.js';
 import { Priority } from '#lib/types.js';
 
 describe('quickTask', () => {
@@ -131,9 +139,19 @@ describe('quickPreview', () => {
 	});
 
 	test('a task on another day names the day', () => {
+		expect(quickPreview('Lunch Nov 5 12:00 45m', DAY, null)).toBe(
+			'Task, Thu, Nov 5, 12:00 to 12:45, 45m'
+		);
+	});
+
+	test('a word like exam makes the preview say appointment, the chip can change it back', () => {
 		expect(quickPreview('Exam Math Nov 5 12:00 2h', DAY, null)).toBe(
+			'Appointment, Thu, Nov 5, 12:00 to 14:00, 2h'
+		);
+		expect(quickPreview('Exam Math Nov 5 12:00 2h', DAY, null, DAY, 'block')).toBe(
 			'Task, Thu, Nov 5, 12:00 to 14:00, 2h'
 		);
+		expect(quickPreview('Lunch 12:00', DAY, null, DAY, 'appointment')).toStartWith('Appointment, ');
 	});
 
 	test('a size without a time is a to-do of that size', () => {
@@ -152,6 +170,55 @@ describe('quickPreview', () => {
 
 	test('is null without a title', () => {
 		expect(quickPreview('14:30 45m', DAY, null)).toBeNull();
+	});
+});
+
+describe('looksLikeAppointment', () => {
+	test.each([
+		'Exam Math',
+		'Dentist',
+		'team meeting',
+		'Flight to Oslo',
+		'the train home',
+		'Doctor, Dr. Fischer',
+		'Piano lecture'
+	])('%s is one', (title) => {
+		expect(looksLikeAppointment(title)).toBe(true);
+	});
+
+	test.each([
+		'Lunch',
+		'Write report',
+		'Call dentist',
+		'Book the flight',
+		'Study for the exam',
+		'Prepare class notes',
+		'Pay the doctor',
+		'Testing the app',
+		''
+	])('%s is not', (title) => {
+		expect(looksLikeAppointment(title)).toBe(false);
+	});
+});
+
+describe('quickTaskKind and the kind a line makes', () => {
+	test('a line with a time and appointment words makes an appointment', () => {
+		expect(quickTaskKind('Exam Math 12:00')).toBe('appointment');
+		expect(quickTask('Exam Math 12:00 2h', '2026-10-14', null)?.kind).toBe('appointment');
+	});
+
+	test('the chip beats the words in both directions', () => {
+		expect(quickTaskKind('Exam Math 12:00', 'block')).toBe('block');
+		expect(quickTaskKind('Lunch 12:00', 'appointment')).toBe('appointment');
+	});
+
+	test('a line without a time is a to-do, whatever its words say', () => {
+		expect(quickTaskKind('Exam Math')).toBeNull();
+		expect(quickTask('Exam Math', '2026-10-14', 600)?.kind).toBe('block');
+	});
+
+	test('a line without a title makes nothing', () => {
+		expect(quickTaskKind('12:00')).toBeNull();
 	});
 });
 

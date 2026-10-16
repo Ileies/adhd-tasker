@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import type { Todo } from '#lib/core/repo.js';
-import { panelTodos, todoFormOf, todoLine, todoPatchOf } from '#lib/todoform.js';
+import { panelGroups, panelTodos, todoFormOf, todoLine, todoPatchOf } from '#lib/todoform.js';
 import { Priority } from '#lib/types.js';
 
 const todo = (id: number, patch: Partial<Todo> = {}): Todo => ({
@@ -95,6 +95,45 @@ describe('todoLine', () => {
 		['due today', { dueDate: TODAY }, 'Due today']
 	] as const)('%s', (_name, patch, line) => {
 		expect(todoLine(todo(1, patch), TODAY)).toBe(line);
+	});
+});
+
+describe('panelGroups', () => {
+	const exam = { id: 7, title: 'Exam Math', date: '2026-11-05', startTime: 720 };
+	const dentist = { id: 8, title: 'Dentist', date: '2026-10-20', startTime: 540 };
+
+	test('to-dos of an appointment are listed under it, the nearest appointment first', () => {
+		const { forAppointments, other } = panelGroups(
+			[
+				todo(1, { parentId: 7, dueDate: '2026-11-05' }),
+				todo(2, { parentId: 8, dueDate: '2026-10-20' }),
+				todo(3, { parentId: 7, dueDate: '2026-11-04' }),
+				todo(4)
+			],
+			[exam, dentist]
+		);
+		expect(
+			forAppointments.map((group) => [group.appointment.title, group.todos.map((t) => t.id)])
+		).toEqual([
+			['Dentist', [2]],
+			['Exam Math', [3, 1]]
+		]);
+		expect(other.map((entry) => entry.id)).toEqual([4]);
+	});
+
+	test('a to-do whose appointment is not known is listed with the others', () => {
+		const { forAppointments, other } = panelGroups([todo(1, { parentId: 99 })], [exam]);
+		expect(forAppointments).toEqual([]);
+		expect(other.map((entry) => entry.id)).toEqual([1]);
+	});
+
+	test('finished and ended to-dos are not listed', () => {
+		const { forAppointments, other } = panelGroups(
+			[todo(1, { parentId: 7, status: 'ended' }), todo(2, { status: 'done' })],
+			[exam]
+		);
+		expect(forAppointments).toEqual([]);
+		expect(other).toEqual([]);
 	});
 });
 

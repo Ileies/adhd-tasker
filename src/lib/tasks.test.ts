@@ -63,6 +63,41 @@ describe('updateTask', () => {
 		expect(requests).toEqual([]);
 		expect(tasker.tasks).toHaveLength(3);
 	});
+
+	describe('an appointment', () => {
+		const exam = (patch: Partial<Task> = {}) =>
+			task(1, { kind: 'appointment', startTime: 720, ...patch });
+		const travel = task(2, { kind: 'travel', parentId: 1, startTime: 665, duration: 45 });
+		const routes = (dayAfter: Task[]) => ({
+			'PUT http://localhost:5173/edit': () => Response.json(true),
+			'GET http://localhost:5173/edit': () => Response.json(dayAfter),
+			'GET http://localhost:5173/todos': () => Response.json([])
+		});
+
+		test('moving it reads the day and the to-dos again, its travel moved along on the server', async () => {
+			tasker.tasks = [exam(), travel];
+			const moved = { ...travel, startTime: 785 };
+			const { requests } = fakeFetch(routes([exam({ startTime: 780 }), moved]));
+			expect(await updateTask(exam({ startTime: 780 }))).toBe(true);
+			expect(tasker.tasks.find((t) => t.id === 2)?.startTime).toBe(785);
+			expect(
+				requests.map((request) => `${request.method} ${new URL(request.url).pathname}`)
+			).toEqual(['PUT /edit', 'GET /edit', 'GET /todos']);
+		});
+
+		test('a change that moves nothing reads nothing again', async () => {
+			tasker.tasks = [exam(), travel];
+			const { requests } = fakeFetch(routes([]));
+			await updateTask(exam({ title: 'Exam Math, room 4' }));
+			expect(requests).toHaveLength(1);
+		});
+
+		test('a plain task moving reads nothing again', async () => {
+			const { requests } = fakeFetch(routes([]));
+			await updateTask(task(2, { startTime: 0 }));
+			expect(requests).toHaveLength(1);
+		});
+	});
 });
 
 describe('deleteTask', () => {
@@ -86,6 +121,24 @@ describe('deleteTask', () => {
 		expect(await deleteTask(task(2))).toBe(false);
 		expect(tasker.tasks.map((t) => t.id)).toEqual([1, 2, 3]);
 	});
+
+	test('an appointment takes its travel with it at once and the to-dos are read again', async () => {
+		const exam = task(1, { kind: 'appointment' });
+		tasker.tasks = [exam, task(2, { kind: 'travel', parentId: 1 }), task(3)];
+		const { requests } = fakeFetch({
+			'DELETE http://localhost:5173/edit': () => Response.json(true),
+			'GET http://localhost:5173/edit': () => Response.json([task(3)]),
+			'GET http://localhost:5173/todos': () => Response.json([])
+		});
+		const pending = deleteTask(exam);
+		expect(tasker.tasks.map((t) => t.id)).toEqual([3]);
+		expect(await pending).toBe(true);
+		expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
+			'/edit',
+			'/edit',
+			'/todos'
+		]);
+	});
 });
 
 describe('createTask', () => {
@@ -93,7 +146,7 @@ describe('createTask', () => {
 
 	test('adds the row the server answers with', async () => {
 		fakeFetch({ 'POST http://localhost:5173/edit': () => Response.json(task(4)) });
-		await createTask(input);
+		expect(await createTask(input)).toMatchObject({ id: 4 });
 		expect(tasker.tasks.map((t) => t.id)).toEqual([1, 2, 3, 4]);
 	});
 
@@ -111,20 +164,36 @@ describe('addQuickTask', () => {
 			'POST http://localhost:5173/edit': async (request) =>
 				Response.json({ ...(await request.json()), id: 9, status: 'pending' })
 		});
-		expect(await addQuickTask('Call dentist 14:30', '2026-10-14', null)).toBe(true);
+		expect(await addQuickTask('Call dentist 14:30', '2026-10-14', null)).toMatchObject({ id: 9 });
 		expect(tasker.tasks.at(-1)).toMatchObject({ id: 9, title: 'Call dentist', startTime: 870 });
 		expect(tasker.toasts.at(-1)?.message).toBe('Added Call dentist at 14:30');
 	});
 
+	test('a line with an appointment word is sent as an appointment, the chip decides otherwise', async () => {
+		const sent: unknown[] = [];
+		fakeFetch({
+			'POST http://localhost:5173/edit': async (request) => {
+				const body = await request.json();
+				sent.push(body);
+				return Response.json({ ...body, id: 9, status: 'pending' });
+			}
+		});
+		expect(await addQuickTask('Exam Math 12:00', '2026-10-14', null)).toMatchObject({
+			kind: 'appointment'
+		});
+		await addQuickTask('Exam Math 12:00', '2026-10-14', null, '2026-10-14', 'block');
+		expect(sent).toMatchObject([{ kind: 'appointment' }, { kind: 'block' }]);
+	});
+
 	test('says why when the task could not be added', async () => {
 		fakeFetch({ 'POST http://localhost:5173/edit': rejected(400, 'title is required') });
-		expect(await addQuickTask('Call dentist', '2026-10-14', null)).toBe(false);
+		expect(await addQuickTask('Call dentist', '2026-10-14', null)).toBeNull();
 		expect(tasker.toasts.at(-1)?.message).toContain('title is required');
 		expect(tasker.tasks).toHaveLength(3);
 	});
 
 	test('a line without a title adds nothing and shows nothing', async () => {
-		expect(await addQuickTask('  ', '2026-10-14', null)).toBe(false);
+		expect(await addQuickTask('  ', '2026-10-14', null)).toBeNull();
 		expect(tasker.toasts).toEqual([]);
 	});
 });

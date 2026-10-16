@@ -1,4 +1,4 @@
-import type { Task } from '#lib/core/repo.js';
+import type { Task, TaskKind } from '#lib/core/repo.js';
 import type { reminders } from '#lib/server/db/schema.js';
 
 export enum Priority {
@@ -26,6 +26,7 @@ export interface TaskForm {
 	duration: number; // Duration in minutes
 	startTime: number; // Start time in seconds since start of the day
 	priority: Priority; // Priority level
+	kind: TaskKind; // block (a task of the user's own), appointment or travel
 }
 
 export type { Task };
