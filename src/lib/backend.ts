@@ -15,6 +15,7 @@ import type {
 	TodoPatch
 } from '#lib/core/repo.js';
 import type { Alarm, Wakeup } from '#lib/app.svelte.js';
+import type { PrepStep } from '#lib/assistant-tools.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
 import type {
 	AllDayLine,
@@ -115,6 +116,8 @@ export interface Backend {
 		chat(messages: ChatMessage[]): Promise<{ reply: string; changes: Change[] }>;
 		/** The dates the plan has to refresh. */
 		undo(id: number): Promise<{ dates: string[] }>;
+		/** The steps the assistant suggests for an appointment (task id). Nothing is written. Rejects with the reason. */
+		suggestPrep(id: number): Promise<{ steps: PrepStep[] }>;
 	};
 	agent: {
 		/** `null` when the backend refused. `since` is the last action id seen, `null` before the first poll. */

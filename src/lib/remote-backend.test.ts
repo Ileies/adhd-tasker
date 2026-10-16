@@ -51,6 +51,20 @@ describe('remoteBackend errors', () => {
 		);
 	});
 
+	test('suggested steps are a POST to /assistant/prep and fall back to the assistant sentence', async () => {
+		const { requests } = fakeFetch({
+			'POST http://localhost:5173/assistant/prep': json({ steps: [{ title: 'Pack', minutes: 5 }] })
+		});
+		expect<unknown>(await remoteBackend.assistant.suggestPrep(7)).toEqual({
+			steps: [{ title: 'Pack', minutes: 5 }]
+		});
+		expect(await requests[0].json()).toEqual({ id: 7 });
+		fakeFetch({ 'http://localhost:5173/assistant/prep': refuse(500) });
+		expect((await failure(() => remoteBackend.assistant.suggestPrep(7))).message).toBe(
+			'The assistant is not available right now.'
+		);
+	});
+
 	test('a failed undo keeps its status, so Already undone can be told apart', async () => {
 		fakeFetch({ 'http://localhost:5173/assistant/undo': refuse(409, 'Already undone') });
 		expect(await failure(() => remoteBackend.assistant.undo(3))).toMatchObject({ status: 409 });

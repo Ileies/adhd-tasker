@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { AssistantError } from '#lib/core/context.js';
 import { fakeFetch } from '#test/fakes.js';
-import { reactionTools } from '#lib/assistant-tools.js';
+import { PREP_TOOLS, reactionTools } from '#lib/assistant-tools.js';
 import {
 	EFFORT_BY_USE,
 	OPENAI_URL,
@@ -63,7 +63,26 @@ describe('efforts per use', () => {
 	test('differ by place and stay within low, medium, high', () => {
 		expect(buildRequest([], '', 'reaction').reasoning.effort).toBe('low');
 		expect(buildRequest([], '', 'chat').reasoning.effort).toBe('medium');
+		expect(buildRequest([], '', 'prep').reasoning.effort).toBe('low');
 		expect(buildRequest([], '', 'replan').reasoning.effort).toBe('high');
+	});
+});
+
+describe('the prep use', () => {
+	test('has to answer through its one tool and keeps the fixed settings', () => {
+		const request = buildRequest([], '', 'prep', PREP_TOOLS);
+		expect(request).toMatchObject({
+			model: 'gpt-6-luna',
+			store: false,
+			service_tier: 'flex',
+			tool_choice: { type: 'function', name: 'suggest_steps' }
+		});
+		expect(request.tools.map((tool) => tool.name)).toEqual(['suggest_steps']);
+	});
+
+	test('no other use forces a tool', () => {
+		for (const use of ['chat', 'reaction', 'replan'] as const)
+			expect(buildRequest([], '', use)).not.toHaveProperty('tool_choice');
 	});
 });
 

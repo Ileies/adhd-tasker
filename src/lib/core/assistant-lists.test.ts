@@ -143,6 +143,93 @@ describe('to-do tools', () => {
 	});
 });
 
+describe('add_prep_steps', () => {
+	const exam = (made: Made) =>
+		made.repo.tasks.insert({
+			title: 'Exam Math',
+			description: '',
+			date: '2026-10-16',
+			startTime: 12 * 60,
+			duration: 120,
+			priority: 4,
+			kind: 'appointment'
+		});
+	const steps = [
+		{ title: 'Pack ID and pens', minutes: 5 },
+		{ title: 'Charge the calculator', minutes: null }
+	];
+
+	test('each step is a to-do of the appointment, due when it starts, one change each for Undo', async () => {
+		const made = await testCtx();
+		const appointment = await exam(made);
+		const changes: Change[] = [];
+		await run(made, 'add_prep_steps', { appointment_id: appointment.id, steps }, changes);
+		const todos = await made.repo.todos.open();
+		expect(todos.map((todo) => [todo.title, todo.estimate, todo.parentId, todo.priority])).toEqual([
+			['Pack ID and pens', 5, appointment.id, 4],
+			['Charge the calculator', null, appointment.id, 4]
+		]);
+		expect(todos.every((todo) => todo.dueDate === '2026-10-16' && todo.dueTime === 12 * 60)).toBe(
+			true
+		);
+		expect(changes.map((change) => change.summary)).toEqual([
+			'Added the to-do Pack ID and pens',
+			'Added the to-do Charge the calculator'
+		]);
+		await undoAction(made.ctx, changes[1].id);
+		expect((await made.repo.todos.open()).map((todo) => todo.title)).toEqual(['Pack ID and pens']);
+	});
+
+	test('with travel they are due when the travel starts', async () => {
+		const made = await testCtx();
+		const appointment = await exam(made);
+		await made.repo.tasks.insert({
+			title: 'Travel to Exam Math',
+			description: '',
+			date: '2026-10-16',
+			startTime: 11 * 60 + 5,
+			duration: 45,
+			priority: 4,
+			kind: 'travel',
+			parentId: appointment.id
+		});
+		await run(made, 'add_prep_steps', { appointment_id: appointment.id, steps });
+		const [first] = await made.repo.todos.open();
+		expect(first).toMatchObject({ dueDate: '2026-10-16', dueTime: 11 * 60 + 5 });
+	});
+
+	test('the events are the agent own and never wake it', async () => {
+		const made = await testCtx();
+		const appointment = await exam(made);
+		await run(made, 'add_prep_steps', { appointment_id: appointment.id, steps });
+		expect(made.state.reacts).toBe(0);
+		expect((await made.repo.events.recent(2)).map((row) => row.origin)).toEqual(['agent', 'agent']);
+	});
+
+	test('only for an appointment that exists, with valid steps, and nothing is written otherwise', async () => {
+		const made = await testCtx();
+		const block = await made.repo.tasks.insert({
+			title: 'Read',
+			description: '',
+			date: '2026-10-16',
+			startTime: 600,
+			duration: 30,
+			priority: 2
+		});
+		const appointment = await exam(made);
+		const wrong = { error: 'appointment_id must be an appointment from list_tasks' };
+		expect(await run(made, 'add_prep_steps', { appointment_id: block.id, steps })).toEqual(wrong);
+		expect(await run(made, 'add_prep_steps', { appointment_id: 999, steps })).toEqual(wrong);
+		expect(
+			await run(made, 'add_prep_steps', { appointment_id: appointment.id, steps: [] })
+		).toMatchObject({
+			error: expect.stringContaining('steps')
+		});
+		expect(await made.repo.todos.open()).toEqual([]);
+		expect(await made.repo.actions.recent(5)).toEqual([]);
+	});
+});
+
 describe('routine tools', () => {
 	const meds = {
 		title: 'Meds',

@@ -161,6 +161,11 @@ export const remoteBackend: Backend = {
 		},
 		async undo(id) {
 			return (await post('/assistant/undo', { id }, '')).json();
+		},
+		async suggestPrep(id) {
+			return (
+				await post('/assistant/prep', { id }, 'The assistant is not available right now.')
+			).json();
 		}
 	},
 

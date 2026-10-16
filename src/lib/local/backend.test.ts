@@ -246,6 +246,39 @@ describe('assistant', () => {
 		const { backend } = await setup();
 		expect(await failure(backend.assistant.undo(1.5))).toMatchObject({ status: 400 });
 	});
+
+	describe('suggested steps', () => {
+		const answer = call('suggest_steps', { steps: [{ title: 'Pack ID', minutes: 5 }] });
+		const appointment = (repo: Awaited<ReturnType<typeof setup>>['repo']) =>
+			repo.tasks.insert({ ...task, kind: 'appointment' });
+
+		test('come from the device own call and are not written', async () => {
+			const { backend, repo } = await setup([answer]);
+			await repo.settings.update({ openaiKey: 'sk-test' });
+			const exam = await appointment(repo);
+			expect(await backend.assistant.suggestPrep(exam.id)).toEqual({
+				steps: [{ title: 'Pack ID', minutes: 5 }]
+			});
+			expect(await repo.todos.all()).toEqual([]);
+		});
+
+		test('without a key the device says to add one', async () => {
+			const { backend, repo } = await setup([answer]);
+			const exam = await appointment(repo);
+			expect(await failure(backend.assistant.suggestPrep(exam.id))).toMatchObject({
+				status: 400,
+				message: 'Add your OpenAI key in Settings first'
+			});
+		});
+
+		test('ten in five minutes are allowed, the next one waits', async () => {
+			const { backend, repo } = await setup(Array.from({ length: 10 }, () => answer));
+			await repo.settings.update({ openaiKey: 'sk-test' });
+			const exam = await appointment(repo);
+			for (let i = 0; i < 10; i++) await backend.assistant.suggestPrep(exam.id);
+			expect(await failure(backend.assistant.suggestPrep(exam.id))).toMatchObject({ status: 429 });
+		});
+	});
 });
 
 describe('agent', () => {

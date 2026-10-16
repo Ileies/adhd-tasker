@@ -7,6 +7,7 @@ import { BackendError, type Backend } from '#lib/backend.js';
 import { activityView } from '#lib/core/activity.js';
 import { buildExport, importExport, parseExport } from '#lib/core/export.js';
 import { parseMessages, runAssistant, undoAction } from '#lib/core/assistant.js';
+import { suggestPrep } from '#lib/core/prep-suggest.js';
 import { AssistantError, type Ctx, type Hint, type Model } from '#lib/core/context.js';
 import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
 import { createPlanTask, deletePlanTask, updatePlanTask } from '#lib/core/plan.js';
@@ -58,6 +59,7 @@ const browserSocket = (url: string, key: string) =>
 const FIRST_DAY = '0000-01-01';
 
 const RATE = { requests: 20, windowMs: 5 * 60_000 };
+const PREP_RATE = { requests: 10, windowMs: 5 * 60_000 };
 const VOICE_RATE = { requests: 30, windowMs: 5 * 60_000 };
 
 /** Runs core work and gives its failure the shape the screens expect. */
@@ -100,6 +102,7 @@ export function localBackend(deps: LocalDeps): Backend {
 		return [...found.values()];
 	};
 	const chatRate = rateLimit(RATE, 'Too many requests, wait a few minutes');
+	const prepRate = rateLimit(PREP_RATE, 'Too many requests, wait a few minutes');
 	const voiceRate = rateLimit(VOICE_RATE, 'Too many voice requests, wait a few minutes');
 
 	const ctx = (model: Model | null = null): Ctx => ({
@@ -198,6 +201,13 @@ export function localBackend(deps: LocalDeps): Backend {
 				guarded(() => {
 					if (!Number.isInteger(id)) throw new AssistantError('id must be a change id', 400);
 					return undoAction(ctx(), id);
+				}),
+			suggestPrep: (id) =>
+				guarded(async () => {
+					prepRate('guest', now());
+					const { openaiKey } = await repo.settings.get();
+					if (!openaiKey) throw new AssistantError('Add your OpenAI key in Settings first', 400);
+					return suggestPrep(ctx(modelFor(openaiKey)), id);
 				})
 		},
 

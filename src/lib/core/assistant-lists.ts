@@ -6,6 +6,7 @@
  */
 import { summarizeAction } from '#lib/activity.js';
 import {
+	parseAddPrepSteps,
 	parseAddRoutine,
 	parseAddTodo,
 	parseDeleteById,
@@ -23,6 +24,7 @@ import { describeTodoChange } from '#lib/events.js';
 import { flow } from '#lib/flow.js';
 import { formatClock24, formatMinutes } from '#lib/format.js';
 import { placeDay } from '#lib/placeday.js';
+import { prepDue, travelOf } from '#lib/prep.js';
 import { repeatText } from '#lib/schedule.js';
 import { minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
 
@@ -108,6 +110,7 @@ const LIST_TOOLS = [
 	'add_todo',
 	'update_todo',
 	'delete_todo',
+	'add_prep_steps',
 	'list_routines',
 	'add_routine',
 	'update_routine',
@@ -154,6 +157,37 @@ export async function runListTool(
 				const before = await deleteTodo(ctx, parsed.value, 'agent');
 				await logged('delete_todo', before, null);
 				return { deleted: describeTodo(before) };
+			}
+			case 'add_prep_steps': {
+				const parsed = parseAddPrepSteps(args);
+				if (!parsed.ok) return { error: parsed.error };
+				const appointment = await ctx.repo.tasks.get(parsed.value.appointmentId);
+				if (!appointment || appointment.kind !== 'appointment')
+					return { error: 'appointment_id must be an appointment from list_tasks' };
+				// Due when the travel starts, like the prep sheet makes them, so the model never computes a date
+				const travel = travelOf(
+					await ctx.repo.tasks.between(appointment.date, appointment.date),
+					appointment.id
+				);
+				const due = prepDue(appointment, travel ?? null);
+				const added: string[] = [];
+				// One change per step, so Undo takes them back one by one
+				for (const step of parsed.value.steps) {
+					const todo = await createTodo(
+						ctx,
+						{
+							title: step.title,
+							priority: appointment.priority,
+							estimate: step.minutes,
+							parentId: appointment.id,
+							...due
+						},
+						'agent'
+					);
+					await logged('add_todo', null, todo);
+					added.push(describeTodo(todo));
+				}
+				return { added };
 			}
 			case 'list_routines':
 				return { routines: (await ctx.repo.routines.all()).map(describeRoutine) };

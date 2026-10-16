@@ -11,7 +11,7 @@ export const BACKEND_METHODS = {
 	routines: ['load', 'create', 'update', 'delete'],
 	flow: ['load', 'record'],
 	schedule: ['load', 'addAlarm', 'remove', 'setEnabled', 'updateAlarm', 'chooseDisplay'],
-	assistant: ['chat', 'undo'],
+	assistant: ['chat', 'undo', 'suggestPrep'],
 	agent: ['feed', 'resolveCard', 'stuck'],
 	activity: ['load'],
 	settings: ['load', 'saveTimezone', 'searchPlaces', 'saveKey', 'removeKey', 'save'],

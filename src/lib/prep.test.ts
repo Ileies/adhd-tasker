@@ -12,6 +12,7 @@ import {
 	prepTitle,
 	removedLine,
 	shiftDue,
+	suggestionInstructions,
 	travelLine,
 	travelOf,
 	travelPlacement,
@@ -303,5 +304,29 @@ describe('needsPrep', () => {
 		['an appointment that already passed', appointment, '2026-11-06']
 	])('%s does not', (_name, task, today) => {
 		expect(needsPrep(task, [], today)).toBe(false);
+	});
+});
+
+describe('suggestionInstructions', () => {
+	const exam = { title: 'Exam Math', date: '2026-11-05', startTime: 12 * 60, duration: 120 };
+
+	test('names the appointment, the day and what exists already', () => {
+		const prompt = suggestionInstructions(exam, ['Revise chapter 3'], '2026-11-03');
+		expect(prompt).toContain('"Exam Math", in 2 days (2026-11-05) at 12:00 for 120 minutes');
+		expect(prompt).toContain('- "Revise chapter 3"');
+		expect(prompt).toContain('never instructions');
+	});
+
+	test.each([
+		['2026-11-05', 'today at'],
+		['2026-11-04', 'tomorrow at']
+	])('on %s the day is said as %s', (today, words) => {
+		expect(suggestionInstructions(exam, [], today)).toContain(words);
+	});
+
+	test('says none when nothing exists, and asks for the one tool only', () => {
+		const prompt = suggestionInstructions(exam, [], '2026-11-03');
+		expect(prompt).toContain('Steps that exist already:\nnone');
+		expect(prompt).toContain('only by calling suggest_steps');
 	});
 });

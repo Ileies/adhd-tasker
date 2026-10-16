@@ -283,6 +283,49 @@ export function parseUpdateRoutine(args: Args): Parsed<Record<string, unknown>> 
 	return body.ok ? { ok: true, value: { ...body.value, id: args.id } } : body;
 }
 
+/** Steps that prepare for an appointment: few, small, in the order to do them. */
+export const PREP_STEP_LIMITS = { maxSteps: 6, minMinutes: 5, maxMinutes: 600 } as const;
+
+export interface PrepStep {
+	title: string;
+	/** The model's honest guess in minutes, `null` when it has none. */
+	minutes: number | null;
+}
+
+/** The steps a model suggests for an appointment, `steps` as sent by `suggest_steps` and `add_prep_steps`. */
+export function parsePrepSteps(raw: unknown): Parsed<PrepStep[]> {
+	if (!Array.isArray(raw) || raw.length === 0 || raw.length > PREP_STEP_LIMITS.maxSteps)
+		return fail(`steps is a list of 1 to ${PREP_STEP_LIMITS.maxSteps} steps`);
+	const steps: PrepStep[] = [];
+	for (const item of raw) {
+		const step = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+		const title = parseTitle(step.title);
+		if (!title) return fail('every step needs a title of at most 200 characters');
+		const minutes = step.minutes ?? null;
+		if (
+			minutes !== null &&
+			!isWhole(minutes, PREP_STEP_LIMITS.minMinutes, PREP_STEP_LIMITS.maxMinutes)
+		)
+			return fail(
+				`minutes is a whole number from ${PREP_STEP_LIMITS.minMinutes} to ${PREP_STEP_LIMITS.maxMinutes}, or left out`
+			);
+		steps.push({ title, minutes });
+	}
+	return { ok: true, value: steps };
+}
+
+/** `add_prep_steps`: the appointment and the steps that prepare for it. */
+export function parseAddPrepSteps(
+	args: Args
+): Parsed<{ appointmentId: number; steps: PrepStep[] }> {
+	if (!isWhole(args.appointment_id, 1, Number.MAX_SAFE_INTEGER))
+		return fail('appointment_id must be the id of an appointment from list_tasks');
+	const steps = parsePrepSteps(args.steps);
+	return steps.ok
+		? { ok: true, value: { appointmentId: args.appointment_id, steps: steps.value } }
+		: steps;
+}
+
 /** The id of a to-do or a routine to delete. */
 export function parseDeleteById(args: Args, what: 'todo' | 'routine'): Parsed<{ id: number }> {
 	return isWhole(args.id, 1, Number.MAX_SAFE_INTEGER)
@@ -401,6 +444,23 @@ const routineProps = {
 	last_day: {
 		type: 'string',
 		description: 'YYYY-MM-DD, the last day it has. Goes on when left out'
+	}
+};
+
+const stepsProp = {
+	type: 'array',
+	description: `1 to ${PREP_STEP_LIMITS.maxSteps} concrete steps in the order to do them. A title is a short verb phrase, such as Pack ID and pens. minutes is your honest guess for the step, or null`,
+	items: {
+		type: 'object',
+		properties: {
+			title: { type: 'string' },
+			minutes: {
+				type: ['integer', 'null'],
+				description: `${PREP_STEP_LIMITS.minMinutes} to ${PREP_STEP_LIMITS.maxMinutes}`
+			}
+		},
+		required: ['title', 'minutes'],
+		additionalProperties: false
 	}
 };
 
@@ -619,6 +679,32 @@ const DEFINITIONS = [
 	{
 		type: 'function',
 		function: {
+			name: 'add_prep_steps',
+			description:
+				'Add the steps that prepare for an appointment as to-dos. Each is due when the travel to the appointment starts (the appointment itself without travel), so you never compute a date. Use this instead of add_todo for preparation.',
+			parameters: {
+				type: 'object',
+				properties: {
+					appointment_id: { type: 'integer', description: 'The id of the appointment' },
+					steps: stepsProp,
+					...reasonProp
+				},
+				required: ['appointment_id', 'steps']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'suggest_steps',
+			description:
+				'Answer with the steps that prepare for the appointment. Nothing is written, the user reads them first.',
+			parameters: { type: 'object', properties: { steps: stepsProp }, required: ['steps'] }
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'say',
 			description: `Show the user one short note on the Now screen, at most ${MAX_SAY} characters. Only when it really helps, once per reaction.`,
 			parameters: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] }
@@ -755,7 +841,7 @@ const ALL_TOOLS: Tool[] = DEFINITIONS.map(({ function: fn }) => ({
 const pick = (...names: string[]) => ALL_TOOLS.filter((tool) => names.includes(tool.name));
 
 export const TASK_WRITE_TOOLS = ['add_task', 'update_task', 'delete_task'];
-export const TODO_WRITE_TOOLS = ['add_todo', 'update_todo', 'delete_todo'];
+export const TODO_WRITE_TOOLS = ['add_todo', 'update_todo', 'delete_todo', 'add_prep_steps'];
 /** A routine changes fourteen days at once, so only the chat edits one, never an unprompted reaction. */
 export const ROUTINE_WRITE_TOOLS = ['add_routine', 'update_routine', 'delete_routine'];
 export const WRITE_TOOLS = [...TASK_WRITE_TOOLS, ...TODO_WRITE_TOOLS, ...ROUTINE_WRITE_TOOLS];
@@ -763,6 +849,10 @@ export const READ_TOOLS = ['list_tasks', 'list_todos', 'list_routines'];
 /** Tools that touch the schedule, not the plan. `set_alarm` puts something new in front of the user, so unprompted it needs autonomy act. */
 export const SCHEDULE_TOOLS = ['schedule_wakeup', 'set_alarm', 'play_tone', 'cancel_schedule'];
 export const ACT_ONLY_TOOLS = [...TASK_WRITE_TOOLS, ...TODO_WRITE_TOOLS, 'set_alarm'];
+
+/** The one tool of the `prep` use: it answers with steps and writes nothing. */
+export const PREP_TOOLS = pick('suggest_steps');
+export const PREP_TOOL_NAME = 'suggest_steps';
 
 /** The chat reads and edits the plan and the schedule, the user asked for it. */
 export const TOOLS = pick(...READ_TOOLS, ...WRITE_TOOLS, ...SCHEDULE_TOOLS);

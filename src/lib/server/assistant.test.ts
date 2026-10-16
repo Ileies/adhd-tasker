@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, setSystemTime, test } from 'bun:test';
 import { AssistantError } from '#lib/core/context.js';
 import { OPENAI_URL } from '#lib/openai.js';
-import { runAssistant } from '#lib/server/assistant.js';
+import { runAssistant, suggestSteps } from '#lib/server/assistant.js';
 import { OPENAI_KEY_PURPOSE } from '#lib/server/ctx.js';
 import { encrypt } from '#lib/server/crypto.js';
 import { dbRepo } from '#lib/server/db-repo.js';
@@ -24,6 +24,64 @@ const account = (extra: Parameters<typeof makeUser>[0] = {}) =>
 beforeEach(async () => {
 	await resetDb();
 	setSystemTime(new Date(NOW));
+});
+
+describe('suggestSteps (account)', () => {
+	const steps = {
+		output: [
+			{
+				type: 'function_call',
+				call_id: 'c1',
+				name: 'suggest_steps',
+				arguments: JSON.stringify({ steps: [{ title: 'Pack ID', minutes: 5 }] })
+			}
+		],
+		usage: { total_tokens: 12 }
+	};
+	const appointment = (email: string) =>
+		dbRepo(email).tasks.insert({
+			title: 'Exam',
+			description: '',
+			date: '2026-10-16',
+			startTime: 720,
+			duration: 60,
+			priority: 3,
+			kind: 'appointment'
+		});
+
+	test('asks the model with the saved key as the prep use and writes nothing', async () => {
+		const user = await account({ openaiKey: sealed('sk-saved') });
+		const exam = await appointment(user.email);
+		const { requests } = fakeFetch({ [route]: () => Response.json(steps) });
+		expect(await suggestSteps(user.email, exam.id)).toEqual({
+			steps: [{ title: 'Pack ID', minutes: 5 }]
+		});
+		expect(requests[0].headers.get('authorization')).toBe('Bearer sk-saved');
+		expect(await requests[0].json()).toMatchObject({
+			store: false,
+			reasoning: { effort: 'low' },
+			tool_choice: { type: 'function', name: 'suggest_steps' }
+		});
+		expect(await dbRepo(user.email).todos.all()).toEqual([]);
+	});
+
+	test('without a key nothing is sent', async () => {
+		const user = await account();
+		const exam = await appointment(user.email);
+		const { requests } = fakeFetch({});
+		expect(await failureOf(suggestSteps(user.email, exam.id))).toMatchObject({ status: 400 });
+		expect(requests).toEqual([]);
+	});
+
+	test('the eleventh in five minutes is 429, and it has its own window apart from the chat', async () => {
+		const user = await account({ openaiKey: sealed('sk-saved') });
+		const exam = await appointment(user.email);
+		fakeFetch({ [route]: () => Response.json(steps) });
+		for (let i = 0; i < 10; i++) await suggestSteps(user.email, exam.id);
+		expect(await failureOf(suggestSteps(user.email, exam.id))).toMatchObject({ status: 429 });
+		fakeFetch({ [route]: () => Response.json(text('ok')) });
+		expect(await runAssistant(user.email, hi)).toMatchObject({ reply: 'ok' });
+	});
 });
 
 describe('runAssistant (account)', () => {

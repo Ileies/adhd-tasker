@@ -5,8 +5,11 @@ import {
 	ACT_ONLY_TOOLS,
 	MAX_LIST_DAYS,
 	MAX_SAY,
+	PREP_STEP_LIMITS,
+	PREP_TOOLS,
 	ROUTINE_WRITE_TOOLS,
 	TOOLS,
+	parseAddPrepSteps,
 	parseAddRoutine,
 	parseAddTask,
 	parseAddTodo,
@@ -14,6 +17,7 @@ import {
 	parseDeleteById,
 	parseDeleteTask,
 	parseListTasks,
+	parsePrepSteps,
 	parseReason,
 	parseSay,
 	parseToolArguments,
@@ -45,7 +49,7 @@ describe('strict tool schemas', () => {
 	}
 
 	test('every tool is strict, every field required and the optional ones nullable', () => {
-		for (const tool of TOOLS) {
+		for (const tool of [...TOOLS, ...PREP_TOOLS]) {
 			expect(tool.strict).toBe(true);
 			expectStrict(tool.parameters as Schema);
 		}
@@ -296,6 +300,66 @@ describe('to-do and routine tools', () => {
 	test('the floor of the day is in the routine tool descriptions', () => {
 		const update = TOOLS.find((tool) => tool.name === 'update_routine')!;
 		expect(update.description).toContain('Meds, meals, sleep and water');
+	});
+});
+
+describe('steps that prepare for an appointment', () => {
+	test('titles are trimmed and minutes may be left out or null', () => {
+		expect(
+			parsePrepSteps([
+				{ title: ' Pack ID ', minutes: 10 },
+				{ title: 'Charge it' },
+				{ title: 'x', minutes: null }
+			])
+		).toEqual({
+			ok: true,
+			value: [
+				{ title: 'Pack ID', minutes: 10 },
+				{ title: 'Charge it', minutes: null },
+				{ title: 'x', minutes: null }
+			]
+		});
+	});
+
+	test.each([
+		['no list', undefined],
+		['an empty list', []],
+		[
+			'a list that is too long',
+			Array.from({ length: PREP_STEP_LIMITS.maxSteps + 1 }, () => ({ title: 'x' }))
+		],
+		['a step that is not an object', ['Pack']],
+		['a step without a title', [{ minutes: 5 }]],
+		['a title of 201 characters', [{ title: 'x'.repeat(201) }]],
+		['minutes under the least', [{ title: 'x', minutes: PREP_STEP_LIMITS.minMinutes - 1 }]],
+		['minutes over the most', [{ title: 'x', minutes: PREP_STEP_LIMITS.maxMinutes + 1 }]],
+		['minutes that are text', [{ title: 'x', minutes: '10' }]]
+	])('rejects %s', (_name, steps) => {
+		expect(parsePrepSteps(steps).ok).toBe(false);
+	});
+
+	test('add_prep_steps needs an appointment id and the steps', () => {
+		expect(
+			parseAddPrepSteps({ appointment_id: 12, steps: [{ title: 'Pack', minutes: 5 }] })
+		).toEqual({
+			ok: true,
+			value: { appointmentId: 12, steps: [{ title: 'Pack', minutes: 5 }] }
+		});
+		expect(parseAddPrepSteps({ steps: [{ title: 'Pack' }] }).ok).toBe(false);
+		expect(parseAddPrepSteps({ appointment_id: '12', steps: [{ title: 'Pack' }] }).ok).toBe(false);
+		expect(parseAddPrepSteps({ appointment_id: 12, steps: [] }).ok).toBe(false);
+	});
+
+	test('the suggestion tool is not one the chat or a reaction is given', () => {
+		expect(TOOLS.map((tool) => tool.name)).not.toContain('suggest_steps');
+		expect(reactionTools(true).map((tool) => tool.name)).not.toContain('suggest_steps');
+		expect(PREP_TOOLS.map((tool) => tool.name)).toEqual(['suggest_steps']);
+	});
+
+	test('adding steps is a to-do tool: a reaction needs autonomy act, the chat may', () => {
+		expect(reactionTools(false).map((tool) => tool.name)).not.toContain('add_prep_steps');
+		expect(reactionTools(true).map((tool) => tool.name)).toContain('add_prep_steps');
+		expect(TOOLS.map((tool) => tool.name)).toContain('add_prep_steps');
 	});
 });
 

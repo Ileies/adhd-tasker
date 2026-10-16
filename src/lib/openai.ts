@@ -1,4 +1,4 @@
-import { TOOLS, type Tool } from '#lib/assistant-tools.js';
+import { PREP_TOOL_NAME, TOOLS, type Tool } from '#lib/assistant-tools.js';
 import { AssistantError, type Model } from '#lib/core/context.js';
 
 /**
@@ -15,12 +15,13 @@ export type Effort = 'low' | 'medium' | 'high';
 
 /**
  * Reasoning effort is fixed per place the model is used, never chosen by the user.
- * `chat` is a user waiting for an answer, `reaction` a short glance at an event (phase 6),
- * `replan` a real rearrangement of the day (phase 6).
+ * `chat` is a user waiting for an answer, `reaction` a short glance at an event, `prep` the steps for an appointment
+ * (one answer, nothing written), `replan` a real rearrangement of the day (phase 7).
  */
 export const EFFORT_BY_USE = {
 	chat: 'medium',
 	reaction: 'low',
+	prep: 'low',
 	replan: 'high'
 } as const satisfies Record<string, Effort>;
 
@@ -56,6 +57,8 @@ export function buildRequest(
 		instructions,
 		input,
 		tools,
+		// The steps for an appointment come back as the arguments of the one tool, so the answer always has its shape
+		...(use === 'prep' && { tool_choice: { type: 'function', name: PREP_TOOL_NAME } as const }),
 		max_output_tokens: MAX_OUTPUT_TOKENS
 	};
 }
