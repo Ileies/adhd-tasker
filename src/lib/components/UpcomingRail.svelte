@@ -8,10 +8,10 @@
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import { tasker } from '#lib/app.svelte.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
-	import { doneLine, laterLine, missedLine, alarmLines, timeRange } from '#lib/rail.js';
+	import { doneLine, laterLine, missedLine, alarmLines } from '#lib/rail.js';
 	import { deviceTimezone, type DateKey } from '#lib/time.js';
 
-	const NEXT_COUNT = 4;
+	const NEXT_COUNT = 2;
 
 	let {
 		upcoming,
@@ -99,7 +99,6 @@
 								<span
 									class="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 text-sm"
 								>
-									<span class="tabular">{timeRange(task)}</span>
 									{#if index === 0}
 										<span>in {formatDuration(task.startTime - now)}</span>
 									{/if}

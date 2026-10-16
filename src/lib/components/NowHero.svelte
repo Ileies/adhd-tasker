@@ -201,9 +201,6 @@
 			<div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-lg opacity-90">
 				<!-- The bars carry the priority without color, the urgency color says the rest -->
 				<PriorityMeter priority={task.priority} showLabel={false} />
-				<span class="tabular"
-					>{formatClock(task.startTime)} - {formatClock(task.startTime + task.duration)}</span
-				>
 				{#if concurrent > 1}
 					<span>Highest of {concurrent} right now</span>
 				{/if}
