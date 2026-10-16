@@ -36,7 +36,8 @@
 	import MissedTriage from '#lib/components/MissedTriage.svelte';
 	import { formatClock } from '#lib/format.js';
 	import { addDays, deviceTimezone, minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
-	import { addTodo, changeTodo, recordAnswer } from '#lib/todos.js';
+	import TodoSheet from '#lib/components/TodoSheet.svelte';
+	import { addQuickLine, chooseTodo, dropTodo, finishTodo, recordAnswer } from '#lib/todos.js';
 	import { untrack } from 'svelte';
 	import { browser } from '$app/env';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
@@ -297,22 +298,15 @@
 	}
 
 	function completeTodo(todo: Todo) {
-		const before = { status: todo.status, progress: todo.progress };
-		void changeTodo({ id: todo.id, status: 'done' });
+		finishTodo(todo, endConfirmation);
 		if (playsSound()) playSound('done');
 		clearTimeout(confirmTimer);
 		confirming = todo.title;
 		confirmTimer = setTimeout(endConfirmation, DONE_CONFIRM_MS);
-		showToast(`Done: ${todo.title}`, () => {
-			endConfirmation();
-			return changeTodo({ id: todo.id, ...before });
-		});
 	}
 
-	function dropTodo(todo: Todo) {
-		void changeTodo({ id: todo.id, status: 'dropped' });
-		showToast(`Dropped: ${todo.title}`, () => changeTodo({ id: todo.id, status: todo.status }));
-	}
+	// The to-do sheet opens over Now from the hero's menu
+	let editingTodo = $state<Todo | null>(null);
 
 	/** "Start" in the morning: from here the day runs in sessions. */
 	function start() {
@@ -331,10 +325,10 @@
 		return row ? recordAnswer({ type: 'undo', data: { ref: row.id } }) : Promise.resolve(null);
 	}
 
-	function addTodoFromHero(text: string) {
-		const title = text.trim();
-		if (title)
-			void addTodo({ title, priority: Priority.Medium }).catch((error) => showToast(error.message));
+	/** What is typed in the plan state becomes current at once: the first thing of the day, or the next. */
+	async function addFromHero(text: string) {
+		const made = await addQuickLine(text, today, now, today);
+		if (made?.kind === 'todo') await chooseTodo(made.todo);
 	}
 
 	// The triage sheet asks about missed tasks one at a time
@@ -418,13 +412,14 @@
 			onStuck={(task, why) => reportStuck(task.id, why.id)}
 			todoCount={openTodos}
 			firstUp={ranking.upcoming[0] ?? null}
-			onQuickAdd={addTodoFromHero}
+			onQuickAdd={(text) => void addFromHero(text)}
 			focusQuickAdd={focusAdd}
 			onAsk={tasker.settings.hasOpenaiKey ? () => (tasker.assistant.open = true) : undefined}
 			onStart={start}
 			onResume={() => void resume()}
 			onRest={rest}
 			onTodoDone={completeTodo}
+			onTodoEdit={(todo) => (editingTodo = todo)}
 			onTodoDrop={dropTodo}
 			noteCount={tasker.agent.cards.length}
 			dark={heroDark(hero)}
@@ -450,4 +445,5 @@
 		onDrop={drop}
 	/>
 	<TaskForm bind:form onDelete={drop} />
+	<TodoSheet bind:todo={editingTodo} />
 {/if}

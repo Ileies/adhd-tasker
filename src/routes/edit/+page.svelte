@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { Check, CircleHelp, Plus, Rows2, Rows4, TriangleAlert } from '@lucide/svelte';
 	import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
 	import { addAlarm, cancelAlarm, loadSchedule, switchAlarm } from '#lib/alarms.js';
@@ -8,16 +9,10 @@
 	import SegmentedControl from '#lib/components/SegmentedControl.svelte';
 	import MicButton from '#lib/components/MicButton.svelte';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
-	import {
-		addQuickTask,
-		createTask,
-		deleteTask,
-		errorText,
-		loadDay,
-		showToast,
-		updateTask
-	} from '#lib';
+	import { createTask, deleteTask, errorText, loadDay, showToast, updateTask } from '#lib';
 	import { tasker, type Alarm } from '#lib/app.svelte.js';
+	import type { Todo } from '#lib/core/repo.js';
+	import { addQuickLine, chooseTodo, finishTodo } from '#lib/todos.js';
 	import { minutesNow, todayIn } from '#lib/time.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
 	import { DAY_MINUTES, SNAP, overlapLine, phoneGroups } from '#lib/plan.js';
@@ -31,6 +26,8 @@
 	import { loadAllDay } from '#lib/calendar.js';
 	import DayTimeline from '#lib/components/DayTimeline.svelte';
 	import TaskForm from '#lib/components/TaskForm.svelte';
+	import TodoPanel from '#lib/components/TodoPanel.svelte';
+	import TodoSheet from '#lib/components/TodoSheet.svelte';
 	import QuickAddHelp from '#lib/components/QuickAddHelp.svelte';
 	import AlarmForm from '#lib/components/AlarmForm.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -109,9 +106,18 @@
 	const preview = $derived(
 		mode === 'alarm'
 			? (alarmPreview ?? (quick.trim() ? 'Add a time: 7:00, 8am or in 10 min' : null))
-			: quickPreview(quick, selected, selected === today ? now : null)
+			: quickPreview(quick, selected, selected === today ? now : null, today)
 	);
 	let doneOpen = $state(false);
+
+	// To do and Fixed times side by side on wide screens, one at a time on phones
+	let view = $state<'todo' | 'times'>('todo');
+	let editingTodo = $state<Todo | null>(null);
+
+	async function doNow(todo: Todo) {
+		await chooseTodo(todo);
+		await goto('/');
+	}
 
 	let form: TaskFormType = $state({
 		selectedTask: undefined,
@@ -196,7 +202,10 @@
 		const text = quick;
 		quick = '';
 		const before = new Set(tasker.tasks.map((task) => task.id));
-		if (await addQuickTask(text, selected, selected === today ? now : null)) showNew(before);
+		const made = await addQuickLine(text, selected, selected === today ? now : null, today);
+		if (made?.kind === 'task') showNew(before);
+		// On a phone a new task shows in the other tab, so go where it is
+		if (made?.kind === 'task') view = 'times';
 	}
 
 	/** A block drawn on the timeline: title typed in place, no dialog. */
@@ -298,7 +307,7 @@
 				value={mode}
 				onselect={setMode}
 				options={[
-					{ value: 'task', label: 'Task' },
+					{ value: 'task', label: 'Add' },
 					{ value: 'alarm', label: 'Alarm' }
 				]}
 			/>
@@ -312,8 +321,8 @@
 					class="h-full min-w-0 flex-1 border-0 bg-transparent text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
 					placeholder={mode === 'alarm'
 						? 'Add an alarm: Meds 8:00 daily, Tea in 5 min'
-						: 'Add a task: Call dentist 14:30 45m'}
-					aria-label={mode === 'alarm' ? 'Quick add an alarm' : 'Quick add a task'}
+						: 'Add: Study Math 10h by friday, Call dentist 14:30'}
+					aria-label={mode === 'alarm' ? 'Quick add an alarm' : 'Quick add a to-do or task'}
 				/>
 				<Button
 					variant="ghost"
@@ -381,77 +390,103 @@
 		</div>
 	{/if}
 
-	<div class="min-h-0 flex-1">
-		<!-- Wide screens: timeline with drag and resize -->
-		<div class="hidden h-full md:block">
-			<DayTimeline
-				date={selected}
-				tasks={dayTasks}
-				{now}
-				showNow={selected === today}
-				alarms={alarmRows}
-				onAlarmSwitch={switchAlarmFor}
-				onAlarmCancel={cancelAlarm}
-				onAlarmEdit={(alarm) => (editing = alarm)}
-				{highlight}
-				{compact}
-				day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
-				onEdit={openEditForm}
-				onAdd={addBlock}
-				onMove={move}
-				onResize={resize}
-				onToggle={toggle}
+	<!-- Phones show one of the two, the tabs choose -->
+	<div class="border-b px-4 py-2 md:hidden">
+		<SegmentedControl
+			label="Show"
+			value={view}
+			onselect={(value) => (view = value)}
+			options={[
+				{ value: 'todo', label: 'To do' },
+				{ value: 'times', label: 'Fixed times' }
+			]}
+		/>
+	</div>
+
+	<div class="min-h-0 flex-1 md:grid md:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]">
+		<div class="min-h-0 overflow-y-auto md:border-r {view === 'todo' ? 'h-full' : 'max-md:hidden'}">
+			<TodoPanel
+				todos={tasker.todos}
+				{today}
+				onOpen={(todo) => (editingTodo = todo)}
+				onNow={doNow}
+				onDone={(todo) => finishTodo(todo)}
 			/>
 		</div>
 
-		<!-- Phones: the same day as a plain list -->
-		<div class="h-full overflow-y-auto md:hidden">
-			{#if dayTasks.length === 0}
-				<p class="text-muted-foreground p-6">Nothing planned. Add something below.</p>
-			{:else}
-				{#if groups.done.length > 0}
-					<div class="border-b">
-						<button
-							type="button"
-							class="text-muted-foreground flex min-h-11 w-full items-center px-4 text-left text-sm"
-							aria-expanded={doneOpen}
-							onclick={() => (doneOpen = !doneOpen)}
-						>
-							{groups.done.length} done
-						</button>
-						{#if doneOpen}
-							<ul class="divide-y">
-								{#each groups.done as task (task.id)}{@render row(task)}{/each}
-							</ul>
-						{/if}
-					</div>
-				{/if}
-				{#if groups.missed.length > 0}
-					<h2 class="text-muted-foreground px-4 pt-3 text-sm font-semibold">Earlier</h2>
-					<ul class="divide-y">
-						{#each groups.missed as task (task.id)}{@render row(task)}{/each}
-					</ul>
-				{/if}
-				{#if groups.current.length > 0}
-					<h2 class="text-muted-foreground px-4 pt-3 pb-1 text-sm font-semibold">Now</h2>
-					<ul>
-						{#each groups.current as task (task.id)}{@render row(task, true)}{/each}
-					</ul>
-				{/if}
-				{#if groups.later.length > 0}
-					{#if selected === today}
-						<h2 class="text-muted-foreground px-4 pt-3 text-sm font-semibold">Later</h2>
+		<div class="min-h-0 {view === 'times' ? 'h-full' : 'max-md:hidden'}">
+			<!-- Wide screens: timeline with drag and resize -->
+			<div class="hidden h-full md:block">
+				<DayTimeline
+					date={selected}
+					tasks={dayTasks}
+					{now}
+					showNow={selected === today}
+					alarms={alarmRows}
+					onAlarmSwitch={switchAlarmFor}
+					onAlarmCancel={cancelAlarm}
+					onAlarmEdit={(alarm) => (editing = alarm)}
+					{highlight}
+					{compact}
+					day={{ start: tasker.settings.myDayStart, end: tasker.settings.myDayEnd }}
+					onEdit={openEditForm}
+					onAdd={addBlock}
+					onMove={move}
+					onResize={resize}
+					onToggle={toggle}
+				/>
+			</div>
+
+			<!-- Phones: the same day as a plain list -->
+			<div class="h-full overflow-y-auto md:hidden">
+				{#if dayTasks.length === 0}
+					<p class="text-muted-foreground p-6">Nothing planned. Add something below.</p>
+				{:else}
+					{#if groups.done.length > 0}
+						<div class="border-b">
+							<button
+								type="button"
+								class="text-muted-foreground flex min-h-11 w-full items-center px-4 text-left text-sm"
+								aria-expanded={doneOpen}
+								onclick={() => (doneOpen = !doneOpen)}
+							>
+								{groups.done.length} done
+							</button>
+							{#if doneOpen}
+								<ul class="divide-y">
+									{#each groups.done as task (task.id)}{@render row(task)}{/each}
+								</ul>
+							{/if}
+						</div>
 					{/if}
-					<ul class="divide-y">
-						{#each groups.later as task (task.id)}{@render row(task)}{/each}
-					</ul>
+					{#if groups.missed.length > 0}
+						<h2 class="text-muted-foreground px-4 pt-3 text-sm font-semibold">Earlier</h2>
+						<ul class="divide-y">
+							{#each groups.missed as task (task.id)}{@render row(task)}{/each}
+						</ul>
+					{/if}
+					{#if groups.current.length > 0}
+						<h2 class="text-muted-foreground px-4 pt-3 pb-1 text-sm font-semibold">Now</h2>
+						<ul>
+							{#each groups.current as task (task.id)}{@render row(task, true)}{/each}
+						</ul>
+					{/if}
+					{#if groups.later.length > 0}
+						{#if selected === today}
+							<h2 class="text-muted-foreground px-4 pt-3 text-sm font-semibold">Later</h2>
+						{/if}
+						<ul class="divide-y">
+							{#each groups.later as task (task.id)}{@render row(task)}{/each}
+						</ul>
+					{/if}
 				{/if}
-			{/if}
+			</div>
 		</div>
 	</div>
 </div>
 
 <TaskForm bind:form onDelete={remove} />
+<TodoSheet bind:todo={editingTodo} />
 <AlarmForm bind:alarm={editing} />
 <QuickAddHelp
 	bind:open={helpOpen}
