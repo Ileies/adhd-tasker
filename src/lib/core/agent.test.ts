@@ -219,6 +219,27 @@ describe('react: the request', () => {
 		expect(calls[0].instructions).toContain('2026-10-14 09:00 (UTC)');
 	});
 
+	test('says what is current from the flow engine, how the day went and what is open', async () => {
+		const { model, calls } = fakeModel();
+		const made = await testCtx({ model });
+		await made.repo.todos.insert({ title: 'Study B', priority: 3, estimate: 120, createdAt: NOW });
+		await made.repo.routines.insert({
+			title: 'Meds',
+			priority: 2,
+			startTime: 7 * 60,
+			duration: 15,
+			repeat: 'daily',
+			firstDay: DATE
+		});
+		await logEvent(made.repo);
+		await run(made);
+		const prompt = calls[0].instructions;
+		expect(prompt).toContain('Right now:');
+		expect(prompt).toContain('Today so far: nothing answered yet');
+		expect(prompt).toContain('Study B (size 2 h');
+		expect(prompt).toContain('every day 07:00-07:15 P2 Meds');
+	});
+
 	test('suggest offers no tool that edits the plan or sets an alarm', async () => {
 		const { model, calls } = fakeModel();
 		const made = await testCtx({ model });
@@ -226,7 +247,16 @@ describe('react: the request', () => {
 		await run(made);
 		const names = calls[0].tools!.map((tool) => (tool as unknown as { name: string }).name);
 		expect(names).toEqual(expect.arrayContaining(['say', 'ask', 'list_tasks']));
-		for (const forbidden of ['add_task', 'update_task', 'delete_task', 'set_alarm'])
+		for (const forbidden of [
+			'add_task',
+			'update_task',
+			'delete_task',
+			'add_todo',
+			'update_todo',
+			'delete_todo',
+			'add_routine',
+			'set_alarm'
+		])
 			expect(names).not.toContain(forbidden);
 	});
 

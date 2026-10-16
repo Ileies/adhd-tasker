@@ -5,6 +5,7 @@ import {
 	type TaskChange
 } from '#lib/core/appointments.js';
 import {
+	dayLines,
 	isListTool,
 	reasonOf,
 	routineLines,
@@ -103,7 +104,8 @@ function overlapsOf(task: Task, sameDay: Task[]) {
 		.map(describe);
 }
 
-async function systemPrompt(ctx: Ctx, timezone: string) {
+async function systemPrompt(ctx: Ctx, settings: Settings) {
+	const timezone = settings.timezone ?? 'UTC';
 	const at = new Date(ctx.now());
 	const today = todayIn(timezone, at);
 	const tomorrow = addDays(today, 1);
@@ -121,6 +123,7 @@ async function systemPrompt(ctx: Ctx, timezone: string) {
 		'You never decide what the user works on right now and you cannot set the progress of a to-do, only the user knows how far they are. You may help with sizes, due dates, priorities and one small next step.',
 		'Meds, meals, sleep and water are the floor of the day. Never delete, shorten, skip or move them far to make room for work, even when asked to fit more in: say what it would cost and ask first. A meal moving half an hour for a meeting is fine, that is what its shift is for.',
 		'You can set alarms (shown and played on the Now screen, listed for the user) and plan wakeups for yourself with the schedule tools. Set an alarm when the user asks for one. Use a wakeup only to follow up on something later.',
+		...(await dayLines(ctx, settings)),
 		`Plan for today and tomorrow (id, date, time, priority, title):\n${plan.length ? plan.join('\n') : 'nothing planned'}`,
 		`Open to-dos (id, priority, title, facts):\n${todos.length ? todos.join('\n') : 'none'}`,
 		`Routines (id, repeat, time, priority, title):\n${routines.length ? routines.join('\n') : 'none'}`,
@@ -254,7 +257,7 @@ export async function runAssistant(ctx: Ctx, settings: Settings, history: ChatMe
 	const model = ctx.model;
 	if (!model) throw new AssistantError('Add your OpenAI key in Settings first', 400);
 
-	const instructions = await systemPrompt(ctx, settings.timezone ?? 'UTC');
+	const instructions = await systemPrompt(ctx, settings);
 	// Nothing is stored at OpenAI (store: false), so every round sends the whole conversation including its own output
 	// Earlier assistant replies are final answers, OpenAI wants the phase kept so a preamble is never mistaken for one
 	const input: unknown[] = history.map((message) =>

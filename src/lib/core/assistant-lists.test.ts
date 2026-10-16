@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { runAssistant, runTool, undoAction, type Change } from '#lib/core/assistant.js';
 import {
 	MAX_LISTED,
+	dayLines,
 	describeRoutine,
 	describeTodo,
 	routineLines,
@@ -369,6 +370,21 @@ describe('what the model is told', () => {
 		expect(prompt).toContain('every day 07:00-07:15');
 		expect(prompt).toContain('Meds, meals, sleep and water are the floor of the day');
 		expect(prompt).toContain('cannot set the progress');
+		expect(prompt).toContain('Right now: ');
+		expect(prompt).toContain('Today so far: nothing answered yet');
+	});
+
+	test('the day lines follow the flow engine: a session on a to-do after Start', async () => {
+		const made = await testCtx({ now: Date.parse('2026-10-14T10:00:00Z') });
+		await addTodo(made, { title: 'Study B', estimate: 120 });
+		await made.repo.flow.insert({
+			at: Date.parse('2026-10-14T09:55:00Z'),
+			date: DATE,
+			type: 'start'
+		});
+		const [now, log] = await dayLines(made.ctx, await made.repo.settings.get());
+		expect(now).toContain('a session on the to-do "Study B"');
+		expect(log).toBe('Today so far: nothing answered yet');
 	});
 
 	test('a task a routine made is marked as one, one that may move says how far', async () => {

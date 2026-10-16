@@ -15,12 +15,16 @@ import {
 import type { Change } from '#lib/core/assistant.js';
 import { AssistantError, type Ctx } from '#lib/core/context.js';
 import { emit } from '#lib/core/events.js';
-import type { Routine, Subject, Todo } from '#lib/core/repo.js';
+import type { Routine, Settings, Subject, Todo } from '#lib/core/repo.js';
 import { createRoutine, deleteRoutine, updateRoutine } from '#lib/core/routines.js';
-import { createTodo, deleteTodo, updateTodo } from '#lib/core/todos.js';
+import { createTodo, deleteTodo, loadTodos, updateTodo } from '#lib/core/todos.js';
+import { describeCurrent, describeLog } from '#lib/dayline.js';
 import { describeTodoChange } from '#lib/events.js';
+import { flow } from '#lib/flow.js';
 import { formatClock24, formatMinutes } from '#lib/format.js';
+import { placeDay } from '#lib/placeday.js';
 import { repeatText } from '#lib/schedule.js';
+import { minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
 
 type Args = Record<string, unknown>;
 type RecordFn = (tool: string, before: Subject | null, after: Subject | null) => Promise<number>;
@@ -48,6 +52,32 @@ export function describeRoutine(routine: Routine): string {
 	const moves = routine.shift > 0 ? `, may move ${routine.shift} min` : '';
 	const kind = routine.kind === 'appointment' ? ' (appointment)' : '';
 	return `#${routine.id} ${repeatText(routine.repeat).toLowerCase()} ${formatClock24(routine.startTime)}-${formatClock24(routine.startTime + routine.duration)} P${routine.priority} ${routine.title}${kind}${moves}${end}`;
+}
+
+/**
+ * Today in two lines: what the flow engine has current and what the user answered so far. The engine runs on the placed
+ * day exactly like the screen and the tick, so the assistant sees what the user sees.
+ */
+export async function dayLines(ctx: Ctx, settings: Settings): Promise<string[]> {
+	const timezone = settings.timezone ?? 'UTC';
+	const nowMs = ctx.now();
+	const today = todayIn(timezone, new Date(nowMs));
+	const [stored, todos, log] = await Promise.all([
+		ctx.repo.tasks.between(today, today),
+		loadTodos(ctx),
+		ctx.repo.flow.day(today)
+	]);
+	const state = flow({
+		date: today,
+		now: minutesNow(timezone, new Date(nowMs)),
+		nowMs,
+		at: (minutes) => zonedToEpoch(today, minutes, timezone),
+		tasks: placeDay(stored),
+		todos,
+		log,
+		settings
+	});
+	return [describeCurrent(state.current, nowMs, state.check !== null), describeLog(log)];
 }
 
 /** The open to-dos as lines, newest last, with a note when some are left out. */
