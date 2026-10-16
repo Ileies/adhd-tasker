@@ -31,6 +31,10 @@
 	/** A 15 minute task is only 16px tall, keep the title readable. */
 	const COMFY_MIN_BLOCK_PX = 28;
 	const COMPACT_MIN_BLOCK_PX = 18;
+	/** Space on every side of a block, so neighbours never touch. */
+	const GAP_PX = 2;
+	/** A block that can show its title and time on two lines, below this only the title. */
+	const TWO_LINES_PX = 44;
 	/** Height of the thin row that holds the hours outside the day. */
 	const ROW_PX = 32;
 	/** Height of one alarm card in the lane beside the grid. */
@@ -148,9 +152,14 @@
 	});
 	const MIN_BLOCK_PX = $derived(compact ? COMPACT_MIN_BLOCK_PX : COMFY_MIN_BLOCK_PX);
 	const px = (offset: number) => ((offset - from) / 60) * hourPx;
+	/** Where a block is drawn: inside its time with a gap all round, but never shorter than `MIN_BLOCK_PX`. */
+	const blockBox = (start: number, duration: number) => ({
+		top: px(off(start)) + GAP_PX,
+		height: Math.max(px(from + duration) - 2 * GAP_PX, MIN_BLOCK_PX)
+	});
 	// A short block is drawn taller than its time, the columns account for that so it never covers the next one
 	const placements = $derived(
-		layoutDay(tasks, { minLength: (MIN_BLOCK_PX / hourPx) * 60, origin })
+		layoutDay(tasks, { minLength: ((MIN_BLOCK_PX + 2 * GAP_PX) / hourPx) * 60, origin })
 	);
 	// An alarm in the folded night is hidden until the night is opened
 	const cards = $derived.by(() => {
@@ -463,23 +472,23 @@
 				{@const start = dragging?.startTime ?? task.startTime}
 				{@const duration = dragging?.duration ?? task.duration}
 				{@const done = task.status === TaskStatus.Completed}
+				{@const box = blockBox(start, duration)}
+				{@const slim = box.height < COMFY_MIN_BLOCK_PX}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					data-task={task.id}
 					role="button"
 					tabindex="0"
 					aria-label="{task.title}, {formatClock(start)} to {formatClock(start + duration)}"
-					class="group focus-visible:ring-ring absolute touch-none overflow-hidden rounded-lg border-l-4 px-2 py-1 shadow-sm select-none focus-visible:ring-2 focus-visible:outline-none
+					class="group focus-visible:ring-ring absolute touch-none overflow-hidden rounded-lg border-l-4 px-2 shadow-sm select-none focus-visible:ring-2 focus-visible:outline-none
+						{slim ? 'flex items-center' : 'py-1'}
 						{priorityStyle[task.priority].block}
 						{done ? 'opacity-55' : ''}
-						{overlaps ? 'ring-warning ring-2' : ''}
-						{highlight === task.id ? 'ring-foreground ring-2' : ''}
+						{overlaps ? 'ring-warning ring-2 ring-inset' : ''}
+						{highlight === task.id ? 'ring-foreground ring-2 ring-inset' : ''}
 						{dragging ? 'z-10 cursor-grabbing shadow-lg' : 'cursor-grab'}"
-					style="top: {px(off(start))}px; height: {Math.max(
-						px(from + duration),
-						MIN_BLOCK_PX
-					)}px; left: calc({(lane / lanes) * 100}% + 2px); width: calc({(span / lanes) *
-						100}% - 4px)"
+					style="top: {box.top}px; height: {box.height}px; left: calc({(lane / lanes) *
+						100}% + {GAP_PX}px); width: calc({(span / lanes) * 100}% - {2 * GAP_PX}px)"
 					onclick={(e) => e.stopPropagation()}
 					onkeydown={(e) => blockKey(e, task)}
 					onpointerdown={(e) => begin(e, task, 'move')}
@@ -487,12 +496,17 @@
 					onpointerup={(e) => finish(e, task)}
 					onpointercancel={() => (drag = null)}
 				>
-					<div class="flex items-start gap-1">
+					<!-- A block too short for the padding gets one centred line and a smaller circle -->
+					<div class="flex min-w-0 flex-1 gap-1 {slim ? 'items-center' : 'items-start'}">
 						<div class="min-w-0 flex-1">
-							<div class="truncate text-sm font-medium {done ? 'line-through' : ''}">
+							<div
+								class="truncate text-sm font-medium {slim ? 'leading-4' : ''} {done
+									? 'line-through'
+									: ''}"
+							>
 								{task.title}
 							</div>
-							{#if px(from + duration) >= 44}
+							{#if box.height >= TWO_LINES_PX}
 								<div class="tabular truncate text-xs opacity-80">
 									{formatClock(start)} - {formatClock(start + duration)} · {formatDuration(
 										duration
@@ -501,12 +515,15 @@
 							{/if}
 						</div>
 						{#if overlaps}
-							<TriangleAlert class="mt-0.5 size-4 shrink-0" aria-label="Overlaps another task" />
+							<TriangleAlert
+								class="size-4 shrink-0 {slim ? '' : 'mt-0.5'}"
+								aria-label="Overlaps another task"
+							/>
 						{/if}
-						<!-- The circle is 24px, the button around it is 40px wide so it is easy to hit -->
+						<!-- The circle is as tall as the title line, the button around it is 40px wide so it is easy to hit -->
 						<button
 							type="button"
-							class="-m-2 grid size-10 shrink-0 cursor-pointer place-items-center"
+							class="-mx-2 -my-2.5 grid size-10 shrink-0 cursor-pointer place-items-center"
 							aria-label={done ? 'Mark as not done' : 'Mark as done'}
 							onpointerdown={(e) => e.stopPropagation()}
 							onclick={(e) => {
@@ -515,11 +532,11 @@
 							}}
 						>
 							<span
-								class="grid size-6 place-items-center rounded-full border border-current/50 hover:bg-current/15 {done
-									? 'bg-current/20'
-									: ''}"
+								class="grid place-items-center rounded-full border border-current/50 hover:bg-current/15 {slim
+									? 'size-4'
+									: 'size-5'} {done ? 'bg-current/20' : ''}"
 							>
-								{#if done}<Check class="size-4" />{/if}
+								{#if done}<Check class={slim ? 'size-3' : 'size-3.5'} />{/if}
 							</span>
 						</button>
 					</div>
@@ -531,18 +548,17 @@
 						onpointermove={track}
 						onpointerup={(e) => finish(e, task)}
 					>
-						<div class="mx-auto mt-1 h-0.5 w-8 rounded-full bg-current/40"></div>
+						<!-- A slim block has no room under its title, the edge still resizes -->
+						{#if !slim}<div class="mx-auto mt-1 h-0.5 w-8 rounded-full bg-current/40"></div>{/if}
 					</div>
 				</div>
 			{/each}
 
 			{#if draft}
+				{@const box = blockBox(draft.startTime, draft.duration)}
 				<div
-					class="border-primary bg-primary/15 pointer-events-none absolute inset-x-0.5 z-10 overflow-hidden rounded-lg border-l-4 px-2 py-1"
-					style="top: {px(off(draft.startTime))}px; height: {Math.max(
-						px(from + draft.duration),
-						MIN_BLOCK_PX
-					)}px"
+					class="border-primary bg-primary/15 pointer-events-none absolute z-10 overflow-hidden rounded-lg border-l-4 px-2 py-1"
+					style="top: {box.top}px; height: {box.height}px; left: {GAP_PX}px; right: {GAP_PX}px"
 				>
 					{#if !draft.drawing}
 						<input
@@ -563,7 +579,7 @@
 					{/if}
 					<div
 						class="tabular text-muted-foreground truncate text-xs {draft.drawing ||
-						px(from + draft.duration) >= 44
+						box.height >= TWO_LINES_PX
 							? ''
 							: 'hidden'}"
 					>
