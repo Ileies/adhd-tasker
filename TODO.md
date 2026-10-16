@@ -3,13 +3,13 @@
 Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
-- `flow-plan.md`: accepted, phases 1 to 4 built (to-dos, the flow engine, the Now and Plan screens on it, the check, Away and the calls, rotation, breaks and holding on, appointments with travel and preparation). Next: phase 5 (tasks at a time make room and repeat). To-dos without a time, a flow engine that decides, holds and calls back, appointments with preparation, routines that make room
+- `flow-plan.md`: accepted, phases 1 to 5 built (to-dos, the flow engine, the Now and Plan screens on it, the check, Away and the calls, rotation, breaks and holding on, appointments with travel and preparation, tasks that make room and repeat). Next: phase 6 (the assistant joins). To-dos without a time, a flow engine that decides, holds and calls back, appointments with preparation, routines that make room
 - `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code
 - Finished and deleted (git history): the local first plan (`docs/local-first-plan.md` at `a419224`), the UX plan (`docs/ux-plan.md` at `24192b1`) and the daylight theme (`docs/daylight-theme.md` at `56be755`)
 
 ## Now
 
-- Routines exist now (flow plan 5.2, `docs/roadmap-1.0.md` C1). Still open: build the sample day and the first run essentials (E6) from them (flow plan 5.3, `src/lib/core/sample.ts` is 7 days of plain tasks today), and a floor the AI cannot trade below without asking for sleep, food and water (phase 6)
+- Routines and the first run essentials exist now (flow plan 5.2 and 5.3, `docs/roadmap-1.0.md` C1 and E6). Still open: the essentials step for a new account (only a guest sees the welcome), and a floor the AI cannot trade below without asking for sleep, food and water (phase 6)
 - Pick the next plan. Suggested by the checks plan: its phases 4 and 5 (core guardrails, route matrices)
 - Visual pass, by eye on a wide screen, a phone and as a guest (the UX plan was built from code, not screenshots): one type scale (display, clock, body large, body, small, no one-off sizes), a visible focus ring on every interactive element including timeline blocks and rail items, 44 px targets on phones (rail buttons at `size="sm"`, the timeline done circle), sentence case and no jargon in copy, same section spacing on every page, the page title in the bar
 - Deploy phases 1 to 5 of the flow plan (to-dos, the flow log, the check, rotation and breaks, appointments, tasks that make room, routines): on the server run `DATABASE_URL=<server db> bun scripts/add-todos.ts`, `bun scripts/add-flow-settings.ts`, `bun scripts/add-appointments.ts`, `bun scripts/add-shift.ts` and `bun scripts/add-routines.ts` the same way (they add `check_minutes`, `start_work_at`, `break_minutes`, `todos.skip_since`, `tasks.kind`, `tasks.parent_id`, `arrive_early_minutes`, `tasks.shift`, `tasks.routine_id` and the `routines` table), then `bun run deploy --schema-applied`. The server (`ssh home`) was not reachable from the dev machine on 2026-10-16
