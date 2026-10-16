@@ -38,6 +38,21 @@ const IN_COMBINED = /\bin\s+(\d+)\s*h(?:ours?|rs?)?\s*(\d+)\s*m(?:in(?:ute)?s?)?
 const IN_HOURS = /\bin\s+(\d+(?:[.,]\d+)?)\s*h(?:ours?|rs?)?\b/i;
 const IN_MINUTES = /\bin\s+(\d+)\s*m(?:in(?:ute)?s?)?\b/i;
 
+/**
+ * The repeat a line names and the line without it: `daily`, `weekdays`, `every weekday`, `Mon-Fri`, `every friday`,
+ * `Tue/Thu`. A bare day ("Sat") is only a repeat with `bareDays`, an alarm line has no other use for it while a task
+ * line reads it as the day it happens on.
+ */
+export function takeRepeat(text: string, bareDays: boolean): { repeat: Repeat; rest: string } {
+	if (REPEAT_WEEKDAYS.test(text))
+		return { repeat: 'weekdays', rest: text.replace(REPEAT_WEEKDAYS, ' ') };
+	if (REPEAT_DAILY.test(text)) return { repeat: 'daily', rest: text.replace(REPEAT_DAILY, ' ') };
+	const match = text.match(REPEAT_DAYS);
+	if (match && (bareDays || /^every\s/i.test(match[0])))
+		return { repeat: repeatFromDays(readDays(match[0])), rest: text.replace(match[0], ' ') };
+	return { repeat: 'none', rest: text };
+}
+
 export interface QuickAlarm {
 	label: string;
 	/** Clock time as minutes since midnight, null for a timer or when the text names none. */
@@ -52,23 +67,8 @@ export interface QuickAlarm {
  * `daily` or `weekdays`) or a wait from now. Unlike a task there is no duration, "45m" alone is not read.
  */
 export function parseQuickAlarm(text: string): QuickAlarm {
-	let rest = text;
-	let repeat: Repeat = 'none';
 	let inMinutes: number | null = null;
-
-	if (REPEAT_WEEKDAYS.test(rest)) {
-		repeat = 'weekdays';
-		rest = rest.replace(REPEAT_WEEKDAYS, ' ');
-	} else if (REPEAT_DAILY.test(rest)) {
-		repeat = 'daily';
-		rest = rest.replace(REPEAT_DAILY, ' ');
-	} else {
-		const match = rest.match(REPEAT_DAYS);
-		if (match) {
-			repeat = repeatFromDays(readDays(match[0]));
-			rest = rest.replace(match[0], ' ');
-		}
-	}
+	let { repeat, rest } = takeRepeat(text, true);
 
 	const waits: [RegExp, (m: RegExpMatchArray) => number][] = [
 		[IN_COMBINED, (m) => Number(m[1]) * 60 + Number(m[2])],

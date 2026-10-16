@@ -1,5 +1,6 @@
 import { quickAlarmFields, quickAlarmPreview, parseQuickAlarm } from '#lib/quickalarm.js';
 import { parseQuickTask, quickPreview } from '#lib/quickadd.js';
+import { quickRoutine, quickRoutinePreview } from '#lib/quickroutine.js';
 
 export type QuickMode = 'task' | 'alarm';
 
@@ -31,6 +32,11 @@ export const QUICK_RULES: Record<QuickMode, QuickRule[]> = {
 			name: 'A day',
 			how: 'Write tomorrow, friday, Nov 5, 5.11. or in 20 days. For a to-do it is the day it is due, for a task the day it happens.',
 			example: 'Study Math 10h by tomorrow'
+		},
+		{
+			name: 'Repeat',
+			how: 'Add daily, weekdays or every tue and thu to a line with a time. It becomes a routine: the task is made for the next 14 days and every day after.',
+			example: 'Lunch 12:00 45m daily'
 		},
 		{
 			name: 'Order',
@@ -73,6 +79,8 @@ export function quickOutcome(
 		const when = quickAlarmPreview(text);
 		return fields && when ? { title: parseQuickAlarm(text).label, when } : null;
 	}
+	const routine = quickRoutine(text, '2026-01-05');
+	if (routine) return { title: routine.title, when: quickRoutinePreview(text, '2026-01-05')! };
 	const title = parseQuickTask(text, '2026-01-05').title;
 	if (!title) return null;
 	return { title, when: quickPreview(text, '2026-01-05', null) ?? 'To-do' };

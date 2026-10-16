@@ -5,9 +5,11 @@
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError, type FlowAnswer } from '#lib/backend.js';
 import { checkPatch, isSlow, type CheckData } from '#lib/checks.js';
-import type { FlowRow, Task, TaskKind, Todo, TodoPatch } from '#lib/core/repo.js';
+import type { FlowRow, Routine, Task, TaskKind, Todo, TodoPatch } from '#lib/core/repo.js';
 import { rotationTargets } from '#lib/pick.js';
 import { quickKind, quickTodo } from '#lib/quickadd.js';
+import { quickRoutine } from '#lib/quickroutine.js';
+import { addRoutine } from '#lib/routines.js';
 import {
 	coolingAt,
 	liveRows,
@@ -59,7 +61,22 @@ export async function addQuickLine(
 	now: number | null,
 	today: string = date,
 	chosen: TaskKind | null = null
-): Promise<{ kind: 'task'; task: Task } | { kind: 'todo'; todo: Todo } | null> {
+): Promise<
+	| { kind: 'task'; task: Task }
+	| { kind: 'todo'; todo: Todo }
+	| { kind: 'routine'; routine: Routine }
+	| null
+> {
+	// "Lunch 12:00 45m daily" repeats: the routine makes the tasks, it says what it made
+	const routine = quickRoutine(text, today, chosen);
+	if (routine) {
+		try {
+			return { kind: 'routine', routine: await addRoutine(routine) };
+		} catch (error) {
+			showToast(errorText(error, 'Could not add the routine'));
+			return null;
+		}
+	}
 	if (quickKind(text) === 'task') {
 		const task = await addQuickTask(text, date, now, today, chosen);
 		return task ? { kind: 'task', task } : null;
