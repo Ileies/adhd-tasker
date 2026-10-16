@@ -4,7 +4,16 @@
  * (`#lib/remote-backend.js`) talks to this server, a guest's device gets its own implementation.
  * Components and routes never call `fetch`, they go through `tasker.backend`.
  */
-import type { FlowRow, FlowType, NewTask, Task, Todo, TodoPatch } from '#lib/core/repo.js';
+import type {
+	FlowRow,
+	FlowType,
+	NewTask,
+	Routine,
+	RoutinePatch,
+	Task,
+	Todo,
+	TodoPatch
+} from '#lib/core/repo.js';
 import type { Alarm, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
 import type {
@@ -73,6 +82,16 @@ export interface Backend {
 		/** The to-do as stored after the change (done fills the bar). Rejects with the reason. */
 		update(fields: TodoPatch & { id: number }): Promise<Todo>;
 		delete(id: number): Promise<void>;
+	};
+	routines: {
+		/** Every routine, oldest first. */
+		load(): Promise<Routine[]>;
+		/** Makes the routine and its tasks for the next 14 days. Rejects with the reason when a field is invalid. */
+		create(fields: RoutinePatch): Promise<Routine>;
+		/** The routine as stored. Its tasks from today on follow, except the ones the user changed or finished. */
+		update(fields: RoutinePatch & { id: number }): Promise<Routine>;
+		/** Removes the routine and its tasks from today on that are not done. Answers the routine as it was, for an Undo. */
+		delete(id: number): Promise<Routine>;
 	};
 	flow: {
 		/** The answers given on one day (`YYYY-MM-DD` in the user's timezone), oldest first. */

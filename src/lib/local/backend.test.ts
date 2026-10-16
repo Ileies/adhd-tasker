@@ -91,6 +91,34 @@ describe('tasks', () => {
 	});
 });
 
+describe('routines', () => {
+	const lunch = { title: 'Lunch', startTime: 720, duration: 45, repeat: 'daily' } as const;
+
+	test('a created routine makes its days, is changed and deleted with its tasks', async () => {
+		const { backend, hints } = await setup();
+		const created = await backend.routines.create(lunch);
+		expect(await backend.routines.load()).toMatchObject([{ id: created.id, title: 'Lunch' }]);
+		expect(await backend.tasks.since('2026-10-14')).toHaveLength(14);
+		await backend.routines.update({ id: created.id, startTime: 750 });
+		expect((await backend.tasks.load('2026-10-15'))[0].startTime).toBe(750);
+		expect(await backend.routines.delete(created.id)).toMatchObject({ id: created.id });
+		expect(await backend.routines.load()).toEqual([]);
+		expect(await backend.tasks.since('2026-10-14')).toEqual([]);
+		expect(hints.filter((hint) => hint.type === 'routines').length).toBeGreaterThanOrEqual(3);
+	});
+
+	test('a refusal is a BackendError with the status', async () => {
+		const { backend } = await setup();
+		expect(await failure(backend.routines.create({ ...lunch, repeat: 'none' }))).toMatchObject({
+			status: 400
+		});
+		expect(await failure(backend.routines.delete(999))).toMatchObject({ status: 404 });
+		expect(await failure(backend.routines.update({ id: 999, title: 'x' }))).toBeInstanceOf(
+			BackendError
+		);
+	});
+});
+
 describe('to-dos and the flow log', () => {
 	test('a created to-do is listed, changed and deleted', async () => {
 		const { backend, hints } = await setup();

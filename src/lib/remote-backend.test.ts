@@ -94,6 +94,27 @@ describe('remoteBackend requests', () => {
 		expect(await requests[3].json()).toEqual({ id: 2 });
 	});
 
+	test('routines: a list is a GET, a change is JSON to /routines and a delete answers the routine', async () => {
+		const { requests } = fakeFetch({
+			'GET http://localhost:5173/routines': json([{ id: 1 }]),
+			'POST http://localhost:5173/routines': json({ id: 2 }),
+			'PUT http://localhost:5173/routines': json({ id: 2, title: 'b' }),
+			'DELETE http://localhost:5173/routines': json({ id: 2, title: 'b' })
+		});
+		expect<unknown>(await remoteBackend.routines.load()).toEqual([{ id: 1 }]);
+		expect<unknown>(await remoteBackend.routines.create({ title: 'a', repeat: 'daily' })).toEqual({
+			id: 2
+		});
+		expect<unknown>(await remoteBackend.routines.update({ id: 2, title: 'b' })).toEqual({
+			id: 2,
+			title: 'b'
+		});
+		expect<unknown>(await remoteBackend.routines.delete(2)).toEqual({ id: 2, title: 'b' });
+		expect(await requests[1].json()).toEqual({ title: 'a', repeat: 'daily' });
+		expect(await requests[2].json()).toEqual({ id: 2, title: 'b' });
+		expect(await requests[3].json()).toEqual({ id: 2 });
+	});
+
 	test('flow: a day is a GET with the date, an answer is JSON to /flow', async () => {
 		const { requests } = fakeFetch({
 			'GET http://localhost:5173/flow': json([{ id: 1 }]),

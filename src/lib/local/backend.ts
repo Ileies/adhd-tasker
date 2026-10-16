@@ -12,6 +12,7 @@ import { agentFeed, dismissCard, reportStuck } from '#lib/core/feed.js';
 import { createPlanTask, deletePlanTask, updatePlanTask } from '#lib/core/plan.js';
 import { loadFlow, recordFlow } from '#lib/core/flow.js';
 import { createTodo, deleteTodo, loadTodos, updateTodo } from '#lib/core/todos.js';
+import { createRoutine, deleteRoutine, loadRoutines, updateRoutine } from '#lib/core/routines.js';
 import { GeocodeError, searchPlaces } from '#lib/core/geocode.js';
 import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
@@ -132,6 +133,13 @@ export function localBackend(deps: LocalDeps): Backend {
 			create: (fields) => guarded(() => createTodo(ctx(), fields)),
 			update: (fields) => guarded(() => updateTodo(ctx(), fields)),
 			delete: (id) => guarded(() => deleteTodo(ctx(), { id }))
+		},
+
+		routines: {
+			load: () => loadRoutines(ctx()),
+			create: (fields) => guarded(() => createRoutine(ctx(), fields)),
+			update: (fields) => guarded(() => updateRoutine(ctx(), fields)),
+			delete: (id) => guarded(() => deleteRoutine(ctx(), { id }))
 		},
 
 		flow: {

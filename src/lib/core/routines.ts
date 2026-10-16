@@ -54,6 +54,8 @@ export async function makeRoutines(ctx: Ctx, today: string): Promise<number> {
 		}
 		await ctx.repo.routines.update(routine.id, { through: horizon(today) });
 	}
+	// Another open screen has not seen these days yet
+	if (made > 0) ctx.hint({ type: 'routines' });
 	return made;
 }
 
@@ -66,6 +68,7 @@ export async function createRoutine(ctx: Ctx, body: unknown): Promise<Routine> {
 	const today = await todayOf(ctx);
 	const created = await ctx.repo.routines.insert(newRoutineOf(parsed.value, today));
 	await makeRoutines(ctx, today);
+	ctx.hint({ type: 'routines' });
 	return (await ctx.repo.routines.get(created.id)) ?? created;
 }
 
@@ -95,6 +98,7 @@ export async function updateRoutine(ctx: Ctx, body: unknown): Promise<Routine> {
 	for (const { id: taskId, patch } of edit.change) await ctx.repo.tasks.update(taskId, patch);
 	for (const taskId of edit.remove) await ctx.repo.tasks.delete(taskId);
 	for (const date of edit.make) await ctx.repo.tasks.insert(routineTask(saved, date));
+	ctx.hint({ type: 'routines' });
 	return saved;
 }
 
@@ -112,5 +116,6 @@ export async function deleteRoutine(ctx: Ctx, body: unknown): Promise<Routine> {
 	for (const taskId of planDelete(await tasksOf(ctx, before, today), today))
 		await ctx.repo.tasks.delete(taskId);
 	await ctx.repo.routines.delete(id);
+	ctx.hint({ type: 'routines' });
 	return before;
 }

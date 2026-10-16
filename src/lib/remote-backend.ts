@@ -78,6 +78,33 @@ export const remoteBackend: Backend = {
 		}
 	},
 
+	routines: {
+		async load() {
+			return (await request('/routines')).json();
+		},
+		async create(fields) {
+			return (await post('/routines', fields)).json();
+		},
+		async update(fields) {
+			return (
+				await request('/routines', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: JSON.stringify(fields)
+				})
+			).json();
+		},
+		async delete(id) {
+			return (
+				await request('/routines', {
+					method: 'DELETE',
+					headers: JSON_HEADERS,
+					body: JSON.stringify({ id })
+				})
+			).json();
+		}
+	},
+
 	flow: {
 		async load(date) {
 			return (await request(`/flow?date=${date}`)).json();

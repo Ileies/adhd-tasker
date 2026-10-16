@@ -14,6 +14,8 @@ export type Hint =
 	| { type: 'schedule' }
 	/** To-dos changed, fetch them again. */
 	| { type: 'todos' }
+	/** Routines changed or made tasks, fetch them and the plan again. */
+	| { type: 'routines' }
 	/** The flow log got a row, fetch today's rows again. */
 	| { type: 'flow' }
 	| { type: 'alarm'; id: number; fireAt: number; label: string; tone: Tone; durationMin: number }
