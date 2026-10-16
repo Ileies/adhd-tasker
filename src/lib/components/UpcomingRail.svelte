@@ -8,13 +8,15 @@
 	import ClockReadout from '#lib/components/ClockReadout.svelte';
 	import { tasker } from '#lib/app.svelte.js';
 	import { formatClock, formatDuration } from '#lib/format.js';
-	import { doneLine, laterLine, missedLine, alarmLines } from '#lib/rail.js';
+	import type { Todo } from '#lib/core/repo.js';
+	import { doneLine, laterLine, missedLine, alarmLines, nextItems } from '#lib/rail.js';
 	import { deviceTimezone, type DateKey } from '#lib/time.js';
 
 	const NEXT_COUNT = 2;
 
 	let {
 		upcoming,
+		todos = [],
 		missedCount,
 		now,
 		today,
@@ -22,9 +24,12 @@
 		done,
 		headsUp = false,
 		onEdit,
+		onOpenTodo = () => {},
 		onTriage
 	}: {
 		upcoming: Task[];
+		/** Every to-do: the ones due today at a time are listed at that time. */
+		todos?: Todo[];
 		/** Tasks that ran out without an answer, decided one by one in the triage sheet. */
 		missedCount: number;
 		now: number;
@@ -35,11 +40,15 @@
 		/** The hero shows the heads-up line, so the first item gets the weight. */
 		headsUp?: boolean;
 		onEdit: (task: Task) => void;
+		/** Opens a to-do that is due today at a time. */
+		onOpenTodo?: (todo: Todo) => void;
 		onTriage: () => void;
 	} = $props();
 
-	const shown = $derived(upcoming.slice(0, NEXT_COUNT));
-	const later = $derived(laterLine(upcoming.length - shown.length));
+	// Tasks at their start, to-dos due today at a time at their due time
+	const items = $derived(nextItems(upcoming, todos, today, now));
+	const shown = $derived(items.slice(0, NEXT_COUNT));
+	const later = $derived(laterLine(items.length - shown.length));
 	const doneText = $derived(doneLine(done));
 	const missedText = $derived(missedLine(missedCount));
 	const alarms = $derived.by(() => {
@@ -69,40 +78,43 @@
 			<p class="text-muted-foreground">Nothing more today.</p>
 		{:else}
 			<ol class="flex flex-col gap-2">
-				{#each shown as task, index (task.id)}
+				{#each shown as item, index (`${item.kind}:${item.kind === 'task' ? item.task.id : item.todo.id}`)}
+					{@const entry = item.kind === 'task' ? item.task : item.todo}
 					<li>
 						<button
 							type="button"
 							class="hover:bg-muted/60 focus-visible:ring-ring -mx-3 flex w-[calc(100%+1.5rem)] gap-4 rounded-lg px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
-							onclick={() => onEdit(task)}
+							onclick={() => (item.kind === 'task' ? onEdit(item.task) : onOpenTodo(item.todo))}
 						>
 							<span
 								class="tabular w-14 shrink-0 pt-0.5 {index === 0
 									? 'text-xl font-semibold'
 									: 'text-muted-foreground'}"
 							>
-								{formatClock(task.startTime)}
+								{formatClock(item.at)}
 							</span>
 							<span class="min-w-0 flex-1">
 								<span
 									class="block break-words {index === 0
-										? `text-xl ${headsUp ? 'font-bold' : 'font-semibold'}`
+										? `text-xl ${headsUp && item.kind === 'task' ? 'font-bold' : 'font-semibold'}`
 										: 'text-base'}"
 								>
-									{task.title}
+									{entry.title}
 								</span>
-								{#if index === 0 && task.description}
+								{#if index === 0 && entry.description}
 									<span class="text-muted-foreground mt-1 line-clamp-3 block text-sm"
-										>{task.description}</span
+										>{entry.description}</span
 									>
 								{/if}
 								<span
 									class="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 text-sm"
 								>
-									{#if index === 0}
-										<span>in {formatDuration(task.startTime - now)}</span>
+									{#if item.kind === 'todo'}
+										<span>Due{index === 0 ? ` in ${formatDuration(item.at - now)}` : ''}</span>
+									{:else if index === 0}
+										<span>in {formatDuration(item.at - now)}</span>
 									{/if}
-									<PriorityMeter priority={task.priority} showLabel={false} />
+									<PriorityMeter priority={entry.priority} showLabel={false} />
 								</span>
 							</span>
 						</button>

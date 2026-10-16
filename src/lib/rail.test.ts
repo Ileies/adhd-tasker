@@ -6,6 +6,7 @@ import {
 	laterLine,
 	missedLine,
 	alarmLines,
+	nextItems,
 	noteLine,
 	timeRange,
 	todosDoneBetween
@@ -15,6 +16,56 @@ import { zonedToEpoch } from '#lib/time.js';
 
 const TZ = 'Europe/Berlin';
 const at = (date: string, minutes: number) => zonedToEpoch(date, minutes, TZ);
+
+describe('nextItems', () => {
+	const TODAY = '2026-10-14';
+	const NOW = 10 * 60;
+	const task = (startTime: number) => ({ startTime });
+	const due = (
+		patch: Partial<{ status: string; dueDate: string | null; dueTime: number | null }>
+	) => ({
+		status: 'open',
+		dueDate: TODAY,
+		dueTime: 15 * 60,
+		...patch
+	});
+	const times = (items: ReturnType<typeof nextItems>) =>
+		items.map((item) => `${item.kind}@${item.at}`);
+
+	test('a to-do due today at a time still ahead is next at that time', () => {
+		expect(times(nextItems([task(14 * 60), task(16 * 60)], [due({})], TODAY, NOW))).toEqual([
+			'task@840',
+			'todo@900',
+			'task@960'
+		]);
+	});
+
+	test('a task comes before a to-do due at the same minute', () => {
+		expect(times(nextItems([task(15 * 60)], [due({})], TODAY, NOW))).toEqual([
+			'task@900',
+			'todo@900'
+		]);
+	});
+
+	test.each([
+		['without a time', { dueTime: null }],
+		['whose time has passed', { dueTime: 9 * 60 }],
+		['due right now', { dueTime: NOW }],
+		['due another day', { dueDate: '2026-10-15' }],
+		['without a date', { dueDate: null, dueTime: null }],
+		['already done', { status: 'done' }],
+		['dropped', { status: 'dropped' }]
+	])('a to-do %s never queues', (_name, patch) => {
+		expect(nextItems([], [due(patch)], TODAY, NOW)).toEqual([]);
+	});
+
+	test('with no to-dos it is the tasks as before', () => {
+		expect(times(nextItems([task(11 * 60), task(12 * 60)], [], TODAY, NOW))).toEqual([
+			'task@660',
+			'task@720'
+		]);
+	});
+});
 
 describe('doneToday', () => {
 	test('counts only completed tasks of today', () => {

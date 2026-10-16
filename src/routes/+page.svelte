@@ -629,6 +629,8 @@
 		/>
 		<UpcomingRail
 			upcoming={ranking.upcoming}
+			{todos}
+			onOpenTodo={(todo) => (editingTodo = todo)}
 			missedCount={ranking.missed.length}
 			{now}
 			{today}

@@ -53,6 +53,40 @@ export function alarmLines(
 		.slice(0, ALARM_LINES);
 }
 
+/** One line of Next: a task at its start or a to-do at the time it is due. */
+export type NextItem<T, D> =
+	| { kind: 'task'; at: number; task: T }
+	| { kind: 'todo'; at: number; todo: D };
+
+/**
+ * What comes next today in time order: the tasks that have not started and the open to-dos that are due today at a
+ * time that is still ahead. A to-do without a time never queues here, it is picked by the flow engine, and one whose
+ * time passed is overdue, not next. At the same minute the task comes first.
+ */
+export function nextItems<T extends { startTime: number }, D extends TodoDue>(
+	upcoming: readonly T[],
+	todos: readonly D[],
+	today: DateKey,
+	now: number
+): NextItem<T, D>[] {
+	const items: NextItem<T, D>[] = [
+		...upcoming.map((task) => ({ kind: 'task' as const, at: task.startTime, task })),
+		...todos
+			.filter(
+				(todo) =>
+					todo.status === 'open' &&
+					todo.dueDate === today &&
+					todo.dueTime !== null &&
+					todo.dueTime > now
+			)
+			.map((todo) => ({ kind: 'todo' as const, at: todo.dueTime!, todo }))
+	];
+	// The sort is stable, so the tasks stay in front of a to-do due at the same minute
+	return items.sort((a, b) => a.at - b.at);
+}
+
+type TodoDue = { status: string; dueDate: string | null; dueTime: number | null };
+
 /** The link under Next, `+3 later today`, or `null` when everything shows. */
 export function laterLine(hidden: number): string | null {
 	return hidden > 0 ? `+${hidden} later today` : null;
