@@ -21,17 +21,20 @@ const NOT_TOGGLES: EventType[] = [
 	'todo.updated',
 	'todo.completed',
 	'todo.deleted',
-	'todo.ended',
-	// Logged for the assistant to answer with the flow plan's phase 6 (steps for an appointment)
-	'appointment.added'
+	'todo.ended'
 ];
 /** Event types the user can switch on or off. */
 export const REACTION_EVENTS = EVENT_TYPES.filter((type) => !NOT_TOGGLES.includes(type));
-/** Plan edits and every switch are too frequent to react to by default, the user can opt in. */
+/**
+ * Plan edits and every switch are too frequent to react to by default, the user can opt in. An appointment that comes in
+ * without preparation and a rotation after a struggle are rare and exactly when a word helps.
+ */
 export const DEFAULT_REACTION_EVENTS: EventType[] = [
 	'task.completed',
 	'task.missed',
-	'task.overrun'
+	'task.overrun',
+	'appointment.added',
+	'focus.rotated'
 ];
 
 export const LIMITS = {

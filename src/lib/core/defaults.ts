@@ -14,7 +14,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	timezone: null, // IANA name, null until first set
 	googleServices: '',
 	aiAutonomy: 'suggest',
-	aiEvents: 'task.completed task.missed task.overrun',
+	aiEvents: 'task.completed task.missed task.overrun appointment.added focus.rotated',
 	quietStart: 1320, // 22:00, no unprompted reactions from here
 	quietEnd: 420, // 07:00
 	dailyTokenBudget: null, // no limit for unprompted reactions

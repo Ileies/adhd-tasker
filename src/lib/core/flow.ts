@@ -5,7 +5,8 @@
  */
 import { checkPatch, isSlow, parseCheckData, type CheckData } from '#lib/checks.js';
 import { AssistantError, type Ctx } from '#lib/core/context.js';
-import type { FlowRow, FlowType } from '#lib/core/repo.js';
+import { emit } from '#lib/core/events.js';
+import type { FlowRow, FlowType, Todo } from '#lib/core/repo.js';
 import { parseStepData, skipPatch } from '#lib/struggle.js';
 import { todayIn } from '#lib/time.js';
 
@@ -73,7 +74,7 @@ async function applyStep(
 	type: 'rotate' | 'face',
 	todoId: number | null,
 	date: string
-): Promise<void> {
+): Promise<Todo> {
 	if (todoId === null) throw new AssistantError(`a ${type} is about a to-do`, 400);
 	const todo = await ctx.repo.todos.get(todoId);
 	if (!todo || todo.status !== 'open') throw new AssistantError('To-do not found', 404);
@@ -82,6 +83,7 @@ async function applyStep(
 		type === 'rotate' ? skipPatch(todo, date) : { skips: 0, skipSince: null }
 	);
 	ctx.hint({ type: 'todos' });
+	return todo;
 }
 
 /**
@@ -120,6 +122,8 @@ export async function recordFlow(ctx: Ctx, body: unknown): Promise<FlowRow | nul
 			: serverNow;
 	const { timezone } = await ctx.repo.settings.get();
 	const date = todayIn(timezone, new Date(at));
+	// The to-do a rotation moved the user away from, for the event the assistant may answer
+	let rotated: Todo | null = null;
 
 	if (
 		type === 'rotate' ||
@@ -131,7 +135,7 @@ export async function recordFlow(ctx: Ctx, body: unknown): Promise<FlowRow | nul
 		const parsed = parseStepData(type, data as Record<string, unknown>);
 		if (!parsed.ok) throw new AssistantError(parsed.error, 400);
 		data = parsed.value;
-		if (type === 'rotate' || type === 'face') await applyStep(ctx, type, todoId, date);
+		if (type === 'rotate' || type === 'face') rotated = await applyStep(ctx, type, todoId, date);
 		else if (type === 'stuck' && todoId !== null && !(await ctx.repo.todos.get(todoId)))
 			throw new AssistantError('To-do not found', 404);
 	}
@@ -146,5 +150,13 @@ export async function recordFlow(ctx: Ctx, body: unknown): Promise<FlowRow | nul
 		key
 	});
 	if (row) ctx.hint({ type: 'flow' });
+	// Every rotation is a struggle (`why`): the assistant may answer it with a small step
+	if (row && type === 'rotate' && rotated)
+		await emit(
+			ctx,
+			'focus.rotated',
+			{ todoId: rotated.id, title: rotated.title, why: (data as { why: string }).why },
+			'user'
+		);
 	return row;
 }

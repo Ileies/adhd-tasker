@@ -270,6 +270,183 @@ describe('react: the request', () => {
 	});
 });
 
+describe('react: the events of phase 6', () => {
+	const exam = (made: Made) =>
+		addTask(made.repo, {
+			title: 'Exam Math',
+			date: '2026-10-20',
+			startTime: 12 * 60,
+			kind: 'appointment'
+		});
+	const toolNames = (calls: { tools?: unknown[] }[]) =>
+		calls[0].tools!.map((tool) => (tool as { name: string }).name);
+
+	test('an appointment without preparation is answered by default, in suggest with a question', async () => {
+		const { model, calls } = fakeModel(
+			toolCalls([
+				{
+					name: 'ask',
+					arguments: {
+						text: 'Exam Math on Tuesday: want steps?',
+						options: ['Suggest steps', 'Not now']
+					}
+				}
+			])
+		);
+		const made = await testCtx({ model });
+		const task = await exam(made);
+		await logEvent(made.repo, 'appointment.added', NOW, {
+			taskId: task.id,
+			title: 'Exam Math',
+			date: '2026-10-20'
+		});
+		await run(made);
+		const prompt = calls[0].instructions;
+		expect(prompt).toContain('nobody is preparing for it');
+		expect(prompt).toContain('ask once whether to suggest steps');
+		expect(prompt).not.toContain('call add_prep_steps once');
+		expect(toolNames(calls)).not.toContain('add_prep_steps');
+		expect(await made.repo.cards.open()).toMatchObject({
+			kind: 'ask',
+			options: ['Suggest steps', 'Not now']
+		});
+	});
+
+	test('with autonomy act the steps are added at once, each with its own Undo', async () => {
+		// The appointment is the first task of a fresh store, so its id is known before the model answers
+		const { model, calls } = fakeModel(
+			toolCalls([
+				{
+					name: 'add_prep_steps',
+					arguments: {
+						appointment_id: 1,
+						steps: [
+							{ title: 'Pack ID', minutes: 5 },
+							{ title: 'Charge calculator', minutes: null }
+						],
+						reason: 'an exam needs preparation'
+					}
+				}
+			])
+		);
+		const made = await acting(model);
+		const appointment = await exam(made);
+		expect(appointment.id).toBe(1);
+		await logEvent(made.repo, 'appointment.added', NOW, {
+			taskId: appointment.id,
+			title: 'Exam Math'
+		});
+		await run(made);
+		expect(calls[0].instructions).toContain('call add_prep_steps once');
+		expect(toolNames(calls)).toContain('add_prep_steps');
+		const todos = await made.repo.todos.open();
+		expect(todos.map((todo) => [todo.title, todo.parentId])).toEqual([
+			['Pack ID', appointment.id],
+			['Charge calculator', appointment.id]
+		]);
+		expect((await made.repo.actions.recent(5)).map((action) => action.tool)).toEqual([
+			'add_todo',
+			'add_todo'
+		]);
+	});
+
+	test.each(['appointment.added', 'focus.rotated'] as const)(
+		'%s keeps the model out under every guardrail',
+		async (type) => {
+			const guarded = [
+				['autonomy observe', { aiAutonomy: 'observe' as const }, NOW, 'autonomy is observe'],
+				['quiet hours', {}, NIGHT, 'quiet hours'],
+				['the daily budget', { dailyTokenBudget: 1000 }, NOW, 'daily token budget used up']
+			] as const;
+			for (const [, settings, at, why] of guarded) {
+				const { model, calls } = forbiddenModel();
+				const made = await testCtx({ model, now: at });
+				await made.repo.settings.update(settings);
+				if ('dailyTokenBudget' in settings) await made.repo.usage.record('chat', 2000, at);
+				await logEvent(made.repo, type, at, { title: 'Exam Math' });
+				await run(made);
+				expect(calls).toEqual([]);
+				expect(await lastOutcome(made.repo)).toBe(`silent: ${why}`);
+			}
+			// No key is no model at all
+			const keyless = await testCtx();
+			await logEvent(keyless.repo, type, NOW, { title: 'Exam Math' });
+			await run(keyless);
+			expect(await lastOutcome(keyless.repo)).toBe('silent: no OpenAI key');
+		}
+	);
+
+	test('an appointment event is dropped when the user switched it off', async () => {
+		const { model, calls } = fakeModel();
+		const made = await testCtx({ model });
+		await made.repo.settings.update({ aiEvents: 'task.missed' });
+		await logEvent(made.repo, 'appointment.added', NOW, { title: 'Exam Math' });
+		await run(made);
+		expect(calls).toEqual([]);
+		expect(await lastOutcome(made.repo)).toBe('silent: event type is switched off');
+	});
+
+	test('"too big" on a to-do: suggest offers the step as a question, act writes it as the next step', async () => {
+		const todo = (made: Made) =>
+			made.repo.todos.insert({ title: 'Study B', priority: 3, createdAt: NOW });
+		const stuck = (made: Made, id: number) =>
+			logEvent(made.repo, 'stuck.pressed', NOW, {
+				todoId: id,
+				title: 'Study B',
+				reason: 'It feels too big',
+				reasonId: 'too-big'
+			});
+
+		const asking = fakeModel(text('ok'));
+		const suggest = await testCtx({ model: asking.model });
+		await stuck(suggest, (await todo(suggest)).id);
+		await run(suggest);
+		expect(asking.calls[0].instructions).toContain('"Save as next step"');
+		expect(toolNames(asking.calls)).not.toContain('update_todo');
+
+		const writing = fakeModel(
+			toolCalls([
+				{ name: 'update_todo', arguments: { id: 1, next_step: 'Open the book to chapter 3' } }
+			])
+		);
+		const act = await acting(writing.model);
+		const made = await todo(act);
+		await stuck(act, made.id);
+		await run(act);
+		expect(writing.calls[0].instructions).toContain('write the step as its next step');
+		expect((await act.repo.todos.get(made.id))?.nextStep).toBe('Open the book to chapter 3');
+		expect(await act.repo.actions.recent(1)).toMatchObject([{ tool: 'update_todo' }]);
+	});
+
+	test('a task at a time that is too big gets no to-do wording', async () => {
+		const { model, calls } = fakeModel();
+		const made = await testCtx({ model });
+		const task = await addTask(made.repo);
+		await logEvent(made.repo, 'stuck.pressed', NOW, {
+			taskId: task.id,
+			title: 'Write intro',
+			reason: 'It feels too big',
+			reasonId: 'too-big'
+		});
+		await run(made);
+		expect(calls[0].instructions).toContain('Saying it is enough for a task at a time');
+	});
+
+	test('a rotation is answered by default, usually with nothing', async () => {
+		const { model, calls } = fakeModel(text('Nothing to add.'));
+		const made = await testCtx({ model });
+		await logEvent(made.repo, 'focus.rotated', NOW, {
+			todoId: 1,
+			title: 'Study B',
+			why: 'unfocused'
+		});
+		await run(made);
+		expect(calls[0].instructions).toContain('Doing nothing is usually right, the app handled it');
+		expect(calls[0].instructions).toContain("(they couldn't focus)");
+		expect(await lastOutcome(made.repo)).toBe('nothing to say');
+	});
+});
+
 describe('react: suggest', () => {
 	test('a forged edit call is refused and the task is unchanged', async () => {
 		const { model, calls } = fakeModel(

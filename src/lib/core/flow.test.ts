@@ -100,6 +100,32 @@ describe('recordFlow, rotations, breaks and Face it', () => {
 		expect(await repo.todos.get(todo.id)).toMatchObject({ skips: 2, skipSince: '2026-10-14' });
 	});
 
+	test('a rotation is an event the assistant may answer, with the to-do and what the user said', async () => {
+		const { ctx, repo, todo, state } = await made();
+		await recordFlow(ctx, { type: 'rotate', todoId: todo.id, data: { why: 'low-energy' } });
+		expect((await repo.events.recent(5)).find((row) => row.type === 'focus.rotated')).toMatchObject(
+			{
+				origin: 'user',
+				payload: { todoId: todo.id, title: 'Study B', why: 'low-energy' }
+			}
+		);
+		expect(state.reacts).toBeGreaterThan(0);
+	});
+
+	test('a Face it answer, a break and a pin are not rotations', async () => {
+		const { ctx, repo, todo } = await made();
+		await recordFlow(ctx, { type: 'face', todoId: todo.id, data: { answer: 'fine' } });
+		await recordFlow(ctx, { type: 'break', data: { minutes: 10 } });
+		await recordFlow(ctx, { type: 'pin', todoId: todo.id, key: 'pin:1000' });
+		expect((await repo.events.recent(10)).map((row) => row.type)).not.toContain('focus.rotated');
+	});
+
+	test('a rotation that fails is no event', async () => {
+		const { ctx, repo } = await made();
+		await failure(recordFlow(ctx, { type: 'rotate', todoId: 999, data: { why: 'else' } }));
+		expect((await repo.events.recent(10)).map((row) => row.type)).not.toContain('focus.rotated');
+	});
+
 	test('moving forward ends the count', async () => {
 		const { ctx, repo, todo } = await made();
 		await recordFlow(ctx, { type: 'rotate', todoId: todo.id, data: { why: 'else' } });

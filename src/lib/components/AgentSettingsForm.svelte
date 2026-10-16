@@ -43,6 +43,8 @@
 		'task.completed': 'A task is marked done or reopened',
 		'task.missed': 'A task was not finished in time',
 		'task.overrun': 'You are still on a task long after its end',
+		'appointment.added': 'An appointment arrives and nobody is preparing for it',
+		'focus.rotated': 'You could not stay on a to-do and the app moved you on',
 		'task.switched': 'The current task changes',
 		'task.created': 'A task is added',
 		'task.updated': 'A task is changed or moved',

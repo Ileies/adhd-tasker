@@ -1,5 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
+import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import {
 	DEFAULT_REACTION_EVENTS,
 	LIMITS,
@@ -115,6 +116,35 @@ describe('wakeups', () => {
 				['wakeup.fired']
 			).run
 		).toBe(false);
+	});
+
+	test('an appointment without preparation and a rotation are toggles, and on by default', () => {
+		for (const type of ['appointment.added', 'focus.rotated'] as const) {
+			expect(REACTION_EVENTS).toContain(type);
+			expect(DEFAULT_REACTION_EVENTS).toContain(type);
+		}
+		expect(DEFAULT_REACTION_EVENTS).toEqual(parseEvents(DEFAULT_SETTINGS.aiEvents));
+	});
+
+	test('the rest of the to-do events stay logged only, every event of the to-do list is no toggle', () => {
+		for (const type of [
+			'todo.created',
+			'todo.updated',
+			'todo.completed',
+			'todo.deleted',
+			'todo.ended'
+		])
+			expect(REACTION_EVENTS).not.toContain(type);
+	});
+
+	test('a rotation reacts when switched on, and is silent when the user switched it off', () => {
+		const on = context({}, { events: ['focus.rotated'] });
+		expect(decideReaction(on, ['focus.rotated']).run).toBe(true);
+		const off = context({}, { events: ['task.missed'] });
+		expect(decideReaction(off, ['focus.rotated'])).toEqual({
+			run: false,
+			reason: 'event type is switched off'
+		});
 	});
 
 	test('alarms and wakeups are not offered as toggles', () => {

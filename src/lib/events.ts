@@ -20,6 +20,8 @@ export const EVENT_TYPES = [
 	'todo.ended',
 	/** An appointment came into the plan without preparation (an imported one), the assistant may offer steps. */
 	'appointment.added',
+	/** The user could not stay on a to-do and the app moved them to another one (the ladder's rotation). */
+	'focus.rotated',
 	'stuck.pressed',
 	'user.message',
 	'alarm.fired',
@@ -207,6 +209,14 @@ export function describeEvent(type: EventType, payload: Record<string, unknown>)
 	return payload.undoOfAgentChange ? `${line} (the user undid a change the assistant made)` : line;
 }
 
+/** What the user said when they could not stay on a to-do (`why` of a rotate row). */
+const FOCUS_WHY: Record<string, string> = {
+	unfocused: "they couldn't focus",
+	'low-energy': 'they lost energy for it',
+	'cant-start': 'they could not get started',
+	else: 'they wanted something else'
+};
+
 const due = (payload: Record<string, unknown>) =>
 	typeof payload.dueDate === 'string' ? `, due ${payload.dueDate}` : '';
 
@@ -245,8 +255,12 @@ function describeBase(type: EventType, payload: Record<string, unknown>): string
 			return `To-do ${title} ended with ${typeof payload.appointment === 'string' ? `"${payload.appointment}"` : 'its appointment'}${typeof payload.progress === 'number' ? ` at ${payload.progress} %` : ''}`;
 		case 'appointment.added':
 			return `Appointment ${title} was added${typeof payload.date === 'string' ? ` on ${payload.date}` : ''}${clock}, nobody is preparing for it yet`;
+		case 'focus.rotated':
+			return `The user could not stay on the to-do ${title} (${FOCUS_WHY[String(payload.why)] ?? 'a struggle'}) and the app moved them on to something else`;
 		case 'stuck.pressed':
-			return `The user pressed "I'm stuck" on ${title} and said: "${payload.reason}"`;
+			return typeof payload.todoId === 'number'
+				? `The user pressed "I'm stuck" on the to-do ${title} (to-do #${payload.todoId}) and said: "${payload.reason}"`
+				: `The user pressed "I'm stuck" on ${title} and said: "${payload.reason}"`;
 		case 'user.message':
 			return 'The user sent a message';
 		case 'alarm.fired':

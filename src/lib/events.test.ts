@@ -220,6 +220,28 @@ describe('describeTodoChange', () => {
 	});
 });
 
+describe('describeEvent of the flow events', () => {
+	test('a rotation says what the user said, in words', () => {
+		expect(describeEvent('focus.rotated', { title: 'Study B', why: 'unfocused' })).toBe(
+			`The user could not stay on the to-do "Study B" (they couldn't focus) and the app moved them on to something else`
+		);
+		expect(describeEvent('focus.rotated', { title: 'Study B', why: 'made-up' })).toContain(
+			'(a struggle)'
+		);
+	});
+
+	test('stuck on a to-do names the to-do and its id, on a task it stays as it was', () => {
+		expect(
+			describeEvent('stuck.pressed', { todoId: 5, title: 'Study B', reason: 'It feels too big' })
+		).toBe(
+			'The user pressed "I\'m stuck" on the to-do "Study B" (to-do #5) and said: "It feels too big"'
+		);
+		expect(describeEvent('stuck.pressed', { taskId: 2, title: 'Write', reason: 'x' })).toBe(
+			'The user pressed "I\'m stuck" on "Write" and said: "x"'
+		);
+	});
+});
+
 describe('describeEvent', () => {
 	test('quotes titles and names the time', () => {
 		expect(describeEvent('task.created', { title: 'Call', startTime: 570 })).toBe(
