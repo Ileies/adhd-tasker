@@ -77,6 +77,77 @@ describe('layoutDay', () => {
 		const result = layoutDay([span(1, 540, 60), span(2, 600, 60)]);
 		expect(result.some((p) => p.overlaps)).toBe(false);
 	});
+
+	test('a short block drawn taller than its time sits beside the next task, without a warning', () => {
+		const result = layoutDay([span(1, 540, 15), span(2, 555, 30)], { minLength: 30 });
+		expect(result.map((p) => [p.task.id, p.lane, p.lanes, p.overlaps])).toEqual([
+			[1, 0, 2, false],
+			[2, 1, 2, false]
+		]);
+	});
+
+	test('a task widens over the columns that are free beside it', () => {
+		const result = layoutDay([
+			span(1, 540, 60),
+			span(2, 540, 30),
+			span(3, 540, 30),
+			span(4, 570, 30)
+		]);
+		expect(result.map((p) => [p.task.id, p.lane, p.span, p.lanes])).toEqual([
+			[1, 0, 1, 3],
+			[2, 1, 1, 3],
+			[3, 2, 1, 3],
+			[4, 1, 2, 3]
+		]);
+	});
+
+	test('columns follow the timeline from its origin, the warning follows the clock', () => {
+		// 22:30 to 23:30 is drawn at the bottom, 23:15 at the top of a timeline that starts at 23:00
+		const result = layoutDay([span(1, 1350, 60), span(2, 1395, 30)], { origin: 1380 });
+		expect(result.map((p) => [p.task.id, p.lanes, p.overlaps])).toEqual([
+			[2, 1, true],
+			[1, 1, true]
+		]);
+	});
+
+	test('property: blocks that meet on screen never share a column', () => {
+		const task = fc.record({
+			startTime: fc.integer({ min: 0, max: 95 }).map((step) => step * SNAP),
+			duration: fc.integer({ min: 1, max: 12 }).map((step) => step * SNAP)
+		});
+		fc.assert(
+			fc.property(
+				fc.array(task, { maxLength: 12 }),
+				fc.integer({ min: 0, max: 60 }),
+				fc.integer({ min: 0, max: DAY_MINUTES - 1 }),
+				(tasks, minLength, origin) => {
+					const spans = tasks.map((t, i) =>
+						span(i + 1, t.startTime, Math.min(t.duration, DAY_MINUTES - t.startTime))
+					);
+					const result = layoutDay(spans, { minLength, origin });
+					const box = (p: (typeof result)[number]) => {
+						const top = dayOffset(p.task.startTime, origin);
+						return [top, top + Math.max(p.task.duration, minLength)];
+					};
+					expect(result).toHaveLength(spans.length);
+					for (const p of result) {
+						expect(p.span).toBeGreaterThanOrEqual(1);
+						expect(p.lane + p.span).toBeLessThanOrEqual(p.lanes);
+					}
+					for (const a of result) {
+						for (const b of result) {
+							if (a === b) continue;
+							const [aTop, aBottom] = box(a);
+							const [bTop, bBottom] = box(b);
+							const meet = aTop < bBottom && bTop < aBottom;
+							const shared = a.lane < b.lane + b.span && b.lane < a.lane + a.span;
+							expect(meet && shared).toBe(false);
+						}
+					}
+				}
+			)
+		);
+	});
 });
 
 describe('conflictsWith', () => {
