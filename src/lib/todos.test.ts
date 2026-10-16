@@ -6,15 +6,19 @@ import {
 	addQuickLine,
 	addTodo,
 	answerCheck,
+	answerFace,
 	changeTodo,
 	chooseTodo,
 	dropTodo,
+	endBreak,
 	finishTodo,
 	flowToday,
 	loadFlow,
 	loadTodos,
 	recordAnswer,
-	removeTodo
+	removeTodo,
+	struggleOn,
+	takeBreak
 } from '#lib/todos.js';
 import { dismissToast } from '#lib/toast.js';
 import { Priority } from '#lib/types.js';
@@ -31,6 +35,7 @@ const todo = (id: number, patch: Partial<Todo> = {}): Todo => ({
 	progress: 0,
 	spentMinutes: 0,
 	skips: 0,
+	skipSince: null,
 	dueDate: null,
 	dueTime: null,
 	parentId: null,
@@ -315,5 +320,127 @@ describe('answering a check', () => {
 		fakeFetch({ [`POST ${BASE}/flow`]: rejected(404, 'To-do not found') });
 		expect(await answerCheck(tasker.todos[0], answer)).toBeNull();
 		expect(tasker.todos[0]).toMatchObject({ progress: 0, spentMinutes: 0 });
+	});
+});
+
+describe('the ladder on the client', () => {
+	const options = { sessionStart: Date.now() - 20 * 60_000, breakMinutes: 10, activity: 'water' };
+	/** Answers every POST with the body it got, as the next row. */
+	const echo = () => {
+		let id = 100;
+		return fakeFetch({
+			[`POST ${BASE}/flow`]: async (request: Request) => {
+				const body = await request.json();
+				return Response.json(row(id++, { at: body.at ?? Date.now(), ...body }));
+			}
+		});
+	};
+	const sent = async (requests: Request[]) =>
+		Promise.all(requests.map(async (request) => (await request.clone().json()) as FlowRow));
+
+	test('"I couldn\'t focus" writes the check and then a rotation a moment later', async () => {
+		const { requests } = echo();
+		await answerCheck(
+			tasker.todos[0],
+			{ before: 0, after: 0, minutes: 30, pace: 'unfocused' },
+			options
+		);
+		const rows = await sent(requests);
+		expect(rows.map((entry) => entry.type)).toEqual(['check', 'rotate']);
+		expect(rows[1].data).toEqual({ why: 'unfocused' });
+		expect(rows[1].at).toBeGreaterThan(rows[0].at ?? 0);
+		expect(tasker.todos[0]).toMatchObject({ skips: 1, skipSince: '2026-10-14' });
+		expect(tasker.toasts.at(-1)?.message).toBe('Switched. To-do 1 comes back later.');
+	});
+
+	test('any other answer writes only the check', async () => {
+		const { requests } = echo();
+		await answerCheck(tasker.todos[0], { before: 0, after: 10, minutes: 30 }, options);
+		expect((await sent(requests)).map((entry) => entry.type)).toEqual(['check']);
+	});
+
+	test('with nothing else to go to the ladder gives a break', async () => {
+		tasker.todos = [tasker.todos[0]];
+		const { requests } = echo();
+		await answerCheck(
+			tasker.todos[0],
+			{ before: 0, after: 0, minutes: 30, pace: 'unfocused' },
+			options
+		);
+		const rows = await sent(requests);
+		expect(rows[1]).toMatchObject({
+			type: 'break',
+			data: { minutes: 10, activity: 'water', why: 'unfocused' }
+		});
+		expect(tasker.toasts.at(-1)?.message).toBe('Break for 10 min.');
+	});
+
+	test('"Something else" in the first minutes is held and says nothing in a toast', async () => {
+		const { requests } = echo();
+		const plan = await struggleOn(tasker.todos[0], 'else', {
+			...options,
+			sessionStart: Date.now() - 60_000
+		});
+		expect(plan).toMatchObject({ step: 'rotate', hold: true });
+		expect((await sent(requests))[0].data).toEqual({ why: 'else', after: 300_000 });
+		expect(tasker.toasts).toEqual([]);
+	});
+
+	test('the first "I cannot get started" only logs the tap, the second is a struggle', async () => {
+		const { requests } = echo();
+		expect(await struggleOn(tasker.todos[0], 'cant-start', options)).toBeNull();
+		tasker.flow.rows = tasker.flow.rows.map((entry) => ({ ...entry, id: Math.abs(entry.id) }));
+		expect(await struggleOn(tasker.todos[0], 'cant-start', options)).toMatchObject({
+			step: 'rotate'
+		});
+		expect((await sent(requests)).map((entry) => entry.type)).toEqual(['stuck', 'stuck', 'rotate']);
+	});
+
+	test('Undo on the toast takes the rotation back and gives the skip back', async () => {
+		const { requests } = echo();
+		await struggleOn(tasker.todos[0], 'else', { ...options, sessionStart: 0 });
+		expect(tasker.todos[0].skips).toBe(1);
+		const toast = tasker.toasts.at(-1)!;
+		fakeFetch({
+			[`POST ${BASE}/flow`]: () => Response.json(row(300, { type: 'undo' })),
+			[`PUT ${BASE}/todos`]: async (request: Request) =>
+				Response.json({ ...tasker.todos[0], ...(await request.json()) })
+		});
+		await toast.undo!();
+		expect(tasker.todos[0]).toMatchObject({ skips: 0, skipSince: null });
+		expect(requests.length).toBeGreaterThan(0);
+	});
+
+	test('a refused rotation puts the skip back', async () => {
+		fakeFetch({ [`POST ${BASE}/flow`]: rejected(404, 'To-do not found') });
+		await struggleOn(tasker.todos[0], 'else', { ...options, sessionStart: 0 });
+		expect(tasker.todos[0].skips).toBe(0);
+	});
+
+	test('a break and "I\'m back" are plain answers', async () => {
+		const { requests } = echo();
+		await takeBreak(10, 'window');
+		await endBreak();
+		const rows = await sent(requests);
+		expect(rows[0]).toMatchObject({
+			type: 'break',
+			data: { minutes: 10, activity: 'window', why: 'asked' }
+		});
+		expect(rows[1].type).toBe('back');
+	});
+
+	test('a Face it answer ends the count at once', async () => {
+		tasker.todos = [todo(1, { skips: 3, skipSince: '2026-10-12' })];
+		const { requests } = echo();
+		await answerFace(tasker.todos[0], 'fine');
+		expect(tasker.todos[0]).toMatchObject({ skips: 0, skipSince: null });
+		expect((await sent(requests))[0]).toMatchObject({ type: 'face', data: { answer: 'fine' } });
+	});
+
+	test('a refused Face it answer puts the count back', async () => {
+		tasker.todos = [todo(1, { skips: 3, skipSince: '2026-10-12' })];
+		fakeFetch({ [`POST ${BASE}/flow`]: rejected(404, 'To-do not found') });
+		await answerFace(tasker.todos[0], 'fine');
+		expect(tasker.todos[0]).toMatchObject({ skips: 3, skipSince: '2026-10-12' });
 	});
 });

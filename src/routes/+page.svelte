@@ -25,7 +25,8 @@
 		momentKey,
 		reminderDue,
 		startCallMoment,
-		type StuckAction
+		type StuckAction,
+		type StuckReason
 	} from '#lib/anchoring.js';
 	import type { CheckData } from '#lib/checks.js';
 	import type { Todo } from '#lib/core/repo.js';
@@ -50,12 +51,22 @@
 		addQuickLine,
 		addTodo,
 		answerCheck,
+		answerFace,
+		changeTodo,
 		chooseTodo,
 		dropTodo,
+		endBreak,
 		finishTodo,
 		recordAnswer,
-		removeTodo
+		removeTodo,
+		struggleOn,
+		takeBreak,
+		undoStep,
+		type StruggleOptions
 	} from '#lib/todos.js';
+	import { breakActivity } from '#lib/breaks.js';
+	import { daylight, isLight } from '#lib/location.js';
+	import { OFFER_BREAK_MINUTES, type FaceAnswer } from '#lib/struggle.js';
 	import { untrack } from 'svelte';
 	import { browser } from '$app/env';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
@@ -214,7 +225,8 @@
 				sounded.add(key);
 				if (!quiet) {
 					if (asked.level === 1) playTone('nudge');
-					else playSound('reminder');
+					// The end of a break says it is over softly, a question about work is the usual chime
+					else playSound(asked.about === 'break' || asked.about === 'day' ? 'wrap-up' : 'reminder');
 				}
 			}
 		}
@@ -256,7 +268,15 @@
 	$effect(() => {
 		const pin = flowState.pin;
 		if (!ready || !pin) return;
-		untrack(() => void recordAnswer({ type: 'pin', todoId: pin.todoId, key: pin.key }));
+		untrack(
+			() =>
+				void recordAnswer({
+					type: 'pin',
+					todoId: pin.todoId,
+					key: pin.key,
+					...(pin.face ? { data: { face: true } } : {})
+				})
+		);
 	});
 
 	// Explain every switch that happens while the page is open, and chime for it. A switch the page loads with
@@ -386,9 +406,73 @@
 	/** "I'm back" after away, "I'm here" when asked in the plan state: the same row as Start. */
 	const back = start;
 
+	/** What a struggle needs to know: when the session began, how long a break is and what it would say. */
+	function struggleOptions(minutes = settings.breakMinutes): StruggleOptions {
+		const session = flowState.current.kind === 'todo' ? flowState.current.session.start : nowMs;
+		return { sessionStart: session, breakMinutes: minutes, activity: nextActivity(minutes) };
+	}
+
+	/** The activity of the next break: never the one before, no food before a meal, no walk in the dark. */
+	function nextActivity(minutes: number): string {
+		const upcoming = ranking.upcoming[0];
+		const light = daylight(tasker.settings, timezone, today);
+		return breakActivity({
+			minutes,
+			recent: flowRows
+				.filter((row) => row.type === 'break' && typeof row.data.activity === 'string')
+				.map((row) => row.data.activity as string),
+			next: upcoming ? { title: upcoming.title, inMinutes: upcoming.startTime - now } : null,
+			daylight: isLight(light, now),
+			seed: nowMs / 60_000
+		}).id;
+	}
+
 	/** "How far is it?" answered: the to-do changes at once and the next session starts. */
 	function check(todo: Todo, data: CheckData) {
-		void answerCheck(todo, data);
+		void answerCheck(todo, data, struggleOptions());
+	}
+
+	/** The 5 minute break chip: the session counts like Keep going, then the break starts. */
+	async function checkBreak(todo: Todo, data: CheckData) {
+		await answerCheck(todo, data);
+		void takeBreak(OFFER_BREAK_MINUTES, nextActivity(OFFER_BREAK_MINUTES), 'offer');
+	}
+
+	/** "Take a break" in the menu. */
+	function breakNow() {
+		void takeBreak(settings.breakMinutes, nextActivity(settings.breakMinutes));
+	}
+
+	/** "5 more min" after a break: the same activity for five more minutes. */
+	function breakMore() {
+		const current = flowState.current;
+		void takeBreak(5, current.kind === 'break' ? current.activity : nextActivity(5));
+	}
+
+	/** "Keep working instead" and "Stay on it": the last step is taken back. */
+	function takeBack(rowId: number) {
+		const row = flowRows.find((entry) => entry.id === rowId);
+		if (row) void undoStep(row, row.todoId);
+	}
+
+	/** "Something else", and the stuck reasons the ladder cares about, on a to-do. */
+	function pushAway(todo: Todo, reason: 'else' | 'low-energy' | 'cant-start') {
+		void struggleOn(todo, reason, struggleOptions());
+	}
+
+	function todoStuck(todo: Todo, why: StuckReason) {
+		if (why.id === 'break') breakNow();
+		else if (why.id === 'low-energy' || why.id === 'cant-start') pushAway(todo, why.id);
+	}
+
+	/** The question after a Face it session: what the user says is what happens to the to-do. */
+	async function face(todo: Todo, answer: FaceAnswer, detail: { step?: string; days?: number }) {
+		await answerFace(todo, answer);
+		if (answer === 'smaller' && detail.step)
+			await changeTodo({ id: todo.id, nextStep: detail.step });
+		else if (answer === 'move' && detail.days)
+			await changeTodo({ id: todo.id, dueDate: addDays(today, detail.days) });
+		else if (answer === 'drop') dropTodo(todo);
 	}
 
 	/** "Call it a day": the hero rests until the user comes back. */
@@ -501,6 +585,16 @@
 			onTodoDrop={dropTodo}
 			onCheck={check}
 			onBack={back}
+			onSomethingElse={(todo) => pushAway(todo, 'else')}
+			onTodoStuck={todoStuck}
+			onBreak={breakNow}
+			onCheckBreak={checkBreak}
+			onBreakBack={() => void endBreak()}
+			onBreakMore={breakMore}
+			onBreakStop={takeBack}
+			onStay={takeBack}
+			onFace={face}
+			{nowMs}
 			{calling}
 			noteCount={tasker.agent.cards.length}
 			dark={heroDark(hero)}

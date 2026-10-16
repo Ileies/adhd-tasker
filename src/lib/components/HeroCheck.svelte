@@ -25,8 +25,10 @@
 		keeps = 0,
 		sizeAsked = false,
 		worked = false,
+		offerBreak = false,
 		minutes,
-		onAnswer
+		onAnswer,
+		onBreak
 	}: {
 		todo: Todo;
 		/** The minutes the session was meant to run, what the offered steps are sized by. */
@@ -35,9 +37,13 @@
 		keeps?: number;
 		sizeAsked?: boolean;
 		worked?: boolean;
+		/** 90 minutes without a break: a chip offers a short one, once. */
+		offerBreak?: boolean;
 		/** The minutes this answer counts, read when it is given. */
 		minutes: () => number;
 		onAnswer: (data: CheckData) => void;
+		/** The break chip: the session counts as Keep going, then the break starts. */
+		onBreak?: (data: CheckData) => void;
 	} = $props();
 
 	let stage = $state<'ask' | 'other' | 'size' | 'pace'>('ask');
@@ -58,7 +64,8 @@
 			after,
 			minutes: spent,
 			...(keep && { keep: true as const }),
-			...(worked && { worked: true as const })
+			...(worked && { worked: true as const }),
+			...(offerBreak && { offered: true as const })
 		};
 		const next = keep
 			? null
@@ -70,6 +77,17 @@
 
 	const finish = (extra: { size: number | null } | { pace: Pace }) =>
 		pending && onAnswer({ ...pending, ...extra });
+
+	// The break chip answers like Keep going: the minutes count, the progress stays
+	const takeBreak = () =>
+		onBreak?.({
+			before: todo.progress,
+			after: todo.progress,
+			minutes: minutes(),
+			keep: true,
+			offered: true,
+			...(worked && { worked: true as const })
+		});
 </script>
 
 <div class="flex max-w-3xl flex-col gap-3">
@@ -90,6 +108,9 @@
 			>
 				Other
 			</Button>
+			{#if offerBreak && onBreak}
+				<Button variant="outline" class={chipClass} onclick={takeBreak}>5 min break</Button>
+			{/if}
 		</div>
 	{:else if stage === 'other'}
 		<div class="flex max-w-md flex-col gap-4">

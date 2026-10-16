@@ -8,6 +8,9 @@
 	import { Input } from '#lib/components/ui/input/index.js';
 	import PriorityMeter from '#lib/components/PriorityMeter.svelte';
 	import HeroCheck from '#lib/components/HeroCheck.svelte';
+	import HeroFace from '#lib/components/HeroFace.svelte';
+	import { activityById } from '#lib/breaks.js';
+	import type { FaceAnswer } from '#lib/struggle.js';
 	import HeroMenu from '#lib/components/HeroMenu.svelte';
 	import TodoMenu from '#lib/components/TodoMenu.svelte';
 	import SilenceLine from '#lib/components/SilenceLine.svelte';
@@ -47,6 +50,16 @@
 		onTodoDrop,
 		onCheck,
 		onBack,
+		onSomethingElse,
+		onTodoStuck,
+		onBreak,
+		onCheckBreak,
+		onBreakBack,
+		onBreakMore,
+		onBreakStop,
+		onStay,
+		onFace,
+		nowMs = Date.now(),
 		calling = false,
 		noteCount = 0,
 		dark = false
@@ -91,6 +104,26 @@
 		onCheck?: (todo: Todo, data: CheckData) => void;
 		/** "I'm back" after away, "I'm here" when asked in the plan state. */
 		onBack?: () => void;
+		/** "Something else": the to-do is pushed away, the ladder decides what comes next. */
+		onSomethingElse?: (todo: Todo) => void;
+		/** A stuck reason that matters to the ladder on a to-do: "I cannot get started", "I lost energy", "I need a break". */
+		onTodoStuck?: (todo: Todo, reason: StuckReason) => void;
+		/** "Take a break" in the menu. */
+		onBreak?: () => void;
+		/** The 5 minute break chip of a check: the answer counts as Keep going, then the break starts. */
+		onCheckBreak?: (todo: Todo, data: CheckData) => void;
+		/** "I'm back" and "Let's go". */
+		onBreakBack?: () => void;
+		/** "5 more min". */
+		onBreakMore?: () => void;
+		/** "Keep working instead": takes the break back. */
+		onBreakStop?: (rowId: number) => void;
+		/** "Stay on it" while a switch waits its 5 minutes. */
+		onStay?: (rowId: number) => void;
+		/** The answer to the question after a Face it session. */
+		onFace?: (todo: Todo, answer: FaceAnswer, detail: { step?: string; days?: number }) => void;
+		/** The time in epoch ms, for the countdown of a held switch. */
+		nowMs?: number;
 		/** It is past the time to start and nobody did: the morning calls. */
 		calling?: boolean;
 		/** Open assistant cards, shown as one line that jumps to them on phones. */
@@ -149,9 +182,27 @@
 
 	function choose(reason: StuckReason) {
 		if (!itemKey) return;
+		// The reasons that act on their own need no hint: the ladder or a break takes over
+		if (todo && 'effect' in reason) {
+			stuckFor = null;
+			onTodoStuck?.(todo, reason);
+			return;
+		}
 		stuckFor = { key: itemKey, reason, timer: false };
 		if (task) onStuck(task, reason);
+		else if (todo && reason.id === 'cant-start') onTodoStuck?.(todo, reason);
 	}
+
+	// "Call it a day" says once what it costs, then asks
+	let restAsk = $state(false);
+	$effect(() => {
+		if (hero.kind !== 'todo') restAsk = false;
+	});
+	function rest() {
+		if (hero.kind === 'todo' && hero.cost) restAsk = true;
+		else onRest?.();
+	}
+	const secondsLeft = (until: number) => Math.max(0, Math.ceil((until - nowMs) / 1000));
 
 	const left = $derived(task ? minutesLeft(task, now) : 0);
 	// The bar drains like a Time Timer: it shows what is left
@@ -172,6 +223,8 @@
 			const level = urgencyLevel(todo.priority, hero.length, hero.length);
 			return urgencySurface[Math.max(level, hero.check?.level === 1 ? 2 : 0) as 0 | 1 | 2 | 3];
 		}
+		// A break is calm, until the question after it is asked again
+		if (hero.kind === 'break') return urgencySurface[hero.check?.level === 1 ? 2 : 0];
 		// Plan what's next is asked in the attention color, the words say the same
 		if (hero.kind === 'plan') return urgencySurface[2];
 		if (hero.kind === 'away')
@@ -208,18 +261,20 @@
 		>
 			{#if stuck.reason}
 				<p class="text-xl leading-relaxed">{stuck.reason.hint}</p>
-				{@const action = stuck.reason.action}
-				<Button
-					variant="outline"
-					class="h-11 border-current bg-transparent text-base hover:bg-current/10"
-					disabled={stuck.timer}
-					onclick={() => {
-						if (stuckFor) stuckFor.timer = true;
-						onTimer(action);
-					}}
-				>
-					{stuck.timer ? 'Timer set' : action.label}
-				</Button>
+				{#if 'action' in stuck.reason}
+					{@const action = stuck.reason.action}
+					<Button
+						variant="outline"
+						class="h-11 border-current bg-transparent text-base hover:bg-current/10"
+						disabled={stuck.timer}
+						onclick={() => {
+							if (stuckFor) stuckFor.timer = true;
+							onTimer(action);
+						}}
+					>
+						{stuck.timer ? 'Timer set' : action.label}
+					</Button>
+				{/if}
 				<Button
 					variant="ghost"
 					class="px-0 text-base hover:bg-transparent hover:underline"
@@ -228,7 +283,8 @@
 			{:else}
 				<p class="text-lg">What is in the way?</p>
 				<div class="flex flex-wrap gap-2">
-					{#each STUCK_REASONS as option (option.id)}
+					<!-- A task at a time has no to-do to rotate away from, and a break is not its business -->
+					{#each STUCK_REASONS.filter((option) => todo || !('effect' in option)) as option (option.id)}
 						<Button
 							variant="outline"
 							class="h-11 border-current bg-transparent text-base hover:bg-current/10"
@@ -424,8 +480,13 @@
 				<p class="text-2xl font-semibold">
 					{check.level === 1 ? 'Still there? ' : ''}{check.early && next
 						? `${next.title} at ${formatClock(next.startTime)}. `
-						: ''}How far is it?
+						: ''}{check.about === 'face'
+						? 'You gave it its ten minutes. What now?'
+						: 'How far is it?'}
 				</p>
+			{:else if hero.face && hero.line}
+				<!-- Face it is named for the whole session, not for a minute -->
+				<p class="max-w-3xl text-2xl font-semibold">{hero.line}</p>
 			{/if}
 
 			<h1 class="text-display line-clamp-3 font-bold break-words">{item.title}</h1>
@@ -447,14 +508,20 @@
 						</div>
 					{/if}
 				</div>
-				<HeroCheck
-					todo={item}
-					sessionLength={check.sessionLength}
-					keeps={check.keeps}
-					sizeAsked={check.sizeAsked}
-					minutes={() => sessionSpent(check.sessionStart, Date.now(), check.sessionLength)}
-					onAnswer={(data) => onCheck?.(item, data)}
-				/>
+				{#if check.about === 'face'}
+					<HeroFace onAnswer={(answer, detail) => onFace?.(item, answer, detail)} />
+				{:else}
+					<HeroCheck
+						todo={item}
+						sessionLength={check.sessionLength}
+						keeps={check.keeps}
+						sizeAsked={check.sizeAsked}
+						offerBreak={check.offerBreak}
+						minutes={() => sessionSpent(check.sessionStart, Date.now(), check.sessionLength)}
+						onAnswer={(data) => onCheck?.(item, data)}
+						onBreak={(data) => onCheckBreak?.(item, data)}
+					/>
+				{/if}
 			{:else}
 				<div>
 					<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
@@ -489,8 +556,61 @@
 				<div class="h-full rounded-full bg-current/70" style="width: {item.progress}%"></div>
 			</div>
 
+			{#if hero.held}
+				{@const held = hero.held}
+				<!-- Losing steam in the first minutes is often the wall in front of starting: try, then switch -->
+				<div
+					class="flex max-w-xl flex-col gap-3 rounded-lg border border-current/30 p-4"
+					role="status"
+				>
+					<p class="text-xl leading-relaxed">
+						Give it 5 minutes first. If it still does not work, I'll switch.
+					</p>
+					<p class="tabular text-lg opacity-90">
+						Switching in {formatMinutes(Math.ceil(secondsLeft(held.until) / 60))}
+					</p>
+					<div>
+						<Button
+							variant="outline"
+							class="h-11 border-current bg-transparent text-base hover:bg-current/10"
+							onclick={() => onStay?.(held.rowId)}
+						>
+							Stay on it
+						</Button>
+					</div>
+				</div>
+			{/if}
+
 			{#if headsUp}
 				<p class="text-xl font-semibold">{headsUpLine(headsUp, now, false)}</p>
+			{/if}
+
+			{#if restAsk && hero.cost}
+				<div
+					class="flex max-w-xl flex-col gap-3 rounded-lg border border-current/30 p-4"
+					role="group"
+					aria-label="Call it a day"
+				>
+					<p class="text-xl leading-relaxed">{hero.cost}</p>
+					<div class="flex flex-wrap gap-2">
+						<Button
+							variant="outline"
+							class="h-11 border-current bg-transparent text-base hover:bg-current/10"
+							onclick={() => {
+								restAsk = false;
+								onRest?.();
+							}}
+						>
+							Call it a day
+						</Button>
+						<Button
+							class="bg-foreground text-background hover:bg-foreground/85 h-11 text-base"
+							onclick={() => (restAsk = false)}
+						>
+							One more session
+						</Button>
+					</div>
+				</div>
 			{/if}
 
 			<div
@@ -500,11 +620,23 @@
 					<Check />
 					Done
 				</Button>
+				<!-- A faced to-do cannot be switched away from, the question at its end is the way out -->
+				{#if !check && !hero.face && !hero.held}
+					<Button
+						size="lg"
+						variant="outline"
+						class="h-14 border-current bg-transparent px-6 text-lg hover:bg-current/10"
+						onclick={() => onSomethingElse?.(item)}
+					>
+						Something else
+					</Button>
+				{/if}
 				{@render stuckButton()}
 				<TodoMenu
 					todo={item}
 					onEdit={(value) => onTodoEdit?.(value)}
-					onRest={() => onRest?.()}
+					onBreak={() => onBreak?.()}
+					onRest={rest}
 					onDrop={(value) => onTodoDrop?.(value)}
 				/>
 			</div>
@@ -516,6 +648,72 @@
 			{#if note && !compact}
 				<a href="#assistant-note" class="text-base underline md:hidden">{note}</a>
 			{/if}
+		</div>
+	{:else if hero.kind === 'break'}
+		{@const asked = hero.check}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+			{#if !asked}
+				<p class="text-lg font-semibold opacity-90">Break</p>
+				<h1 class="max-w-4xl text-4xl leading-tight font-bold md:text-6xl">
+					{activityById(hero.activity).text}
+				</h1>
+				<div>
+					<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
+					<div class="mt-1 text-lg opacity-90">left. I'll call you back.</div>
+				</div>
+				<div
+					class="h-4 w-full overflow-hidden rounded-full bg-current/20"
+					role="progressbar"
+					aria-valuenow={Math.round((100 * hero.left) / hero.minutes)}
+					aria-valuemin={0}
+					aria-valuemax={100}
+					aria-label="Break time left"
+				>
+					<div
+						class="h-full rounded-full bg-current transition-[width] duration-1000"
+						style="width: {Math.min(100, (100 * hero.left) / hero.minutes)}%"
+					></div>
+				</div>
+				<div class="flex flex-wrap items-center gap-3">
+					<Button size="lg" class={doneClass} onclick={() => onBreakBack?.()}>I'm back</Button>
+					<Button
+						variant="ghost"
+						class="h-16 px-6 text-xl hover:bg-current/10"
+						onclick={() => onBreakStop?.(hero.rowId)}
+					>
+						Keep working instead
+					</Button>
+				</div>
+			{:else if asked.about === 'day'}
+				<h1 class="text-display font-bold">
+					{asked.level === 1 ? 'Still there? ' : ''}Done with focus work for today?
+				</h1>
+				<div class="flex flex-wrap items-center gap-3">
+					<Button size="lg" class={doneClass} onclick={() => onBreakBack?.()}>Keep going</Button>
+					<Button size="lg" variant="outline" class={secondaryClass} onclick={() => onRest?.()}>
+						Call it a day
+					</Button>
+				</div>
+			{:else}
+				<p class="text-lg font-semibold opacity-90">
+					{asked.level === 1 ? 'Still there? Break is over.' : 'Break is over.'}
+				</p>
+				<h1 class="text-display line-clamp-3 font-bold break-words">
+					{hero.todo ? `Back to ${hero.todo.title}?` : 'Back to work?'}
+				</h1>
+				<div class="flex flex-wrap items-center gap-3">
+					<Button size="lg" class={doneClass} onclick={() => onBreakBack?.()}>Let's go</Button>
+					<Button
+						size="lg"
+						variant="outline"
+						class={secondaryClass}
+						onclick={() => onBreakMore?.()}
+					>
+						5 more min
+					</Button>
+				</div>
+			{/if}
+			{@render reasonLine()}
 		</div>
 	{:else if hero.kind === 'ready'}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">

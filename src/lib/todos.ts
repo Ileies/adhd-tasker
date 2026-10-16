@@ -6,7 +6,18 @@ import { tasker } from '#lib/app.svelte.js';
 import { BackendError, type FlowAnswer } from '#lib/backend.js';
 import { checkPatch, isSlow, type CheckData } from '#lib/checks.js';
 import type { FlowRow, Todo, TodoPatch } from '#lib/core/repo.js';
+import { rotationTargets } from '#lib/pick.js';
 import { quickKind, quickTodo } from '#lib/quickadd.js';
+import {
+	coolingAt,
+	liveRows,
+	skipPatch,
+	stepFor,
+	stepsOf,
+	unskipPatch,
+	type FaceAnswer,
+	type Struggle
+} from '#lib/struggle.js';
 import { addQuickTask } from '#lib/tasks.js';
 import { errorText, showToast } from '#lib/toast.js';
 import { deviceTimezone, formatDay, todayIn } from '#lib/time.js';
@@ -131,11 +142,19 @@ export function chooseTodo(todo: Todo) {
  * Answers a check: the to-do shows the new progress, time spent and size at once (the same rules the backend
  * applies, `checkPatch`), and the answer goes to the flow log. A refused answer puts the to-do back.
  */
-export async function answerCheck(todo: Todo, data: CheckData): Promise<FlowRow | null> {
+export async function answerCheck(
+	todo: Todo,
+	data: CheckData,
+	/** What the ladder needs when the answer is "I couldn't focus": the app switches or gives a break on its own. */
+	struggle?: StruggleOptions
+): Promise<FlowRow | null> {
 	const full: CheckData = {
 		...data,
 		slow: !data.keep && isSlow({ ...data, size: todo.estimate })
 	};
+	// The ladder reads the day before this answer, so the step is worked out first
+	const result =
+		struggle && full.pace === 'unfocused' ? planFor(todo, 'unfocused', struggle) : null;
 	const index = tasker.todos.findIndex((entry) => entry.id === todo.id);
 	const previous = index === -1 ? null : tasker.todos[index];
 	if (previous) tasker.todos[index] = { ...previous, ...checkPatch(previous, full) };
@@ -145,7 +164,133 @@ export async function answerCheck(todo: Todo, data: CheckData): Promise<FlowRow 
 		const back = tasker.todos.findIndex((entry) => entry.id === todo.id);
 		if (back !== -1) tasker.todos[back] = previous;
 	}
+	if (stored && result) await takeStep(todo, result, stored.at);
 	return stored;
+}
+
+/** What the screen knows about the session a struggle happens in. */
+export interface StruggleOptions {
+	/** When the session on the to-do began, epoch ms. */
+	sessionStart: number;
+	/** The break length setting. */
+	breakMinutes: number;
+	/** The activity a break would give, chosen by the screen (`breakActivity`). */
+	activity: string;
+}
+
+type Planned = NonNullable<ReturnType<typeof stepFor>>;
+
+/** When the day's tasks and to-dos were finished: the ladder counts that as going well. */
+function finishedToday(): number[] {
+	const today = flowToday();
+	const zone = tasker.timezone ?? tasker.settings.timezone ?? deviceTimezone();
+	return [...tasker.tasks, ...tasker.todos]
+		.map((item) => item.completedAt)
+		.filter((at): at is number => typeof at === 'number' && todayIn(zone, new Date(at)) === today);
+}
+
+/** The step the ladder takes for a struggle, from today's rows as they are now. `null` when the struggle does not count. */
+function planFor(todo: Todo, trigger: Struggle, options: StruggleOptions): Planned | null {
+	const nowMs = Date.now();
+	const doneAts = finishedToday();
+	const rows = liveRows(tasker.flow.rows);
+	const cooling = coolingAt(stepsOf(rows, doneAts), nowMs);
+	return stepFor({
+		rows,
+		doneAts,
+		trigger,
+		todoId: todo.id,
+		nowMs,
+		sessionStart: options.sessionStart,
+		others: rotationTargets(tasker.todos, flowToday(), cooling, todo.id),
+		breakMinutes: options.breakMinutes,
+		activity: options.activity
+	});
+}
+
+/**
+ * Writes the step the ladder decided and says so with an Undo. A rotation counts as a skip of the to-do, shown at
+ * once and put back when the answer is refused. `after` is the time of the answer that caused it: the step follows
+ * it by a moment, so the session of the answer and the session of the step never share a pin.
+ */
+async function takeStep(
+	todo: Todo,
+	{ plan, answer }: Planned,
+	after: number | null
+): Promise<FlowRow | null> {
+	const rotating = answer.type === 'rotate';
+	const index = tasker.todos.findIndex((entry) => entry.id === todo.id);
+	const previous = index === -1 ? null : tasker.todos[index];
+	if (rotating && previous)
+		tasker.todos[index] = { ...previous, ...skipPatch(previous, flowToday()) };
+
+	const row = await recordAnswer({
+		type: answer.type,
+		todoId: answer.todoId ?? undefined,
+		data: answer.data,
+		...(after === null ? {} : { at: Math.max(Date.now(), after + 1) })
+	});
+	if (!row) {
+		const back = tasker.todos.findIndex((entry) => entry.id === todo.id);
+		if (rotating && previous && back !== -1) tasker.todos[back] = previous;
+		return null;
+	}
+
+	const undo = () => undoStep(row, todo.id);
+	if (plan.step === 'break') showToast(`Break for ${plan.minutes} min.`, undo);
+	// A held rotation says it in the hero, with the timer
+	else if (!plan.hold) showToast(`Switched. ${todo.title} comes back later.`, undo);
+	return row;
+}
+
+/** Takes a rotation or break back: the session before goes on, a skip it counted is given back. */
+export async function undoStep(row: FlowRow, todoId: number | null) {
+	await recordAnswer({ type: 'undo', data: { ref: row.id } });
+	const todo = tasker.todos.find((entry) => entry.id === todoId);
+	if (row.type === 'rotate' && todo) await changeTodo({ id: todo.id, ...unskipPatch(todo) });
+}
+
+/**
+ * "Something else", "I lost energy for this" and "I cannot get started" on a to-do: the ladder decides what happens
+ * (`struggle.ts`). Answers what it did, `null` when the struggle does not count yet (the first "I cannot get started").
+ */
+export async function struggleOn(
+	todo: Todo,
+	trigger: 'else' | 'low-energy' | 'cant-start',
+	options: StruggleOptions
+): Promise<Planned['plan'] | null> {
+	const result = planFor(todo, trigger, options);
+	// The tap itself is logged: the ladder counts it, "I cannot get started" the second time
+	if (trigger !== 'else')
+		await recordAnswer({ type: 'stuck', todoId: todo.id, data: { reason: trigger } });
+	if (!result) return null;
+	await takeStep(todo, result, null);
+	return result.plan;
+}
+
+/** A break the user asked for ("I need a break", Take a break), or "5 more minutes" after one. */
+export function takeBreak(
+	minutes: number,
+	activity: string,
+	why: 'asked' | 'stuck' | 'offer' = 'asked'
+) {
+	return recordAnswer({ type: 'break', data: { minutes, activity, why } });
+}
+
+/** "I'm back" from a break, "Let's go" after it. */
+export const endBreak = () => recordAnswer({ type: 'back' });
+
+/** The answer to the question at the end of a Face it session: the count ends, the to-do stays what the user says. */
+export async function answerFace(todo: Todo, answer: FaceAnswer) {
+	const index = tasker.todos.findIndex((entry) => entry.id === todo.id);
+	const previous = index === -1 ? null : tasker.todos[index];
+	if (previous) tasker.todos[index] = { ...previous, skips: 0, skipSince: null };
+	const row = await recordAnswer({ type: 'face', todoId: todo.id, data: { answer } });
+	if (!row && previous) {
+		const back = tasker.todos.findIndex((entry) => entry.id === todo.id);
+		if (back !== -1) tasker.todos[back] = previous;
+	}
+	return row;
 }
 
 /** Fetches the answers of one day (today without a date) and replaces what the client holds. */

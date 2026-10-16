@@ -7,11 +7,13 @@
 	let {
 		todo,
 		onEdit,
+		onBreak,
 		onRest,
 		onDrop
 	}: {
 		todo: Todo;
 		onEdit: (todo: Todo) => void;
+		onBreak: () => void;
 		onRest: () => void;
 		onDrop: (todo: Todo) => void;
 	} = $props();
@@ -33,6 +35,7 @@
 		{/snippet}
 	</DropdownMenu.Trigger>
 	<DropdownMenu.Content align="start" class="w-56">
+		<DropdownMenu.Item onSelect={onBreak}>Take a break</DropdownMenu.Item>
 		<DropdownMenu.Item onSelect={() => onEdit(todo)}>Edit</DropdownMenu.Item>
 		<DropdownMenu.Item onSelect={onRest}>Call it a day</DropdownMenu.Item>
 		<DropdownMenu.Separator />
