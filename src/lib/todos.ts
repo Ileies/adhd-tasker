@@ -5,8 +5,10 @@
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError, type FlowAnswer } from '#lib/backend.js';
 import type { FlowRow, Todo, TodoPatch } from '#lib/core/repo.js';
+import { quickKind, quickTodo } from '#lib/quickadd.js';
+import { addQuickTask } from '#lib/tasks.js';
 import { errorText, showToast } from '#lib/toast.js';
-import { deviceTimezone, todayIn } from '#lib/time.js';
+import { deviceTimezone, formatDay, todayIn } from '#lib/time.js';
 
 const reasonOf = (error: unknown) =>
 	error instanceof BackendError && error.status === null ? 'no connection' : errorText(error, '');
@@ -32,6 +34,34 @@ export async function addTodo(fields: TodoPatch): Promise<Todo> {
 		return created;
 	} catch (error) {
 		throw new Error(`Could not add the to-do: ${reasonOf(error)}`, { cause: error });
+	}
+}
+
+/**
+ * What the quick add line says: a time makes a task at a time, everything else a to-do (see `quickadd.ts`). Tells
+ * the user how it went and answers what was made, `null` for a line without a title or one that failed.
+ */
+export async function addQuickLine(
+	text: string,
+	date: string,
+	now: number | null,
+	today: string = date
+): Promise<{ kind: 'task' } | { kind: 'todo'; todo: Todo } | null> {
+	if (quickKind(text) === 'task')
+		return (await addQuickTask(text, date, now, today)) ? { kind: 'task' } : null;
+	const fields = quickTodo(text, today);
+	if (!fields) return null;
+	try {
+		const todo = await addTodo(fields);
+		showToast(
+			fields.dueDate
+				? `Added ${todo.title}, due ${formatDay(fields.dueDate, today)}`
+				: `Added ${todo.title}`
+		);
+		return { kind: 'todo', todo };
+	} catch (error) {
+		showToast(errorText(error, 'Could not add the to-do'));
+		return null;
 	}
 }
 
@@ -73,6 +103,27 @@ export async function removeTodo(todo: Todo) {
 		showToast(`Could not delete ${todo.title}: ${reasonOf(error)}`);
 		return false;
 	}
+}
+
+/** Marks a to-do done, with an Undo toast that puts it back as it was. `onUndo` runs first (a screen's own confirmation). */
+export function finishTodo(todo: Todo, onUndo?: () => void) {
+	const before = { status: todo.status, progress: todo.progress };
+	void changeTodo({ id: todo.id, status: 'done' });
+	showToast(`Done: ${todo.title}`, () => {
+		onUndo?.();
+		return changeTodo({ id: todo.id, ...before });
+	});
+}
+
+/** Drops a to-do, it stays in the data for a while. The Undo toast reopens it. */
+export function dropTodo(todo: Todo) {
+	void changeTodo({ id: todo.id, status: 'dropped' });
+	showToast(`Dropped: ${todo.title}`, () => changeTodo({ id: todo.id, status: todo.status }));
+}
+
+/** "Do this now": the to-do becomes current at once and stays for this session. */
+export function chooseTodo(todo: Todo) {
+	return recordAnswer({ type: 'choose', todoId: todo.id });
 }
 
 /** Fetches the answers of one day (today without a date) and replaces what the client holds. */

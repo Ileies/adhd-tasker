@@ -1,7 +1,8 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { parseQuickTask, quickPreview, quickTask } from '#lib/quickadd.js';
+import { parseQuickTask, quickKind, quickPreview, quickTask, quickTodo } from '#lib/quickadd.js';
+import { Priority } from '#lib/types.js';
 
 describe('quickTask', () => {
 	const DAY = '2026-10-14';
@@ -123,19 +124,82 @@ describe('properties', () => {
 });
 
 describe('quickPreview', () => {
-	test('says the time and duration without repeating the title', () => {
-		expect(quickPreview('Call dentist 14:30 45m', '2026-10-14', null)).toBe('14:30 to 15:15, 45m');
+	const DAY = '2026-10-14';
+
+	test('a time makes a task, the preview says the time and duration without repeating the title', () => {
+		expect(quickPreview('Call dentist 14:30 45m', DAY, null)).toBe('Task, 14:30 to 15:15, 45m');
 	});
 
-	test('a duration alone uses the next free quarter hour today', () => {
-		expect(quickPreview('Groceries 20m', '2026-10-14', 601)).toBe('10:15 to 10:35, 20m');
+	test('a task on another day names the day', () => {
+		expect(quickPreview('Exam Math Nov 5 12:00 2h', DAY, null)).toBe(
+			'Task, Thu, Nov 5, 12:00 to 14:00, 2h'
+		);
 	});
 
-	test('is null when the line names neither a time nor a duration', () => {
-		expect(quickPreview('Groceries', '2026-10-14', 601)).toBeNull();
+	test('a size without a time is a to-do of that size', () => {
+		expect(quickPreview('Groceries 20m', DAY, 601)).toBe('To-do, about 20m');
+	});
+
+	test('a to-do with a size and a day says both', () => {
+		expect(quickPreview('Study Math 10h by Nov 5', DAY, null)).toBe(
+			'To-do, about 10h, due Thu, Nov 5 (in 22 days)'
+		);
+	});
+
+	test('a plain line is a plain to-do', () => {
+		expect(quickPreview('Groceries', DAY, 601)).toBe('To-do');
 	});
 
 	test('is null without a title', () => {
-		expect(quickPreview('14:30 45m', '2026-10-14', null)).toBeNull();
+		expect(quickPreview('14:30 45m', DAY, null)).toBeNull();
+	});
+});
+
+describe('quickKind', () => {
+	test.each([
+		['Call dentist 14:30', 'task'],
+		['Lunch 45m at 12', 'task'],
+		['Study Math 10h by Nov 5', 'todo'],
+		['Water the plants', 'todo']
+	] as const)('%s is a %s', (line, kind) => {
+		expect(quickKind(line)).toBe(kind);
+	});
+});
+
+describe('quickTodo', () => {
+	const DAY = '2026-10-14';
+
+	test('a title is enough', () => {
+		expect(quickTodo('Water the plants', DAY)).toEqual({
+			title: 'Water the plants',
+			priority: Priority.Medium
+		});
+	});
+
+	test('a length is the size and a day the due date', () => {
+		expect(quickTodo('Study Math 10h by Nov 5', DAY)).toEqual({
+			title: 'Study Math',
+			priority: Priority.Medium,
+			estimate: 600,
+			dueDate: '2026-11-05'
+		});
+	});
+
+	test('without a title there is no to-do', () => {
+		expect(quickTodo('2h tomorrow', DAY)).toBeNull();
+	});
+});
+
+describe('a day in a task line', () => {
+	test('a named day moves the task there and starts it in the morning', () => {
+		expect(quickTask('Dentist tomorrow', '2026-10-14', 600)).toMatchObject({
+			title: 'Dentist',
+			date: '2026-10-15',
+			startTime: 540
+		});
+	});
+
+	test('the day is read from the real today, not from the day that is planned', () => {
+		expect(quickTask('Dentist friday', '2026-10-20', null, '2026-10-14')?.date).toBe('2026-10-16');
 	});
 });

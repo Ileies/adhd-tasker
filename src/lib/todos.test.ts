@@ -3,8 +3,12 @@ import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bu
 import { tasker } from '#lib/app.svelte.js';
 import type { FlowRow, Todo } from '#lib/core/repo.js';
 import {
+	addQuickLine,
 	addTodo,
 	changeTodo,
+	chooseTodo,
+	dropTodo,
+	finishTodo,
 	flowToday,
 	loadFlow,
 	loadTodos,
@@ -92,6 +96,42 @@ describe('loadTodos and addTodo', () => {
 	});
 });
 
+describe('addQuickLine', () => {
+	test('a line without a time makes a to-do with its size and due date', async () => {
+		let sent: unknown = null;
+		fakeFetch({
+			[`POST ${BASE}/todos`]: async (request) => {
+				sent = await request.json();
+				return Response.json(todo(9, { title: 'Study Math' }));
+			}
+		});
+		const made = await addQuickLine('Study Math 10h by Nov 5', '2026-10-14', 540);
+		expect(made).toMatchObject({ kind: 'todo', todo: { id: 9 } });
+		expect(sent).toMatchObject({ title: 'Study Math', estimate: 600, dueDate: '2026-11-05' });
+		expect(tasker.toasts.at(-1)?.message).toBe('Added Study Math, due Thu, Nov 5');
+	});
+
+	test('a line with a time makes a task at a time and no to-do', async () => {
+		fakeFetch({
+			[`POST ${BASE}/edit`]: async (request) =>
+				Response.json({ ...(await request.json()), id: 4, status: 'pending' })
+		});
+		expect(await addQuickLine('Call dentist 14:30', '2026-10-14', 540)).toEqual({ kind: 'task' });
+		expect(tasker.todos).toHaveLength(3);
+	});
+
+	test('a line without a title makes nothing and says nothing', async () => {
+		expect(await addQuickLine('2h', '2026-10-14', 540)).toBeNull();
+		expect(tasker.toasts).toEqual([]);
+	});
+
+	test('a refusal says why', async () => {
+		fakeFetch({ [`POST ${BASE}/todos`]: rejected(400, 'title is required') });
+		expect(await addQuickLine('Study', '2026-10-14', 540)).toBeNull();
+		expect(tasker.toasts.at(-1)?.message).toContain('title is required');
+	});
+});
+
 describe('changeTodo', () => {
 	test('shows the change at once, done fills the bar, then takes the stored to-do', async () => {
 		fakeFetch({
@@ -115,6 +155,54 @@ describe('changeTodo', () => {
 		const { requests } = fakeFetch({});
 		expect(await changeTodo({ id: 9, title: 'x' })).toBe(false);
 		expect(requests).toEqual([]);
+	});
+});
+
+describe('finishTodo, dropTodo and chooseTodo', () => {
+	const changes = () => {
+		const sent: unknown[] = [];
+		fakeFetch({
+			[`PUT ${BASE}/todos`]: async (request) => {
+				const body = (await request.json()) as { id: number };
+				sent.push(body);
+				return Response.json(todo(body.id, body as Partial<Todo>));
+			}
+		});
+		return sent;
+	};
+
+	test('Done marks the to-do done at once and the Undo puts back status and progress', async () => {
+		const sent = changes();
+		tasker.todos = [todo(1, { progress: 40 })];
+		const onUndo = () => sent.push('undo');
+		finishTodo(tasker.todos[0], onUndo);
+		expect(tasker.todos[0]).toMatchObject({ status: 'done', progress: 100 });
+		expect(tasker.toasts.at(-1)?.message).toBe('Done: To-do 1');
+		await tasker.toasts.at(-1)?.undo?.();
+		expect(sent).toContainEqual({ id: 1, status: 'open', progress: 40 });
+		expect(sent).toContain('undo');
+	});
+
+	test('Drop drops the to-do and the Undo reopens it', async () => {
+		const sent = changes();
+		tasker.todos = [todo(1)];
+		dropTodo(tasker.todos[0]);
+		expect(tasker.todos[0].status).toBe('dropped');
+		expect(tasker.toasts.at(-1)?.message).toBe('Dropped: To-do 1');
+		await tasker.toasts.at(-1)?.undo?.();
+		expect(sent.at(-1)).toEqual({ id: 1, status: 'open' });
+	});
+
+	test('Do this now logs a choose answer for the to-do', async () => {
+		let sent: unknown = null;
+		fakeFetch({
+			[`POST ${BASE}/flow`]: async (request) => {
+				sent = await request.json();
+				return Response.json(row(5, { type: 'choose', todoId: 2 }));
+			}
+		});
+		await chooseTodo(todo(2));
+		expect(sent).toMatchObject({ type: 'choose', todoId: 2 });
 	});
 });
 

@@ -14,23 +14,28 @@ export const QUICK_RULES: Record<QuickMode, QuickRule[]> = {
 	task: [
 		{
 			name: 'Start time',
-			how: 'Write a clock time: 14:30, 2pm, 2:30pm or at 14.',
+			how: 'Write a clock time: 14:30, 2pm, 2:30pm or at 14. A line with a time is a task at that time.',
 			example: 'Call dentist 14:30'
 		},
 		{
 			name: 'Length',
-			how: 'Write 45m, 2h, 1h30m or 1.5h. Without one the task lasts 30 min.',
-			example: 'Write intro 2h'
-		},
-		{
-			name: 'Both',
-			how: 'Order does not matter, the rest of the line is the title.',
+			how: 'Write 45m, 2h, 1h30m or 1.5h. A task lasts 30 min without one. A to-do takes it as its size.',
 			example: 'Lunch 45m at 12'
 		},
 		{
 			name: 'No time',
-			how: 'The task starts at the next free quarter hour when you plan today.',
+			how: 'A line without a time is a to-do. It waits for free time and the app picks when to work on it.',
 			example: 'Water the plants'
+		},
+		{
+			name: 'A day',
+			how: 'Write tomorrow, friday, Nov 5, 5.11. or in 20 days. For a to-do it is the day it is due, for a task the day it happens.',
+			example: 'Study Math 10h by tomorrow'
+		},
+		{
+			name: 'Order',
+			how: 'Order does not matter, the rest of the line is the title.',
+			example: 'Write intro 2h tomorrow'
 		}
 	],
 	alarm: [
@@ -68,10 +73,7 @@ export function quickOutcome(
 		const when = quickAlarmPreview(text);
 		return fields && when ? { title: parseQuickAlarm(text).label, when } : null;
 	}
-	const title = parseQuickTask(text).title;
+	const title = parseQuickTask(text, '2026-01-05').title;
 	if (!title) return null;
-	return {
-		title,
-		when: quickPreview(text, '2026-01-05', null) ?? 'Next free quarter hour, 30m'
-	};
+	return { title, when: quickPreview(text, '2026-01-05', null) ?? 'To-do' };
 }
