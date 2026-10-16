@@ -232,7 +232,8 @@ export const remoteBackend: Backend = {
 		async start() {
 			throw new BackendError('The sample day is only for this device', 501);
 		},
-		clear: async () => 0
+		clear: async () => 0,
+		keep: async () => {}
 	},
 
 	voice: {

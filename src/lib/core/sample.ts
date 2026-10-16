@@ -1,43 +1,260 @@
 /**
- * The sample day a first time visitor can try: a few tasks around the time of day it is, so Now has a
- * task running at once. Pure. The device marks what it created, so clearing the sample removes exactly these.
+ * The sample week a first time visitor can try: an ideal, ordinary routine on fixed clock times (meals, meds,
+ * focus blocks, chores, bed time) for today and the six days after it, with one task per weekday in the
+ * evening slot. Whatever the time of day, the next block is a real one, and one single task ("Set up ADHD
+ * Tasker") sits in the next break so the setup is part of the day. Pure. The device marks what it created,
+ * so clearing the sample removes exactly these.
  */
 import type { NewTask } from '#lib/core/repo.js';
-import { DAY_MINUTES, SNAP } from '#lib/plan.js';
+import { DAY_MINUTES } from '#lib/plan.js';
+import { addDays, type DateKey } from '#lib/time.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
-/** Where each sample task sits, in minutes from the start of the one that is running. */
-const TEMPLATE: { title: string; offset: number; duration: number; priority: Priority }[] = [
-	{ title: 'Check the day', offset: -30, duration: 15, priority: Priority.Medium },
-	{ title: 'Write the report intro', offset: 0, duration: 60, priority: Priority.High },
-	{ title: 'Reply to messages', offset: 75, duration: 30, priority: Priority.Medium },
-	{ title: 'Take a walk', offset: 120, duration: 30, priority: Priority.Low },
-	{ title: 'Plan tomorrow', offset: 165, duration: 15, priority: Priority.Medium }
+type Days = 'all' | 'weekdays' | 'weekend';
+
+interface Block {
+	title: string;
+	/** Minutes since midnight. */
+	start: number;
+	duration: number;
+	priority: Priority;
+	days: Days;
+	/** A break the setup task may take the place of. */
+	flex?: boolean;
+	description?: string;
+}
+
+const at = (hour: number, minute = 0) => hour * 60 + minute;
+const { Low, Medium, High } = Priority;
+
+const ROUTINE: Block[] = [
+	{ title: 'Meds and a glass of water', start: at(7), duration: 15, priority: High, days: 'all' },
+	{
+		title: 'Shower and get dressed',
+		start: at(7, 15),
+		duration: 30,
+		priority: Medium,
+		days: 'all'
+	},
+	{ title: 'Breakfast', start: at(7, 45), duration: 30, priority: High, days: 'all' },
+	{
+		title: 'Plan the day',
+		start: at(8, 15),
+		duration: 15,
+		priority: Medium,
+		days: 'all',
+		description: 'Look at this list and pick the one thing that matters most today.'
+	},
+
+	{
+		title: 'Focus: the most important task',
+		start: at(8, 30),
+		duration: 90,
+		priority: High,
+		days: 'weekdays'
+	},
+	{
+		title: 'Break: stretch and water',
+		start: at(10),
+		duration: 15,
+		priority: Low,
+		days: 'weekdays',
+		flex: true
+	},
+	{
+		title: 'Emails and messages',
+		start: at(10, 15),
+		duration: 45,
+		priority: Medium,
+		days: 'weekdays'
+	},
+	{
+		title: 'Focus: the second task',
+		start: at(11),
+		duration: 60,
+		priority: High,
+		days: 'weekdays'
+	},
+
+	{
+		title: 'Tidy up: dishes, trash, desk',
+		start: at(8, 30),
+		duration: 60,
+		priority: Medium,
+		days: 'weekend'
+	},
+	{
+		title: 'A hobby or a project',
+		start: at(9, 30),
+		duration: 150,
+		priority: Medium,
+		days: 'weekend'
+	},
+
+	{ title: 'Lunch', start: at(12), duration: 45, priority: High, days: 'all' },
+	{
+		title: 'Short walk outside',
+		start: at(12, 45),
+		duration: 15,
+		priority: Low,
+		days: 'all',
+		flex: true
+	},
+
+	{ title: 'Focus: deep work', start: at(13), duration: 90, priority: High, days: 'weekdays' },
+	{
+		title: 'Go out: friends, sport or fresh air',
+		start: at(13),
+		duration: 120,
+		priority: Medium,
+		days: 'weekend'
+	},
+	{
+		title: 'Break: snack and stretch',
+		start: at(14, 30),
+		duration: 15,
+		priority: Low,
+		days: 'weekdays',
+		flex: true
+	},
+	{
+		title: 'Emails and loose ends',
+		start: at(14, 45),
+		duration: 45,
+		priority: Medium,
+		days: 'weekdays'
+	},
+	{
+		title: 'Exercise or a long walk',
+		start: at(15, 30),
+		duration: 60,
+		priority: Medium,
+		days: 'all'
+	},
+	{ title: 'Free time', start: at(16, 30), duration: 30, priority: Low, days: 'all', flex: true },
+
+	{ title: 'Cook and eat dinner', start: at(18), duration: 60, priority: High, days: 'all' },
+	{ title: 'Clean the kitchen', start: at(19), duration: 15, priority: Medium, days: 'all' },
+	{ title: 'Free time', start: at(19, 15), duration: 75, priority: Low, days: 'all', flex: true },
+	{
+		title: 'Pack your bag and lay out clothes',
+		start: at(20, 30),
+		duration: 15,
+		priority: Medium,
+		days: 'all'
+	},
+	{
+		title: 'Plan tomorrow',
+		start: at(20, 45),
+		duration: 15,
+		priority: Medium,
+		days: 'all',
+		description: 'Look at tomorrow and move what will not fit.'
+	},
+	{
+		title: 'Shower and get ready for bed',
+		start: at(21),
+		duration: 30,
+		priority: Medium,
+		days: 'all'
+	},
+	{
+		title: 'Wind down: screens off, read',
+		start: at(21, 30),
+		duration: 60,
+		priority: Low,
+		days: 'all'
+	},
+	{
+		title: 'Brush teeth and take meds',
+		start: at(22, 30),
+		duration: 15,
+		priority: High,
+		days: 'all'
+	},
+	{ title: 'Go to bed', start: at(22, 45), duration: 15, priority: High, days: 'all' }
 ];
 
-/** How far into the running task the sample starts, at the most. */
-const HEAD_START = SNAP;
+/** The one block that changes with the weekday, in the slot before dinner. Index is `getUTCDay()`, Sunday is 0. */
+const EVENING: { title: string; priority: Priority }[] = [
+	{ title: 'Plan the week: calendar and goals', priority: Medium },
+	{ title: 'Weekly review: bills, mail, deadlines', priority: Medium },
+	{ title: 'Gym, run or a workout at home', priority: Medium },
+	{ title: 'Groceries for the next days', priority: Medium },
+	{ title: 'Call family or a friend', priority: Medium },
+	{ title: 'Clean one room', priority: Medium },
+	{ title: 'Laundry and fresh sheets', priority: Medium }
+];
+
+const EVENING_START = at(17);
+const EVENING_DURATION = 60;
+
+/** How many days the sample covers, today included. */
+export const SAMPLE_DAYS = 7;
+
+const SETUP = {
+	title: 'Set up ADHD Tasker',
+	duration: 15,
+	priority: High,
+	description:
+		'Open Settings: pick your sounds, check the hours of My day, choose light or dark. Then tap Done.'
+};
+
+const weekdayOf = (date: DateKey) => new Date(date + 'T00:00:00Z').getUTCDay();
+
+function appliesOn(days: Days, weekday: number) {
+	const weekend = weekday === 0 || weekday === 6;
+	return days === 'all' || (days === 'weekend') === weekend;
+}
 
 /**
- * Four or five tasks for `today`, exactly one of them running at `now` (minutes since midnight). A task
- * that would not fit before or after midnight is left out, none ever crosses it. The task before the
- * running one is already done.
+ * The routine for each of the seven days from `today`. A task that ended before `now` today is already done.
+ * The setup task takes the place of the first break that has not started yet (today, else a later day).
+ * Between 23:00 and 07:00 nothing is planned, which Now shows as free time.
  */
-export function sampleDay(today: string, now: number): (NewTask & { status: TaskStatus })[] {
-	const running = TEMPLATE[1];
-	const start = Math.max(
-		0,
-		Math.min(Math.floor(now / SNAP) * SNAP - HEAD_START, DAY_MINUTES - running.duration)
+export function sampleDay(today: DateKey, now: number): (NewTask & { status: TaskStatus })[] {
+	const days = Array.from({ length: SAMPLE_DAYS }, (_, index) => {
+		const date = addDays(today, index);
+		const weekday = weekdayOf(date);
+		const blocks: Block[] = [
+			...ROUTINE.filter((block) => appliesOn(block.days, weekday)),
+			{
+				...EVENING[weekday],
+				start: EVENING_START,
+				duration: EVENING_DURATION,
+				days: 'all'
+			}
+		];
+		return { date, blocks };
+	});
+
+	const upcoming = days.flatMap(({ date, blocks }, index) =>
+		blocks
+			.filter((block) => block.flex && (index > 0 || block.start >= now))
+			.map((block) => ({ date, block }))
 	);
-	return TEMPLATE.map((task) => ({ ...task, startTime: start + task.offset }))
-		.filter((task) => task.startTime >= 0 && task.startTime + task.duration <= DAY_MINUTES)
-		.map(({ title, startTime, duration, priority }) => ({
-			title,
-			description: '',
-			date: today,
-			startTime,
-			duration,
-			priority,
-			status: startTime + duration <= start ? TaskStatus.Completed : TaskStatus.Pending
-		}));
+	const setupAt = upcoming.sort(
+		(a, b) => a.date.localeCompare(b.date) || a.block.start - b.block.start
+	)[0];
+
+	return days.flatMap(({ date, blocks }) =>
+		blocks
+			.filter((block) => block.start + block.duration <= DAY_MINUTES)
+			.map((block) => {
+				const replaced = setupAt && setupAt.date === date && setupAt.block === block;
+				const task = replaced ? { ...block, ...SETUP } : block;
+				return {
+					title: task.title,
+					description: task.description ?? '',
+					date,
+					startTime: block.start,
+					duration: task.duration,
+					priority: task.priority,
+					status:
+						date === today && block.start + task.duration <= now
+							? TaskStatus.Completed
+							: TaskStatus.Pending
+				};
+			})
+	);
 }

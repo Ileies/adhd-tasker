@@ -318,10 +318,11 @@ describe('sample day', () => {
 	test('starting adds the sample tasks, marks them and tells the other tabs', async () => {
 		const { backend, planChanges } = await setup();
 		const created = await backend.sample.start('2026-10-14', 12 * 60);
-		expect(created.length).toBeGreaterThanOrEqual(4);
+		expect(created.length).toBeGreaterThanOrEqual(100);
 		expect((await backend.sample.ids()).sort()).toEqual(created.map((t) => t.id).sort());
-		expect(await backend.tasks.load('2026-10-14')).toHaveLength(created.length);
-		expect(planChanges).toEqual([['2026-10-14']]);
+		expect(await backend.tasks.load('2026-10-14')).not.toHaveLength(0);
+		expect(planChanges).toHaveLength(1);
+		expect(planChanges[0]).toContain('2026-10-14');
 	});
 
 	test('starting again adds nothing', async () => {
@@ -337,9 +338,18 @@ describe('sample day', () => {
 		const mine = await backend.tasks.create({ ...task, title: 'Mine' });
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const removed = await backend.sample.clear();
-		expect(removed).toBeGreaterThanOrEqual(4);
+		expect(removed).toBeGreaterThanOrEqual(100);
 		expect((await backend.tasks.since('2000-01-01')).map((t) => t.id)).toEqual([mine.id]);
 		expect(await backend.sample.ids()).toEqual([]);
+	});
+
+	test('keeping unmarks the sample and leaves every task in the plan', async () => {
+		const { backend } = await setup();
+		const created = await backend.sample.start('2026-10-14', 12 * 60);
+		await backend.sample.keep();
+		expect(await backend.sample.ids()).toEqual([]);
+		expect(await backend.sample.clear()).toBe(0);
+		expect(await backend.tasks.since('2000-01-01')).toHaveLength(created.length);
 	});
 
 	test('a sample task the user already deleted is no longer counted', async () => {

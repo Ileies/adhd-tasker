@@ -5,7 +5,13 @@ import { BackendError, type Backend } from '#lib/backend.js';
 import { localBackend } from '#lib/local/backend.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import { dismissToast } from '#lib/toast.js';
-import { answerWelcome, clearSampleDay, loadFlags, trySampleDay } from '#lib/welcome.js';
+import {
+	answerWelcome,
+	clearSampleDay,
+	keepSampleDay,
+	loadFlags,
+	trySampleDay
+} from '#lib/welcome.js';
 import { testCtx } from '#test/ctx.js';
 import { Priority } from '#lib/types.js';
 
@@ -124,5 +130,17 @@ describe('clearSampleDay', () => {
 		expect(tasker.sample).toEqual([1, 2]);
 		expect(tasker.tasks).toHaveLength(2);
 		expect(tasker.toasts.at(-1)?.message).toBe('Could not clear the sample day: Storage is full');
+	});
+});
+
+describe('keepSampleDay', () => {
+	test('keeps the tasks and drops the sample mark', async () => {
+		await useLocalDevice();
+		await trySampleDay('2026-10-14', 12 * 60);
+		const count = tasker.tasks.length;
+		await keepSampleDay();
+		expect(tasker.sample).toEqual([]);
+		expect(tasker.tasks).toHaveLength(count);
+		expect(tasker.firstRun.welcomed).toBe(true);
 	});
 });

@@ -45,6 +45,17 @@ export async function trySampleDay(today: string, minutes: number) {
 	}
 }
 
+/** The sample week becomes the user's own plan: nothing is removed, it is no longer marked as a sample. */
+export async function keepSampleDay() {
+	try {
+		await tasker.backend.sample.keep();
+		tasker.sample = [];
+		showToast('The sample week is your plan now');
+	} catch (error) {
+		showToast(`Could not keep the sample day: ${reasonOf(error)}`);
+	}
+}
+
 /**
  * Removes exactly the sample tasks, whatever the user planned stays. When nothing else is left the device
  * is as before the visit, so the welcome comes back and the visitor can choose again.

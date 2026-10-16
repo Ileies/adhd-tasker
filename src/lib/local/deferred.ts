@@ -15,7 +15,7 @@ export const BACKEND_METHODS = {
 	data: ['export', 'import', 'erase'],
 	account: ['move', 'snapshots', 'restore'],
 	calendar: ['overview', 'preview', 'import', 'sync', 'stop', 'setWrite', 'allDay'],
-	sample: ['ids', 'start', 'clear'],
+	sample: ['ids', 'start', 'clear', 'keep'],
 	voice: ['transcribe', 'speak']
 } as const satisfies { [Area in keyof Backend]: readonly (keyof Backend[Area])[] };
 

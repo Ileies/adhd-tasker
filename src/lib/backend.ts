@@ -136,6 +136,8 @@ export interface Backend {
 		start(today: string, minutes: number): Promise<Task[]>;
 		/** Removes exactly the tasks the sample day added, answers how many were still there. */
 		clear(): Promise<number>;
+		/** Makes the sample tasks the user's own: they stay in the plan and are no longer marked as a sample. */
+		keep(): Promise<void>;
 	};
 	voice: {
 		/** The recognized text. */

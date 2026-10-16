@@ -269,6 +269,9 @@ export function localBackend(deps: LocalDeps): Backend {
 				await marks.write([]);
 				if (removed.length) deps.planChanged?.([...new Set(removed.map((task) => task.date))]);
 				return removed.length;
+			},
+			async keep() {
+				await marks.write([]);
 			}
 		},
 
