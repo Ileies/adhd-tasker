@@ -413,10 +413,9 @@ describe('Undo of to-do and routine tools', () => {
 			firstDay: DATE
 		});
 		const restore = spyOn(made.repo.routines, 'get').mockRejectedValue(new Error('disk'));
-		await expect(undoListTool(made.ctx, 'update_routine', routine, routine)).rejects.toThrow(
-			'disk'
-		);
+		const error = await failureOf(undoListTool(made.ctx, 'update_routine', routine, routine));
 		restore.mockRestore();
+		expect(error).toMatchObject({ message: 'disk' });
 	});
 
 	test('a task tool is not one of these', async () => {
