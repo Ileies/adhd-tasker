@@ -3,7 +3,7 @@
 	import { tasker } from '#lib/app.svelte.js';
 	import { formatClock, formatMinutes } from '#lib/format.js';
 	import { PREPARE_CHIPS, TRAVEL_CHIPS, prepPlan, type PrepForm } from '#lib/prep.js';
-	import { addPreparation } from '#lib/prepare.js';
+	import { addPreparation, suggestSteps } from '#lib/prepare.js';
 	import { formatDay, todayIn } from '#lib/time.js';
 	import NumberInput from '#lib/components/NumberInput.svelte';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -16,6 +16,7 @@
 	let freeTravel = $state(false);
 	let freePrepare = $state(false);
 	let busy = $state(false);
+	let suggesting = $state(false);
 
 	// Every appointment opens the sheet empty, closing it forgets what was typed
 	$effect(() => {
@@ -24,6 +25,7 @@
 		freeTravel = false;
 		freePrepare = false;
 		busy = false;
+		suggesting = false;
 	});
 
 	const plan = $derived(
@@ -39,6 +41,18 @@
 
 	function close() {
 		tasker.prep.appointment = null;
+	}
+
+	// The suggestions only fill the list, the user reads, edits and removes them before Add writes anything
+	async function suggest() {
+		if (!appointment || suggesting) return;
+		const asked = appointment;
+		suggesting = true;
+		const steps = await suggestSteps(asked);
+		suggesting = false;
+		// The sheet may have been closed or opened for another appointment while the assistant thought
+		if (!steps || tasker.prep.appointment?.id !== asked.id) return;
+		form.steps = [...form.steps.filter((step) => step.title.trim() !== ''), ...steps];
 	}
 
 	async function add() {
@@ -199,15 +213,22 @@
 						>
 					</div>
 				{/each}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onclick={() => (form.steps = [...form.steps, { title: '', minutes: null }])}
-				>
-					<Plus />
-					Add a step
-				</Button>
+				<div class="flex flex-wrap items-center gap-2">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={() => (form.steps = [...form.steps, { title: '', minutes: null }])}
+					>
+						<Plus />
+						Add a step
+					</Button>
+					{#if tasker.settings.hasOpenaiKey}
+						<Button type="button" variant="ghost" size="sm" disabled={suggesting} onclick={suggest}>
+							{suggesting ? 'Thinking...' : 'Suggest steps'}
+						</Button>
+					{/if}
+				</div>
 
 				<Dialog.Footer>
 					<Button variant="ghost" type="button" onclick={close}>Skip</Button>

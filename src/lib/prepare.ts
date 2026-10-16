@@ -4,6 +4,7 @@
  * The rules that keep them together live in `core/appointments.ts`, this only keeps the screens in step.
  */
 import { tasker } from '#lib/app.svelte.js';
+import type { PrepStep } from '#lib/assistant-tools.js';
 import type { Task, Todo } from '#lib/core/repo.js';
 import { prepOf, prepPlan, prepSummary, travelOf, type PrepForm } from '#lib/prep.js';
 import { createTask, deleteTask } from '#lib/tasks.js';
@@ -35,6 +36,19 @@ export async function addPreparation(appointment: Task, form: PrepForm): Promise
 		for (const todo of madeTodos) await removeTodo(todo);
 	});
 	return true;
+}
+
+/**
+ * Asks the assistant for the steps that prepare for an appointment. Nothing is written: the sheet shows them for the
+ * user to edit, and Add makes what is left. Answers `null` after a toast says why it did not work.
+ */
+export async function suggestSteps(appointment: Task): Promise<PrepStep[] | null> {
+	try {
+		return (await tasker.backend.assistant.suggestPrep(appointment.id)).steps;
+	} catch (error) {
+		showToast(errorText(error, 'Could not get suggestions'));
+		return null;
+	}
 }
 
 /**

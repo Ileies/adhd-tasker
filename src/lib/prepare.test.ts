@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { tasker } from '#lib/app.svelte.js';
 import type { Task, Todo } from '#lib/core/repo.js';
-import { addPreparation, dropTask } from '#lib/prepare.js';
+import { addPreparation, dropTask, suggestSteps } from '#lib/prepare.js';
 import { dismissToast } from '#lib/toast.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 import { fakeFetch } from '#test/fakes.js';
@@ -60,6 +60,28 @@ beforeEach(() => {
 	dismissToast();
 });
 afterEach(() => dismissToast());
+
+describe('suggestSteps', () => {
+	test('answers the steps and writes nothing', async () => {
+		const { requests } = fakeFetch({
+			[`POST ${BASE}/assistant/prep`]: () =>
+				Response.json({ steps: [{ title: 'Pack ID and pens', minutes: 5 }] })
+		});
+		expect(await suggestSteps(exam)).toEqual([{ title: 'Pack ID and pens', minutes: 5 }]);
+		expect(await requests[0].json()).toEqual({ id: 7 });
+		expect(tasker.todos).toEqual([]);
+		expect(tasker.toasts).toEqual([]);
+	});
+
+	test('a refusal says why and answers null', async () => {
+		fakeFetch({
+			[`POST ${BASE}/assistant/prep`]: () =>
+				Response.json({ message: 'Add your OpenAI key in Settings first' }, { status: 400 })
+		});
+		expect(await suggestSteps(exam)).toBeNull();
+		expect(tasker.toasts.at(-1)?.message).toBe('Add your OpenAI key in Settings first');
+	});
+});
 
 describe('addPreparation', () => {
 	test('makes the travel and the to-dos the sheet asked for and says so with an Undo', async () => {
