@@ -1,6 +1,6 @@
 # Roadmap to 1.0
 
-Status: decided scope, 2026-10-14, updated 2026-10-16 for the local first plan. Progress: **64 of 135 points, 47 %**.
+Status: decided scope, 2026-10-14, updated 2026-10-16 for the local first plan. Progress: **65 of 135 points, 48 %**.
 
 This file owns the definition of 1.0, how progress is measured and the order of the work. It does not replace the detailed plans. Each criterion points to the plan that describes how it is built (`checks-and-tests-plan.md`, `feature-ideas.md`; the UX plan was built and deleted, git history: `docs/ux-plan.md` at `24192b1`, the "ux plan N" references below point to its phases). When a plan and this file disagree about scope, this file wins. When they disagree about how, the plan wins.
 
@@ -52,7 +52,7 @@ These cuts are my call and open to veto. The one I would argue hardest to keep o
 
 `[x]` done, `[ ]` open. Source column points to the detailed plan.
 
-### A. Core loop (23 of 29)
+### A. Core loop (24 of 29)
 
 | ID  | Criterion                                                                                              | Pts | Proof                                                                     | Source        |     |
 | --- | ------------------------------------------------------------------------------------------------------ | --- | ------------------------------------------------------------------------- | ------------- | --- |
@@ -65,7 +65,7 @@ These cuts are my call and open to veto. The one I would argue hardest to keep o
 | A7  | Silence is visible: muted and audio-blocked line                                                       | 2   | Reload with a blocked context shows "Tap anywhere to turn sound on"       | soon plan 5.3 | x   |
 | A8  | Missed triage: one task at a time, Done, Later today, Tomorrow, Drop                                   | 3   | Triage sheet works, each answer has Undo                                  | ux plan 4     |     |
 | A9  | Push the rest of the day by 15, 30 or 60 min, with a "did not fit" list                                | 2   | Pure `pushDay()` test incl. midnight edge; Undo restores all              | feature ideas |     |
-| A10 | Overbooked day warning on Plan                                                                         | 1   | Pure test; line shows when unfinished minutes exceed time left            | feature ideas |     |
+| A10 | Overbooked day warning on Plan                                                                         | 1   | Pure test; line shows when unfinished minutes exceed time left            | feature ideas | x   |
 | A11 | "I'm stuck" with fixed hints and agent card                                                            | 2   | `anchoring.test.ts` green                                                 | shipped       | x   |
 
 ### B. Reach (4 of 11)
