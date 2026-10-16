@@ -53,6 +53,11 @@
 		sent from your browser to Open-Meteo (see below). If you use the device's location, the position
 		stays in this browser.
 	</p>
+	<p class="mt-2">
+		When you sign in later, the plan on this device moves into your account (you are asked first if
+		the account already has a plan). This device then keeps one copy of the moved plan for 30 days,
+		so the move can be undone, and removes it after that.
+	</p>
 
 	<h2 id="what-is-stored" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">
 		What is stored with an account
@@ -75,8 +80,9 @@
 		<li>
 			<strong>Your to-dos:</strong> things to do without a time (title, notes, size, due date, how far
 			you are, the minutes you spent, how often, and since which day, you pushed it away and the appointment
-			it prepares for), and the answers you gave while working through them (what you started, a check
-			such as "done" or "a bit", breaks and the times you were away). The answers are kept for 30 days.
+			it prepares for), and the answers you gave while working through them (when you started, a check
+			such as "done" or "a bit", what you set aside and why you were stuck, breaks, the times you were
+			away and when you called it a day). The answers are kept for 30 days.
 		</li>
 		<li>
 			<strong>Plan snapshots:</strong> when you sign in and your account already has a plan, or you restore
@@ -152,7 +158,8 @@
 	<ul class="mt-2 list-disc space-y-1 pl-5">
 		<li>
 			Events the assistant saw and token counts: 30 days. Plan snapshots: 30 days. Your answers to
-			to-dos (starts, checks, breaks, time away): 30 days.
+			to-dos (starts, checks, breaks, time away): 30 days. The copy of a plan that moved from a
+			device into an account stays on that device for 30 days.
 		</li>
 		<li>Alarms and wakeups: 7 days after they ended. Resolved assistant notes: 7 days.</li>
 		<li>
@@ -233,14 +240,19 @@
 			setup was done, and whether this device signed in before. Without an account your plan lives
 			in this browser's own database (IndexedDB) and is not sent to this server.
 		</li>
+		<li>
+			Cache storage: the app's own files, and the page of a visit without an account, so it opens
+			offline. They hold no plan data.
+		</li>
 	</ul>
 	<p class="mt-2">There are no tracking or advertising cookies, so there is no cookie banner.</p>
 
 	<h2 id="server-logs" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Server logs</h2>
 	<p class="mt-2">
-		With or without an account, the server records which page or file was requested and when, and
-		the web server in front of it may record your IP address. These logs are used only to keep the
-		service running and secure, and are rotated regularly.
+		With or without an account, the web server in front of the app records your IP address, which
+		page or file was requested, when, and your browser's name. These logs are used only to keep the
+		service running and secure. They are rotated every week and deleted after about six months (26
+		weeks). The app itself keeps no such log of visits.
 	</p>
 
 	<h2 id="legal-basis" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Legal basis</h2>
