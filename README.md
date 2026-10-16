@@ -6,7 +6,7 @@ A planner for people with ADHD. The app stays open on a second screen and always
 
 ## The Problem
 
-People with ADHD struggle less with _doing_ things than with _knowing what comes next_ and _staying anchored_ to a plan. Classic to-do apps need constant self-directed attention, which is the thing ADHD impairs. ADHD Tasker holds the plan for you, works out what is current from the clock and priorities, and pulls your attention back when you drift.
+People with ADHD struggle less with _doing_ things than with _knowing what comes next_ and _staying anchored_ to a plan. Classic to-do apps need constant self-directed attention, which is the thing ADHD impairs. ADHD Tasker holds the plan for you, decides what to do now (fixed times first, to-dos fitted into the gaps), asks how far you got, and pulls your attention back when you drift.
 
 ## Features
 
@@ -114,4 +114,4 @@ Times are stored as minutes since midnight, each task belongs to a dated day (`Y
 
 ## Roadmap
 
-Done: priority engine, Now and Plan screens, PWA, assistant, voice, event-driven agent, scheduler, alarms and tones, "I'm stuck", hyperfocus alarm and reminders, guest mode, first run, the account move, Google Calendar read and write. Next: Google app verification, then recurring tasks, capture inbox, end-of-day summary. Scope and order to 1.0 in `docs/roadmap-1.0.md`, open items in `TODO.md`.
+Done: priority engine, Now and Plan screens, PWA, assistant, voice, event-driven agent, scheduler, alarms and tones, "I'm stuck", hyperfocus alarm and reminders, guest mode, first run, the account move, Google Calendar read and write, the flow engine (to-dos, checks, rotation and breaks, appointments with preparation, routines, will it fit, a sample week). Next: Google app verification, then capture inbox, end-of-day summary. Scope and order to 1.0 in `docs/roadmap-1.0.md`, open items in `TODO.md`.

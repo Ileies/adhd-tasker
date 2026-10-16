@@ -3,33 +3,28 @@
 Plans in `docs/`:
 
 - `roadmap-1.0.md`: scope, scorecard and milestones to 1.0
-- `flow-plan.md`: accepted, phases 1 to 7 built (will it fit, `capacity.ts`: "Tight" and "Does not fit", the overbooked line on Plan, to-dos due at a time in Next, to-dos, the flow engine, the Now and Plan screens on it, the check, Away and the calls, rotation, breaks and holding on, appointments with travel and preparation, tasks that make room and repeat, the assistant with to-do and routine tools, steps for an appointment and next steps). Next: phase 8 (polish and docs). To-dos without a time, a flow engine that decides, holds and calls back, appointments with preparation, routines that make room
+- `flow-plan.md`: built (phases 1 to 8), short form with what was done, what differs from the plan and what is still open
 - `checks-and-tests-plan.md`, `feature-ideas.md`: next, re-read against the new code
 - Finished and deleted (git history): the local first plan (`docs/local-first-plan.md` at `a419224`), the UX plan (`docs/ux-plan.md` at `24192b1`) and the daylight theme (`docs/daylight-theme.md` at `56be755`)
 
 ## Now
 
-- Routines and the first run essentials exist now (flow plan 5.2 and 5.3, `docs/roadmap-1.0.md` C1 and E6). Still open: the essentials step for a new account (only a guest sees the welcome), and the floor of sleep, food and water, which the assistant only keeps as a rule in its prompt and tool descriptions (phase 6): nothing in code stops a model from deleting Meds when the user asks, a hard check would need to know which routines are essentials
-- Assistant, phase 6, by hand with a real key: "Suggest steps" for an appointment, an imported appointment answered by a question and by `add_prep_steps` in act, "It feels too big" on a to-do, a rotation, a routine made and undone in the chat. Only fakes so far. A guest who saved their settings before keeps their old list of events (`aiEvents`), an account gets the two new events from `scripts/add-flow-events.ts`
-- Phase 7 by eye: the "Tight" and "Does not fit" words on the To do panel, the warning line on Plan and a to-do in Next on a wide screen and a phone (checked by tests and types only). The numbers (60 % realistic share, tight from 80 %) are first guesses: run a real week and see whether the line cries wolf. Routine days exist only 14 days ahead, so a due date further out counts the days after them as free
+- Tag `docs/roadmap-1.0.md` (pillar I, Flow) and `docs/feature-ideas.md` with what the flow plan built (the list is in `docs/flow-plan.md` section 4)
+- Assistant by hand with a real key: "Suggest steps" for an appointment, an imported appointment answered by a question and by `add_prep_steps` in act, "It feels too big" on a to-do, a rotation, a routine made and undone in the chat. Only fakes so far. A guest who saved their settings before keeps their old list of events (`aiEvents`), an account gets the two new events from `scripts/add-flow-events.ts`
+- Visual pass, by eye: only the wide light and phone dark views of Now, Plan, the session hero and Settings were checked. Not checked: the check, "Still there?", Away and break heroes, the prep sheet, the "Tight" and "Does not fit" lines, wide dark, a visible focus ring on every interactive element, 44 px targets on phones. Also one type scale and the same section spacing on every page
+- Run a real week on it (the milestone "usable") and see whether the capacity line (60 % realistic share, tight from 80 %) cries wolf. Routine days exist only 14 days ahead, so a due date further out counts the days after them as free
+- Essentials: the step for a new account (only a guest sees the welcome), and a hard check that keeps meds, meals and bed from being deleted (the assistant only has a rule in its prompt)
 - Pick the next plan. Suggested by the checks plan: its phases 4 and 5 (core guardrails, route matrices)
-- Visual pass, by eye on a wide screen, a phone and as a guest (the UX plan was built from code, not screenshots): one type scale (display, clock, body large, body, small, no one-off sizes), a visible focus ring on every interactive element including timeline blocks and rail items, 44 px targets on phones (rail buttons at `size="sm"`, the timeline done circle), sentence case and no jargon in copy, same section spacing on every page, the page title in the bar
-- Deploy phases 1 to 6 of the flow plan (to-dos, the flow log, the check, rotation and breaks, appointments, tasks that make room, routines, the assistant): on the server run `DATABASE_URL=<server db> bun scripts/add-todos.ts`, `bun scripts/add-flow-settings.ts`, `bun scripts/add-appointments.ts`, `bun scripts/add-shift.ts`, `bun scripts/add-routines.ts` and `bun scripts/add-flow-events.ts` the same way (they add `check_minutes`, `start_work_at`, `break_minutes`, `todos.skip_since`, `tasks.kind`, `tasks.parent_id`, `arrive_early_minutes`, `tasks.shift`, `tasks.routine_id`, the `routines` table, and the two new events to every user who never changed the list), then `bun run deploy --schema-applied`. The server (`ssh home`) was not reachable from the dev machine on 2026-10-16
-- Production schema deploy of the UX settings fields (`myDayStart`, `myDayEnd`, `checkInMinutes`): `bun run deploy --db-push`
-
 - Google Calendar, real run: import, move, done and a forced conflict on a real calendar, by hand (only fakes so far)
-- Google verification (`docs/google-verification.md`): remove Tasks and Keep from `GOOGLE_SERVICES` first, record the demo video, submit
-- Deploy the local first work: on the server run `add-calendar-sync.ts`, `add-calendar-write.ts` and `add-google-tokens.ts` with `DATABASE_URL=<server db>`, then `bun run deploy --schema-applied`. The consent screen must allow the Calendar scope
-- Privacy page: check each statement against the code, and state nginx's real IP logging and retention
+- Google verification (`docs/google-verification.md`): remove Tasks and Keep from `GOOGLE_SERVICES` first, record the demo video, submit. The consent screen must allow the Calendar scope
 - Component test for the Calendar write select in Settings, and a test for the stream `calendar` hint in `src/lib/stream.ts`
+- The sample week's weekday has three long gaps for to-dos and no block for the work: watch whether a first time visitor finds that clear
 
 ## Later
 
 - Travel for imported appointments is only added through the prep sheet or "Prepare for it" in the task sheet, nothing offers it on its own except the assistant's answer to `appointment.added`, which offers preparation steps and no travel. "Leave now" rings only on an open page: with Web Push (B2) the start of travel can be a real alarm
 - Travel and preparation are not written to Google Calendar yet (the setting "Add my own tasks" covers tasks the user made, not travel)
-
 - Calendar write gaps: assistant and agent edits are not written to Google, Google-side edits to an event the app made do not flow back, existing tasks are not copied when "Add my own tasks" is turned on, stopping the sync also ends that setting, read-only (midnight) tasks are not marked in the UI, the unlink case `revoked: false` has no UI
-- Google verification and a real Google run of Calendar (`docs/google-verification.md`), then assistant edits written to Google
 - Capture inbox (`Shift+Space`)
 - End-of-day summary
 - Morning briefing (`day.started` event)
