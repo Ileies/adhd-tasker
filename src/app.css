@@ -136,6 +136,10 @@
 	body {
 		@apply bg-background text-foreground antialiased;
 	}
+	/* The light/dark switch (a view transition, see theme.ts) crossfades slowly, it never flashes */
+	::view-transition-group(root) {
+		animation-duration: 2s;
+	}
 	/* Digits keep a fixed width so countdowns and clocks do not jitter */
 	.tabular {
 		font-variant-numeric: tabular-nums;
