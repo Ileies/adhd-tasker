@@ -1,5 +1,5 @@
 import { formatClock } from '#lib/format.js';
-import { addDays, isDateKey, todayIn, zonedToEpoch } from '#lib/time.js';
+import { addDays, isDateKey, todayIn, weekdayOf, zonedToEpoch } from '#lib/time.js';
 import { parseTone, type Tone } from '#lib/tones.js';
 
 /** Alarms ring on the client, wakeups wake the agent. Both are rows of the `schedule` table. */
@@ -115,8 +115,6 @@ export function minutesOf(ms: number, timezone: string): number {
 	const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
 	return get('hour') * 60 + get('minute');
 }
-
-const weekdayOf = (date: string) => new Date(date + 'T00:00:00Z').getUTCDay();
 
 /**
  * When something fires: `in_minutes` from now, or the clock time `at` on `date`. Without a date it is the next

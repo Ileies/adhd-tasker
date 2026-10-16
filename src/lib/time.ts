@@ -76,6 +76,9 @@ export function addDays(date: DateKey, days: number): DateKey {
 	return moved.toISOString().slice(0, 10);
 }
 
+/** The weekday of a calendar day, 0 Sunday to 6 Saturday. Calendar arithmetic only, no timezone. */
+export const weekdayOf = (date: DateKey) => new Date(date + 'T00:00:00Z').getUTCDay();
+
 /** The epoch ms of a wall clock moment (`date` plus minutes since midnight) in a timezone, daylight saving included. */
 export function zonedToEpoch(date: DateKey, minutes: number, timezone: string): number {
 	const wall = Date.parse(date + 'T00:00:00Z') + minutes * 60_000;
