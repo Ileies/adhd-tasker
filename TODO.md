@@ -12,6 +12,7 @@ Plans in `docs/`:
 - Recurring tasks, planned for 1.0 (`docs/roadmap-1.0.md` C1): sleep, food, water, hygiene by cadence, with a floor the AI cannot trade below without asking. Today only alarms repeat, tasks do not. Once they exist, build the sample day and the first run essentials (E6) from them: the routine in `src/lib/core/sample.ts` is the template, today it is 7 days of plain tasks
 - Pick the next plan. Suggested by the checks plan: its phases 4 and 5 (core guardrails, route matrices)
 - Visual pass, by eye on a wide screen, a phone and as a guest (the UX plan was built from code, not screenshots): one type scale (display, clock, body large, body, small, no one-off sizes), a visible focus ring on every interactive element including timeline blocks and rail items, 44 px targets on phones (rail buttons at `size="sm"`, the timeline done circle), sentence case and no jargon in copy, same section spacing on every page, the page title in the bar
+- Deploy phase 1 of the flow plan (to-dos and the flow log): on the server run `DATABASE_URL=<server db> bun scripts/add-todos.ts`, then `bun run deploy --schema-applied`. The server (`ssh home`) was not reachable from the dev machine on 2026-10-16
 - Production schema deploy of the UX settings fields (`myDayStart`, `myDayEnd`, `checkInMinutes`): `bun run deploy --db-push`
 
 - Google Calendar, real run: import, move, done and a forced conflict on a real calendar, by hand (only fakes so far)
