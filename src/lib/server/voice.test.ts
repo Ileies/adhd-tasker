@@ -32,6 +32,13 @@ describe('transcribe (account)', () => {
 		expect(requests[0].headers.get('authorization')).toBe('Bearer sk-saved');
 	});
 
+	test("sends the account's speech language", async () => {
+		const user = await account({ openaiKey: sealed('sk-saved'), voiceLanguage: 'de-DE' });
+		const { requests } = fakeFetch({ [route]: () => Response.json({ text: 'x' }) });
+		await transcribe(user.email, recording());
+		expect((await requests[0].formData()).get('language')).toBe('de');
+	});
+
 	test('a bad recording is refused before the key is read or the limit counted', async () => {
 		const user = await account();
 		fakeFetch({});

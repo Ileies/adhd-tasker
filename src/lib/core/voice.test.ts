@@ -55,6 +55,18 @@ describe('transcribe', () => {
 		expect((form.get('file') as File).name).toBe('speech.m4a');
 	});
 
+	test('sends the language code of a chosen speech language', async () => {
+		const { requests } = fakeFetch({ [route]: () => Response.json({ text: 'x' }) });
+		await transcribe('sk-test', recording(), 'de-DE');
+		expect((await requests[0].formData()).get('language')).toBe('de');
+	});
+
+	test('without a speech language OpenAI detects it', async () => {
+		const { requests } = fakeFetch({ [route]: () => Response.json({ text: 'x' }) });
+		await transcribe('sk-test', recording());
+		expect((await requests[0].formData()).has('language')).toBe(false);
+	});
+
 	test('a webm recording is named webm', async () => {
 		const { requests } = fakeFetch({ [route]: () => Response.json({ text: 'x' }) });
 		await transcribe('sk-test', recording());

@@ -52,6 +52,7 @@ const SETTING_KEYS = [
 	'dailyTokenBudget',
 	'voiceReplies',
 	'openaiTranscribe',
+	'voiceLanguage',
 	'showClock',
 	'clock12h',
 	'checkInMinutes',

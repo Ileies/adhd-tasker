@@ -39,6 +39,7 @@ export const users = sqliteTable('users', {
 	openaiTranscribe: integer('openai_transcribe', { mode: 'boolean' })
 		.default(D.openaiTranscribe)
 		.notNull(), // speech to text with OpenAI (true) or the browser (false)
+	voiceLanguage: text('voice_language'), // BCP 47 tag the microphone listens for, null follows the browser
 	showClock: integer('show_clock', { mode: 'boolean' }).default(D.showClock).notNull(), // the time of day with seconds on the Now screen
 	clock12h: integer('clock_12h', { mode: 'boolean' }), // 12 hour clock, null follows the device
 	checkInMinutes: integer('check_in_minutes').default(D.checkInMinutes).notNull(), // soft chime interval while a task is current, 0 is off

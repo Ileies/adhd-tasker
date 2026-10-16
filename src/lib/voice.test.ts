@@ -12,8 +12,33 @@ import {
 	readSpeechEvent,
 	speakable,
 	speechVolume,
-	sttEngine
+	sttEngine,
+	VOICE_LANGUAGES,
+	isVoiceLanguage,
+	recognitionLang,
+	transcribeLanguage
 } from '#lib/voice.js';
+
+describe('speech language', () => {
+	test('the chosen language wins over the device language', () => {
+		expect(recognitionLang('de-DE', 'en-US')).toBe('de-DE');
+	});
+	test('automatic follows the device language, English when it has none', () => {
+		expect(recognitionLang(null, 'fr-FR')).toBe('fr-FR');
+		expect(recognitionLang(null, undefined)).toBe('en-US');
+		expect(recognitionLang(null, '')).toBe('en-US');
+	});
+	test('OpenAI gets the bare language code, or nothing to detect it', () => {
+		expect(transcribeLanguage('de-DE')).toBe('de');
+		expect(transcribeLanguage('en-GB')).toBe('en');
+		expect(transcribeLanguage(null)).toBeUndefined();
+	});
+	test('only listed tags are languages', () => {
+		expect(VOICE_LANGUAGES.every((language) => isVoiceLanguage(language.tag))).toBe(true);
+		expect(isVoiceLanguage('xx-XX')).toBe(false);
+		expect(isVoiceLanguage(null)).toBe(false);
+	});
+});
 
 describe('pickRecordingType', () => {
 	test('takes the first supported container', () => {

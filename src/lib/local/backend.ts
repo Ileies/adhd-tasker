@@ -279,7 +279,8 @@ export function localBackend(deps: LocalDeps): Backend {
 			transcribe: (audio) =>
 				guarded(async () => {
 					voiceRate('guest', now());
-					return transcribeWith(await keyOrThrow(), audio);
+					const { voiceLanguage } = await repo.settings.get();
+					return transcribeWith(await keyOrThrow(), audio, voiceLanguage);
 				}),
 			async speak(text) {
 				try {

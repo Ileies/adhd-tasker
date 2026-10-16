@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	displayDevice: null, // every device plays
 	voiceReplies: false,
 	openaiTranscribe: true, // with a key, speech to text goes to OpenAI, off uses the browser's own to save cost
+	voiceLanguage: null, // null: the microphone listens in the browser's language
 	showClock: false,
 	clock12h: null, // null follows the device's own 12 or 24 hour setting until the user picks one
 	checkInMinutes: 5, // soft chime while a task is current, 0 is off

@@ -7,6 +7,7 @@ import { isEventType } from '#lib/events.js';
 import { isAutonomy, type AgentSettings } from '#lib/guardrails.js';
 import type { Settings } from '#lib/core/repo.js';
 import { LOCATION_KEYS } from '#lib/location.js';
+import { isVoiceLanguage } from '#lib/voice.js';
 
 /** What the page may know: everything but the key itself, which only says whether one is saved. */
 export type ClientSettings = Omit<Settings, 'openaiKey'> & { hasOpenaiKey: boolean };
@@ -29,6 +30,7 @@ export type SettingsPatch = Partial<
 		| 'dailyTokenBudget'
 		| 'voiceReplies'
 		| 'openaiTranscribe'
+		| 'voiceLanguage'
 		| 'showClock'
 		| 'clock12h'
 		| 'checkInMinutes'
@@ -72,6 +74,7 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	dailyTokenBudget: isBudget,
 	voiceReplies: isBool,
 	openaiTranscribe: isBool,
+	voiceLanguage: (value) => value === null || isVoiceLanguage(value),
 	showClock: isBool,
 	clock12h: (value) => value === null || isBool(value),
 	checkInMinutes: inRange(0, CHECK_IN_MAX),

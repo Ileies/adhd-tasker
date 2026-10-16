@@ -44,6 +44,8 @@ export interface Settings {
 	displayDevice: string | null;
 	voiceReplies: boolean;
 	openaiTranscribe: boolean;
+	/** BCP 47 tag from `VOICE_LANGUAGES` the microphone listens for, `null` follows the browser. */
+	voiceLanguage: string | null;
 	showClock: boolean;
 	clock12h: boolean | null;
 	checkInMinutes: number;

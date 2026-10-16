@@ -9,17 +9,21 @@ const checkRate = rateLimit(
 	'Too many voice requests, wait a few minutes'
 );
 
-async function openaiKey(email: string) {
-	const key = readOpenaiKey((await dbRepo(email).settings.get()).openaiKey);
+async function openaiSettings(email: string) {
+	const settings = await dbRepo(email).settings.get();
+	const key = readOpenaiKey(settings.openaiKey);
 	if (!key) throw new AssistantError('Add your OpenAI key in Settings first', 400);
-	return key;
+	return { key, voiceLanguage: settings.voiceLanguage };
 }
 
-/** Speech to text for one push-to-talk recording. Nothing is kept, the audio only passes through. */
+const openaiKey = async (email: string) => (await openaiSettings(email)).key;
+
+/** Speech to text for one push-to-talk recording in the user's speech language. Nothing is kept, the audio only passes through. */
 export async function transcribe(email: string, audio: Blob): Promise<string> {
 	checkAudio(audio);
 	checkRate(email);
-	return transcribeWith(await openaiKey(email), audio);
+	const { key, voiceLanguage } = await openaiSettings(email);
+	return transcribeWith(key, audio, voiceLanguage);
 }
 
 /** Text to speech for an account. Bun's WebSocket takes request headers, the browser typing does not know the option. */

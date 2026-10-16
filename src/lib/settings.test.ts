@@ -27,9 +27,14 @@ describe('parseSettingsPatch', () => {
 			dailyTokenBudget: null,
 			voiceReplies: false,
 			openaiTranscribe: true,
+			voiceLanguage: 'de-DE',
 			showClock: true
 		};
 		expect(parseSettingsPatch(patch)).toEqual({ ok: true, value: patch });
+	});
+
+	test('the speech language can be set back to automatic', () => {
+		expect(parseSettingsPatch({ voiceLanguage: null }).ok).toBe(true);
 	});
 
 	test.each([
@@ -47,6 +52,8 @@ describe('parseSettingsPatch', () => {
 		['an unknown event', { aiEvents: 'task.completed nope' }],
 		['a budget below 1000 tokens', { dailyTokenBudget: 10 }],
 		['a string for a switch', { showClock: 'true' }],
+		['a speech language that is not offered', { voiceLanguage: 'xx-XX' }],
+		['an empty speech language', { voiceLanguage: '' }],
 		['a negative check-in', { checkInMinutes: -5 }],
 		['a check-in over an hour', { checkInMinutes: 90 }],
 		['a My day start past midnight', { myDayStart: 1440 }],

@@ -8,7 +8,8 @@ import {
 	buildSpeechEvents,
 	isAudioMime,
 	pcm16ToWav,
-	readSpeechEvent
+	readSpeechEvent,
+	transcribeLanguage
 } from '#lib/voice.js';
 
 const TIMEOUT_MS = 30_000;
@@ -46,13 +47,22 @@ export function checkAudio(audio: Blob) {
 	if (!isAudioMime(audio.type)) throw new AssistantError('That is not an audio recording', 415);
 }
 
-/** Speech to text for one push-to-talk recording. Nothing is kept, the audio only passes through. */
-export async function transcribe(key: string, audio: Blob): Promise<string> {
+/**
+ * Speech to text for one push-to-talk recording. Nothing is kept, the audio only passes through.
+ * `language` is the user's chosen speech language (`de-DE`), without one OpenAI detects it.
+ */
+export async function transcribe(
+	key: string,
+	audio: Blob,
+	language: string | null = null
+): Promise<string> {
 	checkAudio(audio);
 
 	const form = new FormData();
 	form.set('model', TRANSCRIBE_MODEL);
 	form.set('response_format', 'json');
+	const code = transcribeLanguage(language);
+	if (code) form.set('language', code);
 	form.set('file', audio, `speech.${audioExtension(audio.type)}`);
 
 	const response = await call(TRANSCRIBE_URL, key, { body: form });

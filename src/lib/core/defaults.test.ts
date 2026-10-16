@@ -38,6 +38,7 @@ describe('DEFAULT_SETTINGS', () => {
 				quietEnd,
 				voiceReplies,
 				openaiTranscribe,
+				voiceLanguage: DEFAULT_SETTINGS.voiceLanguage,
 				showClock,
 				clock12h: DEFAULT_SETTINGS.clock12h,
 				checkInMinutes: DEFAULT_SETTINGS.checkInMinutes,

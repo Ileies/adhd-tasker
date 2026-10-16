@@ -184,6 +184,38 @@ export function speechVolume(volume: number, ducked: boolean): number {
 	return ducked ? level * DUCK_VOLUME : level;
 }
 
+/** The languages the microphone can be set to, named in their own language so they are found without knowing English. */
+export const VOICE_LANGUAGES = [
+	{ tag: 'de-DE', label: 'Deutsch' },
+	{ tag: 'en-US', label: 'English (US)' },
+	{ tag: 'en-GB', label: 'English (UK)' },
+	{ tag: 'fr-FR', label: 'Français' },
+	{ tag: 'es-ES', label: 'Español' },
+	{ tag: 'it-IT', label: 'Italiano' },
+	{ tag: 'pt-PT', label: 'Português' },
+	{ tag: 'nl-NL', label: 'Nederlands' },
+	{ tag: 'pl-PL', label: 'Polski' },
+	{ tag: 'tr-TR', label: 'Türkçe' },
+	{ tag: 'ru-RU', label: 'Русский' },
+	{ tag: 'uk-UA', label: 'Українська' },
+	{ tag: 'sv-SE', label: 'Svenska' },
+	{ tag: 'ja-JP', label: '日本語' },
+	{ tag: 'zh-CN', label: '中文' }
+] as const;
+
+export const isVoiceLanguage = (value: unknown): boolean =>
+	VOICE_LANGUAGES.some((language) => language.tag === value);
+
+/** The language the browser's recognition listens for: the chosen one, else the device's own. */
+export function recognitionLang(chosen: string | null, deviceLanguage: string | undefined): string {
+	return chosen ?? (deviceLanguage || 'en-US');
+}
+
+/** OpenAI takes the bare language code (`de`), `undefined` lets it detect the language itself. */
+export function transcribeLanguage(chosen: string | null): string | undefined {
+	return chosen ? chosen.split('-')[0] : undefined;
+}
+
 /**
  * Which speech to text a mic uses: OpenAI with a saved key unless the user chose the browser to save cost,
  * the browser's own without a key. `null` when the device has neither.

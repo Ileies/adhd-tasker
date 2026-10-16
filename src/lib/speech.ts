@@ -3,6 +3,7 @@ import {
 	MAX_RECORDING_MS,
 	MIN_RECORDING_MS,
 	pickRecordingType,
+	recognitionLang,
 	sttEngine,
 	speakable,
 	speechVolume
@@ -73,7 +74,7 @@ async function startBrowserRecognition(): Promise<boolean> {
 	const Class = recognitionClass();
 	if (!Class) return false;
 	const active = new Class();
-	active.lang = navigator.language || 'en-US';
+	active.lang = recognitionLang(tasker.settings.voiceLanguage, navigator.language);
 	active.continuous = true;
 	active.interimResults = false;
 

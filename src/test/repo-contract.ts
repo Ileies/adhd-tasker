@@ -440,6 +440,7 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				openaiKey: null,
 				voiceReplies: false,
 				openaiTranscribe: true,
+				voiceLanguage: null,
 				showClock: false,
 				clock12h: null,
 				checkInMinutes: 5,
