@@ -42,6 +42,7 @@ const file = (overrides: Partial<ExportFile> = {}): ExportFile => ({
 	settings: {},
 	tasks: [],
 	todos: [],
+	routines: [],
 	alarms: [],
 	flow: [],
 	...overrides
@@ -118,6 +119,7 @@ describe('buildExport', () => {
 			'app',
 			'exportedAt',
 			'flow',
+			'routines',
 			'settings',
 			'tasks',
 			'todos',
@@ -156,7 +158,7 @@ describe('buildExport', () => {
 describe('parseExport', () => {
 	test('a valid file comes back as it is', () => {
 		const valid = file({
-			tasks: [{ ...task, kind: 'block', parent: null, shift: 30 }],
+			tasks: [{ ...task, kind: 'block', parent: null, shift: 30, routine: null }],
 			alarms: [alarm],
 			settings: { showClock: true, timezone: 'Europe/Berlin' }
 		});
@@ -350,7 +352,9 @@ describe('importExport', () => {
 			NOW
 		);
 		expect(result).toEqual({ tasks: 1, skipped: 0, alarms: 1, todos: 0 });
-		expect(await plan(repo)).toEqual([{ ...task, kind: 'block', parentId: null, shift: 0 }]);
+		expect(await plan(repo)).toEqual([
+			{ ...task, kind: 'block', parentId: null, shift: 0, routineId: null }
+		]);
 		expect((await repo.schedule.pending())[0]).toMatchObject({
 			label: 'Stretch',
 			createdBy: 'user'
@@ -647,5 +651,95 @@ describe('to-dos in an export', () => {
 		expect(describeImport({ tasks: 2, skipped: 0, alarms: 1, todos: 3 })).toBe(
 			'Imported 2 tasks and 3 to-dos and 1 alarm.'
 		);
+	});
+});
+
+describe('routines in an export', () => {
+	const lunch = {
+		title: 'Lunch',
+		description: '',
+		priority: Priority.Medium,
+		startTime: 720,
+		duration: 45,
+		shift: 60,
+		kind: 'block' as const,
+		repeat: 'weekdays' as const,
+		firstDay: '2026-10-14',
+		lastDay: null,
+		through: '2026-10-27'
+	};
+
+	test('the export holds every routine, its tasks say which one made them', async () => {
+		const { repo } = await testCtx();
+		const made = await repo.routines.insert(lunch);
+		await repo.tasks.insert({ ...task, title: 'Own' });
+		await repo.tasks.insert({ ...task, title: 'Lunch', routineId: made.id });
+		const exported = await buildExport(repo, NOW);
+		expect(exported.routines).toEqual([lunch]);
+		expect(exported.tasks.map((item) => [item.title, item.routine])).toEqual([
+			['Own', null],
+			['Lunch', 0]
+		]);
+	});
+
+	test('a routine survives the round trip through the file', () => {
+		const valid = file({ routines: [lunch], tasks: [{ ...task, routine: 0 }] });
+		expect(parseExport(JSON.parse(JSON.stringify(valid)))).toMatchObject({
+			ok: true,
+			value: { routines: [lunch], tasks: [{ routine: 0 }] }
+		});
+	});
+
+	test('a file from before routines has none and its tasks are their own', () => {
+		const { routines: _r, ...old } = file({ tasks: [task] });
+		const result = parseExport(old);
+		expect(result.ok && result.value.routines).toEqual([]);
+		expect(result.ok && result.value.tasks[0].routine).toBeNull();
+	});
+
+	test('a task that names a routine the file does not have is its own', () => {
+		const result = parseExport(file({ tasks: [{ ...task, routine: 4 }] }));
+		expect(result.ok && result.value.tasks[0].routine).toBeNull();
+	});
+
+	test('a bad routine names its position and the reason', () => {
+		const result = parseExport(file({ routines: [lunch, { ...lunch, repeat: 'none' as never }] }));
+		expect(!result.ok && result.error).toStartWith('Routine 2 is not valid: ');
+	});
+
+	test.each([
+		['no first day', { ...lunch, firstDay: undefined }],
+		['a last day before the first', { ...lunch, lastDay: '2026-10-01' }],
+		['a time across midnight', { ...lunch, startTime: 1400, duration: 100 }],
+		['a repeat that is not one', { ...lunch, repeat: 'sometimes' }]
+	])('refuses a routine with %s', (_name, bad) => {
+		expect(parseExport(file({ routines: [bad as never] })).ok).toBe(false);
+	});
+
+	test('more routines than the limit are refused', () => {
+		const many = Array.from({ length: EXPORT_LIMITS.routines + 1 }, () => lunch);
+		expect(parseExport(file({ routines: many })).ok).toBe(false);
+	});
+
+	test('a through that is not a date is dropped', () => {
+		const result = parseExport(file({ routines: [{ ...lunch, through: 'soon' as never }] }));
+		expect(result.ok && result.value.routines[0].through).toBeNull();
+	});
+
+	test('importing adds the routine and links its tasks to it', async () => {
+		const { repo } = await testCtx();
+		await importExport(repo, file({ routines: [lunch], tasks: [{ ...task, routine: 0 }] }), NOW);
+		const [made] = await repo.routines.all();
+		expect(made).toMatchObject({ title: 'Lunch', through: '2026-10-27' });
+		expect((await repo.tasks.between('0000-01-01'))[0].routineId).toBe(made.id);
+	});
+
+	test('importing the same file twice adds the routine once', async () => {
+		const { repo } = await testCtx();
+		const content = file({ routines: [lunch], tasks: [{ ...task, routine: 0 }] });
+		await importExport(repo, content, NOW);
+		await importExport(repo, content, NOW);
+		expect(await repo.routines.all()).toHaveLength(1);
+		expect(await repo.tasks.between('0000-01-01')).toHaveLength(1);
 	});
 });

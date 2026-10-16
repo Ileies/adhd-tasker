@@ -44,6 +44,7 @@ const file = (tasks: ExportedTask[], alarms: ExportFile['alarms'] = []): ExportF
 	settings: {},
 	tasks,
 	todos: [],
+	routines: [],
 	alarms,
 	flow: []
 });

@@ -9,6 +9,7 @@ import type {
 	EventRow,
 	FlowRow,
 	Repo,
+	Routine,
 	ScheduleEntry,
 	Settings,
 	Task,
@@ -25,13 +26,14 @@ const switchedOn = (row: ScheduleEntry): ScheduleEntry => ({
 	enabled: row.enabled !== false
 });
 
-/** A task saved before `completedAt`, `kind`, `parentId` or `shift` existed has none: it is a task of the user's own that stays. */
+/** A task saved before `completedAt`, `kind`, `parentId`, `shift` or `routineId` existed has none: it is a task of the user's own that stays. */
 const asTask = (row: Task): Task => ({
 	...row,
 	completedAt: row.completedAt ?? null,
 	kind: row.kind ?? 'block',
 	parentId: row.parentId ?? null,
-	shift: row.shift ?? 0
+	shift: row.shift ?? 0,
+	routineId: row.routineId ?? null
 });
 
 /** The repo of this device's guest. `email` is only a label, nothing is scoped by it. */
@@ -82,7 +84,8 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 						completedAt: task.completedAt ?? null,
 						kind: task.kind ?? 'block',
 						parentId: task.parentId ?? null,
-						shift: task.shift ?? 0
+						shift: task.shift ?? 0,
+						routineId: task.routineId ?? null
 					};
 					const id = (await done(store.add(row))) as number;
 					return { ...row, id };
@@ -153,6 +156,35 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 			restore: (todo) =>
 				write('todos', async (store) => {
 					if (!(await getById<Todo>(store, todo.id))) await done(store.put(todo));
+				})
+		},
+
+		routines: {
+			all: () => read('routines', async (store) => (await scan<Routine>(store)).sort(byId)),
+			get: (id) => read('routines', (store) => getById<Routine>(store, id)),
+			insert: (routine) =>
+				write('routines', async (store) => {
+					const row = {
+						description: '',
+						shift: 0,
+						kind: 'block',
+						lastDay: null,
+						through: null,
+						...stripUndefined(routine)
+					} as const;
+					const id = (await done(store.add(row))) as number;
+					return { ...row, id } as Routine;
+				}),
+			update: (id, patch) => write('routines', (store) => update<Routine>(store, id, patch)),
+			delete: (id) =>
+				write('routines', async (store) => {
+					const row = await getById<Routine>(store, id);
+					if (row) await done(store.delete(id));
+					return row;
+				}),
+			restore: (routine) =>
+				write('routines', async (store) => {
+					if (!(await getById<Routine>(store, routine.id))) await done(store.put(routine));
 				})
 		},
 

@@ -9,6 +9,7 @@ import {
 	assembleExport,
 	EXPORT_LIMITS,
 	parseExport,
+	sameRoutine,
 	sameTask,
 	sameTodo,
 	type ExportFile,
@@ -21,7 +22,7 @@ import {
 	type SnapshotInfo
 } from '#lib/core/merge.js';
 import { db } from '#lib/server/db/index.js';
-import { planSnapshots, schedule, tasks, todos, users } from '#lib/server/db/schema.js';
+import { planSnapshots, routines, schedule, tasks, todos, users } from '#lib/server/db/schema.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -43,6 +44,7 @@ function readAccount(tx: Tx, email: string, now: number): ExportFile {
 		settings: user,
 		tasks: tx.select().from(tasks).where(eq(tasks.email, email)).all(),
 		todos: tx.select().from(todos).where(eq(todos.email, email)).all(),
+		routines: tx.select().from(routines).where(eq(routines.email, email)).all(),
 		schedule: tx
 			.select()
 			.from(schedule)
@@ -90,6 +92,29 @@ function writeFile(
 			.all()
 			.map((task) => [sameTask(task), task.id])
 	);
+	// Where each of the file's routines is in the account, so its tasks can say which one made them
+	const routineOf = new Map(
+		tx
+			.select()
+			.from(routines)
+			.where(eq(routines.email, email))
+			.all()
+			.map((routine) => [sameRoutine(routine), routine.id])
+	);
+	const routineIds = file.routines.map((routine) => {
+		const key = sameRoutine(routine);
+		let id = routineOf.get(key);
+		if (id === undefined) {
+			[{ id }] = tx
+				.insert(routines)
+				.values({ ...routine, email })
+				.returning({ id: routines.id })
+				.all();
+			routineOf.set(key, id);
+		}
+		return id;
+	});
+
 	const fresh: number[] = [];
 	file.tasks.forEach((task, index) => {
 		const key = sameTask(task);
@@ -100,7 +125,17 @@ function writeFile(
 	for (const part of chunks(fresh)) {
 		const inserted = tx
 			.insert(tasks)
-			.values(part.map((index) => ({ ...file.tasks[index], email })))
+			.values(
+				part.map((index) => {
+					const { routine, ...task } = file.tasks[index];
+					return {
+						...task,
+						routineId:
+							routine === null || routine === undefined ? null : (routineIds[routine] ?? null),
+						email
+					};
+				})
+			)
 			.returning({ id: tasks.id })
 			.all();
 		part.forEach((index, n) => idOf.set(sameTask(file.tasks[index]), inserted[n].id));
@@ -195,7 +230,10 @@ export function moveIntoAccount(
 		const before = readAccount(tx, email, now);
 		const snapshotId = saveSnapshot(tx, email, before, now);
 		const wasEmpty =
-			before.tasks.length === 0 && before.todos.length === 0 && before.alarms.length === 0;
+			before.tasks.length === 0 &&
+			before.todos.length === 0 &&
+			before.routines.length === 0 &&
+			before.alarms.length === 0;
 
 		if (mode === 'replace') {
 			tx.delete(tasks)
@@ -203,6 +241,8 @@ export function moveIntoAccount(
 				.run();
 			// A to-do has no day, the device's replace the account's
 			tx.delete(todos).where(eq(todos.email, email)).run();
+			// A routine without its future tasks would make none, the device's routines replace the account's
+			tx.delete(routines).where(eq(routines.email, email)).run();
 			tx.delete(schedule)
 				.where(
 					and(eq(schedule.email, email), eq(schedule.kind, 'alarm'), eq(schedule.status, 'pending'))
@@ -256,6 +296,7 @@ export function restoreSnapshot(email: string, id: number, now: number): MoveRes
 		const snapshotId = saveSnapshot(tx, email, readAccount(tx, email, now), now);
 		tx.delete(tasks).where(eq(tasks.email, email)).run();
 		tx.delete(todos).where(eq(todos.email, email)).run();
+		tx.delete(routines).where(eq(routines.email, email)).run();
 		tx.delete(schedule)
 			.where(
 				and(eq(schedule.email, email), eq(schedule.kind, 'alarm'), eq(schedule.status, 'pending'))

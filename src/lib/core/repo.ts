@@ -32,20 +32,56 @@ export interface Task {
 	parentId: number | null;
 	/** How far in minutes a task of the user's own may move to make room for an appointment, 0 stays (`#lib/placeday.js`). */
 	shift: number;
+	/** The routine that made this task, `null` for a task of its own (`#lib/recurrence.js`). */
+	routineId: number | null;
 }
 
-/** What a new task needs, the repo assigns the id. `status` defaults to pending, `completedAt` and `parentId` to null, `kind` to block, `shift` to 0. */
+/** What a new task needs, the repo assigns the id. `status` defaults to pending, `completedAt`, `parentId` and `routineId` to null, `kind` to block, `shift` to 0. */
 export type NewTask = Omit<
 	Task,
-	'id' | 'status' | 'completedAt' | 'kind' | 'parentId' | 'shift'
+	'id' | 'status' | 'completedAt' | 'kind' | 'parentId' | 'shift' | 'routineId'
 > & {
 	status?: TaskStatus;
 	completedAt?: number | null;
 	kind?: TaskKind;
 	parentId?: number | null;
 	shift?: number;
+	routineId?: number | null;
 };
 export type TaskPatch = Partial<Omit<Task, 'id'>>;
+
+/**
+ * A task at a time that repeats (`docs/flow-plan.md` 5.12). It is made into tasks 14 days ahead, one per day it has
+ * (`#lib/recurrence.js`). `through` is the last day tasks were made for: a day before it that has no task was
+ * deleted on purpose and is not made again.
+ */
+export interface Routine {
+	id: number;
+	title: string;
+	description: string;
+	priority: Priority;
+	/** Minutes since midnight, local time, so a daylight saving change needs nothing. */
+	startTime: number;
+	duration: number;
+	shift: number;
+	/** Never `travel`: it belongs to one appointment. */
+	kind: 'block' | 'appointment';
+	/** Never `none`. */
+	repeat: Repeat;
+	/** The first day it has, YYYY-MM-DD. */
+	firstDay: string;
+	/** The last day it has, `null` goes on. */
+	lastDay: string | null;
+	through: string | null;
+}
+
+/** What a new routine needs: the rest has a calm default (`kind` block, `shift` 0, goes on, nothing made yet). */
+export type NewRoutine = Pick<
+	Routine,
+	'title' | 'priority' | 'startTime' | 'duration' | 'repeat' | 'firstDay'
+> &
+	Partial<Pick<Routine, 'description' | 'shift' | 'kind' | 'lastDay' | 'through'>>;
+export type RoutinePatch = Partial<Omit<Routine, 'id'>>;
 
 /** `ended`: the appointment it was part of began, it stays at the progress it had and is never missed. */
 export type TodoStatus = 'open' | 'done' | 'dropped' | 'ended';
@@ -262,6 +298,18 @@ export interface Repo {
 		delete(id: number): Promise<Todo | null>;
 		/** Puts a deleted to-do back under its old id, does nothing when the id is taken (undo). */
 		restore(todo: Todo): Promise<void>;
+	};
+
+	routines: {
+		/** Every routine, oldest first. */
+		all(): Promise<Routine[]>;
+		get(id: number): Promise<Routine | null>;
+		insert(routine: NewRoutine): Promise<Routine>;
+		update(id: number, patch: RoutinePatch): Promise<Routine | null>;
+		/** The routine as it was, `null` when there was none. */
+		delete(id: number): Promise<Routine | null>;
+		/** Puts a deleted routine back under its old id, does nothing when the id is taken (undo). */
+		restore(routine: Routine): Promise<void>;
 	};
 
 	flow: {

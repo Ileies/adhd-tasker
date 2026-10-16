@@ -5,7 +5,7 @@
  * the user when the storage needs one. `reset` gives every test an empty storage.
  */
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { NewEvent, NewFlowRow, NewTask, NewTodo, Repo } from '#lib/core/repo.js';
+import type { NewEvent, NewFlowRow, NewRoutine, NewTask, NewTodo, Repo } from '#lib/core/repo.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
 export interface RepoHarness {
@@ -280,6 +280,116 @@ export function describeRepo(name: string, harness: RepoHarness) {
 			expect(await other.todos.update(created.id, { title: 'Hijacked' })).toBeNull();
 			expect(await other.todos.delete(created.id)).toBeNull();
 			expect((await repo.todos.get(created.id))?.title).toBe('Study Math');
+		});
+	});
+
+	describe(`${name}: routines`, () => {
+		const routine = (overrides: Partial<NewRoutine> = {}): NewRoutine => ({
+			title: 'Lunch',
+			priority: Priority.Medium,
+			startTime: 720,
+			duration: 45,
+			repeat: 'daily',
+			firstDay: '2026-10-14',
+			...overrides
+		});
+
+		test('a new routine goes on, stays put and has made nothing yet', async () => {
+			const created = await repo.routines.insert(routine());
+			expect(created).toEqual({
+				id: created.id,
+				title: 'Lunch',
+				description: '',
+				priority: Priority.Medium,
+				startTime: 720,
+				duration: 45,
+				shift: 0,
+				kind: 'block',
+				repeat: 'daily',
+				firstDay: '2026-10-14',
+				lastDay: null,
+				through: null
+			});
+			expect(created.id).toBeGreaterThan(0);
+			expect(await repo.routines.get(created.id)).toEqual(created);
+		});
+
+		test('given fields are kept', async () => {
+			const created = await repo.routines.insert(
+				routine({
+					kind: 'appointment',
+					shift: 60,
+					repeat: 'days:1,3',
+					lastDay: '2026-12-31',
+					through: '2026-10-20'
+				})
+			);
+			expect(await repo.routines.get(created.id)).toMatchObject({
+				kind: 'appointment',
+				shift: 60,
+				repeat: 'days:1,3',
+				lastDay: '2026-12-31',
+				through: '2026-10-20'
+			});
+		});
+
+		test('all lists every routine, oldest first', async () => {
+			await repo.routines.insert(routine({ title: 'a' }));
+			await repo.routines.insert(routine({ title: 'b' }));
+			expect((await repo.routines.all()).map((row) => row.title)).toEqual(['a', 'b']);
+		});
+
+		test('update changes only the given fields and returns the routine', async () => {
+			const created = await repo.routines.insert(routine());
+			const updated = await repo.routines.update(created.id, {
+				startTime: 750,
+				through: '2026-10-27'
+			});
+			expect(updated).toEqual({ ...created, startTime: 750, through: '2026-10-27' });
+			expect(await repo.routines.get(created.id)).toEqual(updated);
+		});
+
+		test('an empty patch returns the routine unchanged', async () => {
+			const created = await repo.routines.insert(routine());
+			expect(await repo.routines.update(created.id, {})).toEqual(created);
+		});
+
+		test('a missing id answers null for get, update and delete', async () => {
+			expect(await repo.routines.get(999)).toBeNull();
+			expect(await repo.routines.update(999, { title: 'x' })).toBeNull();
+			expect(await repo.routines.delete(999)).toBeNull();
+		});
+
+		test('delete returns the routine as it was, restore brings it back under its id', async () => {
+			const created = await repo.routines.insert(routine());
+			expect(await repo.routines.delete(created.id)).toEqual(created);
+			expect(await repo.routines.get(created.id)).toBeNull();
+			await repo.routines.restore(created);
+			expect(await repo.routines.get(created.id)).toEqual(created);
+		});
+
+		test('restore leaves a routine alone whose id is taken', async () => {
+			const created = await repo.routines.insert(routine());
+			await repo.routines.restore({ ...created, title: 'Impostor' });
+			expect((await repo.routines.get(created.id))?.title).toBe('Lunch');
+		});
+
+		test('a task keeps the routine it came from', async () => {
+			const created = await repo.routines.insert(routine());
+			const first = await repo.tasks.insert(task({ routineId: created.id }));
+			const own = await repo.tasks.insert(task());
+			expect((await repo.tasks.get(first.id))?.routineId).toBe(created.id);
+			expect(own.routineId).toBeNull();
+			expect((await repo.tasks.update(first.id, { routineId: null }))?.routineId).toBeNull();
+		});
+
+		test('another user sees none of it and cannot change it', async () => {
+			const created = await repo.routines.insert(routine());
+			expect(await other.routines.get(created.id)).toBeNull();
+			expect(await other.routines.all()).toEqual([]);
+			expect(await other.routines.update(created.id, { title: 'Hijacked' })).toBeNull();
+			expect(await other.routines.delete(created.id)).toBeNull();
+			expect((await repo.routines.get(created.id))?.title).toBe('Lunch');
 		});
 	});
 

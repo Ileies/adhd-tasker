@@ -6,6 +6,7 @@ import {
 	aiUsage,
 	events,
 	flowLog,
+	routines,
 	schedule,
 	tasks,
 	todos,
@@ -22,6 +23,7 @@ export function dbRepo(email: string): Repo {
 	const mine = {
 		tasks: eq(tasks.email, email),
 		todos: eq(todos.email, email),
+		routines: eq(routines.email, email),
 		flow: eq(flowLog.email, email),
 		actions: eq(agentActions.email, email),
 		events: eq(events.email, email),
@@ -140,6 +142,53 @@ export function dbRepo(email: string): Repo {
 				await db
 					.insert(todos)
 					.values({ ...todo, email })
+					.onConflictDoNothing();
+			}
+		},
+
+		routines: {
+			async all() {
+				const rows = await db
+					.select()
+					.from(routines)
+					.where(mine.routines)
+					.orderBy(asc(routines.id));
+				return rows.map(bare);
+			},
+			async get(id) {
+				const [row] = await db
+					.select()
+					.from(routines)
+					.where(and(mine.routines, eq(routines.id, id)));
+				return row ? bare(row) : null;
+			},
+			async insert(routine) {
+				const [row] = await db
+					.insert(routines)
+					.values({ ...routine, email })
+					.returning();
+				return bare(row);
+			},
+			async update(id, patch) {
+				if (Object.keys(patch).length === 0) return this.get(id);
+				const [row] = await db
+					.update(routines)
+					.set(patch)
+					.where(and(mine.routines, eq(routines.id, id)))
+					.returning();
+				return row ? bare(row) : null;
+			},
+			async delete(id) {
+				const [row] = await db
+					.delete(routines)
+					.where(and(mine.routines, eq(routines.id, id)))
+					.returning();
+				return row ? bare(row) : null;
+			},
+			async restore(routine) {
+				await db
+					.insert(routines)
+					.values({ ...routine, email })
 					.onConflictDoNothing();
 			}
 		},

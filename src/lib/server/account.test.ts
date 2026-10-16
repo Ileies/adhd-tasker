@@ -42,6 +42,7 @@ const file = (overrides: Partial<ExportFile> = {}): ExportFile => ({
 	settings: {},
 	tasks: [],
 	todos: [],
+	routines: [],
 	flow: [],
 	alarms: [],
 	...overrides
@@ -412,5 +413,101 @@ describe('to-dos in a move', () => {
 			NOW
 		);
 		expect((await dbRepo(TEST_EMAIL).settings.get()).showClock).toBe(true);
+	});
+});
+
+describe('routines in a move', () => {
+	const lunch = (title = 'Lunch') => ({
+		title,
+		description: '',
+		priority: Priority.Medium,
+		startTime: 720,
+		duration: 45,
+		shift: 60,
+		kind: 'block' as const,
+		repeat: 'daily' as const,
+		firstDay: TODAY,
+		lastDay: null,
+		through: '2026-10-27'
+	});
+	const fromLunch = (date: string) => ({ ...task(date, 'Lunch', 720), routine: 0 });
+
+	test('the routine comes along and its tasks say which one made them', async () => {
+		await makeUser();
+		moveIntoAccount(
+			TEST_EMAIL,
+			file({ routines: [lunch()], tasks: [fromLunch(TODAY), task(TODAY, 'Own', 800)] }),
+			'both',
+			TODAY,
+			NOW
+		);
+		const repo = dbRepo(TEST_EMAIL);
+		const [made] = await repo.routines.all();
+		expect(made).toMatchObject({ title: 'Lunch', through: '2026-10-27' });
+		const tasks = await repo.tasks.between(TODAY);
+		expect(tasks.map((t) => [t.title, t.routineId])).toEqual([
+			['Lunch', made.id],
+			['Own', null]
+		]);
+	});
+
+	test('a routine the account has already is not added twice', async () => {
+		await makeUser();
+		const repo = dbRepo(TEST_EMAIL);
+		await repo.routines.insert(lunch());
+		moveIntoAccount(
+			TEST_EMAIL,
+			file({ routines: [lunch()], tasks: [fromLunch(TODAY)] }),
+			'both',
+			TODAY,
+			NOW
+		);
+		expect(await repo.routines.all()).toHaveLength(1);
+		expect((await repo.tasks.between(TODAY))[0].routineId).toBe((await repo.routines.all())[0].id);
+	});
+
+	test('keep this device replaces the routines of the account', async () => {
+		await makeUser();
+		const repo = dbRepo(TEST_EMAIL);
+		await repo.routines.insert(lunch('Account lunch'));
+		moveIntoAccount(
+			TEST_EMAIL,
+			file({ routines: [lunch('Device lunch')], tasks: [fromLunch(TODAY)] }),
+			'replace',
+			TODAY,
+			NOW
+		);
+		expect((await repo.routines.all()).map((r) => r.title)).toEqual(['Device lunch']);
+	});
+
+	test('a restore brings the routines of the snapshot back', async () => {
+		await makeUser();
+		const repo = dbRepo(TEST_EMAIL);
+		const mine = await repo.routines.insert(lunch('Account lunch'));
+		await repo.tasks.insert({ ...task(TODAY, 'Account lunch', 720), routineId: mine.id });
+		const { snapshotId } = moveIntoAccount(
+			TEST_EMAIL,
+			file({ routines: [lunch('Device lunch')], tasks: [fromLunch(TODAY)] }),
+			'replace',
+			TODAY,
+			NOW
+		);
+		restoreSnapshot(TEST_EMAIL, snapshotId, NOW + 1000);
+		const [back] = await repo.routines.all();
+		expect(back.title).toBe('Account lunch');
+		expect((await repo.tasks.between(TODAY))[0].routineId).toBe(back.id);
+	});
+
+	test('an account with only a routine is not empty, so its settings stay', async () => {
+		await makeUser({ showClock: false });
+		await dbRepo(TEST_EMAIL).routines.insert(lunch());
+		moveIntoAccount(
+			TEST_EMAIL,
+			file({ tasks: [task(TODAY, 'A')], settings: { showClock: true } }),
+			'both',
+			TODAY,
+			NOW
+		);
+		expect((await dbRepo(TEST_EMAIL).settings.get()).showClock).toBe(false);
 	});
 });

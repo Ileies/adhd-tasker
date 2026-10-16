@@ -8,9 +8,11 @@ import { MAX_SHIFT } from '#lib/placeday.js';
 import type {
 	FlowRow,
 	FlowType,
+	NewRoutine,
 	NewTask,
 	NewTodo,
 	Repo,
+	Routine,
 	ScheduleEntry,
 	Settings,
 	Task,
@@ -18,9 +20,10 @@ import type {
 	Todo,
 	TodoStatus
 } from '#lib/core/repo.js';
+import { MAX_ROUTINES, parseRoutineInput } from '#lib/routine-input.js';
 import { SCHEDULE_LIMITS, parseRepeat, type Repeat } from '#lib/schedule.js';
 import { parseSettingsPatch, type SettingsPatch } from '#lib/settings.js';
-import { isValidTimezone } from '#lib/time.js';
+import { isDateKey, isValidTimezone } from '#lib/time.js';
 import { parseTaskInput } from '#lib/task-input.js';
 import { parseTodoInput } from '#lib/todo-input.js';
 import { readTone, type Tone } from '#lib/tones.js';
@@ -34,13 +37,16 @@ export const EXPORT_VERSION = 2;
 export const EXPORT_LIMITS = {
 	tasks: 20_000,
 	todos: 20_000,
+	routines: MAX_ROUTINES,
 	alarms: SCHEDULE_LIMITS.maxAlarms
 } as const;
 
 export type ExportedTask = Omit<
 	Required<NewTask>,
-	'completedAt' | 'kind' | 'parentId' | 'shift'
+	'completedAt' | 'kind' | 'parentId' | 'shift' | 'routineId'
 > & {
+	/** The routine that made the task, an index into the file's routine list. A file from before routines has none. */
+	routine?: number | null;
 	/** How far the task may move for an appointment. A file from before that has none: it stays. */
 	shift?: number;
 	/** Epoch ms of Done. A file from version 1 has none. */
@@ -50,6 +56,9 @@ export type ExportedTask = Omit<
 	/** The appointment a travel task leads to, an index into the file's task list. */
 	parent?: number | null;
 };
+
+/** A routine as the file holds it. `through` keeps the days that were made, so a day the user deleted stays gone. */
+export type ExportedRoutine = Required<NewRoutine>;
 
 /** A to-do as the file holds it. `parent` is an index into the file's task list (the appointment it prepares for). */
 export interface ExportedTodo extends Omit<Required<NewTodo>, 'parentId' | 'createdAt'> {
@@ -87,6 +96,7 @@ export interface ExportFile {
 	settings: SettingsPatch & { timezone?: string };
 	tasks: ExportedTask[];
 	todos: ExportedTodo[];
+	routines: ExportedRoutine[];
 	alarms: ExportedAlarm[];
 	flow: ExportedFlow[];
 }
@@ -127,6 +137,8 @@ export function assembleExport(rows: {
 	tasks: Task[];
 	/** Left out, an export has none. */
 	todos?: Todo[];
+	/** Left out, an export has none. */
+	routines?: Routine[];
 	schedule: ScheduleEntry[];
 	/** Left out, the file has no flow log (a move leaves it behind). */
 	flow?: FlowRow[];
@@ -137,6 +149,11 @@ export function assembleExport(rows: {
 	if (rows.settings.timezone) settings.timezone = rows.settings.timezone;
 
 	const todos = rows.todos ?? [];
+	const routines = rows.routines ?? [];
+	const routineIndex = (id: number | null) => {
+		const index = id === null ? -1 : routines.findIndex((routine) => routine.id === id);
+		return index < 0 ? null : index;
+	};
 	const taskIndex = (id: number | null) => {
 		const index = id === null ? -1 : rows.tasks.findIndex((task) => task.id === id);
 		return index < 0 ? null : index;
@@ -162,7 +179,21 @@ export function assembleExport(rows: {
 			completedAt: task.completedAt,
 			kind: task.kind,
 			parent: taskIndex(task.parentId),
-			shift: task.shift
+			shift: task.shift,
+			routine: routineIndex(task.routineId)
+		})),
+		routines: routines.map((routine) => ({
+			title: routine.title,
+			description: routine.description,
+			priority: routine.priority,
+			startTime: routine.startTime,
+			duration: routine.duration,
+			shift: routine.shift,
+			kind: routine.kind,
+			repeat: routine.repeat,
+			firstDay: routine.firstDay,
+			lastDay: routine.lastDay,
+			through: routine.through
 		})),
 		todos: todos.map((todo) => ({
 			title: todo.title,
@@ -210,6 +241,7 @@ export async function buildExport(repo: Repo, now: number): Promise<ExportFile> 
 		settings: await repo.settings.get(),
 		tasks: await repo.tasks.between(FIRST_DAY),
 		todos: await repo.todos.all(),
+		routines: await repo.routines.all(),
 		schedule: await repo.schedule.pending(),
 		flow: await repo.flow.all(),
 		now
@@ -281,6 +313,39 @@ const readParent = (item: unknown, taskCount: number): number | null => {
 		: null;
 };
 
+/** The routine a task came from, an index into the file's routines. Anything else is a task of its own. */
+const readRoutine = (item: unknown, routineCount: number): number | null => {
+	const routine = isRecord(item) ? item.routine : null;
+	return typeof routine === 'number' &&
+		Number.isInteger(routine) &&
+		routine >= 0 &&
+		routine < routineCount
+		? routine
+		: null;
+};
+
+/** One routine of a file, or the reason it is not valid. The user's fields go through the same rules as the screens. */
+function parseRoutineEntry(raw: unknown): ExportedRoutine | string {
+	if (!isRecord(raw)) return 'not an object';
+	if (raw.firstDay === undefined) return 'firstDay is missing';
+	const parsed = parseRoutineInput(raw, 'create');
+	if (!parsed.ok) return parsed.error;
+	const routine = parsed.value;
+	return {
+		title: routine.title!,
+		description: routine.description ?? '',
+		priority: routine.priority ?? Priority.Medium,
+		startTime: routine.startTime!,
+		duration: routine.duration!,
+		shift: routine.shift ?? 0,
+		kind: routine.kind ?? 'block',
+		repeat: routine.repeat!,
+		firstDay: routine.firstDay!,
+		lastDay: routine.lastDay ?? null,
+		through: isDateKey(raw.through) ? raw.through : null
+	};
+}
+
 const TODO_STATUSES: readonly TodoStatus[] = ['open', 'done', 'dropped', 'ended'];
 
 /** One to-do of a file, or the reason it is not valid. The user's fields go through the same rules as the screens. */
@@ -337,6 +402,17 @@ export function parseExport(raw: unknown): Parsed {
 
 	if (!Array.isArray(raw.tasks) || raw.tasks.length > EXPORT_LIMITS.tasks)
 		return fail(`The file needs a list of at most ${EXPORT_LIMITS.tasks} tasks`);
+	// A file from before routines has none
+	const routineList = raw.routines ?? [];
+	if (!Array.isArray(routineList) || routineList.length > EXPORT_LIMITS.routines)
+		return fail(`The file needs a list of at most ${EXPORT_LIMITS.routines} routines`);
+	const routines: ExportedRoutine[] = [];
+	for (const [index, item] of routineList.entries()) {
+		const routine = parseRoutineEntry(item);
+		if (typeof routine === 'string') return fail(`Routine ${index + 1} is not valid: ${routine}`);
+		routines.push(routine);
+	}
+
 	const tasks: ExportedTask[] = [];
 	for (const [index, item] of raw.tasks.entries()) {
 		// The kind and the parent have their own reading below, an unknown kind is a block rather than a refused file
@@ -357,7 +433,8 @@ export function parseExport(raw: unknown): Parsed {
 			completedAt: readMoment(isRecord(item) ? item.completedAt : null),
 			kind: readKind(item),
 			parent: readParent(item, raw.tasks.length),
-			shift: readShift(item)
+			shift: readShift(item),
+			routine: readRoutine(item, routines.length)
 		});
 	}
 
@@ -407,6 +484,7 @@ export function parseExport(raw: unknown): Parsed {
 			settings,
 			tasks,
 			todos,
+			routines,
 			alarms,
 			// The flow log is for the user to read, it is not brought back in
 			flow: []
@@ -434,6 +512,14 @@ export const sameTask = (task: {
 export const sameTodo = (todo: { title: string; dueDate: string | null }) =>
 	`${todo.dueDate ?? ''}|${todo.title}`;
 
+/** What makes two routines the same one for an import: what it is called, when, how often and from which day. */
+export const sameRoutine = (routine: {
+	title: string;
+	startTime: number;
+	repeat: string;
+	firstDay: string;
+}) => `${routine.firstDay}|${routine.startTime}|${routine.repeat}|${routine.title}`;
+
 /** The sentence that tells what an import did. */
 export function describeImport({ tasks, skipped, alarms, todos }: ImportResult): string {
 	const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -457,6 +543,21 @@ export async function importExport(
 	file: ExportFile,
 	now: number
 ): Promise<ImportResult> {
+	// Where each of the file's routines is now, so its tasks can say which one made them
+	const knownRoutines = new Map(
+		(await repo.routines.all()).map((routine) => [sameRoutine(routine), routine.id])
+	);
+	const routineIds: number[] = [];
+	for (const routine of file.routines) {
+		const key = sameRoutine(routine);
+		let id = knownRoutines.get(key);
+		if (id === undefined) {
+			id = (await repo.routines.insert(routine)).id;
+			knownRoutines.set(key, id);
+		}
+		routineIds.push(id);
+	}
+
 	// Where each of the file's tasks is in the plan now, so a to-do can find its appointment
 	const known = new Map(
 		(await repo.tasks.between(FIRST_DAY)).map((task) => [sameTask(task), task.id])
@@ -465,7 +566,7 @@ export async function importExport(
 	const made: { id: number; parent: number }[] = [];
 	let added = 0;
 	let skipped = 0;
-	for (const { parent, ...task } of file.tasks) {
+	for (const { parent, routine, ...task } of file.tasks) {
 		const key = sameTask(task);
 		const there = known.get(key);
 		if (there !== undefined) {
@@ -473,7 +574,10 @@ export async function importExport(
 			skipped++;
 			continue;
 		}
-		const created = await repo.tasks.insert(task);
+		const created = await repo.tasks.insert({
+			...task,
+			routineId: routine === null || routine === undefined ? null : (routineIds[routine] ?? null)
+		});
 		known.set(key, created.id);
 		ids.push(created.id);
 		if (task.kind === 'travel' && parent !== null && parent !== undefined)

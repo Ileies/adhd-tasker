@@ -72,7 +72,30 @@ export const tasks = sqliteTable('tasks', {
 	completedAt: integer('completed_at'), // epoch ms of Done, null while open
 	kind: text('kind').$type<TaskKind>().default('block').notNull(), // block (the user's own time), appointment (ends on its own), travel (to an appointment)
 	parentId: integer('parent_id'), // the appointment a travel task leads to, not a foreign key: deleting the appointment deletes its travel in the rules
-	shift: integer('shift').default(0).notNull() // minutes a task of the user's own may move to make room, 0 stays
+	shift: integer('shift').default(0).notNull(), // minutes a task of the user's own may move to make room, 0 stays
+	routineId: integer('routine_id') // the routine that made it, not a foreign key: deleting the routine removes its future tasks in the rules
+});
+
+/**
+ * A task at a time that repeats (`docs/flow-plan.md` 5.12), made into `tasks` 14 days ahead. `through` is the last day
+ * tasks were made for, so a day the user deleted is not made again.
+ */
+export const routines = sqliteTable('routines', {
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+	email: text('email')
+		.references(() => users.email, { onDelete: 'cascade' })
+		.notNull(),
+	title: text('title').notNull(),
+	description: text('description').default('').notNull(),
+	priority: integer('priority').$type<Priority>().default(Priority.Medium).notNull(),
+	startTime: integer('start_time').notNull(), // minutes since midnight, local
+	duration: integer('duration').notNull(),
+	shift: integer('shift').default(0).notNull(),
+	kind: text('kind').$type<'block' | 'appointment'>().default('block').notNull(),
+	repeat: text('repeat').$type<Repeat>().notNull(), // daily, weekdays or days:1,3
+	firstDay: text('first_day').notNull(), // YYYY-MM-DD
+	lastDay: text('last_day'), // null goes on
+	through: text('through') // the last day tasks were made for
 });
 
 /**

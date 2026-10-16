@@ -30,6 +30,7 @@ const file = (tasks: { title: string; date?: string; startTime?: number }[] = []
 		...task
 	})),
 	todos: [],
+	routines: [],
 	alarms: [],
 	flow: []
 });

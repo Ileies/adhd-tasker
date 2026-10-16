@@ -37,7 +37,8 @@ export function welcomeExample(): { hero: HeroState<Task>; now: number } {
 		completedAt: null,
 		kind: 'block',
 		parentId: null,
-		shift: 0
+		shift: 0,
+		routineId: null
 	};
 	const now = 14 * 60 + 32;
 	const hero = timeBoundState(rank([task], now), now, { overrunMinutes: 15 })!;

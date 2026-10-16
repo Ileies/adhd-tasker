@@ -64,7 +64,10 @@ export function summarize(file: ExportFile): PlanSummary {
 
 /** Nothing to move, or nothing to lose: no task, no to-do and no alarm. */
 export const isEmptyPlan = (file: ExportFile) =>
-	file.tasks.length === 0 && file.todos.length === 0 && file.alarms.length === 0;
+	file.tasks.length === 0 &&
+	file.todos.length === 0 &&
+	file.routines.length === 0 &&
+	file.alarms.length === 0;
 
 const overlaps = (a: ExportedTask, b: ExportedTask) =>
 	a.startTime < b.startTime + b.duration && b.startTime < a.startTime + a.duration;

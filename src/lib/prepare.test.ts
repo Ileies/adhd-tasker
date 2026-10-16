@@ -21,7 +21,8 @@ const exam: Task = {
 	completedAt: null,
 	kind: 'appointment',
 	parentId: null,
-	shift: 0
+	shift: 0,
+	routineId: null
 };
 const travel: Task = {
 	...exam,

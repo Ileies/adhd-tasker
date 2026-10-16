@@ -14,6 +14,7 @@ export type StoreName =
 	| 'settings'
 	| 'todos'
 	| 'flow'
+	| 'routines'
 	/** In the separate sounds database (`sounds.ts`), not in the plan's. */
 	| 'sounds';
 
@@ -41,6 +42,10 @@ export const UPGRADE_STEPS: UpgradeStep[] = [
 		const flow = db.createObjectStore('flow', keyed);
 		flow.createIndex('date', 'date');
 		flow.createIndex('key', 'key', { unique: true });
+	},
+	// Routines: tasks at a time that repeat (docs/flow-plan.md 5.12)
+	(db) => {
+		db.createObjectStore('routines', { keyPath: 'id', autoIncrement: true });
 	}
 ];
 
