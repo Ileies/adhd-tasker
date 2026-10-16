@@ -156,6 +156,35 @@ describe('clearDevice', () => {
 		expect(await readDevice(NOW, factory, NAME)).toBeNull();
 	});
 
+	test('a routine moves with the plan, is removed from the device and comes back with a restore', async () => {
+		const factory = await device(async (repo) => {
+			const routine = await repo.routines.insert({
+				title: 'Meds',
+				priority: 3,
+				startTime: 480,
+				duration: 5,
+				repeat: 'daily',
+				firstDay: '2026-10-14'
+			});
+			await repo.tasks.insert({ ...task('Meds', '2026-10-14', 480), routineId: routine.id });
+		});
+		const found = (await readDevice(NOW, factory, NAME))!;
+		expect(found.file.routines.map((routine) => routine.title)).toEqual(['Meds']);
+		await clearDevice(found.file, NOW, factory, NAME);
+
+		const emptied = await openLocalDb(factory, NAME);
+		expect(await localRepo(emptied).routines.all()).toEqual([]);
+		emptied.close();
+
+		await restoreBackup(NOW + DAY, factory, NAME);
+		const back = await openLocalDb(factory, NAME);
+		const repo = localRepo(back);
+		const [routine] = await repo.routines.all();
+		expect(routine.title).toBe('Meds');
+		expect((await repo.tasks.between('0000-01-01'))[0].routineId).toBe(routine.id);
+		back.close();
+	});
+
 	test('keeps one copy of the plan for 30 days', async () => {
 		const { factory, file } = await moved();
 		expect(await readBackup(NOW + (BACKUP_DAYS - 1) * DAY, factory, NAME)).toEqual({

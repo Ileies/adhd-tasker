@@ -28,6 +28,7 @@ const DECLINED = 'declined';
 const PLAN_STORES: StoreName[] = [
 	'tasks',
 	'todos',
+	'routines',
 	'flow',
 	'actions',
 	'events',
@@ -95,6 +96,7 @@ export async function readDevice(
 			settings,
 			tasks: (await repo.tasks.between(FIRST_DAY)).filter((task) => !sample.has(task.id)),
 			todos: await repo.todos.all(),
+			routines: await repo.routines.all(),
 			schedule: await repo.schedule.pending(),
 			now
 		});
