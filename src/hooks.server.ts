@@ -46,8 +46,6 @@ async function findLocation(
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
-	console.log(`[${new Date().toISOString()}]:`, event.url.pathname + event.url.search);
-
 	const token = event.cookies.get('token');
 	let email = readSession(event.cookies.get('session'));
 
