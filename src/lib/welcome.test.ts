@@ -86,6 +86,30 @@ describe('clearSampleDay', () => {
 		expect(tasker.toasts.at(-1)?.message).toBe('Sample day cleared');
 	});
 
+	test('brings the welcome back when nothing else is left', async () => {
+		await useLocalDevice();
+		await trySampleDay('2026-10-14', 12 * 60);
+		await clearSampleDay();
+		expect(tasker.tasks).toEqual([]);
+		expect(tasker.firstRun.welcomed).toBe(false);
+	});
+
+	test('does not bring the welcome back while the user has tasks of their own', async () => {
+		await useLocalDevice();
+		const mine = await tasker.backend.tasks.create({
+			title: 'Mine',
+			description: '',
+			date: '2026-10-14',
+			startTime: 1200,
+			duration: 30,
+			priority: Priority.Medium
+		});
+		tasker.tasks = [mine];
+		await trySampleDay('2026-10-14', 12 * 60);
+		await clearSampleDay();
+		expect(tasker.firstRun.welcomed).toBe(true);
+	});
+
 	test('keeps the sample and says why when the device refuses', async () => {
 		tasker.sample = [1, 2];
 		tasker.tasks = [{ id: 1 } as never, { id: 2 } as never];
