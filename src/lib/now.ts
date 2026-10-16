@@ -36,6 +36,18 @@ export function heroState<T extends RankTask>(
 	now: number,
 	settings: HeroSettings
 ): HeroState<T> {
+	const timeBound = timeBoundState(ranking, now, settings);
+	if (timeBound) return timeBound;
+	const next = ranking.upcoming[0] ?? null;
+	return next ? { kind: 'free', next } : { kind: 'empty' };
+}
+
+/** What a task at a time or an appointment makes of the hero, `null` when nothing time-bound has the screen right now. */
+export function timeBoundState<T extends RankTask>(
+	ranking: Ranking<T>,
+	now: number,
+	settings: HeroSettings
+): Extract<HeroState<T>, { kind: 'active' | 'wrapping-up' | 'time-up' }> | null {
 	const { current, upcoming, missed } = ranking;
 	const ended = missed[0];
 	const over = ended ? now - (ended.startTime + ended.duration) : 0;
@@ -43,8 +55,7 @@ export function heroState<T extends RankTask>(
 	const next = upcoming[0] ?? null;
 
 	if (!current) {
-		if (ended && fresh) return { kind: 'time-up', ended, over, current: null, next };
-		return next ? { kind: 'free', next } : { kind: 'empty' };
+		return ended && fresh ? { kind: 'time-up', ended, over, current: null, next } : null;
 	}
 
 	if (ended && fresh && now - current.startTime < BAR_MINUTES)
