@@ -7,6 +7,7 @@ import { SESSION_MAX_AGE, signSession } from '#lib/server/session-token.js';
 import { resetDb } from '#test/db.js';
 import { fakeFetch } from '#test/fakes.js';
 import { TEST_EMAIL, makeUser, requestEvent } from '#test/fixtures.js';
+import { SHELL_GUEST, SHELL_HEADER } from '#lib/offline.js';
 
 // The scheduler is not under test here and would pull in the whole agent
 await mock.module('#lib/server/agent.js', () => ({ startAgent: () => {} }));
@@ -116,5 +117,24 @@ describe('handle', () => {
 			const event = await visit({ token: 'good' });
 			expect(event.cookies.jar.get('token')).toBe('good');
 		});
+	});
+});
+
+describe('handle offline shell header', () => {
+	async function header(cookies: Record<string, string>) {
+		const response = await handle({
+			event: requestEvent({ cookies }),
+			resolve: async () => new Response('')
+		});
+		return response.headers.get(SHELL_HEADER);
+	}
+
+	test('a page for a guest is marked as safe to keep offline', async () => {
+		expect(await header({})).toBe(SHELL_GUEST);
+	});
+
+	test('a page for a signed in user is not marked', async () => {
+		await makeUser();
+		expect(await header({ session: session(TEST_EMAIL) })).toBeNull();
 	});
 });

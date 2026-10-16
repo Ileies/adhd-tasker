@@ -4,6 +4,7 @@ import { users } from '#lib/server/db/schema.js';
 import { readSession } from '#lib/server/session.js';
 import { startAgent } from '#lib/server/agent.js';
 import { clientIp, refreshIpLocation } from '#lib/server/location.js';
+import { SHELL_GUEST, SHELL_HEADER } from '#lib/offline.js';
 import { building } from '$app/env';
 
 // The build only analyses the app, a timer must not start there
@@ -72,5 +73,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		await findLocation(event, event.locals.user);
 	}
 
-	return resolve(event);
+	const response = await resolve(event);
+	// Tells the service worker this page holds no plan, so it may keep it for offline use
+	if (!event.locals.user) response.headers.set(SHELL_HEADER, SHELL_GUEST);
+	return response;
 };
