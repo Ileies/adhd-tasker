@@ -230,4 +230,10 @@ describe('network access', () => {
 		expect(privacy?.content).toContain('ipwho.is');
 		expect(privacy?.content).toContain('Open-Meteo');
 	});
+
+	test('the Privacy page names the to-dos and how long the answers to them are kept', () => {
+		const privacy = appCode.find(({ path }) => path === 'src/routes/privacy/+page.svelte');
+		expect(privacy?.content).toContain('Your to-dos');
+		expect(privacy?.content).toContain('(starts, checks, breaks, time away): 30 days');
+	});
 });

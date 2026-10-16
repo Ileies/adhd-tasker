@@ -39,9 +39,9 @@
 		Without an account
 	</h2>
 	<p class="mt-2">
-		You can use the app without signing in. Then your plan, alarms, settings and your OpenAI key, if
-		you add one, stay in this browser. This server never receives them, sets no cookie and loads
-		nothing from Google. The assistant, if you added a key, talks to OpenAI directly from your
+		You can use the app without signing in. Then your plan, to-dos, alarms, settings and your OpenAI
+		key, if you add one, stay in this browser. This server never receives them, sets no cookie and
+		loads nothing from Google. The assistant, if you added a key, talks to OpenAI directly from your
 		browser, under your key and OpenAI's terms (see below). All this server sees is the request for
 		the app's files, like any web server (see Server logs). Clearing this site's data in your
 		browser deletes your plan. Settings has a copy of everything to download, and "Delete everything
@@ -67,9 +67,15 @@
 			done or not) and your alarms.
 		</li>
 		<li>
+			<strong>Your to-dos:</strong> things to do without a time (title, notes, size, due date, how far
+			you are, the minutes you spent, how often you pushed it away and the appointment it prepares for),
+			and the answers you gave while working through them (what you started, a check such as "done" or
+			"a bit", breaks and the times you were away). The answers are kept for 30 days.
+		</li>
+		<li>
 			<strong>Plan snapshots:</strong> when you sign in and your account already has a plan, or you restore
-			an earlier plan, the server first keeps a copy of your account's plan (tasks, alarms and settings),
-			so the change can be undone.
+			an earlier plan, the server first keeps a copy of your account's plan (tasks, to-dos, alarms and
+			settings), so the change can be undone.
 		</li>
 		<li>
 			<strong>Your settings:</strong> theme, timezone, reminders, assistant and voice settings, and which
@@ -138,12 +144,15 @@
 		How long it is kept
 	</h2>
 	<ul class="mt-2 list-disc space-y-1 pl-5">
-		<li>Events the assistant saw and token counts: 30 days. Plan snapshots: 30 days.</li>
+		<li>
+			Events the assistant saw and token counts: 30 days. Plan snapshots: 30 days. Your answers to
+			to-dos (starts, checks, breaks, time away): 30 days.
+		</li>
 		<li>Alarms and wakeups: 7 days after they ended. Resolved assistant notes: 7 days.</li>
 		<li>
-			Your account, tasks, settings and the change history: until you delete your account. Settings
-			has "Delete my account", which removes all of it, snapshots included, after ten seconds in
-			which you can undo it.
+			Your account, tasks, to-dos, settings and the change history: until you delete your account.
+			Settings has "Delete my account", which removes all of it, snapshots included, after ten
+			seconds in which you can undo it.
 		</li>
 	</ul>
 
