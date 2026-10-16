@@ -5,6 +5,8 @@
  */
 import type { RoutinePatch } from '#lib/core/repo.js';
 import { DAY_MINUTES } from '#lib/plan.js';
+import { parseClock } from '#lib/taskform.js';
+import { addDays, type DateKey } from '#lib/time.js';
 import { Priority } from '#lib/types.js';
 
 export const ESSENTIAL_KEYS = ['meds', 'breakfast', 'lunch', 'dinner', 'bed'] as const;
@@ -45,17 +47,40 @@ export type EssentialTimes = Record<EssentialKey, number | null>;
 export const defaultTimes = (): EssentialTimes =>
 	Object.fromEntries(ESSENTIALS.map(({ key, time }) => [key, time])) as EssentialTimes;
 
+/** What the first run's form says: a switch and a `HH:MM` field for each essential. A switch off or a bad time leaves it out. */
+export function essentialTimes(
+	on: Record<EssentialKey, boolean>,
+	clocks: Record<EssentialKey, string>
+): EssentialTimes {
+	return Object.fromEntries(
+		ESSENTIALS.map(({ key }) => [key, on[key] ? parseClock(clocks[key]) : null])
+	) as EssentialTimes;
+}
+
 /**
  * The daily routines for the essentials that have a time. A time too late for the length is moved back so the routine
- * ends at midnight at the latest, a key without a time (or with `null`) is left out.
+ * ends at midnight at the latest, a key without a time (or with `null`) is left out. With `now`, an essential that is
+ * over for today starts tomorrow, so the first screen does not open on a missed breakfast.
  */
 export function essentialRoutines(
-	times: Partial<Record<EssentialKey, number | null>>
+	times: Partial<Record<EssentialKey, number | null>>,
+	now?: { today: DateKey; minutes: number }
 ): RoutinePatch[] {
 	return ESSENTIALS.flatMap(({ key, title, duration, shift }) => {
 		const time = times[key];
 		if (time === undefined || time === null) return [];
 		const startTime = Math.min(Math.max(0, Math.round(time)), DAY_MINUTES - duration);
-		return [{ title, startTime, duration, priority: Priority.High, shift, repeat: 'daily' }];
+		const over = now !== undefined && startTime + duration <= now.minutes;
+		return [
+			{
+				title,
+				startTime,
+				duration,
+				priority: Priority.High,
+				shift,
+				repeat: 'daily' as const,
+				...(now && { firstDay: over ? addDays(now.today, 1) : now.today })
+			}
+		];
 	});
 }

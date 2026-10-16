@@ -5,7 +5,9 @@ import { BackendError, type Backend } from '#lib/backend.js';
 import { localBackend } from '#lib/local/backend.js';
 import { remoteBackend } from '#lib/remote-backend.js';
 import { dismissToast } from '#lib/toast.js';
+import { defaultTimes } from '#lib/essentials.js';
 import {
+	addEssentials,
 	answerWelcome,
 	clearSampleDay,
 	keepSampleDay,
@@ -28,6 +30,7 @@ beforeEach(() => {
 		}
 	});
 	tasker.tasks = [];
+	tasker.routines = [];
 	tasker.sample = [];
 	tasker.firstRun = { welcomed: false };
 	dismissToast();
@@ -42,7 +45,12 @@ afterEach(() => {
 
 async function useLocalDevice() {
 	const made = await testCtx();
-	tasker.backend = localBackend({ repo: made.repo, hint: () => 1, react: () => {} });
+	tasker.backend = localBackend({
+		repo: made.repo,
+		now: () => made.state.now,
+		hint: () => 1,
+		react: () => {}
+	});
 }
 
 describe('flags', () => {
@@ -70,6 +78,50 @@ describe('trySampleDay', () => {
 		expect(tasker.toasts.at(-1)?.message).toContain('Could not add the sample day');
 		expect(tasker.tasks).toEqual([]);
 		expect(tasker.firstRun.welcomed).toBe(true);
+	});
+});
+
+describe('addEssentials', () => {
+	test('makes a daily routine for each chosen time and answers the welcome', async () => {
+		await useLocalDevice();
+		await addEssentials({ lunch: 13 * 60, bed: 23 * 60, dinner: null }, '2026-10-14', 9 * 60);
+		expect(tasker.routines.map((routine) => [routine.title, routine.startTime])).toEqual([
+			['Lunch', 13 * 60],
+			['Go to bed', 23 * 60]
+		]);
+		expect(tasker.firstRun.welcomed).toBe(true);
+		expect(tasker.toasts.at(-1)?.message).toBe('Added 2 daily routines');
+	});
+
+	test('what is over for today starts tomorrow, so the first screen has nothing missed', async () => {
+		await useLocalDevice();
+		await addEssentials(defaultTimes(), '2026-10-14', 12 * 60 + 8);
+		const today = await tasker.backend.tasks.load('2026-10-14');
+		expect(today.map((task) => task.title)).toEqual(['Lunch', 'Dinner', 'Go to bed']);
+		expect(tasker.routines).toHaveLength(5);
+	});
+
+	test('the Undo removes the routines and their days again', async () => {
+		await useLocalDevice();
+		await addEssentials(defaultTimes(), '2026-10-14', 6 * 60);
+		await tasker.toasts.at(-1)?.undo?.();
+		expect(tasker.routines).toEqual([]);
+		expect(await tasker.backend.tasks.since('2000-01-01')).toEqual([]);
+	});
+
+	test('choosing none adds nothing and still answers the welcome', async () => {
+		await useLocalDevice();
+		await addEssentials({}, '2026-10-14', 9 * 60);
+		expect(tasker.routines).toEqual([]);
+		expect(tasker.firstRun.welcomed).toBe(true);
+		expect(tasker.toasts).toEqual([]);
+	});
+
+	test('says why when the device cannot add them', async () => {
+		tasker.backend = remoteBackend;
+		await addEssentials(defaultTimes(), '2026-10-14', 9 * 60);
+		expect(tasker.toasts.at(-1)?.message).toContain('Could not add the essentials');
+		expect(tasker.routines).toEqual([]);
 	});
 });
 

@@ -1,6 +1,12 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
-import { defaultTimes, ESSENTIAL_KEYS, ESSENTIALS, essentialRoutines } from '#lib/essentials.js';
+import {
+	defaultTimes,
+	ESSENTIAL_KEYS,
+	ESSENTIALS,
+	essentialRoutines,
+	essentialTimes
+} from '#lib/essentials.js';
 import { parseRoutineInput } from '#lib/routine-input.js';
 import { DAY_MINUTES } from '#lib/plan.js';
 
@@ -44,6 +50,45 @@ describe('essentialRoutines', () => {
 					sorted[index - 1].time + sorted[index - 1].duration
 				);
 		}
+	});
+
+	test('what is over for today starts tomorrow, the rest starts today', () => {
+		const routines = essentialRoutines(defaultTimes(), {
+			today: '2026-10-14',
+			minutes: 12 * 60 + 8
+		});
+		const first = Object.fromEntries(routines.map((routine) => [routine.title, routine.firstDay]));
+		expect(first).toEqual({
+			Meds: '2026-10-15',
+			Breakfast: '2026-10-15',
+			Lunch: '2026-10-14',
+			Dinner: '2026-10-14',
+			'Go to bed': '2026-10-14'
+		});
+	});
+
+	test('without a clock no first day is named', () => {
+		expect(essentialRoutines(defaultTimes()).every((routine) => !('firstDay' in routine))).toBe(
+			true
+		);
+	});
+
+	test('the form: a switch off or a bad time leaves an essential out', () => {
+		const on = { meds: true, breakfast: false, lunch: true, dinner: true, bed: true };
+		const clocks = {
+			meds: '08:30',
+			breakfast: '08:00',
+			lunch: '12:00',
+			dinner: 'soon',
+			bed: '23:15'
+		};
+		expect(essentialTimes(on, clocks)).toEqual({
+			meds: 8 * 60 + 30,
+			breakfast: null,
+			lunch: 12 * 60,
+			dinner: null,
+			bed: 23 * 60 + 15
+		});
 	});
 
 	test('the keys and the list agree', () => {

@@ -4,7 +4,11 @@
  */
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError } from '#lib/backend.js';
+import type { Routine } from '#lib/core/repo.js';
+import { essentialRoutines, type EssentialKey } from '#lib/essentials.js';
 import { clearFlag, readFlags, setFlag } from '#lib/flags.js';
+import { loadRoutines, reloadRoutines } from '#lib/routines.js';
+import type { DateKey } from '#lib/time.js';
 import { showToast } from '#lib/toast.js';
 
 /** Reads what this device was told before. Called once when the page loads. */
@@ -40,9 +44,40 @@ export async function trySampleDay(today: string, minutes: number) {
 		const ids = new Set(created.map((task) => task.id));
 		tasker.tasks = [...tasker.tasks.filter((task) => !ids.has(task.id)), ...created];
 		tasker.sample = [...ids];
+		// The essentials are routines now, the Routines sheet lists them
+		await loadRoutines().catch(() => {});
 	} catch (error) {
 		showToast(`Could not add the sample day: ${reasonOf(error)}`);
 	}
+}
+
+/**
+ * The first run's essentials: a daily routine for each one that has a time (meds, meals, bed). Counts as answering the
+ * welcome. One toast with one Undo for all of them, what could not be made is said.
+ */
+export async function addEssentials(
+	times: Partial<Record<EssentialKey, number | null>>,
+	today: DateKey,
+	minutes: number
+) {
+	answerWelcome();
+	const made: Routine[] = [];
+	try {
+		for (const patch of essentialRoutines(times, { today, minutes }))
+			made.push(await tasker.backend.routines.create(patch));
+	} catch (error) {
+		showToast(`Could not add the essentials: ${reasonOf(error)}`);
+	}
+	await reloadRoutines().catch(() => {});
+	if (made.length === 0) return;
+	showToast(`Added ${made.length} daily routines`, async () => {
+		try {
+			for (const routine of made) await tasker.backend.routines.delete(routine.id);
+			await reloadRoutines();
+		} catch (error) {
+			showToast(`Could not undo: ${reasonOf(error)}`);
+		}
+	});
 }
 
 /** The sample week becomes the user's own plan: nothing is removed, it is no longer marked as a sample. */
@@ -66,6 +101,8 @@ export async function clearSampleDay() {
 		const gone = new Set(tasker.sample);
 		tasker.tasks = tasker.tasks.filter((task) => !gone.has(task.id));
 		tasker.sample = [];
+		// The sample's routines are gone, and with them the days they made while the page was open
+		await reloadRoutines().catch(() => {});
 		if (tasker.tasks.length === 0) reopenWelcome();
 		showToast('Sample day cleared');
 	} catch (error) {
