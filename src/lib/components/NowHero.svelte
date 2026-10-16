@@ -344,6 +344,16 @@
 				<a href="#assistant-note" class="text-base underline md:hidden">{note}</a>
 			{/if}
 		</div>
+	{:else if dark}
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
+			<h1 class="text-display font-bold">Sleep</h1>
+			{#if hero.kind === 'free'}
+				<p class="text-xl opacity-90 md:text-2xl">
+					Next: <span class="tabular font-semibold">{formatClock(hero.next.startTime)}</span>
+					{hero.next.title}
+				</p>
+			{/if}
+		</div>
 	{:else if hero.kind === 'free'}
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
 			<h1 class="text-display font-bold">Free time</h1>
