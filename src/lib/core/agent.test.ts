@@ -609,4 +609,12 @@ describe('prune', () => {
 		await prune(made.ctx);
 		expect(await made.repo.events.recent(10)).toHaveLength(1);
 	});
+
+	test('removes flow answers older than 30 days and keeps the recent ones', async () => {
+		const made = await testCtx();
+		await made.repo.flow.insert({ at: NOW - 31 * DAY, date: '2026-09-13', type: 'rest' });
+		await made.repo.flow.insert({ at: NOW - 29 * DAY, date: '2026-09-15', type: 'rest' });
+		await prune(made.ctx);
+		expect((await made.repo.flow.all()).map((row) => row.date)).toEqual(['2026-09-15']);
+	});
 });

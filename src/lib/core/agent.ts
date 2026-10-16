@@ -243,7 +243,7 @@ export async function watch(ctx: Ctx, settings: Settings) {
 		await ctx.repo.settings.update({ lastCurrentTaskId: currentId ?? 0 });
 }
 
-/** Housekeeping for one user: old events, usage rows, finished schedule entries and resolved cards. */
+/** Housekeeping for one user: old events, usage rows, finished schedule entries, resolved cards and the flow log. */
 export async function prune(ctx: Ctx) {
 	const day = 86_400_000;
 	const now = ctx.now();
@@ -251,4 +251,5 @@ export async function prune(ctx: Ctx) {
 	await ctx.repo.usage.prune(now - 30 * day);
 	await ctx.repo.schedule.prune(now - 7 * day);
 	await ctx.repo.cards.prune(now - 7 * day);
+	await ctx.repo.flow.prune(now - 30 * day);
 }
