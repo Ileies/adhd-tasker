@@ -1,7 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from 'bun:test';
 import fc from 'fast-check';
-import { fitsInDay, parseTaskId, parseTaskInput } from '#lib/task-input.js';
+import { completionStamp, fitsInDay, parseTaskId, parseTaskInput } from '#lib/task-input.js';
 import { isDateKey } from '#lib/time.js';
 
 const valid = {
@@ -141,5 +141,21 @@ describe('properties', () => {
 				if (status !== undefined) expect(['pending', 'completed']).toContain(status);
 			})
 		);
+	});
+});
+
+describe('completionStamp', () => {
+	test.each([
+		['completing a pending task stamps the time', 'pending', 'completed', { completedAt: 500 }],
+		['reopening a completed task clears the stamp', 'completed', 'pending', { completedAt: null }],
+		['completing a completed task keeps the old stamp', 'completed', 'completed', {}],
+		['a pending task staying pending has none', 'pending', 'pending', {}],
+		['no status in the patch changes nothing', 'completed', undefined, {}]
+	])('%s', (_name, was, status, expected) => {
+		expect(completionStamp({ status: was }, status, 500)).toEqual(expected);
+	});
+
+	test('a new task created completed is stamped', () => {
+		expect(completionStamp(null, 'completed', 500)).toEqual({ completedAt: 500 });
 	});
 });

@@ -160,6 +160,7 @@ describe('runTool', () => {
 		const task = await addTask(made.repo);
 		await call(made, 'update_task', { id: task.id, status: 'completed' });
 		expect((await made.repo.tasks.get(task.id))?.status).toBe(TaskStatus.Completed);
+		expect((await made.repo.tasks.get(task.id))?.completedAt).toBe(made.ctx.now());
 	});
 
 	test('delete_task removes the row and keeps it for undo', async () => {

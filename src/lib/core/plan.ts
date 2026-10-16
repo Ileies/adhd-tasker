@@ -6,7 +6,7 @@
 import { AssistantError, type Ctx } from '#lib/core/context.js';
 import { emitChange } from '#lib/core/events.js';
 import type { Task } from '#lib/core/repo.js';
-import { fitsInDay, parseTaskId, parseTaskInput } from '#lib/task-input.js';
+import { completionStamp, fitsInDay, parseTaskId, parseTaskInput } from '#lib/task-input.js';
 import { TaskStatus } from '#lib/types.js';
 
 export async function createPlanTask(ctx: Ctx, body: unknown): Promise<Task> {
@@ -21,7 +21,8 @@ export async function createPlanTask(ctx: Ctx, body: unknown): Promise<Task> {
 		startTime: fields.startTime!,
 		duration: fields.duration!,
 		priority: fields.priority!,
-		...(fields.status && { status: fields.status as TaskStatus })
+		...(fields.status && { status: fields.status as TaskStatus }),
+		...completionStamp(null, fields.status, ctx.now())
 	});
 	await emitChange(ctx, null, created, 'user');
 	return created;
@@ -43,7 +44,8 @@ export async function updatePlanTask(ctx: Ctx, body: unknown): Promise<void> {
 
 	const after = await ctx.repo.tasks.update(id, {
 		...patch,
-		status: patch.status as TaskStatus | undefined
+		status: patch.status as TaskStatus | undefined,
+		...completionStamp(before, patch.status, ctx.now())
 	});
 	await emitChange(ctx, before, after, 'user');
 }

@@ -73,3 +73,18 @@ export function fitsInDay(task: { startTime: number; duration: number }) {
 export function parseTaskId(value: unknown): number | undefined {
 	return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
 }
+
+/**
+ * The `completedAt` a status change leaves behind: the time it became completed, cleared when it is reopened,
+ * `undefined` (leave as is) when the status did not change. The flow engine replays these as today's points.
+ */
+export function completionStamp(
+	before: { status: string } | null,
+	status: string | undefined,
+	now: number
+): { completedAt: number | null } | Record<string, never> {
+	const was = before?.status === 'completed';
+	const is = status === undefined ? was : status === 'completed';
+	if (was === is) return {};
+	return { completedAt: is ? now : null };
+}

@@ -15,6 +15,7 @@ import {
 } from '#lib/assistant-tools.js';
 import { addDays, minutesNow, todayIn } from '#lib/time.js';
 import { formatClock24 } from '#lib/format.js';
+import { completionStamp } from '#lib/task-input.js';
 import { TaskStatus } from '#lib/types.js';
 
 const MAX_ROUNDS = 6;
@@ -143,7 +144,8 @@ export async function runTool(
 				...rest,
 				...(status && {
 					status: status === 'completed' ? TaskStatus.Completed : TaskStatus.Pending
-				})
+				}),
+				...completionStamp(before, status, ctx.now())
 			});
 			if (!task) return { error: 'no such task' };
 			const id = await record('update_task', before, task);

@@ -91,3 +91,21 @@ describe('deletePlanTask', () => {
 		expect((await failure(deletePlanTask(ctx, body))).status).toBe(status);
 	});
 });
+
+describe('completion stamp', () => {
+	test('done stamps the time and reopening clears it', async () => {
+		const { ctx, repo } = await testCtx();
+		const created = await createPlanTask(ctx, valid);
+		await updatePlanTask(ctx, { id: created.id, status: 'completed' });
+		expect((await repo.tasks.get(created.id))?.completedAt).toBe(ctx.now());
+		await updatePlanTask(ctx, { id: created.id, status: 'pending' });
+		expect((await repo.tasks.get(created.id))?.completedAt).toBeNull();
+	});
+
+	test('a task created done is stamped', async () => {
+		const { ctx } = await testCtx();
+		expect((await createPlanTask(ctx, { ...valid, status: 'completed' })).completedAt).toBe(
+			ctx.now()
+		);
+	});
+});
