@@ -391,6 +391,81 @@ describe('an appointment and its travel through the assistant', () => {
 		expect(await made.repo.tasks.get(travel.id)).toEqual(travel);
 	});
 
+	test('add_task can make an appointment and the travel that leads to it', async () => {
+		const made = await testCtx();
+		await run(
+			made,
+			'add_task',
+			{ title: 'Exam', date: DATE, start: '12:00', duration_minutes: 120, kind: 'appointment' },
+			[]
+		);
+		const [exam] = await made.repo.tasks.between(DATE, DATE);
+		expect(exam.kind).toBe('appointment');
+		await run(
+			made,
+			'add_task',
+			{
+				title: 'Travel to Exam',
+				date: DATE,
+				start: '11:00',
+				duration_minutes: 45,
+				kind: 'travel',
+				parent_id: exam.id
+			},
+			[]
+		);
+		const travel = (await made.repo.tasks.between(DATE, DATE)).find(
+			(task) => task.kind === 'travel'
+		);
+		expect(travel).toMatchObject({ parentId: exam.id });
+	});
+
+	test('travel needs its appointment, and a task of the user own has no parent', async () => {
+		const made = await testCtx();
+		const noParent = await run(
+			made,
+			'add_task',
+			{ title: 'Travel', date: DATE, start: '11:00', kind: 'travel' },
+			[]
+		);
+		expect(noParent).toEqual({ error: 'Travel needs the appointment it leads to' });
+		const stray = await addTask(made.repo);
+		const withParent = await run(
+			made,
+			'add_task',
+			{ title: 'Read', date: DATE, start: '15:00', parent_id: stray.id },
+			[]
+		);
+		expect(withParent).toEqual({ error: 'Only travel leads to an appointment' });
+		expect(await made.repo.tasks.between(DATE, DATE)).toHaveLength(1);
+		expect(await made.repo.actions.recent(5)).toEqual([]);
+	});
+
+	test('update_task sets how far a task may move, the model sees it, and undo puts it back', async () => {
+		const made = await testCtx();
+		const lunch = await addTask(made.repo, { title: 'Lunch', startTime: 12 * 60 });
+		const changes: Change[] = [];
+		await run(made, 'update_task', { id: lunch.id, shift: 60 }, changes);
+		const moved = (await made.repo.tasks.get(lunch.id))!;
+		expect(moved.shift).toBe(60);
+		expect(describeTask(moved)).toContain('[may move 60 min]');
+		await undoAction(made.ctx, changes[0].id);
+		expect((await made.repo.tasks.get(lunch.id))?.shift).toBe(0);
+	});
+
+	test('a task turned into a block lets go of its appointment', async () => {
+		const { made, travel } = await examWithTravel();
+		await run(made, 'update_task', { id: travel.id, kind: 'block' }, []);
+		expect(await made.repo.tasks.get(travel.id)).toMatchObject({ kind: 'block', parentId: null });
+	});
+
+	test('travel moved to another day than its appointment is refused', async () => {
+		const { made, travel } = await examWithTravel();
+		const result = await run(made, 'update_task', { id: travel.id, date: '2026-10-15' }, []);
+		expect(result).toEqual({ error: 'Travel is on the day of its appointment' });
+		expect((await made.repo.tasks.get(travel.id))?.date).toBe(DATE);
+	});
+
 	test('the model is told which tasks are appointments and travel', async () => {
 		const { exam, travel } = await examWithTravel();
 		expect(describeTask(exam)).toContain('(appointment)');

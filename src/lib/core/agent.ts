@@ -12,6 +12,7 @@ import { currentKey, currentTitle, flow, switchLine } from '#lib/flow.js';
 import { LIMITS, decideReaction, parseEvents, type AgentSettings } from '#lib/guardrails.js';
 import {
 	ACT_ONLY_TOOLS,
+	ROUTINE_WRITE_TOOLS,
 	SCHEDULE_TOOLS,
 	parseAsk,
 	parseToolArguments,
@@ -155,6 +156,9 @@ export async function react(ctx: Ctx, settings: Settings) {
 				const name = call.name!;
 				if (budget === 0) {
 					result = { error: `at most ${LIMITS.maxToolCalls} tool calls per reaction` };
+				} else if (ROUTINE_WRITE_TOOLS.includes(name)) {
+					// A routine changes two weeks at once: only the user, in the chat, asks for that
+					result = { error: 'routines are changed in the chat only, offer it with ask instead' };
 				} else if (ACT_ONLY_TOOLS.includes(name) && !mayEdit) {
 					result = {
 						error: 'you may not change the plan or set alarms, offer it with ask instead'

@@ -255,6 +255,14 @@ describe('react: suggest', () => {
 		expect(JSON.parse(answer.output).error).toContain('may not change the plan');
 	});
 
+	test('a forged to-do call is refused too', async () => {
+		const { model } = fakeModel(toolCalls([{ name: 'add_todo', arguments: { title: 'Sneaky' } }]));
+		const made = await testCtx({ model });
+		await logEvent(made.repo);
+		await run(made);
+		expect(await made.repo.todos.open()).toEqual([]);
+	});
+
 	test('a forged alarm call is refused too', async () => {
 		const { model } = fakeModel(
 			toolCalls([{ name: 'set_alarm', arguments: { in_minutes: 10, label: 'x', tone: 'chime' } }])
@@ -315,6 +323,42 @@ describe('react: act', () => {
 		const events = await made.repo.events.recent(5);
 		expect(events.find((row) => row.id === event)?.outcome).toBe('reacted: edited the plan');
 		expect(events.find((row) => row.origin === 'agent')?.outcome).toBe('caused by the agent');
+	});
+
+	test('the agent may add a to-do, logged with its event and Undo', async () => {
+		const { model } = fakeModel(
+			toolCalls([
+				{
+					name: 'add_todo',
+					arguments: { title: 'Pack the bag', estimate_minutes: 15, reason: 'x' }
+				}
+			])
+		);
+		const made = await acting(model);
+		const event = await logEvent(made.repo);
+		await run(made);
+		expect((await made.repo.todos.open()).map((todo) => todo.title)).toEqual(['Pack the bag']);
+		expect(await made.repo.actions.recent(1)).toMatchObject([{ tool: 'add_todo', eventId: event }]);
+		expect(made.state.reacts).toBe(0);
+		const events = await made.repo.events.recent(5);
+		expect(events.find((row) => row.id === event)?.outcome).toBe('reacted: edited the plan');
+	});
+
+	test('a routine is never changed unprompted, not even with autonomy act', async () => {
+		const { model, calls } = fakeModel(
+			toolCalls([
+				{
+					name: 'add_routine',
+					arguments: { title: 'Run', start: '07:00', duration_minutes: 30, repeat: 'daily' }
+				}
+			])
+		);
+		const made = await acting(model);
+		await logEvent(made.repo);
+		await run(made);
+		expect(await made.repo.routines.all()).toEqual([]);
+		const answer = calls[1].input.at(-1) as { output: string };
+		expect(JSON.parse(answer.output).error).toContain('chat only');
 	});
 
 	test('the agent sets an alarm and plans a wakeup', async () => {

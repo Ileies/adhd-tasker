@@ -149,7 +149,10 @@ export function localBackend(deps: LocalDeps): Backend {
 			load: () => loadTodos(ctx()),
 			create: (fields) => guarded(() => createTodo(ctx(), fields)),
 			update: (fields) => guarded(() => updateTodo(ctx(), fields)),
-			delete: (id) => guarded(() => deleteTodo(ctx(), { id }))
+			delete: (id) =>
+				guarded(async () => {
+					await deleteTodo(ctx(), { id });
+				})
 		},
 
 		routines: {

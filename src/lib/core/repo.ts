@@ -195,12 +195,15 @@ export interface Settings {
 	locationSource: 'ip' | 'device' | 'city' | null;
 }
 
-/** One change the assistant made, `before` and `after` are tasks, null when absent. */
+/** What one change of the assistant was about: the `tool` says which, `add_todo` is a to-do, `update_routine` a routine. */
+export type Subject = Task | Todo | Routine;
+
+/** One change the assistant made, `before` and `after` are what it changed as it was and as it became, null when absent. */
 export interface AgentAction {
 	id: number;
 	tool: string;
-	before: Task | null;
-	after: Task | null;
+	before: Subject | null;
+	after: Subject | null;
 	eventId: number | null;
 	reason: string | null;
 	createdAt: number;
