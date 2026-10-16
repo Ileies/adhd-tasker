@@ -19,11 +19,82 @@ export interface Task {
 	duration: number;
 	priority: Priority;
 	status: TaskStatus;
+	/** Epoch ms of Done, `null` while open (and for tasks finished before the app kept it). */
+	completedAt: number | null;
 }
 
-/** What a new task needs, the repo assigns the id. `status` defaults to pending. */
-export type NewTask = Omit<Task, 'id' | 'status'> & { status?: TaskStatus };
+/** What a new task needs, the repo assigns the id. `status` defaults to pending, `completedAt` to null. */
+export type NewTask = Omit<Task, 'id' | 'status' | 'completedAt'> & {
+	status?: TaskStatus;
+	completedAt?: number | null;
+};
 export type TaskPatch = Partial<Omit<Task, 'id'>>;
+
+/** `ended`: the appointment it was part of began, it stays at the progress it had and is never missed. */
+export type TodoStatus = 'open' | 'done' | 'dropped' | 'ended';
+
+/** Something to do without a time (`docs/flow-plan.md` 3.2). The flow engine decides when it gets minutes. */
+export interface Todo {
+	id: number;
+	title: string;
+	description: string;
+	priority: Priority;
+	status: TodoStatus;
+	/** Minutes the whole thing takes, `null` when the user does not know. */
+	estimate: number | null;
+	/** The size came from the pace the user worked at, not from the user. */
+	learned: boolean;
+	/** 0 to 100. */
+	progress: number;
+	spentMinutes: number;
+	/** Pushed away without progress in between, see the flow plan 5.14. */
+	skips: number;
+	/** YYYY-MM-DD in the user's timezone. */
+	dueDate: string | null;
+	/** Minutes since midnight, `null` means the end of My day. */
+	dueTime: number | null;
+	/** The appointment (task id) this is preparation for. */
+	parentId: number | null;
+	/** Never picked before this day. */
+	notBefore: string | null;
+	nextStep: string | null;
+	createdAt: number;
+	completedAt: number | null;
+}
+
+/** What a new to-do needs: a title and a priority, everything else has a calm default. */
+export type NewTodo = Pick<Todo, 'title' | 'priority'> &
+	Partial<Omit<Todo, 'id' | 'title' | 'priority'>>;
+export type TodoPatch = Partial<Omit<Todo, 'id' | 'createdAt'>>;
+
+/** What the user answered or chose, the only thing the flow engine stores (`docs/flow-plan.md` 3.4). */
+export type FlowType =
+	| 'start'
+	| 'pin'
+	| 'check'
+	| 'choose'
+	| 'rotate'
+	| 'stuck'
+	| 'break'
+	| 'back'
+	| 'rest'
+	| 'undo';
+
+export interface FlowRow {
+	id: number;
+	/** Epoch ms. */
+	at: number;
+	/** YYYY-MM-DD in the user's timezone, so "today" is one index. */
+	date: string;
+	type: FlowType;
+	todoId: number | null;
+	taskId: number | null;
+	data: Record<string, unknown>;
+	/** Makes a row idempotent (pins), `null` for the rest. */
+	key: string | null;
+}
+export type NewFlowRow = Omit<FlowRow, 'id' | 'todoId' | 'taskId' | 'data' | 'key'> &
+	Partial<Pick<FlowRow, 'todoId' | 'taskId' | 'data' | 'key'>>;
 
 /** The user's choices. `openaiKey` is whatever the backend stores: encrypted on the server, plain on a device. */
 export interface Settings {
@@ -41,6 +112,8 @@ export interface Settings {
 	quietEnd: number;
 	dailyTokenBudget: number | null;
 	lastCurrentTaskId: number | null;
+	/** What the flow engine last saw as current (`task:12`, `todo:5`, `away`, ...), `null` never tracked. */
+	lastCurrentKey: string | null;
 	displayDevice: string | null;
 	voiceReplies: boolean;
 	openaiTranscribe: boolean;
@@ -145,6 +218,33 @@ export interface Repo {
 		delete(id: number): Promise<Task | null>;
 		/** Puts a deleted task back under its old id, does nothing when the id is taken (undo). */
 		restore(task: Task): Promise<void>;
+	};
+
+	todos: {
+		/** Every open to-do, oldest first. */
+		open(): Promise<Todo[]>;
+		/** Every to-do, in any state, oldest first (the export). */
+		all(): Promise<Todo[]>;
+		/** To-dos finished at or after `at` (epoch ms), oldest first. */
+		doneSince(at: number): Promise<Todo[]>;
+		get(id: number): Promise<Todo | null>;
+		insert(todo: NewTodo): Promise<Todo>;
+		update(id: number, patch: TodoPatch): Promise<Todo | null>;
+		/** The to-do as it was, `null` when there was none. */
+		delete(id: number): Promise<Todo | null>;
+		/** Puts a deleted to-do back under its old id, does nothing when the id is taken (undo). */
+		restore(todo: Todo): Promise<void>;
+	};
+
+	flow: {
+		/** The rows of one day, oldest first. */
+		day(date: string): Promise<FlowRow[]>;
+		/** Every row that is kept (30 days), oldest first (the export). */
+		all(): Promise<FlowRow[]>;
+		/** `null` when the key is already logged. */
+		insert(row: NewFlowRow): Promise<FlowRow | null>;
+		/** Rows from before `before` (epoch ms) are removed. */
+		prune(before: number): Promise<void>;
 	};
 
 	actions: {

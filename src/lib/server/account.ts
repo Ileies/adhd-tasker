@@ -10,6 +10,7 @@ import {
 	EXPORT_LIMITS,
 	parseExport,
 	sameTask,
+	sameTodo,
 	type ExportFile,
 	type ImportResult
 } from '#lib/core/export.js';
@@ -20,7 +21,7 @@ import {
 	type SnapshotInfo
 } from '#lib/core/merge.js';
 import { db } from '#lib/server/db/index.js';
-import { planSnapshots, schedule, tasks, users } from '#lib/server/db/schema.js';
+import { planSnapshots, schedule, tasks, todos, users } from '#lib/server/db/schema.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -41,6 +42,7 @@ function readAccount(tx: Tx, email: string, now: number): ExportFile {
 	return assembleExport({
 		settings: user,
 		tasks: tx.select().from(tasks).where(eq(tasks.email, email)).all(),
+		todos: tx.select().from(todos).where(eq(todos.email, email)).all(),
 		schedule: tx
 			.select()
 			.from(schedule)
@@ -63,6 +65,7 @@ function saveSnapshot(tx: Tx, email: string, file: ExportFile, now: number): num
 			createdAt: now,
 			taskCount: file.tasks.length,
 			alarmCount: file.alarms.length,
+			todoCount: file.todos.length,
 			file
 		})
 		.returning({ id: planSnapshots.id })
@@ -78,16 +81,49 @@ function writeFile(
 	now: number,
 	keepPast = false
 ): ImportResult {
-	const known = new Set(tx.select().from(tasks).where(eq(tasks.email, email)).all().map(sameTask));
-	const fresh = file.tasks.filter((task) => {
+	// Where each of the file's tasks is in the account afterwards, so a to-do can find its appointment
+	const idOf = new Map(
+		tx
+			.select()
+			.from(tasks)
+			.where(eq(tasks.email, email))
+			.all()
+			.map((task) => [sameTask(task), task.id])
+	);
+	const fresh: number[] = [];
+	file.tasks.forEach((task, index) => {
 		const key = sameTask(task);
-		if (known.has(key)) return false;
-		known.add(key);
+		if (idOf.has(key)) return;
+		idOf.set(key, -1);
+		fresh.push(index);
+	});
+	for (const part of chunks(fresh)) {
+		const inserted = tx
+			.insert(tasks)
+			.values(part.map((index) => ({ ...file.tasks[index], email })))
+			.returning({ id: tasks.id })
+			.all();
+		part.forEach((index, n) => idOf.set(sameTask(file.tasks[index]), inserted[n].id));
+	}
+
+	const knownTodos = new Set(
+		tx.select().from(todos).where(eq(todos.email, email)).all().map(sameTodo)
+	);
+	const freshTodos = file.todos.filter((todo) => {
+		const key = sameTodo(todo);
+		if (knownTodos.has(key)) return false;
+		knownTodos.add(key);
 		return true;
 	});
-	for (const part of chunks(fresh))
-		tx.insert(tasks)
-			.values(part.map((task) => ({ ...task, email })))
+	for (const part of chunks(freshTodos))
+		tx.insert(todos)
+			.values(
+				part.map(({ parent, ...todo }) => ({
+					...todo,
+					parentId: parent === null ? null : (idOf.get(sameTask(file.tasks[parent])) ?? null),
+					email
+				}))
+			)
 			.run();
 
 	const pending = tx
@@ -130,7 +166,12 @@ function writeFile(
 		alarms++;
 	}
 
-	return { tasks: fresh.length, skipped: file.tasks.length - fresh.length, alarms };
+	return {
+		tasks: fresh.length,
+		skipped: file.tasks.length - fresh.length,
+		alarms,
+		todos: freshTodos.length
+	};
 }
 
 const applySettings = (tx: Tx, email: string, settings: ExportFile['settings']) => {
@@ -153,12 +194,15 @@ export function moveIntoAccount(
 	return db.transaction((tx) => {
 		const before = readAccount(tx, email, now);
 		const snapshotId = saveSnapshot(tx, email, before, now);
-		const wasEmpty = before.tasks.length === 0 && before.alarms.length === 0;
+		const wasEmpty =
+			before.tasks.length === 0 && before.todos.length === 0 && before.alarms.length === 0;
 
 		if (mode === 'replace') {
 			tx.delete(tasks)
 				.where(and(eq(tasks.email, email), gte(tasks.date, today)))
 				.run();
+			// A to-do has no day, the device's replace the account's
+			tx.delete(todos).where(eq(todos.email, email)).run();
 			tx.delete(schedule)
 				.where(
 					and(eq(schedule.email, email), eq(schedule.kind, 'alarm'), eq(schedule.status, 'pending'))
@@ -178,7 +222,8 @@ export function listSnapshots(email: string, now: number): SnapshotInfo[] {
 			id: planSnapshots.id,
 			createdAt: planSnapshots.createdAt,
 			tasks: planSnapshots.taskCount,
-			alarms: planSnapshots.alarmCount
+			alarms: planSnapshots.alarmCount,
+			todos: planSnapshots.todoCount
 		})
 		.from(planSnapshots)
 		.where(
@@ -189,7 +234,7 @@ export function listSnapshots(email: string, now: number): SnapshotInfo[] {
 		)
 		.orderBy(desc(planSnapshots.id))
 		.all()
-		.filter((snapshot) => snapshot.tasks > 0 || snapshot.alarms > 0);
+		.filter((snapshot) => snapshot.tasks > 0 || snapshot.alarms > 0 || snapshot.todos > 0);
 }
 
 /**
@@ -210,6 +255,7 @@ export function restoreSnapshot(email: string, id: number, now: number): MoveRes
 
 		const snapshotId = saveSnapshot(tx, email, readAccount(tx, email, now), now);
 		tx.delete(tasks).where(eq(tasks.email, email)).run();
+		tx.delete(todos).where(eq(todos.email, email)).run();
 		tx.delete(schedule)
 			.where(
 				and(eq(schedule.email, email), eq(schedule.kind, 'alarm'), eq(schedule.status, 'pending'))

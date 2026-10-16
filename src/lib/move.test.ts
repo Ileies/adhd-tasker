@@ -29,7 +29,9 @@ const file = (tasks: { title: string; date?: string; startTime?: number }[] = []
 		status: 'pending' as never,
 		...task
 	})),
-	alarms: []
+	todos: [],
+	alarms: [],
+	flow: []
 });
 
 const original = Object.getOwnPropertyDescriptor(globalThis, 'indexedDB');
@@ -70,7 +72,7 @@ function account(held: ExportFile, options: { refuse?: string } = {}) {
 			async move(_file: ExportFile, mode: MoveMode, today: string): Promise<MoveResult> {
 				if (options.refuse) throw new BackendError(options.refuse, 400);
 				calls.move.push([mode, today]);
-				return { tasks: _file.tasks.length, skipped: 0, alarms: 0, snapshotId: 9 };
+				return { tasks: _file.tasks.length, skipped: 0, alarms: 0, todos: 0, snapshotId: 9 };
 			},
 			async restore(id: number) {
 				calls.restore.push(id);

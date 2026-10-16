@@ -23,7 +23,8 @@ const task = {
 	startTime: 540,
 	duration: 60,
 	priority: Priority.High,
-	status: TaskStatus.Pending
+	status: TaskStatus.Pending,
+	completedAt: null
 };
 const alarm = {
 	fireAt: NOW + 60 * MIN,
@@ -36,13 +37,33 @@ const alarm = {
 };
 const file = (overrides: Partial<ExportFile> = {}): ExportFile => ({
 	app: 'adhd-tasker',
-	version: 1,
+	version: EXPORT_VERSION,
 	exportedAt: NOW,
 	settings: {},
 	tasks: [],
+	todos: [],
 	alarms: [],
+	flow: [],
 	...overrides
 });
+const todo = {
+	title: 'Study Math',
+	description: '',
+	priority: Priority.High,
+	status: 'open' as const,
+	estimate: 600,
+	learned: false,
+	progress: 25,
+	spentMinutes: 90,
+	skips: 1,
+	dueDate: '2026-11-05',
+	dueTime: 665,
+	parent: null,
+	notBefore: null,
+	nextStep: 'Open the notes',
+	createdAt: 1000,
+	completedAt: null
+};
 
 const plan = async (repo: Repo) =>
 	(await repo.tasks.between('0000-01-01')).map(({ id: _id, ...rest }) => rest);
@@ -95,8 +116,10 @@ describe('buildExport', () => {
 			'alarms',
 			'app',
 			'exportedAt',
+			'flow',
 			'settings',
 			'tasks',
+			'todos',
 			'version'
 		]);
 	});
@@ -208,13 +231,16 @@ describe('parseExport', () => {
 
 describe('describeImport', () => {
 	test.each([
-		[{ tasks: 12, skipped: 0, alarms: 0 }, 'Imported 12 tasks.'],
-		[{ tasks: 1, skipped: 0, alarms: 1 }, 'Imported 1 task and 1 alarm.'],
+		[{ tasks: 12, skipped: 0, alarms: 0, todos: 0 }, 'Imported 12 tasks.'],
+		[{ tasks: 1, skipped: 0, alarms: 1, todos: 0 }, 'Imported 1 task and 1 alarm.'],
 		[
-			{ tasks: 3, skipped: 2, alarms: 2 },
+			{ tasks: 3, skipped: 2, alarms: 2, todos: 0 },
 			'Imported 3 tasks and 2 alarms. 2 tasks already here, left alone.'
 		],
-		[{ tasks: 0, skipped: 1, alarms: 0 }, 'Imported 0 tasks. 1 task already here, left alone.']
+		[
+			{ tasks: 0, skipped: 1, alarms: 0, todos: 0 },
+			'Imported 0 tasks. 1 task already here, left alone.'
+		]
 	])('%j says %s', (result, sentence) => {
 		expect(describeImport(result)).toBe(sentence);
 	});
@@ -232,7 +258,7 @@ describe('importExport', () => {
 			file({ tasks: [task], alarms: [alarm], settings: { showClock: true } }),
 			NOW
 		);
-		expect(result).toEqual({ tasks: 1, skipped: 0, alarms: 1 });
+		expect(result).toEqual({ tasks: 1, skipped: 0, alarms: 1, todos: 0 });
 		expect(await plan(repo)).toEqual([task]);
 		expect((await repo.schedule.pending())[0]).toMatchObject({
 			label: 'Stretch',
@@ -245,7 +271,12 @@ describe('importExport', () => {
 		const { repo } = await testCtx();
 		const content = file({ tasks: [task], alarms: [alarm] });
 		await importExport(repo, content, NOW);
-		expect(await importExport(repo, content, NOW)).toEqual({ tasks: 0, skipped: 1, alarms: 0 });
+		expect(await importExport(repo, content, NOW)).toEqual({
+			tasks: 0,
+			skipped: 1,
+			alarms: 0,
+			todos: 0
+		});
 		expect(await plan(repo)).toHaveLength(1);
 		expect(await repo.schedule.pending()).toHaveLength(1);
 	});
@@ -379,5 +410,144 @@ describe('export then import', () => {
 			durationMin: 2,
 			enabled: false
 		});
+	});
+});
+
+describe('to-dos in an export', () => {
+	test('the export holds every to-do, with its appointment as an index into the tasks', async () => {
+		const { repo } = await testCtx();
+		await repo.tasks.insert({ ...task, title: 'Other', date: '2026-10-13' });
+		const exam = await repo.tasks.insert({ ...task, title: 'Exam Math', date: '2026-11-05' });
+		await repo.todos.insert({
+			title: 'Prepare',
+			priority: Priority.High,
+			parentId: exam.id,
+			dueDate: '2026-11-05',
+			createdAt: 5
+		});
+		await repo.todos.insert({
+			title: 'Taxes',
+			priority: Priority.Low,
+			status: 'dropped',
+			createdAt: 6
+		});
+		const exported = await buildExport(repo, NOW);
+		expect(exported.todos.map((item) => [item.title, item.status, item.parent])).toEqual([
+			['Prepare', 'open', 1],
+			['Taxes', 'dropped', null]
+		]);
+	});
+
+	test('the flow log is exported with links as indexes', async () => {
+		const { repo } = await testCtx();
+		const study = await repo.todos.insert({
+			title: 'Study',
+			priority: Priority.Medium,
+			createdAt: 1
+		});
+		await repo.flow.insert({ at: 10, date: '2026-10-14', type: 'start' });
+		await repo.flow.insert({
+			at: 20,
+			date: '2026-10-14',
+			type: 'choose',
+			todoId: study.id,
+			data: { why: 'asked' }
+		});
+		expect((await buildExport(repo, NOW)).flow).toEqual([
+			{ at: 10, date: '2026-10-14', type: 'start', todo: null, task: null, data: {} },
+			{ at: 20, date: '2026-10-14', type: 'choose', todo: 0, task: null, data: { why: 'asked' } }
+		]);
+	});
+
+	test('a to-do survives the round trip through the file', async () => {
+		const valid = file({ todos: [todo] });
+		expect(parseExport(JSON.parse(JSON.stringify(valid)))).toEqual({ ok: true, value: valid });
+	});
+
+	test('a version 1 file has no to-dos and its tasks have no completion time', () => {
+		const { todos: _t, flow: _f, ...v1 } = file({ tasks: [{ ...task, completedAt: undefined }] });
+		const result = parseExport({ ...v1, version: 1 });
+		expect(result).toMatchObject({
+			ok: true,
+			value: { todos: [], flow: [], version: EXPORT_VERSION }
+		});
+		expect(result.ok && result.value.tasks[0].completedAt).toBeNull();
+	});
+
+	test('the flow log in a file is not read back', () => {
+		const withFlow = file({
+			flow: [{ at: 1, date: '2026-10-14', type: 'start', todo: null, task: null, data: {} }]
+		});
+		expect(parseExport(withFlow)).toMatchObject({ ok: true, value: { flow: [] } });
+	});
+
+	test('a bad to-do names its position and the reason', () => {
+		const result = parseExport(file({ todos: [todo, { ...todo, progress: 101 }] }));
+		expect(!result.ok && result.error).toStartWith('To-do 2 is not valid: ');
+	});
+
+	test.each([
+		['an appointment that is not in the file', { ...todo, parent: 3 }],
+		['a fractional appointment index', { ...todo, parent: 0.5 }],
+		['a size of zero', { ...todo, estimate: 0 }],
+		['a due time without a date', { ...todo, dueDate: null }]
+	])('refuses a to-do with %s', (_name, bad) => {
+		expect(parseExport(file({ todos: [bad] })).ok).toBe(false);
+	});
+
+	test('more to-dos than the limit are refused', () => {
+		const many = Array.from({ length: EXPORT_LIMITS.todos + 1 }, () => todo);
+		expect(parseExport(file({ todos: many })).ok).toBe(false);
+	});
+
+	test('what the file calls the engine state is kept inside its bounds', () => {
+		const result = parseExport(
+			file({ todos: [{ ...todo, spentMinutes: -4, skips: 99_999, learned: true }] })
+		);
+		expect(result.ok && result.value.todos[0]).toMatchObject({
+			spentMinutes: 0,
+			skips: 0,
+			learned: true
+		});
+	});
+
+	test('an unknown status becomes open', () => {
+		const result = parseExport(file({ todos: [{ ...todo, status: 'lost' as never }] }));
+		expect(result.ok && result.value.todos[0].status).toBe('open');
+	});
+
+	test('importing adds the to-dos and links them to their appointment', async () => {
+		const { repo } = await testCtx();
+		const content = file({
+			tasks: [task],
+			todos: [
+				{ ...todo, parent: 0 },
+				{ ...todo, title: 'Other', parent: null }
+			]
+		});
+		const result = await importExport(repo, content, NOW);
+		expect(result).toMatchObject({ tasks: 1, todos: 2 });
+		const exam = (await repo.tasks.between('0000-01-01'))[0];
+		const todos = await repo.todos.all();
+		expect(todos.map((item) => [item.title, item.parentId])).toEqual([
+			['Study Math', exam.id],
+			['Other', null]
+		]);
+		expect(todos[0]).toMatchObject({ estimate: 600, progress: 25, spentMinutes: 90, dueTime: 665 });
+	});
+
+	test('importing the same file twice adds no to-do twice and still finds the appointment', async () => {
+		const { repo } = await testCtx();
+		const content = file({ tasks: [task], todos: [{ ...todo, parent: 0 }] });
+		await importExport(repo, content, NOW);
+		const again = await importExport(repo, content, NOW);
+		expect(again).toMatchObject({ tasks: 0, skipped: 1, todos: 0 });
+		expect(await repo.todos.all()).toHaveLength(1);
+	});
+
+	test('describeImport names the to-dos', () => {
+		expect(describeImport({ tasks: 2, skipped: 0, alarms: 1, todos: 3 })).toBe(
+			'Imported 2 tasks and 3 to-dos and 1 alarm.'
+		);
 	});
 });

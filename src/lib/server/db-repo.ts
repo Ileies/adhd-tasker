@@ -5,8 +5,10 @@ import {
 	agentCards,
 	aiUsage,
 	events,
+	flowLog,
 	schedule,
 	tasks,
+	todos,
 	users
 } from '#lib/server/db/schema.js';
 import type { Repo, Settings, Task } from '#lib/core/repo.js';
@@ -19,6 +21,8 @@ const settingsOf = ({ email: _email, ...settings }: typeof users.$inferSelect): 
 export function dbRepo(email: string): Repo {
 	const mine = {
 		tasks: eq(tasks.email, email),
+		todos: eq(todos.email, email),
+		flow: eq(flowLog.email, email),
 		actions: eq(agentActions.email, email),
 		events: eq(events.email, email),
 		cards: eq(agentCards.email, email),
@@ -78,6 +82,104 @@ export function dbRepo(email: string): Repo {
 					.insert(tasks)
 					.values({ ...task, email })
 					.onConflictDoNothing();
+			}
+		},
+
+		todos: {
+			async open() {
+				const rows = await db
+					.select()
+					.from(todos)
+					.where(and(mine.todos, eq(todos.status, 'open')))
+					.orderBy(asc(todos.id));
+				return rows.map(bare);
+			},
+			async all() {
+				const rows = await db.select().from(todos).where(mine.todos).orderBy(asc(todos.id));
+				return rows.map(bare);
+			},
+			async doneSince(at) {
+				const rows = await db
+					.select()
+					.from(todos)
+					.where(and(mine.todos, eq(todos.status, 'done'), gte(todos.completedAt, at)))
+					.orderBy(asc(todos.id));
+				return rows.map(bare);
+			},
+			async get(id) {
+				const [row] = await db
+					.select()
+					.from(todos)
+					.where(and(mine.todos, eq(todos.id, id)));
+				return row ? bare(row) : null;
+			},
+			async insert(todo) {
+				const [row] = await db
+					.insert(todos)
+					.values({ ...todo, email, createdAt: todo.createdAt ?? Date.now() })
+					.returning();
+				return bare(row);
+			},
+			async update(id, patch) {
+				if (Object.keys(patch).length === 0) return this.get(id);
+				const [row] = await db
+					.update(todos)
+					.set(patch)
+					.where(and(mine.todos, eq(todos.id, id)))
+					.returning();
+				return row ? bare(row) : null;
+			},
+			async delete(id) {
+				const [row] = await db
+					.delete(todos)
+					.where(and(mine.todos, eq(todos.id, id)))
+					.returning();
+				return row ? bare(row) : null;
+			},
+			async restore(todo) {
+				await db
+					.insert(todos)
+					.values({ ...todo, email })
+					.onConflictDoNothing();
+			}
+		},
+
+		flow: {
+			async day(date) {
+				const rows = await db
+					.select()
+					.from(flowLog)
+					.where(and(mine.flow, eq(flowLog.date, date)))
+					.orderBy(asc(flowLog.at), asc(flowLog.id));
+				return rows.map(bare);
+			},
+			async all() {
+				const rows = await db
+					.select()
+					.from(flowLog)
+					.where(mine.flow)
+					.orderBy(asc(flowLog.at), asc(flowLog.id));
+				return rows.map(bare);
+			},
+			async insert(row) {
+				const [inserted] = await db
+					.insert(flowLog)
+					.values({
+						at: row.at,
+						date: row.date,
+						type: row.type,
+						todoId: row.todoId ?? null,
+						taskId: row.taskId ?? null,
+						data: row.data ?? {},
+						key: row.key ?? null,
+						email
+					})
+					.onConflictDoNothing()
+					.returning();
+				return inserted ? bare(inserted) : null;
+			},
+			async prune(before) {
+				await db.delete(flowLog).where(and(mine.flow, lt(flowLog.at, before)));
 			}
 		},
 
@@ -340,6 +442,9 @@ export function dbRepo(email: string): Repo {
 		}
 	};
 }
+
+/** The row without its owner: a to-do or a flow row on its own never says whose it is. */
+const bare = <T extends { email: string }>({ email: _email, ...row }: T): Omit<T, 'email'> => row;
 
 const asAction = (row: typeof agentActions.$inferSelect) => ({
 	id: row.id,

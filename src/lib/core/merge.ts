@@ -26,6 +26,7 @@ export interface SnapshotInfo {
 	createdAt: number;
 	tasks: number;
 	alarms: number;
+	todos: number;
 }
 
 export interface PlanSummary {
@@ -33,6 +34,7 @@ export interface PlanSummary {
 	/** Days that have at least one task. */
 	days: number;
 	alarms: number;
+	todos: number;
 }
 
 /** Both plans want the same time of one day. */
@@ -55,13 +57,14 @@ export function summarize(file: ExportFile): PlanSummary {
 	return {
 		tasks: file.tasks.length,
 		days: new Set(file.tasks.map((task) => task.date)).size,
-		alarms: file.alarms.length
+		alarms: file.alarms.length,
+		todos: file.todos.length
 	};
 }
 
-/** Nothing to move, or nothing to lose: no task and no alarm. */
+/** Nothing to move, or nothing to lose: no task, no to-do and no alarm. */
 export const isEmptyPlan = (file: ExportFile) =>
-	file.tasks.length === 0 && file.alarms.length === 0;
+	file.tasks.length === 0 && file.todos.length === 0 && file.alarms.length === 0;
 
 const overlaps = (a: ExportedTask, b: ExportedTask) =>
 	a.startTime < b.startTime + b.duration && b.startTime < a.startTime + a.duration;
@@ -107,15 +110,23 @@ export function comparePlans(device: ExportFile, account: ExportFile): Compariso
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** The sentence that tells what a move did. */
-export function describeMove({ tasks, skipped, alarms }: MoveResult): string {
-	const moved = [plural(tasks, 'task'), ...(alarms ? [plural(alarms, 'alarm')] : [])].join(' and ');
+export function describeMove({ tasks, skipped, alarms, todos }: MoveResult): string {
+	const moved = [
+		plural(tasks, 'task'),
+		...(todos ? [plural(todos, 'to-do')] : []),
+		...(alarms ? [plural(alarms, 'alarm')] : [])
+	].join(' and ');
 	const base = `Your plan is now in your account: ${moved}.`;
 	return skipped ? `${base} ${plural(skipped, 'task')} already there, left alone.` : base;
 }
 
-/** What a plan holds, in words: alarms are only named when there are some. */
-export function describeCounts(tasks: number, alarms: number): string {
-	return [plural(tasks, 'task'), ...(alarms ? [plural(alarms, 'alarm')] : [])].join(', ');
+/** What a plan holds, in words: to-dos and alarms are only named when there are some. */
+export function describeCounts(tasks: number, alarms: number, todos = 0): string {
+	return [
+		plural(tasks, 'task'),
+		...(todos ? [plural(todos, 'to-do')] : []),
+		...(alarms ? [plural(alarms, 'alarm')] : [])
+	].join(', ');
 }
 
 const shortDay = (at: number, timezone: string) =>
@@ -123,10 +134,10 @@ const shortDay = (at: number, timezone: string) =>
 
 /** The label of a snapshot in the list, in the day the account's timezone has. */
 export function describeSnapshot(snapshot: SnapshotInfo, timezone: string): string {
-	return `Restore the plan from before ${shortDay(snapshot.createdAt, timezone)} (${describeCounts(snapshot.tasks, snapshot.alarms)})`;
+	return `Restore the plan from before ${shortDay(snapshot.createdAt, timezone)} (${describeCounts(snapshot.tasks, snapshot.alarms, snapshot.todos)})`;
 }
 
 /** The label of the copy a device keeps after its plan moved into an account. */
 export function describeBackup(file: ExportFile, at: number, timezone: string): string {
-	return `Restore the plan that moved into your account on ${shortDay(at, timezone)} (${describeCounts(file.tasks.length, file.alarms.length)})`;
+	return `Restore the plan that moved into your account on ${shortDay(at, timezone)} (${describeCounts(file.tasks.length, file.alarms.length, file.todos.length)})`;
 }

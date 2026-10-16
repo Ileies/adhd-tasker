@@ -52,7 +52,7 @@ describe('importFile', () => {
 		useBackend({
 			import: async (raw) => {
 				seen.push(raw);
-				return { tasks: 3, skipped: 1, alarms: 0 };
+				return { tasks: 3, skipped: 1, alarms: 0, todos: 0 };
 			}
 		});
 		const result = await importFile(new File(['{"app":"adhd-tasker"}'], 'plan.json'));
@@ -66,7 +66,7 @@ describe('importFile', () => {
 	test('the screens read the plan again after an import', async () => {
 		let reads = 0;
 		useBackend(
-			{ import: async () => ({ tasks: 1, skipped: 0, alarms: 0 }) },
+			{ import: async () => ({ tasks: 1, skipped: 0, alarms: 0, todos: 0 }) },
 			{ tasks: { since: async () => (reads++, []) } as unknown as Backend['tasks'] }
 		);
 		await importFile(new File(['{}'], 'plan.json'));
@@ -75,7 +75,7 @@ describe('importFile', () => {
 
 	test('a file that is not JSON is refused before anything is sent', async () => {
 		let sent = 0;
-		useBackend({ import: async () => (sent++, { tasks: 0, skipped: 0, alarms: 0 }) });
+		useBackend({ import: async () => (sent++, { tasks: 0, skipped: 0, alarms: 0, todos: 0 }) });
 		expect(await importFile(new File(['not json'], 'plan.json'))).toEqual({
 			ok: false,
 			message: 'That file is not a valid export, it is not JSON'

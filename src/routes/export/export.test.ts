@@ -18,7 +18,7 @@ describe('GET /export', () => {
 		await makeTask({ title: 'Not mine', email: 'other@example.com' });
 		const { status, body, headers } = await callRoute(GET, { user });
 		expect(status).toBe(200);
-		expect(body).toMatchObject({ app: 'adhd-tasker', version: 1, tasks: [{ title: 'Mine' }] });
+		expect(body).toMatchObject({ app: 'adhd-tasker', version: 2, tasks: [{ title: 'Mine' }] });
 		expect(headers.get('content-disposition')).toMatch(
 			/^attachment; filename="adhd-tasker-\d{4}-\d{2}-\d{2}\.json"$/
 		);

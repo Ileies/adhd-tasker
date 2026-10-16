@@ -217,7 +217,12 @@ describe('data', () => {
 		const file = JSON.parse(JSON.stringify(await source.backend.data.export()));
 
 		const target = await setup();
-		expect(await target.backend.data.import(file)).toEqual({ tasks: 1, skipped: 0, alarms: 0 });
+		expect(await target.backend.data.import(file)).toEqual({
+			tasks: 1,
+			skipped: 0,
+			alarms: 0,
+			todos: 0
+		});
 		expect((await target.backend.tasks.load('2026-10-14')).map((t) => t.title)).toEqual([
 			'Write intro'
 		]);

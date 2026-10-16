@@ -12,6 +12,8 @@ export type StoreName =
 	| 'schedule'
 	| 'usage'
 	| 'settings'
+	| 'todos'
+	| 'flow'
 	/** In the separate sounds database (`sounds.ts`), not in the plan's. */
 	| 'sounds';
 
@@ -31,6 +33,14 @@ export const UPGRADE_STEPS: UpgradeStep[] = [
 		db.createObjectStore('usage', keyed);
 		// One record under the key 'settings', only what the user changed
 		db.createObjectStore('settings');
+	},
+	// To-dos and the flow log (docs/flow-plan.md). A row without a key is not in the unique index, so only pins are unique
+	(db) => {
+		const keyed = { keyPath: 'id', autoIncrement: true } as const;
+		db.createObjectStore('todos', keyed);
+		const flow = db.createObjectStore('flow', keyed);
+		flow.createIndex('date', 'date');
+		flow.createIndex('key', 'key', { unique: true });
 	}
 ];
 

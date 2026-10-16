@@ -4,21 +4,60 @@
  * file moves a guest's plan into an account (local first plan 5.3). It never holds the OpenAI key, the
  * assistant's log or anything that belongs to one machine (display device, linked Google services).
  */
-import type { NewTask, Repo, ScheduleEntry, Settings, Task } from '#lib/core/repo.js';
+import type {
+	FlowRow,
+	FlowType,
+	NewTask,
+	NewTodo,
+	Repo,
+	ScheduleEntry,
+	Settings,
+	Task,
+	Todo,
+	TodoStatus
+} from '#lib/core/repo.js';
 import { SCHEDULE_LIMITS, parseRepeat, type Repeat } from '#lib/schedule.js';
 import { parseSettingsPatch, type SettingsPatch } from '#lib/settings.js';
 import { isValidTimezone } from '#lib/time.js';
 import { parseTaskInput } from '#lib/task-input.js';
+import { parseTodoInput } from '#lib/todo-input.js';
 import { readTone, type Tone } from '#lib/tones.js';
-import { TaskStatus } from '#lib/types.js';
+import { Priority, TaskStatus } from '#lib/types.js';
 
 export const EXPORT_APP = 'adhd-tasker';
-export const EXPORT_VERSION = 1;
+/** 2: `completedAt` on tasks, to-dos and the flow log. A version 1 file still imports. */
+export const EXPORT_VERSION = 2;
 
 /** Bounds on what an import accepts, so a wrong file cannot fill the device. */
-export const EXPORT_LIMITS = { tasks: 20_000, alarms: SCHEDULE_LIMITS.maxAlarms } as const;
+export const EXPORT_LIMITS = {
+	tasks: 20_000,
+	todos: 20_000,
+	alarms: SCHEDULE_LIMITS.maxAlarms
+} as const;
 
-export type ExportedTask = Required<NewTask>;
+export type ExportedTask = Omit<Required<NewTask>, 'completedAt'> & {
+	/** Epoch ms of Done. A file from version 1 has none. */
+	completedAt?: number | null;
+};
+
+/** A to-do as the file holds it. `parent` is an index into the file's task list (the appointment it prepares for). */
+export interface ExportedTodo extends Omit<Required<NewTodo>, 'parentId' | 'createdAt'> {
+	parent: number | null;
+	createdAt: number;
+}
+
+/**
+ * What the user answered today and before, for them to read. It is never imported: a session in progress
+ * starts again after a move. Links are indexes into the file's lists.
+ */
+export interface ExportedFlow {
+	at: number;
+	date: string;
+	type: FlowType;
+	todo: number | null;
+	task: number | null;
+	data: Record<string, unknown>;
+}
 
 export interface ExportedAlarm {
 	fireAt: number;
@@ -36,7 +75,9 @@ export interface ExportFile {
 	exportedAt: number;
 	settings: SettingsPatch & { timezone?: string };
 	tasks: ExportedTask[];
+	todos: ExportedTodo[];
 	alarms: ExportedAlarm[];
+	flow: ExportedFlow[];
 }
 
 /** The settings a user chose, by the names the settings validator knows. */
@@ -69,12 +110,26 @@ export const FIRST_DAY = '0000-01-01';
 export function assembleExport(rows: {
 	settings: Settings;
 	tasks: Task[];
+	/** Left out, an export has none. */
+	todos?: Todo[];
 	schedule: ScheduleEntry[];
+	/** Left out, the file has no flow log (a move leaves it behind). */
+	flow?: FlowRow[];
 	now: number;
 }): ExportFile {
 	const settings: ExportFile['settings'] = {};
 	for (const key of SETTING_KEYS) Object.assign(settings, { [key]: rows.settings[key] });
 	if (rows.settings.timezone) settings.timezone = rows.settings.timezone;
+
+	const todos = rows.todos ?? [];
+	const taskIndex = (id: number | null) => {
+		const index = id === null ? -1 : rows.tasks.findIndex((task) => task.id === id);
+		return index < 0 ? null : index;
+	};
+	const todoIndex = (id: number | null) => {
+		const index = id === null ? -1 : todos.findIndex((todo) => todo.id === id);
+		return index < 0 ? null : index;
+	};
 
 	return {
 		app: EXPORT_APP,
@@ -88,7 +143,26 @@ export function assembleExport(rows: {
 			startTime: task.startTime,
 			duration: task.duration,
 			priority: task.priority,
-			status: task.status
+			status: task.status,
+			completedAt: task.completedAt
+		})),
+		todos: todos.map((todo) => ({
+			title: todo.title,
+			description: todo.description,
+			priority: todo.priority,
+			status: todo.status,
+			estimate: todo.estimate,
+			learned: todo.learned,
+			progress: todo.progress,
+			spentMinutes: todo.spentMinutes,
+			skips: todo.skips,
+			dueDate: todo.dueDate,
+			dueTime: todo.dueTime,
+			parent: taskIndex(todo.parentId),
+			notBefore: todo.notBefore,
+			nextStep: todo.nextStep,
+			createdAt: todo.createdAt,
+			completedAt: todo.completedAt
 		})),
 		alarms: rows.schedule
 			.filter((entry) => entry.kind === 'alarm')
@@ -100,7 +174,15 @@ export function assembleExport(rows: {
 				tone: readTone(entry.tone),
 				durationMin: entry.durationMin,
 				enabled: entry.enabled
-			}))
+			})),
+		flow: (rows.flow ?? []).map((row) => ({
+			at: row.at,
+			date: row.date,
+			type: row.type,
+			todo: todoIndex(row.todoId),
+			task: taskIndex(row.taskId),
+			data: row.data
+		}))
 	};
 }
 
@@ -108,7 +190,9 @@ export async function buildExport(repo: Repo, now: number): Promise<ExportFile> 
 	return assembleExport({
 		settings: await repo.settings.get(),
 		tasks: await repo.tasks.between(FIRST_DAY),
+		todos: await repo.todos.all(),
 		schedule: await repo.schedule.pending(),
+		flow: await repo.flow.all(),
 		now
 	});
 }
@@ -152,6 +236,51 @@ function parseAlarmEntry(raw: unknown): ExportedAlarm | null {
 	};
 }
 
+/** An epoch ms moment from a file, `null` for anything else. */
+const readMoment = (value: unknown): number | null =>
+	typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+
+const TODO_STATUSES: readonly TodoStatus[] = ['open', 'done', 'dropped', 'ended'];
+
+/** One to-do of a file, or the reason it is not valid. The user's fields go through the same rules as the screens. */
+function parseTodoEntry(raw: unknown, taskCount: number): ExportedTodo | string {
+	if (!isRecord(raw)) return 'not an object';
+	const parsed = parseTodoInput({ ...raw, status: undefined }, 'create');
+	if (!parsed.ok) return parsed.error;
+	const todo = parsed.value;
+
+	const whole = (value: unknown, fallback: number, max: number) =>
+		typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= max
+			? value
+			: fallback;
+	const parent = raw.parent;
+	if (
+		parent !== null &&
+		parent !== undefined &&
+		(typeof parent !== 'number' || !Number.isInteger(parent) || parent < 0 || parent >= taskCount)
+	)
+		return 'its appointment is not in the file';
+
+	return {
+		title: todo.title!,
+		description: todo.description ?? '',
+		priority: todo.priority ?? Priority.Medium,
+		status: TODO_STATUSES.includes(raw.status as TodoStatus) ? (raw.status as TodoStatus) : 'open',
+		estimate: todo.estimate ?? null,
+		learned: todo.estimate != null && raw.learned === true,
+		progress: todo.progress ?? 0,
+		spentMinutes: whole(raw.spentMinutes, 0, 1_000_000),
+		skips: whole(raw.skips, 0, 1000),
+		dueDate: todo.dueDate ?? null,
+		dueTime: todo.dueTime ?? null,
+		parent: typeof parent === 'number' ? parent : null,
+		notBefore: todo.notBefore ?? null,
+		nextStep: todo.nextStep ?? null,
+		createdAt: readMoment(raw.createdAt) ?? 0,
+		completedAt: readMoment(raw.completedAt)
+	};
+}
+
 /** Reads what came from a file or from the server. Anything that is not a valid export is refused with the reason. */
 export function parseExport(raw: unknown): Parsed {
 	if (!isRecord(raw) || raw.app !== EXPORT_APP)
@@ -175,8 +304,20 @@ export function parseExport(raw: unknown): Parsed {
 			startTime: task.startTime!,
 			duration: task.duration!,
 			priority: task.priority!,
-			status: (task.status as TaskStatus | undefined) ?? TaskStatus.Pending
+			status: (task.status as TaskStatus | undefined) ?? TaskStatus.Pending,
+			completedAt: readMoment(isRecord(item) ? item.completedAt : null)
 		});
+	}
+
+	// A file from version 1 has no to-dos
+	const todoList = raw.todos ?? [];
+	if (!Array.isArray(todoList) || todoList.length > EXPORT_LIMITS.todos)
+		return fail(`The file needs a list of at most ${EXPORT_LIMITS.todos} to-dos`);
+	const todos: ExportedTodo[] = [];
+	for (const [index, item] of todoList.entries()) {
+		const todo = parseTodoEntry(item, tasks.length);
+		if (typeof todo === 'string') return fail(`To-do ${index + 1} is not valid: ${todo}`);
+		todos.push(todo);
 	}
 
 	const alarmList = raw.alarms ?? [];
@@ -213,7 +354,10 @@ export function parseExport(raw: unknown): Parsed {
 			exportedAt: typeof raw.exportedAt === 'number' ? raw.exportedAt : 0,
 			settings,
 			tasks,
-			alarms
+			todos,
+			alarms,
+			// The flow log is for the user to read, it is not brought back in
+			flow: []
 		}
 	};
 }
@@ -223,6 +367,7 @@ export interface ImportResult {
 	/** Tasks that were already in the plan and were left alone. */
 	skipped: number;
 	alarms: number;
+	todos: number;
 }
 
 /** What makes two tasks the same one for an import: when, how long and what it is called. */
@@ -233,10 +378,15 @@ export const sameTask = (task: {
 	duration: number;
 }) => `${task.date}|${task.startTime}|${task.duration}|${task.title}`;
 
+/** What makes two to-dos the same one for an import: what it is called and when it is due. */
+export const sameTodo = (todo: { title: string; dueDate: string | null }) =>
+	`${todo.dueDate ?? ''}|${todo.title}`;
+
 /** The sentence that tells what an import did. */
-export function describeImport({ tasks, skipped, alarms }: ImportResult): string {
+export function describeImport({ tasks, skipped, alarms, todos }: ImportResult): string {
 	const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 	const parts = [`Imported ${plural(tasks, 'task')}`];
+	if (todos) parts.push(plural(todos, 'to-do'));
 	if (alarms) parts.push(plural(alarms, 'alarm'));
 	const said = parts.join(' and ');
 	return skipped ? `${said}. ${plural(skipped, 'task')} already here, left alone.` : `${said}.`;
@@ -255,18 +405,35 @@ export async function importExport(
 	file: ExportFile,
 	now: number
 ): Promise<ImportResult> {
-	const known = new Set((await repo.tasks.between(FIRST_DAY)).map(sameTask));
+	// Where each of the file's tasks is in the plan now, so a to-do can find its appointment
+	const known = new Map(
+		(await repo.tasks.between(FIRST_DAY)).map((task) => [sameTask(task), task.id])
+	);
+	const ids: number[] = [];
 	let added = 0;
 	let skipped = 0;
 	for (const task of file.tasks) {
 		const key = sameTask(task);
-		if (known.has(key)) {
+		const there = known.get(key);
+		if (there !== undefined) {
+			ids.push(there);
 			skipped++;
 			continue;
 		}
-		known.add(key);
-		await repo.tasks.insert(task);
+		const created = await repo.tasks.insert(task);
+		known.set(key, created.id);
+		ids.push(created.id);
 		added++;
+	}
+
+	const knownTodos = new Set((await repo.todos.all()).map(sameTodo));
+	let todos = 0;
+	for (const { parent, ...todo } of file.todos) {
+		const key = sameTodo(todo);
+		if (knownTodos.has(key)) continue;
+		knownTodos.add(key);
+		await repo.todos.insert({ ...todo, parentId: parent === null ? null : (ids[parent] ?? null) });
+		todos++;
 	}
 
 	const pending = (await repo.schedule.pending()).filter((entry) => entry.kind === 'alarm');
@@ -295,5 +462,5 @@ export async function importExport(
 	}
 
 	if (Object.keys(file.settings).length > 0) await repo.settings.update(file.settings);
-	return { tasks: added, skipped, alarms };
+	return { tasks: added, skipped, alarms, todos };
 }

@@ -43,7 +43,9 @@ const file = (tasks: ExportedTask[], alarms: ExportFile['alarms'] = []): ExportF
 	exportedAt: 0,
 	settings: {},
 	tasks,
-	alarms
+	todos: [],
+	alarms,
+	flow: []
 });
 
 describe('summarize', () => {
@@ -52,7 +54,7 @@ describe('summarize', () => {
 			[task('2026-10-14', 540, 60), task('2026-10-14', 700, 30), task('2026-10-15', 540, 60)],
 			[alarm]
 		);
-		expect(summarize(plan)).toEqual({ tasks: 3, days: 2, alarms: 1 });
+		expect(summarize(plan)).toEqual({ tasks: 3, days: 2, alarms: 1, todos: 0 });
 	});
 });
 
@@ -66,10 +68,10 @@ describe('isEmptyPlan', () => {
 
 describe('describeMove', () => {
 	test('says what moved and what was already there', () => {
-		expect(describeMove({ tasks: 12, skipped: 0, alarms: 2, snapshotId: 1 })).toBe(
+		expect(describeMove({ tasks: 12, skipped: 0, alarms: 2, todos: 0, snapshotId: 1 })).toBe(
 			'Your plan is now in your account: 12 tasks and 2 alarms.'
 		);
-		expect(describeMove({ tasks: 1, skipped: 3, alarms: 0, snapshotId: 1 })).toBe(
+		expect(describeMove({ tasks: 1, skipped: 3, alarms: 0, todos: 0, snapshotId: 1 })).toBe(
 			'Your plan is now in your account: 1 task. 3 tasks already there, left alone.'
 		);
 	});
@@ -78,12 +80,12 @@ describe('describeMove', () => {
 describe('describeSnapshot', () => {
 	test('names the day in the timezone given, and what the plan holds', () => {
 		const at = Date.UTC(2026, 9, 14, 23, 30);
-		expect(describeSnapshot({ id: 1, createdAt: at, tasks: 48, alarms: 3 }, 'UTC')).toBe(
+		expect(describeSnapshot({ id: 1, createdAt: at, tasks: 48, alarms: 3, todos: 0 }, 'UTC')).toBe(
 			'Restore the plan from before 14 Oct (48 tasks, 3 alarms)'
 		);
-		expect(describeSnapshot({ id: 1, createdAt: at, tasks: 1, alarms: 0 }, 'Asia/Tokyo')).toBe(
-			'Restore the plan from before 15 Oct (1 task)'
-		);
+		expect(
+			describeSnapshot({ id: 1, createdAt: at, tasks: 1, alarms: 0, todos: 0 }, 'Asia/Tokyo')
+		).toBe('Restore the plan from before 15 Oct (1 task)');
 	});
 });
 
@@ -147,8 +149,8 @@ describe('comparePlans', () => {
 
 	test('both plans are counted', () => {
 		const result = comparePlans(file([task('2026-10-14', 540, 60)], [alarm]), file([]));
-		expect(result.device).toEqual({ tasks: 1, days: 1, alarms: 1 });
-		expect(result.account).toEqual({ tasks: 0, days: 0, alarms: 0 });
+		expect(result.device).toEqual({ tasks: 1, days: 1, alarms: 1, todos: 0 });
+		expect(result.account).toEqual({ tasks: 0, days: 0, alarms: 0, todos: 0 });
 	});
 
 	const arbTask = fc

@@ -7,10 +7,12 @@ import type {
 	AgentAction,
 	Card,
 	EventRow,
+	FlowRow,
 	Repo,
 	ScheduleEntry,
 	Settings,
-	Task
+	Task,
+	Todo
 } from '#lib/core/repo.js';
 import { TaskStatus } from '#lib/types.js';
 import { SCHEDULE_LIMITS } from '#lib/schedule.js';
@@ -22,6 +24,9 @@ const switchedOn = (row: ScheduleEntry): ScheduleEntry => ({
 	...row,
 	enabled: row.enabled !== false
 });
+
+/** A task saved before `completedAt` existed has none. */
+const asTask = (row: Task): Task => ({ ...row, completedAt: row.completedAt ?? null });
 
 /** The repo of this device's guest. `email` is only a label, nothing is scoped by it. */
 export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
@@ -54,26 +59,123 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 					const range =
 						to === undefined ? IDBKeyRange.lowerBound(from) : IDBKeyRange.bound(from, to);
 					const rows = await scan<Task>(store.index('date'), { range });
-					return rows.sort((a, b) => a.date.localeCompare(b.date) || a.startTime - b.startTime);
+					return rows
+						.map(asTask)
+						.sort((a, b) => a.date.localeCompare(b.date) || a.startTime - b.startTime);
 				}),
-			get: (id) => read('tasks', (store) => getById<Task>(store, id)),
+			get: (id) =>
+				read('tasks', async (store) => {
+					const row = await getById<Task>(store, id);
+					return row && asTask(row);
+				}),
 			insert: (task) =>
 				write('tasks', async (store) => {
-					const row = { ...task, status: task.status ?? TaskStatus.Pending };
+					const row = {
+						...task,
+						status: task.status ?? TaskStatus.Pending,
+						completedAt: task.completedAt ?? null
+					};
 					const id = (await done(store.add(row))) as number;
 					return { ...row, id };
 				}),
-			update: (id, patch) => write('tasks', (store) => update<Task>(store, id, patch)),
+			update: (id, patch) =>
+				write('tasks', async (store) => {
+					const row = await update<Task>(store, id, patch);
+					return row && asTask(row);
+				}),
 			delete: (id) =>
 				write('tasks', async (store) => {
 					const row = await getById<Task>(store, id);
 					if (row) await done(store.delete(id));
-					return row;
+					return row && asTask(row);
 				}),
 			restore: (task) =>
 				write('tasks', async (store) => {
 					if (!(await getById<Task>(store, task.id))) await done(store.put(task));
 				})
+		},
+
+		todos: {
+			open: () =>
+				read('todos', async (store) =>
+					(await scan<Todo>(store, { where: (row) => row.status === 'open' })).sort(byId)
+				),
+			all: () => read('todos', async (store) => (await scan<Todo>(store)).sort(byId)),
+			doneSince: (at) =>
+				read('todos', async (store) =>
+					(
+						await scan<Todo>(store, {
+							where: (row) =>
+								row.status === 'done' && row.completedAt !== null && row.completedAt >= at
+						})
+					).sort(byId)
+				),
+			get: (id) => read('todos', (store) => getById<Todo>(store, id)),
+			insert: (todo) =>
+				write('todos', async (store) => {
+					const row = {
+						description: '',
+						status: 'open',
+						estimate: null,
+						learned: false,
+						progress: 0,
+						spentMinutes: 0,
+						skips: 0,
+						dueDate: null,
+						dueTime: null,
+						parentId: null,
+						notBefore: null,
+						nextStep: null,
+						createdAt: Date.now(),
+						completedAt: null,
+						...stripUndefined(todo)
+					} as const;
+					const id = (await done(store.add(row))) as number;
+					return { ...row, id } as Todo;
+				}),
+			update: (id, patch) => write('todos', (store) => update<Todo>(store, id, patch)),
+			delete: (id) =>
+				write('todos', async (store) => {
+					const row = await getById<Todo>(store, id);
+					if (row) await done(store.delete(id));
+					return row;
+				}),
+			restore: (todo) =>
+				write('todos', async (store) => {
+					if (!(await getById<Todo>(store, todo.id))) await done(store.put(todo));
+				})
+		},
+
+		flow: {
+			day: (date) =>
+				read('flow', async (store) =>
+					(await scan<FlowRow>(store.index('date'), { range: IDBKeyRange.only(date) })).sort(
+						(a, b) => a.at - b.at || a.id - b.id
+					)
+				),
+			all: () =>
+				read('flow', async (store) =>
+					(await scan<FlowRow>(store)).sort((a, b) => a.at - b.at || a.id - b.id)
+				),
+			insert: (row) =>
+				write('flow', async (store) => {
+					const key = row.key ?? null;
+					if (key !== null && (await done(store.index('key').getKey(key))) !== undefined)
+						return null;
+					const next = {
+						at: row.at,
+						date: row.date,
+						type: row.type,
+						todoId: row.todoId ?? null,
+						taskId: row.taskId ?? null,
+						data: row.data ?? {},
+						key
+					};
+					const id = (await done(store.add(next))) as number;
+					return { ...next, id };
+				}),
+			prune: (before) =>
+				write('flow', (store) => removeWhere<FlowRow>(store, (row) => row.at < before))
 		},
 
 		actions: {
@@ -300,6 +402,10 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 		}
 	};
 }
+
+/** `{ a: undefined }` must not overwrite a default when spread over it. */
+const stripUndefined = <T extends object>(value: T): T =>
+	Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
 
 interface Usage {
 	id: number;

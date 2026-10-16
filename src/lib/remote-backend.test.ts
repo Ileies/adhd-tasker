@@ -164,13 +164,14 @@ describe('remoteBackend requests', () => {
 	test('data: the export is a GET, an import a POST of the file with the result back', async () => {
 		const { requests } = fakeFetch({
 			'GET http://localhost:5173/export': json({ app: 'adhd-tasker', tasks: [] }),
-			'POST http://localhost:5173/import': json({ tasks: 2, skipped: 0, alarms: 0 })
+			'POST http://localhost:5173/import': json({ tasks: 2, skipped: 0, alarms: 0, todos: 0 })
 		});
 		expect(await remoteBackend.data.export()).toMatchObject({ app: 'adhd-tasker' });
 		expect(await remoteBackend.data.import({ app: 'adhd-tasker' })).toEqual({
 			tasks: 2,
 			skipped: 0,
-			alarms: 0
+			alarms: 0,
+			todos: 0
 		});
 		expect(await requests[1].json()).toEqual({ app: 'adhd-tasker' });
 	});
@@ -227,7 +228,7 @@ describe('remoteBackend requests', () => {
 	test('account: snapshots are a GET, a restore a POST of the id', async () => {
 		const { requests } = fakeFetch({
 			'GET http://localhost:5173/account/snapshots': json([
-				{ id: 3, createdAt: 1, tasks: 4, alarms: 0 }
+				{ id: 3, createdAt: 1, tasks: 4, alarms: 0, todos: 0 }
 			]),
 			'POST http://localhost:5173/account/restore': json({
 				tasks: 4,
@@ -237,7 +238,7 @@ describe('remoteBackend requests', () => {
 			})
 		});
 		expect(await remoteBackend.account.snapshots()).toEqual([
-			{ id: 3, createdAt: 1, tasks: 4, alarms: 0 }
+			{ id: 3, createdAt: 1, tasks: 4, alarms: 0, todos: 0 }
 		]);
 		expect(await remoteBackend.account.restore(3)).toMatchObject({ snapshotId: 5 });
 		expect(await requests[1].json()).toEqual({ id: 3 });

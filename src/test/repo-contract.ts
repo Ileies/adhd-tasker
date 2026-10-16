@@ -5,7 +5,7 @@
  * the user when the storage needs one. `reset` gives every test an empty storage.
  */
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { NewEvent, NewTask, Repo } from '#lib/core/repo.js';
+import type { NewEvent, NewFlowRow, NewTask, NewTodo, Repo } from '#lib/core/repo.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
 export interface RepoHarness {
@@ -107,6 +107,201 @@ export function describeRepo(name: string, harness: RepoHarness) {
 			expect(await other.tasks.update(created.id, { title: 'Hijacked' })).toBeNull();
 			expect(await other.tasks.delete(created.id)).toBeNull();
 			expect((await repo.tasks.get(created.id))?.title).toBe('Write intro');
+		});
+	});
+
+	describe(`${name}: task completion`, () => {
+		test('a new task has no completion time', async () => {
+			expect((await repo.tasks.insert(task())).completedAt).toBeNull();
+		});
+
+		test('a completion time is stored and cleared again', async () => {
+			const created = await repo.tasks.insert(task());
+			expect((await repo.tasks.update(created.id, { completedAt: 5000 }))?.completedAt).toBe(5000);
+			expect((await repo.tasks.get(created.id))?.completedAt).toBe(5000);
+			expect((await repo.tasks.update(created.id, { completedAt: null }))?.completedAt).toBeNull();
+		});
+	});
+
+	describe(`${name}: todos`, () => {
+		const todo = (overrides: Partial<NewTodo> = {}): NewTodo => ({
+			title: 'Study Math',
+			priority: Priority.High,
+			createdAt: 1000,
+			...overrides
+		});
+
+		test('a new to-do starts open at 0 % with calm defaults', async () => {
+			const created = await repo.todos.insert(todo());
+			expect(created).toEqual({
+				id: created.id,
+				title: 'Study Math',
+				description: '',
+				priority: Priority.High,
+				status: 'open',
+				estimate: null,
+				learned: false,
+				progress: 0,
+				spentMinutes: 0,
+				skips: 0,
+				dueDate: null,
+				dueTime: null,
+				parentId: null,
+				notBefore: null,
+				nextStep: null,
+				createdAt: 1000,
+				completedAt: null
+			});
+			expect(created.id).toBeGreaterThan(0);
+		});
+
+		test('given fields are kept', async () => {
+			const created = await repo.todos.insert(
+				todo({
+					estimate: 600,
+					dueDate: '2026-11-05',
+					dueTime: 665,
+					parentId: 7,
+					nextStep: 'Open notes'
+				})
+			);
+			expect(await repo.todos.get(created.id)).toEqual(created);
+			expect(created).toMatchObject({
+				estimate: 600,
+				dueDate: '2026-11-05',
+				dueTime: 665,
+				parentId: 7,
+				nextStep: 'Open notes'
+			});
+		});
+
+		test('open lists only open to-dos, oldest first', async () => {
+			const a = await repo.todos.insert(todo({ title: 'a' }));
+			const b = await repo.todos.insert(todo({ title: 'b' }));
+			await repo.todos.insert(todo({ title: 'c', status: 'dropped' }));
+			await repo.todos.update(a.id, { status: 'done', completedAt: 2000 });
+			expect((await repo.todos.open()).map((row) => row.id)).toEqual([b.id]);
+		});
+
+		test('all lists every to-do in any state', async () => {
+			await repo.todos.insert(todo({ title: 'a' }));
+			await repo.todos.insert(todo({ title: 'b', status: 'ended' }));
+			expect((await repo.todos.all()).map((row) => row.title)).toEqual(['a', 'b']);
+		});
+
+		test('doneSince lists to-dos finished at or after a time', async () => {
+			const a = await repo.todos.insert(todo({ title: 'a' }));
+			const b = await repo.todos.insert(todo({ title: 'b' }));
+			await repo.todos.insert(todo({ title: 'open' }));
+			await repo.todos.update(a.id, { status: 'done', completedAt: 1999 });
+			await repo.todos.update(b.id, { status: 'done', completedAt: 2000 });
+			expect((await repo.todos.doneSince(2000)).map((row) => row.title)).toEqual(['b']);
+		});
+
+		test('update changes only the given fields and returns the to-do', async () => {
+			const created = await repo.todos.insert(todo());
+			const updated = await repo.todos.update(created.id, { progress: 40, spentMinutes: 30 });
+			expect(updated).toEqual({ ...created, progress: 40, spentMinutes: 30 });
+			expect(await repo.todos.get(created.id)).toEqual(updated);
+		});
+
+		test('an empty patch returns the to-do unchanged', async () => {
+			const created = await repo.todos.insert(todo());
+			expect(await repo.todos.update(created.id, {})).toEqual(created);
+		});
+
+		test('a missing id answers null for get, update and delete', async () => {
+			expect(await repo.todos.get(999)).toBeNull();
+			expect(await repo.todos.update(999, { progress: 1 })).toBeNull();
+			expect(await repo.todos.delete(999)).toBeNull();
+		});
+
+		test('delete returns the to-do as it was, restore brings it back under its id', async () => {
+			const created = await repo.todos.insert(todo());
+			expect(await repo.todos.delete(created.id)).toEqual(created);
+			expect(await repo.todos.get(created.id)).toBeNull();
+			await repo.todos.restore(created);
+			expect(await repo.todos.get(created.id)).toEqual(created);
+		});
+
+		test('restore leaves a to-do alone whose id is taken', async () => {
+			const created = await repo.todos.insert(todo());
+			await repo.todos.restore({ ...created, title: 'Impostor' });
+			expect((await repo.todos.get(created.id))?.title).toBe('Study Math');
+		});
+
+		test('another user sees none of it and cannot change it', async () => {
+			const created = await repo.todos.insert(todo());
+			expect(await other.todos.get(created.id)).toBeNull();
+			expect(await other.todos.open()).toEqual([]);
+			expect(await other.todos.update(created.id, { title: 'Hijacked' })).toBeNull();
+			expect(await other.todos.delete(created.id)).toBeNull();
+			expect((await repo.todos.get(created.id))?.title).toBe('Study Math');
+		});
+	});
+
+	describe(`${name}: flow log`, () => {
+		const row = (overrides: Partial<NewFlowRow> = {}): NewFlowRow => ({
+			at: 1000,
+			date: '2026-10-14',
+			type: 'start',
+			...overrides
+		});
+
+		test('an inserted row gets an id and empty links and data', async () => {
+			const created = await repo.flow.insert(row());
+			expect(created).toEqual({
+				id: created!.id,
+				at: 1000,
+				date: '2026-10-14',
+				type: 'start',
+				todoId: null,
+				taskId: null,
+				data: {},
+				key: null
+			});
+		});
+
+		test('day lists one day oldest first', async () => {
+			await repo.flow.insert(row({ at: 3000, type: 'rest' }));
+			await repo.flow.insert(row({ at: 1000, type: 'start' }));
+			await repo.flow.insert(row({ at: 2000, type: 'choose', todoId: 4, data: { why: 'x' } }));
+			await repo.flow.insert(row({ at: 500, date: '2026-10-13' }));
+			const rows = await repo.flow.day('2026-10-14');
+			expect(rows.map((r) => r.type)).toEqual(['start', 'choose', 'rest']);
+			expect(rows[1]).toMatchObject({ todoId: 4, data: { why: 'x' } });
+		});
+
+		test('all lists every day oldest first', async () => {
+			await repo.flow.insert(row({ at: 3000, date: '2026-10-15' }));
+			await repo.flow.insert(row({ at: 1000, date: '2026-10-13' }));
+			expect((await repo.flow.all()).map((r) => r.at)).toEqual([1000, 3000]);
+		});
+
+		test('a known key answers null and writes nothing', async () => {
+			const first = await repo.flow.insert(row({ type: 'pin', key: 'pin:1000', todoId: 1 }));
+			expect(first).not.toBeNull();
+			expect(await repo.flow.insert(row({ type: 'pin', key: 'pin:1000', todoId: 2 }))).toBeNull();
+			expect(await repo.flow.day('2026-10-14')).toHaveLength(1);
+		});
+
+		test('rows without a key never collide', async () => {
+			await repo.flow.insert(row());
+			await repo.flow.insert(row());
+			expect(await repo.flow.day('2026-10-14')).toHaveLength(2);
+		});
+
+		test('prune removes rows from before a time', async () => {
+			await repo.flow.insert(row({ at: 1000 }));
+			await repo.flow.insert(row({ at: 3000 }));
+			await repo.flow.prune(2000);
+			expect((await repo.flow.day('2026-10-14')).map((r) => r.at)).toEqual([3000]);
+		});
+
+		test('another user has its own rows and keys', async () => {
+			await repo.flow.insert(row({ type: 'pin', key: 'pin:1000' }));
+			expect(await other.flow.day('2026-10-14')).toEqual([]);
+			expect(await other.flow.insert(row({ type: 'pin', key: 'pin:1000' }))).not.toBeNull();
 		});
 	});
 

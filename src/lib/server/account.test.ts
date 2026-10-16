@@ -41,6 +41,8 @@ const file = (overrides: Partial<ExportFile> = {}): ExportFile => ({
 	exportedAt: NOW,
 	settings: {},
 	tasks: [],
+	todos: [],
+	flow: [],
 	alarms: [],
 	...overrides
 });
@@ -280,7 +282,7 @@ describe('listSnapshots', () => {
 			NOW + 1000
 		);
 		expect(listSnapshots(TEST_EMAIL, NOW + 2000)).toEqual([
-			{ id: 2, createdAt: NOW + 1000, tasks: 1, alarms: 0 }
+			{ id: 2, createdAt: NOW + 1000, tasks: 1, alarms: 0, todos: 0 }
 		]);
 	});
 
@@ -307,5 +309,107 @@ describe('listSnapshots', () => {
 			NOW
 		);
 		expect(listSnapshots(TEST_EMAIL, NOW)).toEqual([]);
+	});
+});
+
+describe('to-dos in a move', () => {
+	const todo = (title: string, parent: number | null = null) => ({
+		title,
+		description: '',
+		priority: Priority.High,
+		status: 'open' as const,
+		estimate: 600,
+		learned: false,
+		progress: 25,
+		spentMinutes: 90,
+		skips: 0,
+		dueDate: '2026-11-05',
+		dueTime: null,
+		parent,
+		notBefore: null,
+		nextStep: null,
+		createdAt: NOW,
+		completedAt: null
+	});
+
+	test('the to-dos move with their appointment', async () => {
+		await makeUser();
+		const result = moveIntoAccount(
+			TEST_EMAIL,
+			file({
+				tasks: [task('2026-11-05', 'Exam Math', 720)],
+				todos: [todo('Prepare', 0), todo('Taxes')]
+			}),
+			'both',
+			TODAY,
+			NOW
+		);
+		expect(result).toMatchObject({ tasks: 1, todos: 2 });
+		const repo = dbRepo(TEST_EMAIL);
+		const [exam] = await repo.tasks.between(TODAY);
+		expect((await repo.todos.all()).map((t) => [t.title, t.parentId, t.progress])).toEqual([
+			['Prepare', exam.id, 25],
+			['Taxes', null, 25]
+		]);
+	});
+
+	test('a to-do the account already has is left alone', async () => {
+		await makeUser();
+		await dbRepo(TEST_EMAIL).todos.insert({
+			title: 'Taxes',
+			priority: Priority.Low,
+			dueDate: '2026-11-05',
+			createdAt: NOW
+		});
+		const result = moveIntoAccount(
+			TEST_EMAIL,
+			file({ todos: [todo('Taxes'), todo('New')] }),
+			'both',
+			TODAY,
+			NOW
+		);
+		expect(result.todos).toBe(1);
+		expect(await dbRepo(TEST_EMAIL).todos.all()).toHaveLength(2);
+	});
+
+	test('keep this device replaces the account to-dos, a restore brings them back', async () => {
+		await makeUser();
+		const repo = dbRepo(TEST_EMAIL);
+		await repo.todos.insert({ title: 'Account to-do', priority: Priority.Low, createdAt: NOW });
+		const { snapshotId } = moveIntoAccount(
+			TEST_EMAIL,
+			file({ todos: [todo('Device to-do')] }),
+			'replace',
+			TODAY,
+			NOW
+		);
+		expect((await repo.todos.all()).map((t) => t.title)).toEqual(['Device to-do']);
+		restoreSnapshot(TEST_EMAIL, snapshotId, NOW + 1000);
+		expect((await repo.todos.all()).map((t) => t.title)).toEqual(['Account to-do']);
+	});
+
+	test('an account with only to-dos is not empty, so its snapshot is offered', async () => {
+		await makeUser();
+		await dbRepo(TEST_EMAIL).todos.insert({
+			title: 'Taxes',
+			priority: Priority.Low,
+			createdAt: NOW
+		});
+		moveIntoAccount(TEST_EMAIL, file({ tasks: [task(TODAY, 'A')] }), 'both', TODAY, NOW);
+		expect(listSnapshots(TEST_EMAIL, NOW)).toEqual([
+			{ id: 1, createdAt: NOW, tasks: 0, alarms: 0, todos: 1 }
+		]);
+	});
+
+	test('a new account with only to-dos takes the device settings along', async () => {
+		await makeUser();
+		moveIntoAccount(
+			TEST_EMAIL,
+			file({ todos: [todo('Taxes')], settings: { showClock: true } }),
+			'both',
+			TODAY,
+			NOW
+		);
+		expect((await dbRepo(TEST_EMAIL).settings.get()).showClock).toBe(true);
 	});
 });

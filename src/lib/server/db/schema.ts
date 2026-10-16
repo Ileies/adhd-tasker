@@ -1,11 +1,12 @@
 import { Priority, TaskStatus } from '#lib/types.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import type { ExportFile } from '#lib/core/export.js';
+import type { FlowType, TodoStatus } from '#lib/core/repo.js';
 import type { EventOrigin, EventType } from '#lib/events.js';
 import type { Autonomy } from '#lib/guardrails.js';
 import type { Repeat, ScheduleKind } from '#lib/schedule.js';
 import type { Tone } from '#lib/tones.js';
-import { integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 /** Column defaults come from `DEFAULT_SETTINGS`, so an account and a guest start the same. */
 const D = DEFAULT_SETTINGS;
@@ -34,6 +35,7 @@ export const users = sqliteTable('users', {
 	quietEnd: integer('quiet_end').default(D.quietEnd).notNull(), // until here
 	dailyTokenBudget: integer('daily_token_budget'), // null: no limit for unprompted reactions
 	lastCurrentTaskId: integer('last_current_task_id'), // what the scheduler saw as current at its last tick, to detect task.switched
+	lastCurrentKey: text('last_current_key'), // what the flow engine saw as current (`task:12`, `todo:5`, `away`, `plan`...), null: never tracked
 	displayDevice: text('display_device'), // id of the device that plays alarms and agent tones, null: every device does
 	voiceReplies: integer('voice_replies', { mode: 'boolean' }).default(D.voiceReplies).notNull(), // the assistant speaks its replies and notes
 	openaiTranscribe: integer('openai_transcribe', { mode: 'boolean' })
@@ -62,8 +64,59 @@ export const tasks = sqliteTable('tasks', {
 	startTime: integer('start_time').notNull(),
 	duration: integer('duration').notNull(),
 	priority: integer('priority').$type<Priority>().default(Priority.Medium).notNull(),
-	status: text('status').$type<TaskStatus>().default(TaskStatus.Pending).notNull()
+	status: text('status').$type<TaskStatus>().default(TaskStatus.Pending).notNull(),
+	completedAt: integer('completed_at') // epoch ms of Done, null while open
 });
+
+/**
+ * Things to do without a time (`docs/flow-plan.md`): a size, a progress and maybe a due date. The flow engine
+ * decides when one gets minutes. `parentId` is the appointment (a task) it prepares for, not a foreign key,
+ * so deleting the appointment leaves the to-do with the last due date.
+ */
+export const todos = sqliteTable('todos', {
+	id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+	email: text('email')
+		.references(() => users.email, { onDelete: 'cascade' })
+		.notNull(),
+	title: text('title').notNull(),
+	description: text('description').default('').notNull(),
+	priority: integer('priority').$type<Priority>().default(Priority.Medium).notNull(),
+	status: text('status').$type<TodoStatus>().default('open').notNull(),
+	estimate: integer('estimate'), // minutes the whole thing takes, null: not known
+	learned: integer('learned', { mode: 'boolean' }).default(false).notNull(), // the size came from the pace
+	progress: integer('progress').default(0).notNull(), // 0 to 100
+	spentMinutes: integer('spent_minutes').default(0).notNull(),
+	skips: integer('skips').default(0).notNull(), // pushed away without progress in between
+	dueDate: text('due_date'), // YYYY-MM-DD
+	dueTime: integer('due_time'), // minutes since midnight, null: the end of My day
+	parentId: integer('parent_id'), // the appointment this prepares for
+	notBefore: text('not_before'), // YYYY-MM-DD
+	nextStep: text('next_step'),
+	createdAt: integer('created_at').notNull(), // ms since epoch
+	completedAt: integer('completed_at')
+});
+
+/** What the user answered or chose today (and the pins that freeze a pick): the only stored input of the flow engine. */
+export const flowLog = sqliteTable(
+	'flow_log',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }).notNull(),
+		email: text('email')
+			.references(() => users.email, { onDelete: 'cascade' })
+			.notNull(),
+		at: integer('at').notNull(), // ms since epoch
+		date: text('date').notNull(), // YYYY-MM-DD in the user's timezone
+		type: text('type').$type<FlowType>().notNull(),
+		todoId: integer('todo_id'),
+		taskId: integer('task_id'),
+		data: text('data', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+		key: text('key') // pins only: one row per fact
+	},
+	(table) => [
+		uniqueIndex('flow_log_email_key').on(table.email, table.key),
+		index('flow_log_email_date').on(table.email, table.date)
+	]
+);
 
 /** Every change the assistant made to the plan, with enough to undo it. `before`/`after` are task JSON, null when absent. */
 export const agentActions = sqliteTable('agent_actions', {
@@ -156,6 +209,7 @@ export const planSnapshots = sqliteTable('plan_snapshots', {
 	createdAt: integer('created_at').notNull(), // ms since epoch
 	taskCount: integer('task_count').notNull(),
 	alarmCount: integer('alarm_count').notNull(),
+	todoCount: integer('todo_count').default(0).notNull(),
 	file: text('file', { mode: 'json' }).$type<ExportFile>().notNull()
 });
 

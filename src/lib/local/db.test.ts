@@ -50,7 +50,7 @@ describe('upgrade steps', () => {
 		];
 		const upgraded = await openLocalDb(factory, name, next);
 		expect(ran).toBe(1);
-		expect(upgraded.version).toBe(2);
+		expect(upgraded.version).toBe(UPGRADE_STEPS.length + 1);
 
 		const repo = localRepo(upgraded);
 		expect(await repo.tasks.get(created.id)).toEqual(created);

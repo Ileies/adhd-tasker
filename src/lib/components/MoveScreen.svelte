@@ -18,7 +18,7 @@
 
 	const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 	const sizeOf = (plan: PlanSummary) =>
-		`${plural(plan.tasks, 'task')} over ${plural(plan.days, 'day')}, ${plural(plan.alarms, 'alarm')}`;
+		`${plural(plan.tasks, 'task')} over ${plural(plan.days, 'day')}, ${plural(plan.alarms, 'alarm')}${plan.todos ? `, ${plural(plan.todos, 'to-do')}` : ''}`;
 	const when = (task: ExportedTask) =>
 		`${formatClock(task.startTime)} - ${formatClock(task.startTime + task.duration)}`;
 

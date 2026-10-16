@@ -33,7 +33,8 @@ export function welcomeExample(): { hero: HeroState<Task>; now: number } {
 		startTime: 14 * 60,
 		duration: 60,
 		priority: Priority.High,
-		status: TaskStatus.Pending
+		status: TaskStatus.Pending,
+		completedAt: null
 	};
 	const now = 14 * 60 + 32;
 	return { hero: heroState(rank([task], now), now, { overrunMinutes: 15 }), now };

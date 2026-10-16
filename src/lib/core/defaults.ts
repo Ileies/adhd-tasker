@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	quietEnd: 420, // 07:00
 	dailyTokenBudget: null, // no limit for unprompted reactions
 	lastCurrentTaskId: null, // never tracked
+	lastCurrentKey: null, // never tracked
 	displayDevice: null, // every device plays
 	voiceReplies: false,
 	openaiTranscribe: true, // with a key, speech to text goes to OpenAI, off uses the browser's own to save cost

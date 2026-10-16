@@ -25,7 +25,16 @@ const BACKUP = 'backup';
 const DECLINED = 'declined';
 
 /** Everything the move moves out of a device, and wipes after the account has it. */
-const PLAN_STORES: StoreName[] = ['tasks', 'actions', 'events', 'cards', 'schedule', 'usage'];
+const PLAN_STORES: StoreName[] = [
+	'tasks',
+	'todos',
+	'flow',
+	'actions',
+	'events',
+	'cards',
+	'schedule',
+	'usage'
+];
 
 export interface DeviceData {
 	/** The plan and alarms to move, without the sample day. */
@@ -85,6 +94,7 @@ export async function readDevice(
 		const file = assembleExport({
 			settings,
 			tasks: (await repo.tasks.between(FIRST_DAY)).filter((task) => !sample.has(task.id)),
+			todos: await repo.todos.all(),
 			schedule: await repo.schedule.pending(),
 			now
 		});
@@ -115,7 +125,7 @@ export async function clearDevice(
 			for (const store of PLAN_STORES) await done(tx.objectStore(store).clear());
 		});
 		// What the agent last saw as current is gone with the tasks
-		await localRepo(db).settings.update({ lastCurrentTaskId: null });
+		await localRepo(db).settings.update({ lastCurrentTaskId: null, lastCurrentKey: null });
 	});
 }
 
