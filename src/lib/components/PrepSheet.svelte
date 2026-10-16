@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Plus, X } from '@lucide/svelte';
 	import { tasker } from '#lib/app.svelte.js';
-	import { formatClock, formatDuration } from '#lib/format.js';
+	import { formatClock, formatMinutes } from '#lib/format.js';
 	import { PREPARE_CHIPS, TRAVEL_CHIPS, prepPlan, type PrepForm } from '#lib/prep.js';
 	import { addPreparation } from '#lib/prepare.js';
 	import { formatDay, todayIn } from '#lib/time.js';
@@ -52,7 +52,7 @@
 		'min-h-11 cursor-pointer rounded-full border px-3 text-sm transition-colors md:min-h-8';
 	const lit = 'bg-primary text-primary-foreground border-primary';
 	const unlit = 'bg-background hover:bg-muted';
-	const hours = (minutes: number) => (minutes < 60 ? `${minutes} min` : formatDuration(minutes));
+	const hours = formatMinutes;
 </script>
 
 <Dialog.Root open={appointment !== null} onOpenChange={(value) => !value && close()}>
