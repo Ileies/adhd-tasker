@@ -44,8 +44,8 @@
 			class="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-left"
 			onclick={() => onOpen(todo)}
 		>
-			<span class="flex items-center gap-2">
-				<span class="truncate font-medium">{todo.title}</span>
+			<span class="truncate font-medium">{todo.title}</span>
+			<span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
 				<span class="shrink-0 rounded-full px-2 py-0.5 text-xs {priorityStyle[todo.priority].chip}">
 					{priorityStyle[todo.priority].label}
 				</span>
@@ -58,10 +58,10 @@
 						{words}
 					</span>
 				{/if}
+				{#if line}
+					<span class="text-muted-foreground text-xs">{line}</span>
+				{/if}
 			</span>
-			{#if line}
-				<span class="text-muted-foreground truncate text-xs">{line}</span>
-			{/if}
 		</button>
 		<Button variant="outline" size="sm" class="shrink-0" onclick={() => onNow(todo)}>
 			Do this now

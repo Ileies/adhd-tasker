@@ -343,7 +343,8 @@
 			: ''} max-md:order-last max-md:border-t max-md:border-b-0 sm:px-6"
 		onsubmit={addQuick}
 	>
-		<div class="flex gap-2">
+		<!-- On a phone the field has a row of its own, the buttons sit under it -->
+		<div class="flex flex-wrap gap-2 md:flex-nowrap">
 			<SegmentedControl
 				label="What to add"
 				value={mode}
@@ -355,7 +356,7 @@
 			/>
 			<!-- One field with its tools inside, so the bar reads as a single control -->
 			<div
-				class="border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-11 min-w-0 flex-1 items-center rounded-lg border pr-1 focus-within:ring-3 md:h-10"
+				class="border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-ring/50 flex h-11 min-w-0 flex-1 items-center rounded-lg border pr-1 focus-within:ring-3 max-md:order-first max-md:basis-full md:h-10"
 			>
 				<Input
 					bind:ref={quickInput}
@@ -394,7 +395,7 @@
 			</div>
 			<Button
 				type="submit"
-				class="h-11 px-5 md:h-10"
+				class="h-11 px-5 max-md:flex-1 md:h-10"
 				disabled={mode === 'alarm' ? !alarmFields : !quick.trim()}>Add</Button
 			>
 			<Button
