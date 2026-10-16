@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { eq } from 'drizzle-orm';
+import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { SESSION_MAX_AGE, signSession } from '#lib/server/session-token.js';
@@ -45,6 +46,12 @@ describe('handle', () => {
 		const event = await visit({ session: session('new@example.com') });
 		expect(event.locals.user?.email).toBe('new@example.com');
 		expect(db.select().from(users).where(eq(users.email, 'new@example.com')).all()).toHaveLength(1);
+	});
+
+	test('a new user starts with the app default events, whatever the column default of the database is', async () => {
+		const event = await visit({ session: session('new@example.com') });
+		expect(event.locals.user?.aiEvents).toBe(DEFAULT_SETTINGS.aiEvents);
+		expect(event.locals.user?.aiEvents).toContain('appointment.added');
 	});
 
 	test('a second visit does not create a second row', async () => {

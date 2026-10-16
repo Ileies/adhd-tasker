@@ -1,4 +1,5 @@
 import type { Handle } from '@sveltejs/kit/hooks';
+import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import { db } from '#lib/server/db/index.js';
 import { users } from '#lib/server/db/schema.js';
 import { readSession } from '#lib/server/session.js';
@@ -68,7 +69,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 			where: (users, { eq }) => eq(users.email, email)
 		});
 		if (!event.locals.user) {
-			[event.locals.user] = await db.insert(users).values({ email }).returning();
+			// The column default of an older database is an older list of events, the app's own default is what counts
+			[event.locals.user] = await db
+				.insert(users)
+				.values({ email, aiEvents: DEFAULT_SETTINGS.aiEvents })
+				.returning();
 		}
 		await findLocation(event, event.locals.user);
 	}
