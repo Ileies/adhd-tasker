@@ -4,7 +4,7 @@
  * (`#lib/remote-backend.js`) talks to this server, a guest's device gets its own implementation.
  * Components and routes never call `fetch`, they go through `tasker.backend`.
  */
-import type { NewTask, Task } from '#lib/core/repo.js';
+import type { FlowRow, FlowType, NewTask, Task, Todo, TodoPatch } from '#lib/core/repo.js';
 import type { Alarm, Wakeup } from '#lib/app.svelte.js';
 import type { ChatMessage, Change } from '#lib/core/assistant.js';
 import type {
@@ -45,6 +45,16 @@ export interface AlarmFields {
 	duration_minutes?: number;
 }
 
+/** One answer for the flow log. `at` is this device's clock, the backend only believes it within two minutes. */
+export interface FlowAnswer {
+	type: FlowType;
+	todoId?: number | null;
+	taskId?: number | null;
+	data?: Record<string, unknown>;
+	key?: string;
+	at?: number;
+}
+
 export interface Backend {
 	tasks: {
 		/** Every task of one day. */
@@ -54,6 +64,21 @@ export interface Backend {
 		create(task: NewTask): Promise<Task>;
 		update(task: Task): Promise<void>;
 		delete(id: number): Promise<void>;
+	};
+	todos: {
+		/** Every open to-do and the ones finished in the last day and a half. */
+		load(): Promise<Todo[]>;
+		/** Rejects with the reason when a field is invalid. */
+		create(fields: TodoPatch): Promise<Todo>;
+		/** The to-do as stored after the change (done fills the bar). Rejects with the reason. */
+		update(fields: TodoPatch & { id: number }): Promise<Todo>;
+		delete(id: number): Promise<void>;
+	};
+	flow: {
+		/** The answers given on one day (`YYYY-MM-DD` in the user's timezone), oldest first. */
+		load(date: string): Promise<FlowRow[]>;
+		/** Logs one answer. `null` when its key was logged already (a pick two screens made at once). */
+		record(answer: FlowAnswer): Promise<FlowRow | null>;
 	};
 	schedule: {
 		/** `null` when the backend refused to list them. */

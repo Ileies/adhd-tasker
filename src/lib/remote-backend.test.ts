@@ -75,6 +75,36 @@ describe('remoteBackend requests', () => {
 		expect(await requests[3].json()).toEqual({ id: 2 });
 	});
 
+	test('to-dos: a list is a GET, a change is JSON to /todos and answers the stored to-do', async () => {
+		const { requests } = fakeFetch({
+			'GET http://localhost:5173/todos': json([{ id: 1 }]),
+			'POST http://localhost:5173/todos': json({ id: 2 }),
+			'PUT http://localhost:5173/todos': json({ id: 2, title: 'b' }),
+			'DELETE http://localhost:5173/todos': json(true)
+		});
+		expect<unknown>(await remoteBackend.todos.load()).toEqual([{ id: 1 }]);
+		expect<unknown>(await remoteBackend.todos.create({ title: 'a' })).toEqual({ id: 2 });
+		expect<unknown>(await remoteBackend.todos.update({ id: 2, title: 'b' })).toEqual({
+			id: 2,
+			title: 'b'
+		});
+		await remoteBackend.todos.delete(2);
+		expect(await requests[1].json()).toEqual({ title: 'a' });
+		expect(await requests[2].json()).toEqual({ id: 2, title: 'b' });
+		expect(await requests[3].json()).toEqual({ id: 2 });
+	});
+
+	test('flow: a day is a GET with the date, an answer is JSON to /flow', async () => {
+		const { requests } = fakeFetch({
+			'GET http://localhost:5173/flow': json([{ id: 1 }]),
+			'POST http://localhost:5173/flow': json({ id: 2 })
+		});
+		expect<unknown>(await remoteBackend.flow.load('2026-10-14')).toEqual([{ id: 1 }]);
+		expect(new URL(requests[0].url).search).toBe('?date=2026-10-14');
+		expect<unknown>(await remoteBackend.flow.record({ type: 'rest' })).toEqual({ id: 2 });
+		expect(await requests[1].json()).toEqual({ type: 'rest' });
+	});
+
 	test('schedule: a refused listing is null, an alarm error carries the reason', async () => {
 		fakeFetch({
 			'GET http://localhost:5173/schedule': refuse(500),

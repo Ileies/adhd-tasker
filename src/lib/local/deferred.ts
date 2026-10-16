@@ -7,6 +7,8 @@ import type { Backend } from '#lib/backend.js';
  */
 export const BACKEND_METHODS = {
 	tasks: ['load', 'since', 'create', 'update', 'delete'],
+	todos: ['load', 'create', 'update', 'delete'],
+	flow: ['load', 'record'],
 	schedule: ['load', 'addAlarm', 'remove', 'setEnabled', 'updateAlarm', 'chooseDisplay'],
 	assistant: ['chat', 'undo'],
 	agent: ['feed', 'resolveCard', 'stuck'],

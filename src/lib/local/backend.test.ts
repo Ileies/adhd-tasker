@@ -91,6 +91,35 @@ describe('tasks', () => {
 	});
 });
 
+describe('to-dos and the flow log', () => {
+	test('a created to-do is listed, changed and deleted', async () => {
+		const { backend, hints } = await setup();
+		const created = await backend.todos.create({ title: 'Taxes', estimate: 60 });
+		expect(await backend.todos.load()).toMatchObject([{ id: created.id, estimate: 60 }]);
+		expect(await backend.todos.update({ id: created.id, status: 'done' })).toMatchObject({
+			status: 'done',
+			progress: 100
+		});
+		await backend.todos.delete(created.id);
+		expect(await backend.todos.load()).toEqual([]);
+		expect(hints.filter((hint) => hint.type === 'todos')).toHaveLength(3);
+	});
+
+	test('a refusal is a BackendError with the status', async () => {
+		const { backend } = await setup();
+		expect(await failure(backend.todos.create({ title: '' }))).toMatchObject({ status: 400 });
+		expect(await failure(backend.todos.delete(999))).toMatchObject({ status: 404 });
+		expect(await failure(backend.flow.record({ type: 'pin' }))).toBeInstanceOf(BackendError);
+	});
+
+	test('an answer is logged under today and loaded by its day', async () => {
+		const { backend } = await setup();
+		await backend.flow.record({ type: 'start', todoId: 1 });
+		expect(await backend.flow.load('2026-10-14')).toMatchObject([{ type: 'start', todoId: 1 }]);
+		expect(await backend.flow.load('2026-10-13')).toEqual([]);
+	});
+});
+
 describe('schedule', () => {
 	test('an alarm is listed, rings through a hint and can be removed', async () => {
 		const { backend, hints } = await setup();

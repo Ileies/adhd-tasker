@@ -53,6 +53,40 @@ export const remoteBackend: Backend = {
 		}
 	},
 
+	todos: {
+		async load() {
+			return (await request('/todos')).json();
+		},
+		async create(fields) {
+			return (await post('/todos', fields)).json();
+		},
+		async update(fields) {
+			return (
+				await request('/todos', {
+					method: 'PUT',
+					headers: JSON_HEADERS,
+					body: JSON.stringify(fields)
+				})
+			).json();
+		},
+		async delete(id) {
+			await request('/todos', {
+				method: 'DELETE',
+				headers: JSON_HEADERS,
+				body: JSON.stringify({ id })
+			});
+		}
+	},
+
+	flow: {
+		async load(date) {
+			return (await request(`/flow?date=${date}`)).json();
+		},
+		async record(answer) {
+			return (await post('/flow', answer)).json();
+		}
+	},
+
 	schedule: {
 		async load() {
 			const response = await send('/schedule');
