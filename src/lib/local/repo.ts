@@ -25,8 +25,13 @@ const switchedOn = (row: ScheduleEntry): ScheduleEntry => ({
 	enabled: row.enabled !== false
 });
 
-/** A task saved before `completedAt` existed has none. */
-const asTask = (row: Task): Task => ({ ...row, completedAt: row.completedAt ?? null });
+/** A task saved before `completedAt`, `kind` or `parentId` existed has none: it is a task of the user's own. */
+const asTask = (row: Task): Task => ({
+	...row,
+	completedAt: row.completedAt ?? null,
+	kind: row.kind ?? 'block',
+	parentId: row.parentId ?? null
+});
 
 /** The repo of this device's guest. `email` is only a label, nothing is scoped by it. */
 export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
@@ -73,7 +78,9 @@ export function localRepo(db: IDBDatabase, email = 'guest'): Repo {
 					const row = {
 						...task,
 						status: task.status ?? TaskStatus.Pending,
-						completedAt: task.completedAt ?? null
+						completedAt: task.completedAt ?? null,
+						kind: task.kind ?? 'block',
+						parentId: task.parentId ?? null
 					};
 					const id = (await done(store.add(row))) as number;
 					return { ...row, id };

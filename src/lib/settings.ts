@@ -38,6 +38,7 @@ export type SettingsPatch = Partial<
 		| 'myDayEnd'
 		| 'checkMinutes'
 		| 'breakMinutes'
+		| 'arriveEarlyMinutes'
 		| 'startWorkAt'
 		| 'locationLat'
 		| 'locationLon'
@@ -52,6 +53,8 @@ export const CHECK_IN_MAX = 60;
 export const CHECK_MINUTES_LIMITS = { min: 5, max: 120 } as const;
 /** How long a break runs, in minutes. */
 export const BREAK_MINUTES_LIMITS = { min: 3, max: 30 } as const;
+/** How long before an appointment travel to it ends, in minutes. 0 is arriving on the dot. */
+export const ARRIVE_EARLY_LIMITS = { min: 0, max: 60 } as const;
 /** My day has to span at least this many minutes, or the timeline has nothing to show. */
 export const MY_DAY_MIN = 60;
 
@@ -89,6 +92,7 @@ const VALID: Record<keyof SettingsPatch, (value: unknown) => boolean> = {
 	myDayEnd: inRange(1, 1440),
 	checkMinutes: inRange(CHECK_MINUTES_LIMITS.min, CHECK_MINUTES_LIMITS.max),
 	breakMinutes: inRange(BREAK_MINUTES_LIMITS.min, BREAK_MINUTES_LIMITS.max),
+	arriveEarlyMinutes: inRange(ARRIVE_EARLY_LIMITS.min, ARRIVE_EARLY_LIMITS.max),
 	startWorkAt: isClock,
 	locationLat: isCoordinate(90),
 	locationLon: isCoordinate(180),
@@ -141,6 +145,8 @@ export const CHECK_IN_PRESETS = [0, 5, 10, 15];
 export const CHECK_MINUTES_PRESETS = [15, 25, 30, 45, 60];
 /** How long a break is. */
 export const BREAK_MINUTES_PRESETS = [5, 10, 15];
+/** How early to arrive. */
+export const ARRIVE_EARLY_PRESETS = [0, 5, 10, 15, 30];
 /** Tokens a day for unprompted reactions. No limit is `null` and has its own chip. */
 export const BUDGET_PRESETS = [50_000, 200_000];
 

@@ -1,7 +1,7 @@
 import { Priority, TaskStatus } from '#lib/types.js';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import type { ExportFile } from '#lib/core/export.js';
-import type { FlowType, TodoStatus } from '#lib/core/repo.js';
+import type { FlowType, TaskKind, TodoStatus } from '#lib/core/repo.js';
 import type { EventOrigin, EventType } from '#lib/events.js';
 import type { Autonomy } from '#lib/guardrails.js';
 import type { Repeat, ScheduleKind } from '#lib/schedule.js';
@@ -49,6 +49,7 @@ export const users = sqliteTable('users', {
 	myDayEnd: integer('my_day_end').default(D.myDayEnd).notNull(),
 	checkMinutes: integer('check_minutes').default(D.checkMinutes).notNull(), // a session on a to-do runs this long before the check
 	breakMinutes: integer('break_minutes').default(D.breakMinutes).notNull(), // how long a break runs
+	arriveEarlyMinutes: integer('arrive_early_minutes').default(D.arriveEarlyMinutes).notNull(), // travel ends this long before its appointment
 	startWorkAt: integer('start_work_at').default(D.startWorkAt).notNull(), // minutes since midnight, the morning call until Start
 	locationLat: real('location_lat'), // rounded to 2 decimals, null: not known (never the internet address itself)
 	locationLon: real('location_lon'),
@@ -68,7 +69,9 @@ export const tasks = sqliteTable('tasks', {
 	duration: integer('duration').notNull(),
 	priority: integer('priority').$type<Priority>().default(Priority.Medium).notNull(),
 	status: text('status').$type<TaskStatus>().default(TaskStatus.Pending).notNull(),
-	completedAt: integer('completed_at') // epoch ms of Done, null while open
+	completedAt: integer('completed_at'), // epoch ms of Done, null while open
+	kind: text('kind').$type<TaskKind>().default('block').notNull(), // block (the user's own time), appointment (ends on its own), travel (to an appointment)
+	parentId: integer('parent_id') // the appointment a travel task leads to, not a foreign key: deleting the appointment deletes its travel in the rules
 });
 
 /**

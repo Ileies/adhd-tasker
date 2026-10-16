@@ -7,16 +7,22 @@ import {
 	type Parsed,
 	type TaskPatch
 } from '#lib/assistant-tools.js';
+import type { TaskKind } from '#lib/core/repo.js';
 import { isDateKey } from '#lib/time.js';
+
+export const TASK_KINDS: readonly TaskKind[] = ['block', 'appointment', 'travel'];
+
+/** What the screens may send: the assistant's fields plus the kind of task and the appointment travel leads to. */
+export type TaskInput = TaskPatch & { kind?: TaskKind; parentId?: number | null };
 
 /**
  * What the Plan and Now screens may send to `/edit`. The same rules as the assistant's tools
  * (titles, durations, priorities, the midnight rule), so chat and Plan can never disagree.
  * Create needs every field, update takes any subset. Other keys (`id`, `email`) are ignored.
  */
-export function parseTaskInput(body: unknown, mode: 'create' | 'update'): Parsed<TaskPatch> {
+export function parseTaskInput(body: unknown, mode: 'create' | 'update'): Parsed<TaskInput> {
 	const input = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
-	const patch: TaskPatch = {};
+	const patch: TaskInput = {};
 	const need = (field: string) => mode === 'create' && input[field] === undefined;
 	const fail = (error: string) => ({ ok: false as const, error });
 
@@ -53,6 +59,17 @@ export function parseTaskInput(body: unknown, mode: 'create' | 'update'): Parsed
 		if (input.status !== 'pending' && input.status !== 'completed')
 			return fail('status must be pending or completed');
 		patch.status = input.status;
+	}
+	if (input.kind !== undefined) {
+		if (!TASK_KINDS.includes(input.kind as TaskKind))
+			return fail('kind must be block, appointment or travel');
+		patch.kind = input.kind as TaskKind;
+	}
+	if (input.parentId !== undefined) {
+		const parent = input.parentId;
+		if (parent !== null && parseTaskId(parent) === undefined)
+			return fail('parentId must be a task id or null');
+		patch.parentId = parent as number | null;
 	}
 	if (mode === 'update' && Object.keys(patch).length === 0) return fail('nothing to change');
 	if (

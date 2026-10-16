@@ -46,6 +46,7 @@ describe('DEFAULT_SETTINGS', () => {
 				myDayEnd: DEFAULT_SETTINGS.myDayEnd,
 				checkMinutes: DEFAULT_SETTINGS.checkMinutes,
 				breakMinutes: DEFAULT_SETTINGS.breakMinutes,
+				arriveEarlyMinutes: DEFAULT_SETTINGS.arriveEarlyMinutes,
 				startWorkAt: DEFAULT_SETTINGS.startWorkAt,
 				dailyTokenBudget: DEFAULT_SETTINGS.dailyTokenBudget
 			}).ok

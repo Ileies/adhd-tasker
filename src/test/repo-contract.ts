@@ -123,6 +123,34 @@ export function describeRepo(name: string, harness: RepoHarness) {
 		});
 	});
 
+	describe(`${name}: task kinds`, () => {
+		test('a new task is a block without a parent', async () => {
+			const created = await repo.tasks.insert(task());
+			expect(created).toMatchObject({ kind: 'block', parentId: null });
+			expect(await repo.tasks.get(created.id)).toMatchObject({ kind: 'block', parentId: null });
+		});
+
+		test('an appointment and the travel to it keep their kind and link', async () => {
+			const exam = await repo.tasks.insert(task({ kind: 'appointment' }));
+			const travel = await repo.tasks.insert(
+				task({ startTime: 480, duration: 45, kind: 'travel', parentId: exam.id })
+			);
+			expect(await repo.tasks.get(exam.id)).toMatchObject({ kind: 'appointment', parentId: null });
+			expect(await repo.tasks.get(travel.id)).toMatchObject({
+				kind: 'travel',
+				parentId: exam.id
+			});
+		});
+
+		test('the kind and the parent can be changed', async () => {
+			const created = await repo.tasks.insert(task());
+			const changed = await repo.tasks.update(created.id, { kind: 'appointment' });
+			expect(changed?.kind).toBe('appointment');
+			const linked = await repo.tasks.update(created.id, { parentId: 7 });
+			expect(linked?.parentId).toBe(7);
+		});
+	});
+
 	describe(`${name}: todos`, () => {
 		const todo = (overrides: Partial<NewTodo> = {}): NewTodo => ({
 			title: 'Study Math',
@@ -644,6 +672,7 @@ export function describeRepo(name: string, harness: RepoHarness) {
 				myDayEnd: 1380,
 				checkMinutes: 30,
 				breakMinutes: 10,
+				arriveEarlyMinutes: 10,
 				startWorkAt: 540,
 				locationLat: null,
 				locationLon: null,

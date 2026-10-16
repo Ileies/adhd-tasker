@@ -13,6 +13,7 @@ import type {
 	ScheduleEntry,
 	Settings,
 	Task,
+	TaskKind,
 	Todo,
 	TodoStatus
 } from '#lib/core/repo.js';
@@ -35,9 +36,13 @@ export const EXPORT_LIMITS = {
 	alarms: SCHEDULE_LIMITS.maxAlarms
 } as const;
 
-export type ExportedTask = Omit<Required<NewTask>, 'completedAt'> & {
+export type ExportedTask = Omit<Required<NewTask>, 'completedAt' | 'kind' | 'parentId'> & {
 	/** Epoch ms of Done. A file from version 1 has none. */
 	completedAt?: number | null;
+	/** A file from before appointments has none: every task is a block. */
+	kind?: TaskKind;
+	/** The appointment a travel task leads to, an index into the file's task list. */
+	parent?: number | null;
 };
 
 /** A to-do as the file holds it. `parent` is an index into the file's task list (the appointment it prepares for). */
@@ -101,6 +106,7 @@ const SETTING_KEYS = [
 	'myDayEnd',
 	'checkMinutes',
 	'breakMinutes',
+	'arriveEarlyMinutes',
 	'startWorkAt'
 ] as const satisfies readonly (keyof SettingsPatch)[];
 
@@ -147,7 +153,9 @@ export function assembleExport(rows: {
 			duration: task.duration,
 			priority: task.priority,
 			status: task.status,
-			completedAt: task.completedAt
+			completedAt: task.completedAt,
+			kind: task.kind,
+			parent: taskIndex(task.parentId)
 		})),
 		todos: todos.map((todo) => ({
 			title: todo.title,
@@ -244,6 +252,20 @@ function parseAlarmEntry(raw: unknown): ExportedAlarm | null {
 const readMoment = (value: unknown): number | null =>
 	typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
 
+const TASK_KINDS: readonly TaskKind[] = ['block', 'appointment', 'travel'];
+
+/** A file from before appointments has no kind: its tasks are the user's own. */
+const readKind = (item: unknown): TaskKind =>
+	isRecord(item) && TASK_KINDS.includes(item.kind as TaskKind) ? (item.kind as TaskKind) : 'block';
+
+/** The appointment a travel task leads to, an index into the file's tasks. Anything else is no parent. */
+const readParent = (item: unknown, taskCount: number): number | null => {
+	const parent = isRecord(item) ? item.parent : null;
+	return typeof parent === 'number' && Number.isInteger(parent) && parent >= 0 && parent < taskCount
+		? parent
+		: null;
+};
+
 const TODO_STATUSES: readonly TodoStatus[] = ['open', 'done', 'dropped', 'ended'];
 
 /** One to-do of a file, or the reason it is not valid. The user's fields go through the same rules as the screens. */
@@ -302,7 +324,11 @@ export function parseExport(raw: unknown): Parsed {
 		return fail(`The file needs a list of at most ${EXPORT_LIMITS.tasks} tasks`);
 	const tasks: ExportedTask[] = [];
 	for (const [index, item] of raw.tasks.entries()) {
-		const parsed = parseTaskInput(item, 'create');
+		// The kind and the parent have their own reading below, an unknown kind is a block rather than a refused file
+		const parsed = parseTaskInput(
+			isRecord(item) ? { ...item, kind: undefined, parentId: undefined } : item,
+			'create'
+		);
 		if (!parsed.ok) return fail(`Task ${index + 1} is not valid: ${parsed.error}`);
 		const task = parsed.value;
 		tasks.push({
@@ -313,7 +339,9 @@ export function parseExport(raw: unknown): Parsed {
 			duration: task.duration!,
 			priority: task.priority!,
 			status: (task.status as TaskStatus | undefined) ?? TaskStatus.Pending,
-			completedAt: readMoment(isRecord(item) ? item.completedAt : null)
+			completedAt: readMoment(isRecord(item) ? item.completedAt : null),
+			kind: readKind(item),
+			parent: readParent(item, raw.tasks.length)
 		});
 	}
 
@@ -418,9 +446,10 @@ export async function importExport(
 		(await repo.tasks.between(FIRST_DAY)).map((task) => [sameTask(task), task.id])
 	);
 	const ids: number[] = [];
+	const made: { id: number; parent: number }[] = [];
 	let added = 0;
 	let skipped = 0;
-	for (const task of file.tasks) {
+	for (const { parent, ...task } of file.tasks) {
 		const key = sameTask(task);
 		const there = known.get(key);
 		if (there !== undefined) {
@@ -431,7 +460,14 @@ export async function importExport(
 		const created = await repo.tasks.insert(task);
 		known.set(key, created.id);
 		ids.push(created.id);
+		if (task.kind === 'travel' && parent !== null && parent !== undefined)
+			made.push({ id: created.id, parent });
 		added++;
+	}
+	// A travel task finds its appointment once every task of the file has an id
+	for (const { id, parent } of made) {
+		const appointment = ids[parent];
+		if (appointment !== undefined) await repo.tasks.update(id, { parentId: appointment });
 	}
 
 	const knownTodos = new Set((await repo.todos.all()).map(sameTodo));

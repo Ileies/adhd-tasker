@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { saveSettings } from '#lib/autosave.js';
 	import { formatClock24 } from '#lib/format.js';
+	import { ARRIVE_EARLY_PRESETS, minutesChip, withCurrent } from '#lib/settings.js';
 	import { parseClock } from '#lib/taskform.js';
+	import PresetChips from '#lib/components/PresetChips.svelte';
 	import TimeInput from '#lib/components/TimeInput.svelte';
 
-	const { start, end, startWork }: { start: number; end: number; startWork: number } = $props();
+	const {
+		start,
+		end,
+		startWork,
+		arriveEarly
+	}: { start: number; end: number; startWork: number; arriveEarly: number } = $props();
 
 	let message = $state<string | null>(null);
 	let saved = $state(false);
@@ -26,24 +33,49 @@
 		);
 		saved = message === null;
 	}
+
+	async function putArriveEarly(arriveEarlyMinutes: number) {
+		saved = false;
+		message = await saveSettings({ ok: true, value: { arriveEarlyMinutes } });
+		saved = message === null;
+	}
+
+	const arriveChips = $derived(
+		withCurrent(ARRIVE_EARLY_PRESETS, arriveEarly).map((value) => ({
+			value,
+			label: value === 0 ? 'On the dot' : minutesChip(value)
+		}))
+	);
 </script>
 
-<form class="space-y-4" onchange={save} onsubmit={(event) => event.preventDefault()}>
-	<div class="space-y-2">
-		<p class="font-medium">My day</p>
-		<div class="flex flex-wrap items-center gap-2">
-			<TimeInput name="start" value={formatClock24(start)} label="My day starts" />
-			<span>to</span>
-			<TimeInput name="end" value={formatClock24(end % 1440)} label="My day ends" />
+<div class="space-y-4">
+	<form class="space-y-4" onchange={save} onsubmit={(event) => event.preventDefault()}>
+		<div class="space-y-2">
+			<p class="font-medium">My day</p>
+			<div class="flex flex-wrap items-center gap-2">
+				<TimeInput name="start" value={formatClock24(start)} label="My day starts" />
+				<span>to</span>
+				<TimeInput name="end" value={formatClock24(end % 1440)} label="My day ends" />
+			</div>
 		</div>
-	</div>
+		<div class="space-y-2">
+			<p class="font-medium">Start working at</p>
+			<TimeInput name="work" value={formatClock24(startWork)} label="Start working at" />
+			<p class="text-muted-foreground text-sm">
+				Until you tap Start, the app calls you from here on.
+			</p>
+		</div>
+	</form>
 	<div class="space-y-2">
-		<p class="font-medium">Start working at</p>
-		<TimeInput name="work" value={formatClock24(startWork)} label="Start working at" />
-		<p class="text-muted-foreground text-sm">
-			Until you tap Start, the app calls you from here on.
-		</p>
+		<p class="font-medium">Arrive early by</p>
+		<PresetChips
+			label="Minutes before an appointment that travel to it ends"
+			options={arriveChips}
+			value={arriveEarly}
+			onselect={putArriveEarly}
+		/>
+		<p class="text-muted-foreground text-sm">Travel to an appointment ends this long before it.</p>
 	</div>
 	{#if message}<p class="text-destructive text-sm" role="alert">{message}</p>{/if}
 	{#if saved}<p class="text-success text-sm" role="status">Saved.</p>{/if}
-</form>
+</div>

@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { DEFAULT_SETTINGS } from '#lib/core/defaults.js';
 import {
+	ARRIVE_EARLY_PRESETS,
 	BUDGET_PRESETS,
 	CHECK_IN_PRESETS,
 	BREAK_MINUTES_PRESETS,
@@ -66,6 +67,8 @@ describe('parseSettingsPatch', () => {
 		['a check interval over two hours', { checkMinutes: 121 }],
 		['a break of two minutes', { breakMinutes: 2 }],
 		['a break of an hour', { breakMinutes: 60 }],
+		['arriving a day early', { arriveEarlyMinutes: 61 }],
+		['arriving a negative time early', { arriveEarlyMinutes: -5 }],
 		['a start of work past midnight', { startWorkAt: 1440 }]
 	])('rejects %s', (_name, body) => {
 		expect(parseSettingsPatch(body).ok).toBe(false);
@@ -118,6 +121,8 @@ describe('presets', () => {
 			expect(parseSettingsPatch({ checkMinutes: value }).ok).toBe(true);
 		for (const value of BREAK_MINUTES_PRESETS)
 			expect(parseSettingsPatch({ breakMinutes: value }).ok).toBe(true);
+		for (const value of ARRIVE_EARLY_PRESETS)
+			expect(parseSettingsPatch({ arriveEarlyMinutes: value }).ok).toBe(true);
 		for (const value of BUDGET_PRESETS)
 			expect(parseSettingsPatch({ dailyTokenBudget: value }).ok).toBe(true);
 	});
@@ -128,6 +133,7 @@ describe('presets', () => {
 		expect(CHECK_IN_PRESETS).toContain(DEFAULT_SETTINGS.checkInMinutes);
 		expect(CHECK_MINUTES_PRESETS).toContain(DEFAULT_SETTINGS.checkMinutes);
 		expect(BREAK_MINUTES_PRESETS).toContain(DEFAULT_SETTINGS.breakMinutes);
+		expect(ARRIVE_EARLY_PRESETS).toContain(DEFAULT_SETTINGS.arriveEarlyMinutes);
 	});
 
 	test('a stored value that is no preset joins the choices in order', () => {

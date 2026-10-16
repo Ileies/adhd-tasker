@@ -85,6 +85,7 @@
 					start={settings.myDayStart}
 					end={settings.myDayEnd}
 					startWork={settings.startWorkAt}
+					arriveEarly={settings.arriveEarlyMinutes}
 				/>
 			{/if}
 		</Card.Content>

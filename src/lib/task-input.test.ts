@@ -51,6 +51,33 @@ describe('parseTaskInput create', () => {
 	});
 });
 
+describe('parseTaskInput kinds', () => {
+	test('a kind and a parent are read when given', () => {
+		const result = parseTaskInput({ ...valid, kind: 'travel', parentId: 7 }, 'create');
+		expect(result.ok && result.value).toMatchObject({ kind: 'travel', parentId: 7 });
+	});
+
+	test('both are left out when not given, the rules fill the defaults', () => {
+		const result = parseTaskInput(valid, 'create');
+		expect(result.ok && result.value).not.toHaveProperty('kind');
+		expect(result.ok && result.value).not.toHaveProperty('parentId');
+	});
+
+	test('a parent can be cleared with null', () => {
+		const result = parseTaskInput({ id: 3, parentId: null }, 'update');
+		expect(result).toEqual({ ok: true, value: { parentId: null } });
+	});
+
+	test.each([
+		['an unknown kind', { kind: 'party' }],
+		['a kind that is not text', { kind: 3 }],
+		['a parent that is no id', { parentId: 'x' }],
+		['a fractional parent', { parentId: 1.5 }]
+	])('rejects %s', (_name, extra) => {
+		expect(parseTaskInput({ ...valid, ...extra }, 'create').ok).toBe(false);
+	});
+});
+
 describe('parseTaskInput update', () => {
 	test('only the given fields end up in the patch', () => {
 		expect(parseTaskInput({ id: 3, startTime: 600, status: 'completed' }, 'update')).toEqual({

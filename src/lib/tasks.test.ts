@@ -16,6 +16,8 @@ const task = (id: number, patch: Partial<Task> = {}): Task => ({
 	priority: Priority.Medium,
 	status: TaskStatus.Pending,
 	completedAt: null,
+	kind: 'block',
+	parentId: null,
 	...patch
 });
 

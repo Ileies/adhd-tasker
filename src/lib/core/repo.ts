@@ -10,6 +10,12 @@ import type { Repeat, ScheduleKind } from '#lib/schedule.js';
 import type { Tone } from '#lib/tones.js';
 import type { Priority, TaskStatus } from '#lib/types.js';
 
+/**
+ * `block`: a task at a time of the user's own, time up when it runs out. `appointment`: somebody else's time (a
+ * meeting, an exam), it ends on its own. `travel`: getting to an appointment, `parentId` is that appointment.
+ */
+export type TaskKind = 'block' | 'appointment' | 'travel';
+
 export interface Task {
 	id: number;
 	title: string;
@@ -21,12 +27,17 @@ export interface Task {
 	status: TaskStatus;
 	/** Epoch ms of Done, `null` while open (and for tasks finished before the app kept it). */
 	completedAt: number | null;
+	kind: TaskKind;
+	/** The appointment a travel task leads to, `null` for everything else. */
+	parentId: number | null;
 }
 
-/** What a new task needs, the repo assigns the id. `status` defaults to pending, `completedAt` to null. */
-export type NewTask = Omit<Task, 'id' | 'status' | 'completedAt'> & {
+/** What a new task needs, the repo assigns the id. `status` defaults to pending, `completedAt` and `parentId` to null, `kind` to block. */
+export type NewTask = Omit<Task, 'id' | 'status' | 'completedAt' | 'kind' | 'parentId'> & {
 	status?: TaskStatus;
 	completedAt?: number | null;
+	kind?: TaskKind;
+	parentId?: number | null;
 };
 export type TaskPatch = Partial<Omit<Task, 'id'>>;
 
@@ -131,6 +142,8 @@ export interface Settings {
 	checkMinutes: number;
 	/** How long a break runs, the ladder's second break and the offered one are set from it (`docs/flow-plan.md` 5.7). */
 	breakMinutes: number;
+	/** Minutes before an appointment that travel to it ends, so the user is there early (`docs/flow-plan.md` 5.10). */
+	arriveEarlyMinutes: number;
 	/** Minutes since midnight: from here on the app calls until the user starts (`docs/flow-plan.md` 5.14). */
 	startWorkAt: number;
 	/** Where the user is, for the theme. All four are set or all are `null` (see `#lib/location.js`). */

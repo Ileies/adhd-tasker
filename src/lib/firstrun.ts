@@ -34,7 +34,9 @@ export function welcomeExample(): { hero: HeroState<Task>; now: number } {
 		duration: 60,
 		priority: Priority.High,
 		status: TaskStatus.Pending,
-		completedAt: null
+		completedAt: null,
+		kind: 'block',
+		parentId: null
 	};
 	const now = 14 * 60 + 32;
 	const hero = timeBoundState(rank([task], now), now, { overrunMinutes: 15 })!;

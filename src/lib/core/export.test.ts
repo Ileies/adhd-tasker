@@ -156,11 +156,27 @@ describe('buildExport', () => {
 describe('parseExport', () => {
 	test('a valid file comes back as it is', () => {
 		const valid = file({
-			tasks: [task],
+			tasks: [{ ...task, kind: 'block', parent: null }],
 			alarms: [alarm],
 			settings: { showClock: true, timezone: 'Europe/Berlin' }
 		});
 		expect(parseExport(JSON.parse(JSON.stringify(valid)))).toEqual({ ok: true, value: valid });
+	});
+
+	test('a file from before appointments makes every task a block', () => {
+		expect(parseExport(file({ tasks: [task] }))).toMatchObject({
+			ok: true,
+			value: { tasks: [{ kind: 'block', parent: null }] }
+		});
+	});
+
+	test('a kind that is not known and a parent that is not in the file are left out', () => {
+		const result = parseExport(
+			file({
+				tasks: [{ ...task, kind: 'party', parent: 5 } as unknown as typeof task]
+			})
+		);
+		expect(result).toMatchObject({ ok: true, value: { tasks: [{ kind: 'block', parent: null }] } });
 	});
 
 	test('alarms and settings may be missing', () => {
@@ -251,6 +267,54 @@ describe('describeImport', () => {
 	});
 });
 
+describe('appointments in a file', () => {
+	test('travel keeps its appointment through an export and an import into another plan', async () => {
+		const from = (await testCtx()).repo;
+		const exam = await from.tasks.insert({
+			...task,
+			title: 'Exam Math',
+			startTime: 720,
+			kind: 'appointment'
+		});
+		await from.tasks.insert({
+			...task,
+			title: 'Travel to Exam Math',
+			startTime: 480,
+			duration: 45,
+			kind: 'travel',
+			parentId: exam.id
+		});
+		const exported = await buildExport(from, NOW);
+		expect(exported.tasks.map((item) => [item.kind, item.parent])).toEqual([
+			['travel', 1],
+			['appointment', null]
+		]);
+
+		const to = (await testCtx()).repo;
+		await to.tasks.insert({ ...task, title: 'Something else', startTime: 100 });
+		await importExport(to, file(exported), NOW);
+		const tasks = await to.tasks.between('0000-01-01');
+		const appointment = tasks.find((item) => item.kind === 'appointment')!;
+		const travel = tasks.find((item) => item.kind === 'travel')!;
+		expect(travel.parentId).toBe(appointment.id);
+		expect(appointment.parentId).toBeNull();
+	});
+
+	test('a travel task whose appointment is already there is linked to the one that is', async () => {
+		const { repo } = await testCtx();
+		const there = await repo.tasks.insert({ ...task, kind: 'appointment' });
+		const travel = { ...task, startTime: 480, duration: 45, kind: 'travel' as const, parent: 1 };
+		await importExport(
+			repo,
+			file({ tasks: [travel, { ...task, kind: 'appointment', parent: null }] }),
+			NOW
+		);
+		const tasks = await repo.tasks.between('0000-01-01');
+		expect(tasks).toHaveLength(2);
+		expect(tasks.find((item) => item.kind === 'travel')?.parentId).toBe(there.id);
+	});
+});
+
 describe('importExport', () => {
 	test('adds the tasks and alarms and applies the settings', async () => {
 		const { repo } = await testCtx();
@@ -260,7 +324,7 @@ describe('importExport', () => {
 			NOW
 		);
 		expect(result).toEqual({ tasks: 1, skipped: 0, alarms: 1, todos: 0 });
-		expect(await plan(repo)).toEqual([task]);
+		expect(await plan(repo)).toEqual([{ ...task, kind: 'block', parentId: null }]);
 		expect((await repo.schedule.pending())[0]).toMatchObject({
 			label: 'Stretch',
 			createdBy: 'user'
