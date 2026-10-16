@@ -20,7 +20,10 @@ const NOT_TOGGLES: EventType[] = [
 	'todo.created',
 	'todo.updated',
 	'todo.completed',
-	'todo.deleted'
+	'todo.deleted',
+	'todo.ended',
+	// Logged for the assistant to answer with the flow plan's phase 6 (steps for an appointment)
+	'appointment.added'
 ];
 /** Event types the user can switch on or off. */
 export const REACTION_EVENTS = EVENT_TYPES.filter((type) => !NOT_TOGGLES.includes(type));

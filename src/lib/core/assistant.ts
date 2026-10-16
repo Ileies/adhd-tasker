@@ -1,3 +1,8 @@
+import {
+	followAppointment,
+	removeAppointmentParts,
+	type TaskChange
+} from '#lib/core/appointments.js';
 import { AssistantError, type Ctx } from '#lib/core/context.js';
 import { emit, emitChange } from '#lib/core/events.js';
 import { describePending, runScheduleTool } from '#lib/core/schedule.js';
@@ -52,9 +57,25 @@ export function parseMessages(value: unknown): ChatMessage[] {
 		.map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE) }));
 }
 
+/** A change the rules made to follow the assistant's (travel with its appointment), logged so it can be undone alone. */
+async function recordFollow(
+	follow: TaskChange,
+	record: (tool: string, before: Task | null, after: Task | null) => Promise<number>
+): Promise<Change> {
+	const { before, after } = follow;
+	const id = await record(after ? 'update_task' : 'delete_task', before, after);
+	return {
+		id,
+		summary: after ? `Moved ${before.title} along` : `Deleted ${before.title}`,
+		dates: [...new Set([before.date, after?.date ?? before.date])]
+	};
+}
+
 export function describe(task: Task) {
 	const done = task.status === TaskStatus.Completed ? ' (done)' : '';
-	return `#${task.id} ${task.date} ${formatClock24(task.startTime)}-${formatClock24(task.startTime + task.duration)} P${task.priority} ${task.title}${done}`;
+	// An appointment is somebody else's time and travel moves with it: the model should not treat them as its own tasks
+	const kind = task.kind === 'block' || task.kind === undefined ? '' : ` (${task.kind})`;
+	return `#${task.id} ${task.date} ${formatClock24(task.startTime)}-${formatClock24(task.startTime + task.duration)} P${task.priority} ${task.title}${kind}${done}`;
 }
 
 function overlapsOf(task: Task, sameDay: Task[]) {
@@ -155,6 +176,9 @@ export async function runTool(
 				summary: `Updated ${task.title}`,
 				dates: [...new Set([before.date, task.date])]
 			});
+			// The travel to an appointment moves with it, each of its changes can be undone on its own
+			for (const follow of await followAppointment(ctx, before, task, 'agent'))
+				changes.push(await recordFollow(follow, record));
 			return {
 				updated: describe(task),
 				overlaps_with: overlapsOf(task, await ctx.repo.tasks.between(task.date, task.date))
@@ -168,6 +192,8 @@ export async function runTool(
 			const id = await record('delete_task', before, null);
 			await emitChange(ctx, before, null, 'agent');
 			changes.push({ id, summary: `Deleted ${before.title}`, dates: [before.date] });
+			for (const follow of await removeAppointmentParts(ctx, before, 'agent'))
+				changes.push(await recordFollow(follow, record));
 			return { deleted: describe(before) };
 		}
 		default:

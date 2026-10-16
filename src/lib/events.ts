@@ -16,6 +16,10 @@ export const EVENT_TYPES = [
 	'todo.updated',
 	'todo.completed',
 	'todo.deleted',
+	/** The appointment it prepared for started: it stays at the progress it had. */
+	'todo.ended',
+	/** An appointment came into the plan without preparation (an imported one), the assistant may offer steps. */
+	'appointment.added',
 	'stuck.pressed',
 	'user.message',
 	'alarm.fired',
@@ -237,6 +241,10 @@ function describeBase(type: EventType, payload: Record<string, unknown>): string
 				: `To-do ${title} was marked done`;
 		case 'todo.deleted':
 			return `To-do ${title} was deleted`;
+		case 'todo.ended':
+			return `To-do ${title} ended with ${typeof payload.appointment === 'string' ? `"${payload.appointment}"` : 'its appointment'}${typeof payload.progress === 'number' ? ` at ${payload.progress} %` : ''}`;
+		case 'appointment.added':
+			return `Appointment ${title} was added${typeof payload.date === 'string' ? ` on ${payload.date}` : ''}${clock}, nobody is preparing for it yet`;
 		case 'stuck.pressed':
 			return `The user pressed "I'm stuck" on ${title} and said: "${payload.reason}"`;
 		case 'user.message':

@@ -333,6 +333,72 @@ describe('runAssistant', () => {
 	});
 });
 
+describe('an appointment and its travel through the assistant', () => {
+	const examWithTravel = async () => {
+		const made = await testCtx();
+		const exam = await addTask(made.repo, {
+			title: 'Exam Math',
+			startTime: 12 * 60,
+			duration: 120,
+			kind: 'appointment'
+		});
+		const travel = await addTask(made.repo, {
+			title: 'Travel to Exam Math',
+			startTime: 11 * 60 + 5,
+			duration: 45,
+			kind: 'travel',
+			parentId: exam.id
+		});
+		return { made, exam, travel };
+	};
+	const run = async (made: Made, name: string, args: unknown, changes: Change[]) =>
+		runTool(made.ctx, await made.repo.settings.get(), name, JSON.stringify(args), changes);
+
+	test('moving the exam moves its travel and logs both changes for undo', async () => {
+		const { made, exam, travel } = await examWithTravel();
+		const changes: Change[] = [];
+		await run(made, 'update_task', { id: exam.id, start: '14:00' }, changes);
+		expect((await made.repo.tasks.get(travel.id))?.startTime).toBe(13 * 60 + 5);
+		expect(changes.map((change) => change.summary)).toEqual([
+			'Updated Exam Math',
+			'Moved Travel to Exam Math along'
+		]);
+		expect((await made.repo.actions.recent(5)).map((action) => action.tool)).toEqual([
+			'update_task',
+			'update_task'
+		]);
+	});
+
+	test('the travel can be put back on its own', async () => {
+		const { made, exam, travel } = await examWithTravel();
+		const changes: Change[] = [];
+		await run(made, 'update_task', { id: exam.id, start: '14:00' }, changes);
+		await undoAction(made.ctx, changes[1].id);
+		expect(await made.repo.tasks.get(travel.id)).toEqual(travel);
+		expect((await made.repo.tasks.get(exam.id))?.startTime).toBe(14 * 60);
+	});
+
+	test('deleting the exam deletes its travel, and undo brings the travel back under its id', async () => {
+		const { made, exam, travel } = await examWithTravel();
+		const changes: Change[] = [];
+		await run(made, 'delete_task', { id: exam.id }, changes);
+		expect(await made.repo.tasks.get(travel.id)).toBeNull();
+		expect(changes.map((change) => change.summary)).toEqual([
+			'Deleted Exam Math',
+			'Deleted Travel to Exam Math'
+		]);
+		await undoAction(made.ctx, changes[1].id);
+		expect(await made.repo.tasks.get(travel.id)).toEqual(travel);
+	});
+
+	test('the model is told which tasks are appointments and travel', async () => {
+		const { exam, travel } = await examWithTravel();
+		expect(describeTask(exam)).toContain('(appointment)');
+		expect(describeTask(travel)).toContain('(travel)');
+		expect(describeTask({ ...exam, kind: 'block' })).not.toContain('(');
+	});
+});
+
 describe('undoAction', () => {
 	const change = async (made: Made, name: string, args: unknown) => {
 		const changes: Change[] = [];

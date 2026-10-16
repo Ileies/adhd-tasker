@@ -1,3 +1,4 @@
+import { endPreparation } from '#lib/core/appointments.js';
 import type { Ctx } from '#lib/core/context.js';
 import { describe, runTool, type Change } from '#lib/core/assistant.js';
 import { emit } from '#lib/core/events.js';
@@ -222,11 +223,13 @@ export async function watch(ctx: Ctx, settings: Settings) {
 	const at = new Date(nowMs);
 	const today = todayIn(settings.timezone, at);
 	const now = minutesNow(settings.timezone, at);
-	const [todays, todos, log] = await Promise.all([
+	const [todays, open, log] = await Promise.all([
 		ctx.repo.tasks.between(today, today),
 		loadTodos(ctx),
 		ctx.repo.flow.day(today)
 	]);
+	// What prepared for an appointment that started ends at the progress it had
+	const todos = await endPreparation(ctx, open, settings.timezone);
 	const state = flow({
 		date: today,
 		now,

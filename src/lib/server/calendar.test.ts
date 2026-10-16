@@ -12,7 +12,14 @@ import {
 	syncedUsers
 } from '#lib/server/calendar.js';
 import { db } from '#lib/server/db/index.js';
-import { calendarEvents, googleTokens, tasks, users } from '#lib/server/db/schema.js';
+import {
+	calendarEvents,
+	events,
+	googleTokens,
+	tasks,
+	todos,
+	users
+} from '#lib/server/db/schema.js';
 import { API, GoogleAuthError, TOKEN_URL } from '#lib/server/google-calendar.js';
 import { clearAccessTokens, storeRefreshToken } from '#lib/server/google-tokens.js';
 import { fakeFetch } from '#test/fakes.js';
@@ -248,6 +255,95 @@ describe('syncCalendars', () => {
 		expect(await syncCalendars(TEST_EMAIL, NOW + 300_000)).toEqual({ changed: true });
 		expect(titles()).toEqual(['lunch']);
 		expect(db.select().from(calendarEvents).all()).toHaveLength(1);
+	});
+
+	describe('appointments from Google', () => {
+		const withTravel = async () => {
+			await link('all', [timed('exam', '2026-10-15T12:00', '2026-10-15T14:00')]);
+			const exam = db.select().from(tasks).get()!;
+			const travel = await makeTask({
+				title: 'Travel to exam',
+				date: '2026-10-15',
+				startTime: 12 * 60 - 55,
+				duration: 45,
+				kind: 'travel',
+				parentId: exam.id
+			});
+			const [prep] = await db
+				.insert(todos)
+				.values({
+					email: TEST_EMAIL,
+					title: 'Study',
+					priority: 3,
+					createdAt: NOW,
+					parentId: exam.id,
+					dueDate: '2026-10-15',
+					dueTime: 12 * 60 - 55
+				})
+				.returning();
+			return { exam, travel, prep };
+		};
+
+		test('an imported event is an appointment', async () => {
+			await link('all', [standup()]);
+			expect(db.select().from(tasks).get()?.kind).toBe('appointment');
+		});
+
+		test('an event that moves takes its travel and its preparation along', async () => {
+			const { travel, prep } = await withTravel();
+			items = [timed('exam', '2026-10-16T14:00', '2026-10-16T16:00', '"2"')];
+			await syncCalendars(TEST_EMAIL, NOW + 300_000);
+			expect(db.select().from(tasks).where(eq(tasks.id, travel.id)).get()).toMatchObject({
+				date: '2026-10-16',
+				startTime: 14 * 60 - 55,
+				duration: 45
+			});
+			expect(db.select().from(todos).where(eq(todos.id, prep.id)).get()).toMatchObject({
+				dueDate: '2026-10-16',
+				dueTime: 14 * 60 - 55
+			});
+		});
+
+		test('an event Google deleted takes its travel with it and leaves the preparation due', async () => {
+			const { travel, prep } = await withTravel();
+			items = [];
+			await syncCalendars(TEST_EMAIL, NOW + 300_000);
+			expect(db.select().from(tasks).where(eq(tasks.id, travel.id)).get()).toBeUndefined();
+			expect(db.select().from(todos).where(eq(todos.id, prep.id)).get()).toMatchObject({
+				parentId: null,
+				dueDate: '2026-10-15',
+				description: 'exam was removed.'
+			});
+		});
+
+		test('an appointment that comes in later is an event, once, and a first import raises none', async () => {
+			await link('all', [standup()]);
+			expect(db.select().from(events).all()).toEqual([]);
+			items = [standup(), lunch()];
+			await syncCalendars(TEST_EMAIL, NOW + 300_000);
+			await syncCalendars(TEST_EMAIL, NOW + 600_000);
+			expect(
+				db
+					.select()
+					.from(events)
+					.all()
+					.map((event) => [event.type, event.origin, (event.payload as { title: string }).title])
+			).toEqual([['appointment.added', 'system', 'lunch']]);
+		});
+
+		test("another user's travel is never touched", async () => {
+			await withTravel();
+			await makeUser({ email: 'other@example.com' });
+			const theirs = await makeTask({
+				email: 'other@example.com',
+				kind: 'travel',
+				parentId: 1,
+				title: 'Theirs'
+			});
+			items = [];
+			await syncCalendars(TEST_EMAIL, NOW + 300_000);
+			expect(db.select().from(tasks).where(eq(tasks.id, theirs.id)).get()).toBeDefined();
+		});
 	});
 
 	test("another user's tasks are never touched", async () => {

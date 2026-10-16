@@ -24,6 +24,10 @@ import {
 	type PlanSlot,
 	type Preview
 } from '#lib/core/calendar.js';
+import { followAppointment, removeAppointmentParts } from '#lib/core/appointments.js';
+import { emit } from '#lib/core/events.js';
+import type { Task } from '#lib/core/repo.js';
+import { serverCtx } from '#lib/server/ctx.js';
 import { db } from '#lib/server/db/index.js';
 import { calendarEvents, calendarSync, tasks, users } from '#lib/server/db/schema.js';
 import { GoogleAuthError, listCalendars, listEvents } from '#lib/server/google-calendar.js';
@@ -122,8 +126,25 @@ export async function previewCalendars(
 	});
 }
 
+/** What a sync did to appointments, for the rules that go with them to follow once the plan is written. */
+interface Touched {
+	/** Appointments that Google moved or changed: before and after. */
+	changed: [Task, Task][];
+	/** Appointments that went away (the event was deleted, or it was cut into other pieces). */
+	removed: Task[];
+	/** Appointments that came in, to tell the assistant nobody is preparing for them. */
+	added: number[];
+}
+
 /** Tasks for the pieces of an event that are today or later, the days before are history. */
-function insertEvent(tx: Tx, email: string, from: string, item: Fetched, makeTasks: boolean) {
+function insertEvent(
+	tx: Tx,
+	email: string,
+	from: string,
+	item: Fetched,
+	makeTasks: boolean,
+	added?: number[]
+) {
 	const { mapped, event, calendarId } = item;
 	let taskIds: number[] = [];
 	if (mapped.kind === 'timed' && makeTasks) {
@@ -136,6 +157,7 @@ function insertEvent(tx: Tx, email: string, from: string, item: Fetched, makeTas
 					.returning({ id: tasks.id })
 					.get().id
 		);
+		added?.push(...taskIds);
 	}
 	tx.insert(calendarEvents)
 		.values({
@@ -196,7 +218,14 @@ const asKnown = (row: typeof calendarEvents.$inferSelect): KnownEvent => ({
 	dates: row.dates
 });
 
-function changeEvent(tx: Tx, email: string, from: string, known: KnownEvent, item: Fetched) {
+function changeEvent(
+	tx: Tx,
+	email: string,
+	from: string,
+	known: KnownEvent,
+	item: Fetched,
+	touched: Touched
+) {
 	const { mapped, event } = item;
 	const where = and(
 		eq(calendarEvents.email, email),
@@ -221,16 +250,16 @@ function changeEvent(tx: Tx, email: string, from: string, known: KnownEvent, ite
 		if (existing.length > 0) {
 			if (existing.length === 1 && pieces.length === 1) {
 				const [task] = piecesToTasks({ ...mapped, pieces });
-				tx.update(tasks)
-					.set({
-						title: task.title,
-						date: task.date,
-						startTime: task.startTime,
-						duration: task.duration
-					})
-					.where(eq(tasks.id, existing[0].id))
-					.run();
+				const fields = {
+					title: task.title,
+					date: task.date,
+					startTime: task.startTime,
+					duration: task.duration
+				};
+				tx.update(tasks).set(fields).where(eq(tasks.id, existing[0].id)).run();
+				touched.changed.push([existing[0], { ...existing[0], ...fields }]);
 			} else {
+				touched.removed.push(...existing);
 				tx.delete(tasks)
 					.where(
 						and(
@@ -265,7 +294,8 @@ async function runSync(email: string, now: number): Promise<{ changed: boolean }
 	if (state.status !== 'active') return { changed: false };
 	return guarded(email, async () => {
 		const { fetched, window } = await fetchAll(email, now, state.calendars);
-		return db.transaction((tx) => {
+		const touched: Touched = { changed: [], removed: [], added: [] };
+		const result = db.transaction((tx) => {
 			const known = tx
 				.select()
 				.from(calendarEvents)
@@ -273,14 +303,22 @@ async function runSync(email: string, now: number): Promise<{ changed: boolean }
 				.all()
 				.map(asKnown);
 			const plan = planSync(fetched, known, window);
-			for (const item of plan.add) insertEvent(tx, email, window.from, item, true);
+			for (const item of plan.add) insertEvent(tx, email, window.from, item, true, touched.added);
 			for (const { known: before, fetched: item } of plan.change)
-				changeEvent(tx, email, window.from, before, item);
+				changeEvent(tx, email, window.from, before, item, touched);
 			for (const gone of plan.remove) {
-				if (gone.taskIds.length > 0)
+				if (gone.taskIds.length > 0) {
+					touched.removed.push(
+						...tx
+							.select()
+							.from(tasks)
+							.where(and(eq(tasks.email, email), inArray(tasks.id, gone.taskIds)))
+							.all()
+					);
 					tx.delete(tasks)
 						.where(and(eq(tasks.email, email), inArray(tasks.id, gone.taskIds)))
 						.run();
+				}
 				tx.delete(calendarEvents)
 					.where(
 						and(
@@ -294,7 +332,33 @@ async function runSync(email: string, now: number): Promise<{ changed: boolean }
 			tx.update(calendarSync).set({ syncedAt: now }).where(eq(calendarSync.email, email)).run();
 			return { changed: plan.add.length + plan.change.length + plan.remove.length > 0 };
 		});
+		await followGoogle(email, touched);
+		return result;
 	});
+}
+
+/**
+ * Google moved, changed or deleted appointments: their travel and preparation follow (`core/appointments.ts`, the same
+ * rules as an edit on Plan), and an appointment that came in without anybody preparing for it is an event the assistant
+ * may answer.
+ */
+async function followGoogle(email: string, touched: Touched) {
+	if (touched.changed.length + touched.removed.length + touched.added.length === 0) return;
+	const ctx = serverCtx(email);
+	for (const [before, after] of touched.changed)
+		await followAppointment(ctx, before, after, 'system');
+	for (const task of touched.removed) await removeAppointmentParts(ctx, task, 'system');
+	for (const id of touched.added) {
+		const task = await ctx.repo.tasks.get(id);
+		if (task?.kind === 'appointment')
+			await emit(
+				ctx,
+				'appointment.added',
+				{ taskId: task.id, title: task.title, date: task.date, startTime: task.startTime },
+				'system',
+				`appointment:${task.id}`
+			);
+	}
 }
 
 const running = new Map<string, Promise<{ changed: boolean }>>();
