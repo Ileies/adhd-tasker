@@ -11,7 +11,17 @@ export const isAutonomy = (value: unknown): value is Autonomy =>
  * agent's own appointment (it is still bound by autonomy, quiet hours, rate limit and budget), and "I'm stuck" is
  * a request for help the user just made.
  */
-const NOT_TOGGLES: EventType[] = ['user.message', 'alarm.fired', 'wakeup.fired', 'stuck.pressed'];
+const NOT_TOGGLES: EventType[] = [
+	'user.message',
+	'alarm.fired',
+	'wakeup.fired',
+	'stuck.pressed',
+	// Logged for the activity page, the assistant only learns to react to to-dos with the flow plan's phase 6
+	'todo.created',
+	'todo.updated',
+	'todo.completed',
+	'todo.deleted'
+];
 /** Event types the user can switch on or off. */
 export const REACTION_EVENTS = EVENT_TYPES.filter((type) => !NOT_TOGGLES.includes(type));
 /** Plan edits and every switch are too frequent to react to by default, the user can opt in. */

@@ -1,5 +1,6 @@
 import { rank, switchReason, type RankTask } from '#lib/priority.js';
 import { formatClock24 } from '#lib/format.js';
+import type { Todo } from '#lib/core/repo.js';
 import { Priority, TaskStatus, type Task } from '#lib/types.js';
 
 /** Everything the agent can observe. `origin` says who caused it, agent events never wake the agent again. */
@@ -11,6 +12,10 @@ export const EVENT_TYPES = [
 	'task.switched',
 	'task.missed',
 	'task.overrun',
+	'todo.created',
+	'todo.updated',
+	'todo.completed',
+	'todo.deleted',
 	'stuck.pressed',
 	'user.message',
 	'alarm.fired',
@@ -142,11 +147,64 @@ export function describeChange(
 	};
 }
 
+type ChangeTodo = Pick<
+	Todo,
+	| 'id'
+	| 'title'
+	| 'status'
+	| 'priority'
+	| 'estimate'
+	| 'dueDate'
+	| 'dueTime'
+	| 'notBefore'
+	| 'parentId'
+	| 'nextStep'
+>;
+const TODO_WATCHED = [
+	'title',
+	'priority',
+	'estimate',
+	'dueDate',
+	'dueTime',
+	'notBefore',
+	'parentId',
+	'nextStep'
+] as const;
+
+/**
+ * The event a to-do edit amounts to, `null` when nothing a person would notice changed. Progress and time spent
+ * are not watched: they change with every check and are not news. Done and reopened are `todo.completed`.
+ */
+export function describeTodoChange(
+	before: ChangeTodo | null,
+	after: ChangeTodo | null
+): { type: EventType; payload: Record<string, unknown> } | null {
+	const todo = after ?? before;
+	if (!todo) return null;
+	const base = { todoId: todo.id, title: todo.title, dueDate: todo.dueDate };
+
+	if (!before) return { type: 'todo.created', payload: base };
+	if (!after) return { type: 'todo.deleted', payload: base };
+
+	const wasDone = before.status === 'done';
+	const isDone = after.status === 'done';
+	if (wasDone !== isDone)
+		return { type: 'todo.completed', payload: { ...base, completed: isDone } };
+
+	const changed: string[] = TODO_WATCHED.filter((field) => before[field] !== after[field]);
+	if (before.status !== after.status) changed.push('status');
+	if (changed.length === 0) return null;
+	return { type: 'todo.updated', payload: { ...base, changed } };
+}
+
 /** One line per event for the model and for the activity log. Titles are the user's data, so they are quoted. */
 export function describeEvent(type: EventType, payload: Record<string, unknown>): string {
 	const line = describeBase(type, payload);
 	return payload.undoOfAgentChange ? `${line} (the user undid a change the assistant made)` : line;
 }
+
+const due = (payload: Record<string, unknown>) =>
+	typeof payload.dueDate === 'string' ? `, due ${payload.dueDate}` : '';
 
 function describeBase(type: EventType, payload: Record<string, unknown>): string {
 	const title = typeof payload.title === 'string' ? `"${payload.title}"` : 'a task';
@@ -169,6 +227,16 @@ function describeBase(type: EventType, payload: Record<string, unknown>): string
 			return `Task ${title} was not finished, its time ended ${payload.minutesOver} minutes ago`;
 		case 'task.overrun':
 			return `Task ${title} is still not marked done ${payload.minutesOver} minutes after its planned end`;
+		case 'todo.created':
+			return `To-do ${title} was added${due(payload)}`;
+		case 'todo.updated':
+			return `To-do ${title} was changed (${Array.isArray(payload.changed) ? payload.changed.join(', ') : 'details'})`;
+		case 'todo.completed':
+			return payload.completed === false
+				? `To-do ${title} was reopened`
+				: `To-do ${title} was marked done`;
+		case 'todo.deleted':
+			return `To-do ${title} was deleted`;
 		case 'stuck.pressed':
 			return `The user pressed "I'm stuck" on ${title} and said: "${payload.reason}"`;
 		case 'user.message':

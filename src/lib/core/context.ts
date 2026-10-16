@@ -12,6 +12,10 @@ import type { Repo } from '#lib/core/repo.js';
 export type Hint =
 	| { type: 'agent' }
 	| { type: 'schedule' }
+	/** To-dos changed, fetch them again. */
+	| { type: 'todos' }
+	/** The flow log got a row, fetch today's rows again. */
+	| { type: 'flow' }
 	| { type: 'alarm'; id: number; fireAt: number; label: string; tone: Tone; durationMin: number }
 	| { type: 'tone'; tone: Tone }
 	/** Something about Google Calendar to tell the user, the plan was read again. */

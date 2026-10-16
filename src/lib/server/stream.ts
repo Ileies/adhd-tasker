@@ -7,6 +7,10 @@ export type StreamMessage =
 	| { type: 'agent' }
 	/** Alarms or wakeups changed, fetch `/schedule`. */
 	| { type: 'schedule' }
+	/** To-dos changed, fetch `/todos`. */
+	| { type: 'todos' }
+	/** The flow log got a row, fetch `/flow`. */
+	| { type: 'flow' }
 	| { type: 'alarm'; id: number; fireAt: number; label: string; tone: unknown; durationMin: number }
 	/** An agent tone, played right now on the display device. */
 	| { type: 'tone'; tone: unknown }
