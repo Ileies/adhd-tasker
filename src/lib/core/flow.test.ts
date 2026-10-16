@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { AssistantError } from '#lib/core/context.js';
 import { CLOCK_SKEW_MS, loadFlow, recordFlow } from '#lib/core/flow.js';
+import { createTodo, updateTodo } from '#lib/core/todos.js';
 import { NOW, testCtx } from '#test/ctx.js';
 
 const failure = async (work: Promise<unknown>) => {
@@ -81,5 +82,110 @@ describe('recordFlow', () => {
 	test('anything that is not an object answers 400', async () => {
 		const { ctx } = await testCtx();
 		expect((await failure(recordFlow(ctx, null))).status).toBe(400);
+	});
+});
+
+describe('recordFlow, an answered check', () => {
+	const asked = async (estimate: number | null = 300) => {
+		const made = await testCtx();
+		const todo = await createTodo(made.ctx, { title: 'Study B', estimate });
+		return { ...made, todo };
+	};
+	const answer = { before: 0, after: 20, minutes: 30 };
+
+	test('writes the progress and the time spent on the to-do, and keeps the answer in the row', async () => {
+		const { ctx, repo, todo, hints } = await asked();
+		const row = await recordFlow(ctx, { type: 'check', todoId: todo.id, data: answer });
+		expect(row?.data).toEqual({ ...answer, slow: false });
+		expect(await repo.todos.get(todo.id)).toMatchObject({ progress: 20, spentMinutes: 30 });
+		expect(hints.map((hint) => hint.type)).toContain('todos');
+	});
+
+	test('Keep going adds the time and leaves the progress alone', async () => {
+		const { ctx, repo, todo } = await asked();
+		await recordFlow(ctx, {
+			type: 'check',
+			todoId: todo.id,
+			data: { before: 0, after: 0, minutes: 30, keep: true }
+		});
+		expect(await repo.todos.get(todo.id)).toMatchObject({ progress: 0, spentMinutes: 30 });
+	});
+
+	test('the server decides what is slow, from the size of the to-do', async () => {
+		const { ctx, todo } = await asked();
+		const row = await recordFlow(ctx, {
+			type: 'check',
+			todoId: todo.id,
+			data: { before: 20, after: 20, minutes: 30, slow: false }
+		});
+		expect(row?.data.slow).toBe(true);
+	});
+
+	test('a to-do without a size is never slow', async () => {
+		const { ctx, todo } = await asked(null);
+		const row = await recordFlow(ctx, { type: 'check', todoId: todo.id, data: answer });
+		expect(row?.data.slow).toBe(false);
+	});
+
+	test('"bigger than I thought" makes the size what the pace says', async () => {
+		const { ctx, repo, todo } = await asked();
+		await recordFlow(ctx, {
+			type: 'check',
+			todoId: todo.id,
+			data: { before: 0, after: 10, minutes: 60, pace: 'bigger' }
+		});
+		expect(await repo.todos.get(todo.id)).toMatchObject({ estimate: 600, learned: true });
+	});
+
+	test('a size the user gives is theirs', async () => {
+		const { ctx, repo, todo } = await asked(null);
+		await recordFlow(ctx, {
+			type: 'check',
+			todoId: todo.id,
+			data: { ...answer, size: 120 }
+		});
+		expect(await repo.todos.get(todo.id)).toMatchObject({ estimate: 120, learned: false });
+	});
+
+	test('"Not sure" is kept in the row so the size is not asked again', async () => {
+		const { ctx, repo, todo } = await asked(null);
+		const row = await recordFlow(ctx, {
+			type: 'check',
+			todoId: todo.id,
+			data: { ...answer, size: null }
+		});
+		expect(row?.data.size).toBeNull();
+		expect((await repo.todos.get(todo.id))?.estimate).toBeNull();
+	});
+
+	test('a check is about a to-do that is open', async () => {
+		const { ctx, todo } = await asked();
+		expect((await failure(recordFlow(ctx, { type: 'check', data: answer }))).status).toBe(400);
+		expect(
+			(await failure(recordFlow(ctx, { type: 'check', todoId: 99, data: answer }))).status
+		).toBe(404);
+		await updateTodo(ctx, { id: todo.id, status: 'done' });
+		expect(
+			(await failure(recordFlow(ctx, { type: 'check', todoId: todo.id, data: answer }))).status
+		).toBe(404);
+	});
+
+	test.each([
+		['no progress before', { after: 10, minutes: 30 }],
+		['a progress over 100', { before: 0, after: 101, minutes: 30 }],
+		['negative minutes', { before: 0, after: 10, minutes: -1 }],
+		['more than two hours', { before: 0, after: 10, minutes: 121 }],
+		['Keep going with a new progress', { before: 0, after: 10, minutes: 30, keep: true }],
+		['a keep that is not true', { before: 0, after: 0, minutes: 30, keep: false }],
+		['a reason that is not offered', { before: 0, after: 10, minutes: 30, pace: 'dance' }],
+		['a size of zero', { before: 0, after: 10, minutes: 30, size: 0 }],
+		['a worked that is not true', { before: 0, after: 10, minutes: 30, worked: false }]
+	])('%s answers 400 and changes nothing', async (_name, data) => {
+		const { ctx, repo, todo } = await asked();
+		expect((await failure(recordFlow(ctx, { type: 'check', todoId: todo.id, data }))).status).toBe(
+			400
+		);
+		expect(await loadFlow(ctx, '2026-10-14')).toEqual([]);
+		expect(await repo.todos.get(todo.id)).toMatchObject({ progress: 0, spentMinutes: 0 });
 	});
 });

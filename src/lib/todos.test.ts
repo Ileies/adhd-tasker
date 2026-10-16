@@ -5,6 +5,7 @@ import type { FlowRow, Todo } from '#lib/core/repo.js';
 import {
 	addQuickLine,
 	addTodo,
+	answerCheck,
 	changeTodo,
 	chooseTodo,
 	dropTodo,
@@ -273,5 +274,46 @@ describe('the flow log', () => {
 		fakeFetch({ [`POST ${BASE}/flow`]: offline });
 		await recordAnswer({ type: 'rest' });
 		expect(tasker.flow).toEqual({ date: '2026-10-14', rows: [] });
+	});
+});
+
+describe('answering a check', () => {
+	const answer = { before: 0, after: 20, minutes: 30 };
+
+	beforeEach(() => {
+		tasker.todos = [todo(1, { estimate: 300 })];
+	});
+
+	test('the to-do shows the new progress and time at once, the row goes to the log', async () => {
+		const { requests } = fakeFetch({
+			[`POST ${BASE}/flow`]: () => Response.json(row(7, { type: 'check' }))
+		});
+		const pending = answerCheck(tasker.todos[0], answer);
+		expect(tasker.todos[0]).toMatchObject({ progress: 20, spentMinutes: 30 });
+		expect(await pending).toMatchObject({ id: 7 });
+		expect(await requests[0].json()).toMatchObject({
+			type: 'check',
+			todoId: 1,
+			data: { ...answer, slow: false }
+		});
+	});
+
+	test('the pace is worked out for the log before the server does it again', async () => {
+		const { requests } = fakeFetch({ [`POST ${BASE}/flow`]: () => Response.json(row(7)) });
+		await answerCheck(tasker.todos[0], { before: 0, after: 0, minutes: 30 });
+		expect((await requests[0].json()).data.slow).toBe(true);
+	});
+
+	test('Keep going is never slow', async () => {
+		const { requests } = fakeFetch({ [`POST ${BASE}/flow`]: () => Response.json(row(7)) });
+		await answerCheck(tasker.todos[0], { before: 0, after: 0, minutes: 30, keep: true });
+		expect((await requests[0].json()).data.slow).toBe(false);
+		expect(tasker.todos[0].progress).toBe(0);
+	});
+
+	test('a refused answer puts the to-do back', async () => {
+		fakeFetch({ [`POST ${BASE}/flow`]: rejected(404, 'To-do not found') });
+		expect(await answerCheck(tasker.todos[0], answer)).toBeNull();
+		expect(tasker.todos[0]).toMatchObject({ progress: 0, spentMinutes: 0 });
 	});
 });

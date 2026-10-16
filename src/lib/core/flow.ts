@@ -3,6 +3,7 @@
  * the flow log. The `/flow` routes call these for an account, the local backend for a guest. The log holds only
  * what the user said: what is current is replayed from it (`docs/flow-plan.md` 3.4), never stored.
  */
+import { checkPatch, isSlow, parseCheckData, type CheckData } from '#lib/checks.js';
 import { AssistantError, type Ctx } from '#lib/core/context.js';
 import type { FlowRow, FlowType } from '#lib/core/repo.js';
 import { todayIn } from '#lib/time.js';
@@ -42,6 +43,26 @@ export async function loadFlow(ctx: Ctx, date: string): Promise<FlowRow[]> {
 }
 
 /**
+ * An answered check changes the to-do it was about: its progress, the time spent and the size (typed or learned
+ * from the pace). Answers the data to store, with `slow` worked out from the size the to-do had.
+ */
+async function applyCheck(ctx: Ctx, todoId: number | null, raw: object): Promise<CheckData> {
+	if (todoId === null) throw new AssistantError('a check is about a to-do', 400);
+	const parsed = parseCheckData(raw);
+	if (!parsed.ok) throw new AssistantError(parsed.error, 400);
+	const todo = await ctx.repo.todos.get(todoId);
+	if (!todo || todo.status !== 'open') throw new AssistantError('To-do not found', 404);
+
+	const data: CheckData = {
+		...parsed.value,
+		slow: !parsed.value.keep && isSlow({ ...parsed.value, size: todo.estimate })
+	};
+	await ctx.repo.todos.update(todoId, checkPatch(todo, data));
+	ctx.hint({ type: 'todos' });
+	return data;
+}
+
+/**
  * Writes one answer. `body` is `{ type, todoId?, taskId?, data?, key?, at? }`. A pin needs its `pin:<ms>` key,
  * every other type is a new row each time. Answers `null` when the key is already logged (two screens, one pick).
  */
@@ -50,11 +71,14 @@ export async function recordFlow(ctx: Ctx, body: unknown): Promise<FlowRow | nul
 	if (!isFlowType(input.type)) throw new AssistantError('type must be a flow answer', 400);
 	const type = input.type;
 
-	const data = input.data ?? {};
+	let data = input.data ?? {};
 	if (typeof data !== 'object' || data === null || Array.isArray(data))
 		throw new AssistantError('data must be an object', 400);
 	if (JSON.stringify(data).length > MAX_DATA_CHARS)
 		throw new AssistantError('data is too long', 400);
+
+	const todoId = idOf(input.todoId, 'todoId');
+	if (type === 'check') data = await applyCheck(ctx, todoId, data);
 
 	let key: string | null = null;
 	if (type === 'pin') {
@@ -76,7 +100,7 @@ export async function recordFlow(ctx: Ctx, body: unknown): Promise<FlowRow | nul
 		at,
 		date: todayIn(timezone, new Date(at)),
 		type,
-		todoId: idOf(input.todoId, 'todoId'),
+		todoId,
 		taskId: idOf(input.taskId, 'taskId'),
 		data: data as Record<string, unknown>,
 		key

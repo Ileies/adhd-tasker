@@ -4,6 +4,7 @@
  */
 import { tasker } from '#lib/app.svelte.js';
 import { BackendError, type FlowAnswer } from '#lib/backend.js';
+import { checkPatch, isSlow, type CheckData } from '#lib/checks.js';
 import type { FlowRow, Todo, TodoPatch } from '#lib/core/repo.js';
 import { quickKind, quickTodo } from '#lib/quickadd.js';
 import { addQuickTask } from '#lib/tasks.js';
@@ -124,6 +125,27 @@ export function dropTodo(todo: Todo) {
 /** "Do this now": the to-do becomes current at once and stays for this session. */
 export function chooseTodo(todo: Todo) {
 	return recordAnswer({ type: 'choose', todoId: todo.id });
+}
+
+/**
+ * Answers a check: the to-do shows the new progress, time spent and size at once (the same rules the backend
+ * applies, `checkPatch`), and the answer goes to the flow log. A refused answer puts the to-do back.
+ */
+export async function answerCheck(todo: Todo, data: CheckData): Promise<FlowRow | null> {
+	const full: CheckData = {
+		...data,
+		slow: !data.keep && isSlow({ ...data, size: todo.estimate })
+	};
+	const index = tasker.todos.findIndex((entry) => entry.id === todo.id);
+	const previous = index === -1 ? null : tasker.todos[index];
+	if (previous) tasker.todos[index] = { ...previous, ...checkPatch(previous, full) };
+
+	const stored = await recordAnswer({ type: 'check', todoId: todo.id, data: { ...full } });
+	if (!stored && previous) {
+		const back = tasker.todos.findIndex((entry) => entry.id === todo.id);
+		if (back !== -1) tasker.todos[back] = previous;
+	}
+	return stored;
 }
 
 /** Fetches the answers of one day (today without a date) and replaces what the client holds. */

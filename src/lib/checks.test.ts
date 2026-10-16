@@ -5,6 +5,8 @@ import {
 	ANSWER_GRACE_MINUTES,
 	checkChips,
 	checkPatch,
+	chipLabel,
+	parseCheckData,
 	expectedGain,
 	followUp,
 	isGoodAnswer,
@@ -120,6 +122,44 @@ describe('the answers offered', () => {
 				}
 			)
 		);
+	});
+});
+
+describe('chipLabel', () => {
+	test('says what a chip does, a step says the progress it sets', () => {
+		expect(chipLabel({ kind: 'keep' })).toBe('Keep going');
+		expect(chipLabel({ kind: 'same', progress: 20 })).toBe('No change');
+		expect(chipLabel({ kind: 'step', progress: 35 })).toBe('35 %');
+	});
+});
+
+describe('parseCheckData', () => {
+	test('takes the answer and drops what only the recorder may say', () => {
+		expect(parseCheckData({ before: 10, after: 20, minutes: 30, slow: true, extra: 1 })).toEqual({
+			ok: true,
+			value: { before: 10, after: 20, minutes: 30 }
+		});
+	});
+
+	test('keeps the optional parts that are valid', () => {
+		expect(
+			parseCheckData({
+				before: 0,
+				after: 0,
+				minutes: 5,
+				keep: true,
+				pace: 'hard',
+				size: null,
+				worked: true
+			})
+		).toEqual({
+			ok: true,
+			value: { before: 0, after: 0, minutes: 5, keep: true, pace: 'hard', size: null, worked: true }
+		});
+	});
+
+	test.each([[null], [[]], ['x'], [3]])('%p is not an answer', (value) => {
+		expect(parseCheckData(value).ok).toBe(false);
 	});
 });
 

@@ -139,6 +139,13 @@ export function checkChips(input: {
 	];
 }
 
+/** The words on a chip: "Keep going", "No change" or the progress it sets. */
+export function chipLabel(chip: CheckChip): string {
+	if (chip.kind === 'keep') return 'Keep going';
+	if (chip.kind === 'same') return 'No change';
+	return `${chip.progress} %`;
+}
+
 /** Slower than half of what a session of this length should bring. Unknown size: never slow, nothing to compare. */
 export function isSlow(input: {
 	before: number;
@@ -173,6 +180,48 @@ export function learnedSize(spentMinutes: number, progress: number): number | nu
 	if (spentMinutes <= 0 || progress <= 0) return null;
 	const size = Math.max(5, round5((spentMinutes * 100) / progress));
 	return Math.min(ESTIMATE_LIMITS.max, size);
+}
+
+const isWhole = (value: unknown, min: number, max: number): value is number =>
+	typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
+
+/**
+ * What a check answer may carry. One validator for the `/flow` route and the guest's backend. `slow` is never taken
+ * from the outside: whoever records the answer works it out from the to-do's size.
+ */
+export function parseCheckData(
+	value: unknown
+): { ok: true; value: CheckData } | { ok: false; error: string } {
+	if (typeof value !== 'object' || value === null || Array.isArray(value))
+		return { ok: false, error: 'a check needs its answer' };
+	const input = value as Record<string, unknown>;
+	const fail = (error: string) => ({ ok: false as const, error });
+
+	if (!isWhole(input.before, 0, 100)) return fail('before must be a progress from 0 to 100');
+	if (!isWhole(input.after, 0, 100)) return fail('after must be a progress from 0 to 100');
+	if (!isWhole(input.minutes, 0, MAX_WORKED_MINUTES))
+		return fail(`minutes must be 0 to ${MAX_WORKED_MINUTES}`);
+	const data: CheckData = { before: input.before, after: input.after, minutes: input.minutes };
+
+	if (input.keep !== undefined) {
+		if (input.keep !== true) return fail('keep is true when set');
+		if (data.after !== data.before) return fail('keep going has no new progress');
+		data.keep = true;
+	}
+	if (input.pace !== undefined) {
+		if (!isPace(input.pace)) return fail('pace must be bigger, unfocused or hard');
+		data.pace = input.pace;
+	}
+	if (input.size !== undefined) {
+		if (input.size !== null && !isWhole(input.size, ESTIMATE_LIMITS.min, ESTIMATE_LIMITS.max))
+			return fail('size must be whole minutes or null');
+		data.size = input.size;
+	}
+	if (input.worked !== undefined) {
+		if (input.worked !== true) return fail('worked is true when set');
+		data.worked = true;
+	}
+	return { ok: true, value: data };
 }
 
 /** A good answer keeps the flow: Keep going, or a gain that is not slow. A struggle or a slow gain is not. */
