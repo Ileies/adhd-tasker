@@ -10,6 +10,7 @@
 	import {
 		createTask,
 		deleteTask,
+		errorText,
 		loadDay,
 		playSound,
 		playTone,
@@ -30,14 +31,22 @@
 		wrapUpStarted
 	} from '#lib/now.js';
 	import { isCandidate } from '#lib/pick.js';
-	import { extendTask, moveLater } from '#lib/plan.js';
+	import { extendTask, moveLater, todoFromTask } from '#lib/plan.js';
 	import { rank, switchReason } from '#lib/priority.js';
 	import { doneToday, todosDoneBetween } from '#lib/rail.js';
 	import MissedTriage from '#lib/components/MissedTriage.svelte';
 	import { formatClock } from '#lib/format.js';
 	import { addDays, deviceTimezone, minutesNow, todayIn, zonedToEpoch } from '#lib/time.js';
 	import TodoSheet from '#lib/components/TodoSheet.svelte';
-	import { addQuickLine, chooseTodo, dropTodo, finishTodo, recordAnswer } from '#lib/todos.js';
+	import {
+		addQuickLine,
+		addTodo,
+		chooseTodo,
+		dropTodo,
+		finishTodo,
+		recordAnswer,
+		removeTodo
+	} from '#lib/todos.js';
 	import { untrack } from 'svelte';
 	import { browser } from '$app/env';
 	import { Priority, TaskStatus, type Task, type TaskForm as TaskFormType } from '#lib/types.js';
@@ -297,6 +306,23 @@
 		showToast(`Dropped: ${task.title}`, () => createTask(rest));
 	}
 
+	/** The triage's "Do it when there is time": the task that ran out becomes a to-do of its length. */
+	async function whenThereIsTime(task: Task) {
+		const { id: _id, ...rest } = task;
+		let made: Todo;
+		try {
+			made = await addTodo(todoFromTask(task));
+		} catch (error) {
+			showToast(errorText(error, 'Could not make a to-do of it'));
+			return;
+		}
+		void deleteTask(task);
+		showToast(`${task.title} is a to-do now`, async () => {
+			await createTask(rest);
+			await removeTodo(made);
+		});
+	}
+
 	function completeTodo(todo: Todo) {
 		finishTodo(todo, endConfirmation);
 		if (playsSound()) playSound('done');
@@ -442,6 +468,7 @@
 		onDone={complete}
 		onLater={later}
 		onTomorrow={tomorrow}
+		onWhenTime={whenThereIsTime}
 		onDrop={drop}
 	/>
 	<TaskForm bind:form onDelete={drop} />

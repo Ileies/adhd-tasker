@@ -10,6 +10,7 @@
 		onDone,
 		onLater,
 		onTomorrow,
+		onWhenTime,
 		onDrop
 	}: {
 		open?: boolean;
@@ -18,6 +19,8 @@
 		onDone: (task: Task) => void;
 		onLater: (task: Task) => void;
 		onTomorrow: (task: Task) => void;
+		/** The task becomes a to-do of its length. */
+		onWhenTime: (task: Task) => void;
 		onDrop: (task: Task) => void;
 	} = $props();
 
@@ -52,6 +55,9 @@
 				</Button>
 				<Button size="lg" variant="secondary" class="h-12 text-lg" onclick={() => onTomorrow(task)}>
 					Tomorrow
+				</Button>
+				<Button size="lg" variant="secondary" class="h-12 text-lg" onclick={() => onWhenTime(task)}>
+					Do it when there is time
 				</Button>
 				<Button
 					size="lg"

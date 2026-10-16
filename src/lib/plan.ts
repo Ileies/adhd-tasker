@@ -1,3 +1,4 @@
+import type { Todo } from '#lib/core/repo.js';
 import { formatClock } from '#lib/format.js';
 import { addDays, type DateKey } from '#lib/time.js';
 import { TaskStatus, type Task } from '#lib/types.js';
@@ -118,6 +119,21 @@ export function layoutDay<T extends Span>(
 	}
 	closeGroup();
 	return placements;
+}
+
+/**
+ * The to-do "Do it when there is time" makes of a task that ran out: the same title, note and priority, its length
+ * as the size. It has no day or time, the app finds the time for it.
+ */
+export function todoFromTask(
+	task: Pick<Task, 'title' | 'description' | 'priority' | 'duration'>
+): Pick<Todo, 'title' | 'description' | 'priority' | 'estimate'> {
+	return {
+		title: task.title,
+		description: task.description,
+		priority: task.priority,
+		estimate: task.duration
+	};
 }
 
 /**

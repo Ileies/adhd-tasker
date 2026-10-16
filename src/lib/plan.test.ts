@@ -21,7 +21,8 @@ import {
 	midnightOffset,
 	moveOnTimeline,
 	timeAtOffset,
-	timelineRange
+	timelineRange,
+	todoFromTask
 } from '#lib/plan.js';
 
 const span = (id: number, startTime: number, duration: number, status = TaskStatus.Pending) => ({
@@ -475,5 +476,23 @@ describe('phoneGroups', () => {
 		const groups = phoneGroups([...day].reverse(), null);
 		expect(groups.later.map((t) => t.id)).toEqual([1, 2, 3, 4]);
 		expect(groups.done).toEqual([]);
+	});
+});
+
+describe('todoFromTask', () => {
+	test('keeps the title, note and priority and takes the length as the size', () => {
+		expect(
+			todoFromTask({
+				title: 'Write intro',
+				description: 'Chapter 1',
+				priority: Priority.High,
+				duration: 45
+			})
+		).toEqual({
+			title: 'Write intro',
+			description: 'Chapter 1',
+			priority: Priority.High,
+			estimate: 45
+		});
 	});
 });
