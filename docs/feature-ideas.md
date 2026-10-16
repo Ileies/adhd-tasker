@@ -201,6 +201,9 @@ The ideas that look like the strongest return on a small investment. Details are
 - **Gentle drift question** `6/10`
   If the current task was never started (no Start, no interaction) 10 minutes into its window, the display shows one soft question: "Starting, moving, or skipping?" Avoids silent drift without being loud.
 
+- **Aggressive mode** `6/10`
+  An opt-in mode for really distracted users, off by default, the opposite of the calm default on purpose. When on: far more sound for more reasons (start, wrap-up, drift, overrun, repeated until answered), louder and sharper tones, screen flashes, animations that grow as time gets short, and escalating nagging until the user starts something. With a key and the setting enabled, the assistant also speaks up on its own now and then ("Still on the report?") instead of waiting for an event. It breaks the Calm principle, so it must stay a deliberate choice: a clear switch in Settings, an easy way out (one tap to drop back to calm, also on the display), and a cap on how loud it gets (the user's volume stays the ceiling). Flashing needs care: stay under 3 flashes per second, honor `prefers-reduced-motion` and offer a color-only fallback. Spoken interruptions still go through the guardrails (autonomy, rate limit, budget) and quiet hours. Builds on the existing tones, hyperfocus alarm, wakeups and voice.
+
 - **Someday list resurfacing** `6/10`
   Low priority ideas go to "someday" and one random item is resurfaced each week. Fixes object permanence (out of sight, out of mind) without cluttering today.
 
