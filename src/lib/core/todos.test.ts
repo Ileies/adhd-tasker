@@ -4,6 +4,13 @@ import { createTodo, deleteTodo, loadTodos, RECENT_DONE_MS, updateTodo } from '#
 import { Priority } from '#lib/types.js';
 import { NOW, testCtx } from '#test/ctx.js';
 
+/** What a call that is refused throws (`null` when it did not). */
+const refusal = (call: Promise<unknown>) =>
+	call.then(
+		() => null,
+		(error: unknown) => error
+	);
+
 const events = async (repo: Awaited<ReturnType<typeof testCtx>>['repo']) =>
 	(await repo.events.recent(10)).map((row) => row.type);
 
@@ -29,12 +36,12 @@ describe('createTodo', () => {
 
 	test('refuses what the validator refuses, with status 400', async () => {
 		const { ctx } = await testCtx();
-		await expect(createTodo(ctx, { title: '' })).rejects.toMatchObject({ status: 400 });
+		expect(await refusal(createTodo(ctx, { title: '' }))).toMatchObject({ status: 400 });
 	});
 
 	test('an appointment that does not exist is refused', async () => {
 		const { ctx } = await testCtx();
-		await expect(createTodo(ctx, { title: 'x', parentId: 99 })).rejects.toMatchObject({
+		expect(await refusal(createTodo(ctx, { title: 'x', parentId: 99 }))).toMatchObject({
 			status: 400
 		});
 	});
@@ -105,13 +112,13 @@ describe('updateTodo', () => {
 		[{ id: 999, title: 'y' }, 404]
 	])('%j fails with %i', async (body, status) => {
 		const { ctx } = await testCtx();
-		await expect(updateTodo(ctx, body)).rejects.toMatchObject({ status });
+		expect(await refusal(updateTodo(ctx, body))).toMatchObject({ status });
 	});
 
 	test('a due time needs a due date, the saved one counts', async () => {
 		const { ctx } = await testCtx();
 		const plain = await createTodo(ctx, { title: 'a' });
-		await expect(updateTodo(ctx, { id: plain.id, dueTime: 600 })).rejects.toMatchObject({
+		expect(await refusal(updateTodo(ctx, { id: plain.id, dueTime: 600 }))).toMatchObject({
 			status: 400
 		});
 		const dated = await createTodo(ctx, { title: 'b', dueDate: '2026-11-05' });
@@ -130,8 +137,8 @@ describe('deleteTodo', () => {
 
 	test('a missing to-do is a 404 and a bad id a 400', async () => {
 		const { ctx } = await testCtx();
-		await expect(deleteTodo(ctx, { id: 5 })).rejects.toMatchObject({ status: 404 });
-		await expect(deleteTodo(ctx, {})).rejects.toMatchObject({ status: 400 });
+		expect(await refusal(deleteTodo(ctx, { id: 5 }))).toMatchObject({ status: 404 });
+		expect(await refusal(deleteTodo(ctx, {}))).toMatchObject({ status: 400 });
 	});
 });
 
