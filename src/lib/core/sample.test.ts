@@ -59,17 +59,17 @@ function week(today: string, now: number) {
 const minute = fc.integer({ min: 0, max: DAY_MINUTES - 1 });
 
 describe('sampleDay', () => {
-	test('the only task of its own is the exam, four days ahead, the rest is routines and to-dos', () => {
+	test('the only task of its own is one appointment, three days ahead, the rest is routines and to-dos', () => {
 		const tasks = sampleDay(TODAY, 12 * 60 + 8);
 		expect(tasks).toHaveLength(1);
 		expect(tasks[0]).toMatchObject({
-			title: 'Math exam',
+			title: 'Appointment',
 			kind: 'appointment',
-			date: addDays(TODAY, 4),
+			date: addDays(TODAY, 3),
 			startTime: 14 * 60,
-			duration: 120
+			duration: 60
 		});
-		expect(addDays(TODAY, 4) <= addDays(TODAY, SAMPLE_DAYS - 1)).toBe(true);
+		expect(addDays(TODAY, 3) <= addDays(TODAY, SAMPLE_DAYS - 1)).toBe(true);
 	});
 
 	test('what ended before now today is done, everything else is open', () => {
@@ -89,14 +89,15 @@ describe('sampleRoutines', () => {
 	test('the essentials come first, then the repeating blocks of an ordinary day', () => {
 		const titles = sampleRoutines().map((routine) => routine.title);
 		expect(titles.slice(0, 5)).toEqual(['Meds', 'Breakfast', 'Lunch', 'Dinner', 'Go to bed']);
-		expect(titles).toContain('Lecture: Algorithms');
-		expect(titles).toContain('Exercise or a long walk');
+		expect(titles).toContain('Short walk outside');
+		expect(titles).toContain('Plan the day');
 	});
 
-	test("the lecture is somebody else's time on weekdays, the weekend has its own block", () => {
+	test('the week has no job or school in it, every anchor repeats daily', () => {
 		const find = (title: string) => sampleRoutines().find((routine) => routine.title === title);
-		expect(find('Lecture: Algorithms')).toMatchObject({ repeat: 'weekdays', kind: 'appointment' });
-		expect(find('Go out: friends, sport or fresh air')?.repeat).toBe('days:0,6');
+		expect(sampleRoutines().filter((routine) => routine.kind === 'appointment')).toEqual([]);
+		expect(find('Short walk outside')?.repeat).toBe('daily');
+		expect(find('Plan the day')?.repeat).toBe('daily');
 		expect(find('Wind down: screens off, read')?.repeat).toBe('daily');
 	});
 
@@ -143,7 +144,7 @@ describe('sampleTodos', () => {
 describe('the sample week', () => {
 	test('a full day: lunch (a routine) is running at 12:08 and the walk is next', () => {
 		const today = week(TODAY, 12 * 60 + 8).filter((task) => task.date === TODAY);
-		expect(today.length).toBeGreaterThanOrEqual(10);
+		expect(today.length).toBeGreaterThanOrEqual(8);
 		const ranked = rank(today, 12 * 60 + 8);
 		expect(ranked.current?.title).toBe('Lunch');
 		expect(ranked.upcoming[0]?.title).toBe('Short walk outside');
@@ -161,8 +162,8 @@ describe('the sample week', () => {
 			duration: 30
 		});
 		expect(plan.todos.map((todo) => [todo.title, todo.estimate])).toEqual([
-			['Study for the Math exam', 8 * 60],
-			['Pack student ID, pens and calculator', 5]
+			['Check the address', 5],
+			['Pack what you need', 5]
 		]);
 		for (const todo of plan.todos)
 			expect(todo).toMatchObject({
@@ -194,8 +195,8 @@ describe('the sample week', () => {
 			fc.property(minute, (now) => {
 				const byDay = Map.groupBy(week(TODAY, now), (task) => task.date);
 				for (const tasks of byDay.values()) {
-					// The day of the exam is the one day that is not for the work
-					if (tasks.some((task) => task.kind === 'appointment' && task.title === 'Math exam'))
+					// The day of the appointment is the one day that is not for the work
+					if (tasks.some((task) => task.kind === 'appointment' && task.title === 'Appointment'))
 						continue;
 					const sorted = tasks.toSorted((a, b) => a.startTime - b.startTime);
 					const gaps = sorted.flatMap((task, index) =>
@@ -210,7 +211,7 @@ describe('the sample week', () => {
 		);
 	});
 
-	test('the study step and the lab report are big enough that Now has something to rotate between', () => {
+	test('the taxes and the cleaning are big enough that Now has something to hold you on and rotate between', () => {
 		const big = [
 			...sampleTodos(TODAY, 0),
 			...SAMPLE_PREP.steps.map((step) => ({ estimate: step.minutes }))

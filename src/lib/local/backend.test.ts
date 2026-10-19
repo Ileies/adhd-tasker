@@ -548,7 +548,7 @@ describe('sample day', () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const tasks = await backend.tasks.since('2026-10-14');
-		const appointment = tasks.find((task) => task.title === 'Math exam')!;
+		const appointment = tasks.find((task) => task.title === 'Appointment')!;
 		const travel = tasks.find((task) => task.kind === 'travel');
 		expect(travel).toMatchObject({ parentId: appointment.id, date: appointment.date });
 		const todos = await backend.todos.load();
