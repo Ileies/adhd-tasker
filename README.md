@@ -35,7 +35,7 @@ The app works fully without AI. Without a key the agent stays silent.
 | Auth       | Google OAuth 2.0 (PKCE) and One Tap via Arctic                 |
 | AI         | OpenAI Responses API with the user's own key, stored encrypted |
 | Runtime    | Bun                                                            |
-| Deployment | `adapter-node` + PM2                                           |
+| Deployment | `adapter-node` + systemd                                       |
 
 ## Getting Started
 
@@ -110,7 +110,7 @@ Times are stored as minutes since midnight, each task belongs to a dated day (`Y
 
 ## Deployment
 
-`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), backs up the database, restarts PM2 and verifies the site. It refuses to start when `bun run verify` fails, and when `schema.ts` changed since the server's commit unless `--db-push` (apply it) or `--schema-applied` (applied by hand) is given. Useful flags: `--push`, `--dry-run`, `--db-push`, `--schema-applied`, `--skip-check` (skips `verify`), `--force` (deploy the committed HEAD despite uncommitted changes). The app runs as a single process on port 3002, which the event stream requires.
+`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), stops `adhd-tasker.service` for the database backup and optional migration, restarts it with `systemctl restart adhd-tasker.service` and verifies the service and site. The restart takes a few seconds, with a short 502 possible meanwhile. Failures show the service's journal logs. It refuses to start when `bun run verify` fails, the systemd unit is missing, or `schema.ts` changed since the server's commit unless `--db-push` (apply it) or `--schema-applied` (applied by hand) is given. Useful flags: `--push`, `--dry-run`, `--db-push`, `--schema-applied`, `--skip-check` (skips `verify`), `--force` (deploy the committed HEAD despite uncommitted changes). The NixOS service owns the Bun executable and runtime environment (`NODE_ENV=production`, `PORT=3002`, `BODY_SIZE_LIMIT=8M`). The app runs as a single process, which the event stream requires.
 
 ## Roadmap
 

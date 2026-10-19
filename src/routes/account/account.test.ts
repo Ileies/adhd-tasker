@@ -125,11 +125,8 @@ describe('POST /account/import', () => {
 			)
 		);
 		const body = JSON.stringify({ mode: 'both', today: '2026-10-14', file: file(tasks) });
-		// The adapter reads `BODY_SIZE_LIMIT` from the environment the process runs in
-		const spec = (await import('../../../pm2.config.cjs')).default as {
-			env: { BODY_SIZE_LIMIT: string };
-		};
-		const limit = Number.parseInt(spec.env.BODY_SIZE_LIMIT) * 1024 * 1024;
+		// The NixOS adhd-tasker service sets the adapter's BODY_SIZE_LIMIT to 8M.
+		const limit = 8 * 1024 * 1024;
 		expect(new TextEncoder().encode(body).length).toBeLessThan(limit);
 
 		const user = await makeUser();

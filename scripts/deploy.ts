@@ -4,7 +4,7 @@
  *
  * The server runs a clone of the GitHub repo at /var/www/adhd-tasker, so a deploy is a `git reset`
  * to this HEAD plus what a checkout cannot carry: the dependency install, the production build, a
- * database backup and the pm2 entry. The build runs on the server because `DATABASE_URL` is a
+ * database backup and a systemd restart. The build runs on the server because `DATABASE_URL` is a
  * static env, baked in from the `.env` that lives there.
  *
  * Usage:
@@ -16,7 +16,7 @@
  *   bun run deploy --schema-applied  deploy a schema.ts change that is already applied by hand
  *   bun run deploy --force           deploy the committed HEAD although the working tree has uncommitted
  *                                    changes (`verify` still runs on the working tree, not on HEAD)
- *   bun run deploy --host <alias>    deploy somewhere other than `home`
+ *   bun run deploy --host <alias>    deploy somewhere other than `ros`
  *
  * Without --db-push or --schema-applied, a change to schema.ts since the server's commit stops the
  * deploy before the server is touched.
@@ -30,24 +30,16 @@ const value = (name: string, fallback: string) => {
 	return i >= 0 && args[i + 1] ? args[i + 1]! : fallback;
 };
 
-/** ssh alias for pronix (root@192.168.10.85); root is required for the shared pm2 daemon. */
+/** ssh alias for pronix; root is required to manage the systemd service. */
 const HOST = value('host', 'ros');
 const REMOTE_ROOT = value('remote-root', '/var/www/adhd-tasker');
-const PM2_NAME = 'adhd-tasker';
+const SERVICE = 'adhd-tasker.service';
 
 /** Must match the nginx proxy target in /etc/nixos/hosts/pronix/nginx.nix. */
 const PORT = value('port', '3002');
 const PUBLIC_URL = value('url', 'https://tasker.ileies.de/');
 
-/** pm2 on pronix runs as root out of a shared home, not out of /root/.pm2. */
-const PM2 = 'PM2_HOME=/etc/.pm2 pm2';
-
-/** `BODY_SIZE_LIMIT` is the adapter's request limit (512 kB by default): a full plan moving into an account is larger. Same as `pm2.config.cjs`. */
-const RUNTIME_ENV: Record<string, string> = {
-	NODE_ENV: 'production',
-	PORT,
-	BODY_SIZE_LIMIT: '8M'
-};
+// Runtime environment and the Bun executable belong to the NixOS service definition.
 
 const DRY = flag('dry-run');
 let failed = false;
@@ -75,35 +67,19 @@ async function remote(script: string): Promise<string> {
 		console.log(`  [dry-run] ssh ${HOST}: ${script}`);
 		return '';
 	}
-	const out = await $`ssh -o ConnectTimeout=10 ${HOST} bash -s < ${new Response(script)}`.text();
+	const proc = Bun.spawn(['ssh', '-o', 'ConnectTimeout=10', HOST, 'bash', '-s'], {
+		stdin: Buffer.from(script),
+		stdout: 'pipe',
+		stderr: 'inherit'
+	});
+	const [out, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+	if (code !== 0) fail(`remote command failed (exit ${code}): ${script}`);
 	return out.trim();
 }
 
 /** Same, but a non-zero exit is an expected answer rather than a failure. */
 async function remoteSoft(script: string): Promise<string> {
 	return await remote(`${script} || true`);
-}
-
-type Pm2Entry = {
-	name: string;
-	pm2_env: {
-		status?: string;
-		exec_interpreter?: string;
-		pm_exec_path?: string;
-		pm_cwd?: string;
-		args?: string[];
-		env?: Record<string, string>;
-	};
-};
-
-async function pm2Entry(): Promise<Pm2Entry | undefined> {
-	const raw = await remoteSoft(`${PM2} jlist 2>/dev/null`);
-	if (!raw) return undefined;
-	try {
-		return (JSON.parse(raw) as Pm2Entry[]).find((p) => p.name === PM2_NAME);
-	} catch {
-		fail('could not parse `pm2 jlist` from the server');
-	}
 }
 
 // === PREFLIGHT: LOCAL ===
@@ -168,7 +144,7 @@ if (!DRY && isClone !== 'yes') {
 	fail(
 		`${HOST}:${REMOTE_ROOT} is not a git clone. One-time setup, keeping the server's own files:\n` +
 			`  ssh ${HOST} 'cd ${REMOTE_ROOT} && mkdir -p ../adhd-tasker-old && cp -a .env local.db ../adhd-tasker-old/ && ` +
-			`rm -rf client server index.js handler.js adapter-node.js pm2.config.cjs && ` +
+			`rm -rf client server index.js handler.js adapter-node.js && ` +
 			`git init -q && git remote add origin git@github.com:Ileies/adhd-tasker.git && git fetch -q origin ${branch} && git checkout -q -f ${branch}'`
 	);
 }
@@ -188,8 +164,14 @@ if (remoteDirty) {
 	fail(`${HOST}:${REMOTE_ROOT} has modified tracked files - deploying would discard them.`);
 }
 
-// Absolute path, because pm2 stores what it was given and would otherwise re-resolve `bun` against
-// whatever PATH the daemon has after a reboot.
+const loadState = await remote('systemctl show --property=LoadState --value ' + SERVICE);
+if (!DRY && loadState !== 'loaded') {
+	fail(
+		`${SERVICE} is not loaded on ${HOST} (${loadState || 'unknown'}). Configure the NixOS service first.`
+	);
+}
+
+// The build needs Bun on the SSH user's PATH. systemd uses the executable from NixOS.
 const bunPath = (await remoteSoft('command -v bun')) || (DRY ? '$(command -v bun)' : '');
 if (!DRY && !bunPath) fail(`bun is not on PATH for ${HOST}`);
 
@@ -239,11 +221,8 @@ await remote(`cd ${REMOTE_ROOT} && bun run build`);
 
 // Stopping first is what makes the backup worth having: a copy taken while the app holds the file
 // can catch a half-written WAL.
-const entryBefore = await pm2Entry();
-
-step(`Stopping ${PM2_NAME}`);
-if (entryBefore || DRY) await remoteSoft(`${PM2} stop ${PM2_NAME}`);
-else console.log('  no pm2 entry yet, nothing to stop');
+step(`Stopping ${SERVICE}`);
+await remote(`systemctl stop ${SERVICE}`);
 
 // Read from the server's own .env: the path decides what gets backed up and what drizzle-kit pushes.
 const rawDbPath = await remoteSoft(
@@ -279,41 +258,15 @@ if (flag('db-push')) {
 
 // === START ===
 
-// Rewritten rather than restarted whenever the entry does not match: the existing one runs the flat
-// `index.js` of the old rsync layout, which no longer exists after the checkout.
-const wantedArgs = './build/index.js';
-const envPrefix = Object.entries(RUNTIME_ENV)
-	.map(([k, v]) => `${k}=${v}`)
-	.join(' ');
-
-const matches =
-	entryBefore?.pm2_env.exec_interpreter === 'none' &&
-	entryBefore.pm2_env.pm_exec_path === bunPath &&
-	(entryBefore.pm2_env.args ?? []).join(' ') === wantedArgs &&
-	entryBefore.pm2_env.pm_cwd === REMOTE_ROOT &&
-	Object.entries(RUNTIME_ENV).every(([k, v]) => entryBefore.pm2_env.env?.[k] === v);
-
-if (matches) {
-	step(`Restarting ${PM2_NAME}`);
-	await remote(`${PM2} restart ${PM2_NAME} --update-env`);
-} else {
-	step(entryBefore ? `Recreating ${PM2_NAME} (spec changed)` : `Creating ${PM2_NAME}`);
-	console.log(`  now: ${envPrefix} ${bunPath} ${wantedArgs}`);
-	await remoteSoft(`${PM2} delete ${PM2_NAME}`);
-	await remote(
-		`cd ${REMOTE_ROOT} && ${envPrefix} ${PM2} start ${bunPath} --name ${PM2_NAME} --interpreter none --cwd ${REMOTE_ROOT} -- ${wantedArgs}`
-	);
-	// Without this the entry is gone after the next reboot.
-	await remote(`${PM2} save`);
-}
+step(`Restarting ${SERVICE}`);
+await remote(`systemctl restart ${SERVICE}`);
 
 // === VERIFY ===
 
 step('Verifying');
 
-const entryAfter = await pm2Entry();
-if (!DRY)
-	mark(entryAfter?.pm2_env.status === 'online', `pm2: ${entryAfter?.pm2_env.status ?? 'missing'}`);
+const serviceState = await remoteSoft(`systemctl is-active ${SERVICE}`);
+if (!DRY) mark(serviceState === 'active', `systemd: ${serviceState || 'unknown'}`);
 
 // Retried because the process needs a moment to bind the port. Unauthenticated requests may be
 // answered with the page or a redirect to login; both mean the build is serving.
@@ -335,7 +288,7 @@ if (!DRY) {
 
 if (failed && !DRY) {
 	console.error('\n--- last 20 log lines ---');
-	console.error(await remoteSoft(`${PM2} logs ${PM2_NAME} --lines 20 --nostream`));
+	console.error(await remoteSoft(`journalctl -u ${SERVICE} -n 20 --no-pager`));
 }
 
 console.log(
@@ -343,7 +296,7 @@ console.log(
 		? '\n\x1b[33mDry run finished. Nothing on the server was touched.\x1b[0m'
 		: failed
 			? `\n\x1b[31mX Deployed, but something is not healthy - see above.\x1b[0m\n` +
-				`  Roll back on the server: cd ${REMOTE_ROOT} && git reset --hard ${previousHead.slice(0, 8)} && bun install && bun run build && ${PM2} restart ${PM2_NAME}`
+				`  Roll back on the server: cd ${REMOTE_ROOT} && git reset --hard ${previousHead.slice(0, 8)} && bun install && bun run build && systemctl restart ${SERVICE}`
 			: `\n\x1b[32mok ${PUBLIC_URL} is on ${head.slice(0, 8)}.\x1b[0m`
 );
 process.exit(failed ? 1 : 0);

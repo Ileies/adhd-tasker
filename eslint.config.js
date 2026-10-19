@@ -85,11 +85,6 @@ export default ts.config(
 		}
 	},
 	{
-		// pm2 loads its config as CommonJS
-		files: ['**/*.cjs'],
-		rules: { '@typescript-eslint/no-require-imports': 'off' }
-	},
-	{
 		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
 		languageOptions: {
 			parserOptions: {

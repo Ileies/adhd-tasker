@@ -23,7 +23,7 @@ Judge every design and implementation decision against this: does it reduce cogn
 - SQLite + Drizzle ORM (`local.db`, config in `drizzle.config.ts`)
 - Auth: Google OAuth 2.0 with PKCE via Arctic 3, plus Google One Tap
 - Bun for dev, tests and production (`bun x`, never `bunx`)
-- `@sveltejs/adapter-node`, PM2 on port 3002, deployed with `bun run deploy`
+- `@sveltejs/adapter-node`, systemd (`adhd-tasker.service`) on port 3002, deployed with `bun run deploy`
 - Env vars are declared in `src/env.ts` (all static, baked in at build time): `PUBLIC_GOOGLE_CLIENT_ID`, `PUBLIC_REDIRECT_URI`, `GOOGLE_CLIENT_SECRET`, `DATABASE_URL`. See `.env.example`
 
 ## Commands
@@ -197,7 +197,7 @@ Everything is synthesized with the Web Audio API on one shared `AudioContext` (`
 
 ## Deployment
 
-`bun run deploy` (`scripts/deploy.ts`) deploys the committed HEAD of the current branch to the server (`tasker.ileies.de`, ssh alias `home`, clone at `/var/www/adhd-tasker`): preflight, `git reset`, install, build on the server (because `DATABASE_URL` is baked in from the server's `.env`), database backup, pm2 restart, verify. Preflight runs `bun run verify` in full and refuses to deploy when it fails. A change to `schema.ts` since the server's commit stops the deploy before the server is touched, unless `--db-push` applies it or `--schema-applied` says it was applied by hand. Flags: `--push`, `--dry-run`, `--skip-check` (skips `verify`), `--force` (deploy HEAD despite uncommitted changes), `--db-push`, `--schema-applied`, `--host <alias>`. `pm2.config.cjs` is the local pm2 spec (port 3002).
+`bun run deploy` (`scripts/deploy.ts`) deploys the committed HEAD of the current branch to the server (`tasker.ileies.de`, ssh alias `ros`, clone at `/var/www/adhd-tasker`): preflight, `git reset`, install, build on the server (because `DATABASE_URL` is baked in from the server's `.env`), stop `adhd-tasker.service`, database backup and optional migration, `systemctl restart adhd-tasker.service`, verify. The restart takes a few seconds, with a short 502 possible meanwhile. Health checks cover `systemctl is-active`, the local port and the public URL; failures show `journalctl -u adhd-tasker.service -n 20 --no-pager`. Preflight runs `bun run verify` in full and refuses to deploy when it fails or the systemd unit is not loaded. A change to `schema.ts` since the server's commit stops the deploy before the server is touched, unless `--db-push` applies it or `--schema-applied` says it was applied by hand. Flags: `--push`, `--dry-run`, `--skip-check` (skips `verify`), `--force` (deploy HEAD despite uncommitted changes), `--db-push`, `--schema-applied`, `--host <alias>`. NixOS defines the service in `/etc/nixos/hosts/pronix/default.nix`: one Bun process running `./build/index.js` from the clone, with `NODE_ENV=production`, `PORT=3002` and `BODY_SIZE_LIMIT=8M`. Change runtime settings there and rebuild NixOS; deploy does not rewrite the unit.
 
 ## Known Gaps
 
