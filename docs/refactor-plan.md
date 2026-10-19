@@ -188,7 +188,7 @@ steps:
 
 | Step | Packages                                                                       | Rough size           | Risk                                                      |
 | ---- | ------------------------------------------------------------------------------ | -------------------- | --------------------------------------------------------- |
-| 1    | P0 hygiene, knip in verify                                                     | small                | none                                                      |
+| 1    | P0 hygiene, knip in verify (done, `6d2ec90` to `33a4826`)                      | small                | none                                                      |
 | 2    | P1 route helper                                                                | small                | low, covered by route tests                               |
 | 3    | Final folder mapping, then move files (git mv, update imports, no logic edits) | large but mechanical | low, the type check and 3 timezone test runs catch breaks |
 | 4    | P2 splits, `flow` last                                                         | large                | medium (flow)                                             |
@@ -208,13 +208,14 @@ config, route files 5 to 10 lines of intent, 22 fewer scripts, knip and the size
 
 1. **Folder grouping: yes.** Group the flat modules into domain folders (section 2). It touches about 150 files
    of imports, all mechanical, and it removes the 150-entry folder.
-2. **Migration scripts: delete all 22.** `db:push` and `deploy --db-push` replace them. No generic `scripts/sql.ts`
+2. **Migration scripts: delete all 23** (the first count of 22 was off by one, done). `db:push` and `deploy --db-push` replace them. No generic `scripts/sql.ts`
    escape hatch, a future one-off is written when it is needed.
 3. **`#lib` index import: dropped.** Import from the module so the origin of a symbol is visible.
 4. **Size rule: 300 lines for source, 400 for tests** (tests are long because they list cases).
 5. **`docs/feature-ideas.md`: leave as one document.** It is a brainstorm archive, not code, nobody reads it
    to change the app, so splitting it adds files for no gain. The size rule applies to code only.
-6. **Scope and order: steps 1 to 3 first** (hygiene, routes, folder move), since they give most of the DX
+6. **Scope and order: one step at a time.** Step 1 is done (`6d2ec90` to `33a4826`), the next step starts only
+   when asked. The original idea was steps 1 to 3 first (hygiene, routes, folder move), since they give most of the DX
    win at low risk. Then the splits one module at a time (step 4 onward), `flow` last.
 
 ## 7. Parked, out of scope
