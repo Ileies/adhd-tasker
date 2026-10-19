@@ -1,6 +1,6 @@
 # Refactor Plan: DX, modularity, token weight
 
-Status: decisions settled 2026-10-19 (section 6), not started. Nothing here is done. Measured on `c844ca2` (548 tracked files).
+Status: steps 1 and 2 done (2026-10-19), step 3 next. Decisions are settled (section 6). Analysis measured on `c844ca2` (548 tracked files), before any step.
 
 Goal: someone cloning the repo understands the app fast, and an agent finds what it needs by name and reads
 little. Behavior does not change. Every step keeps `bun run verify --quick` green and is its own commit.
@@ -9,20 +9,22 @@ little. Behavior does not change. Every step keeps `bun run verify --quick` gree
 
 Baseline: 21.1k lines of TypeScript, 8.9k lines of Svelte (without shadcn), 28.8k lines of tests, 93 shadcn files.
 
-| Problem                             | Evidence                                                                                                                                                                                                                                | Why it hurts                                                             |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Flat `src/lib`                      | 80 modules plus 70 tests side by side in one folder, no grouping                                                                                                                                                                        | Nothing says which files belong together, `ls` is 150 lines              |
-| Same name in several layers         | `flow`, `agent`, `assistant`, `calendar`, `schedule`, `plan`, `todos`, `events`, `activity`, `openai-key` exist in `lib/` and `core/` (some also in `server/`)                                                                          | Search for "flow" returns two files, the role is only in the folder      |
-| Files over 300 lines                | 26 source files, 27 test files (list in section 3)                                                                                                                                                                                      | Reading one concern costs the whole file                                 |
-| One giant function                  | `flow()` in `flow.ts` is 480 lines (256 to 737), `dbRepo` 471, `localRepo` 406, `localBackend` 284                                                                                                                                      | Cannot be understood or tested in parts                                  |
-| Route boilerplate                   | 37 copies of `if (!locals.user) error(401, ...)` in 24 files, 18 copies of the `AssistantError` catch, 21 copies of `request.json().catch(...)`, `todos/+server.ts` already defines a local `answering` helper that others re-implement | 30 `+server.ts` files of 6 to 25 lines that differ only in the core call |
-| Grab-bag `lib/index.ts`             | Is the sound player (`playSound`, `playTone`, `startRinging`) plus re-exports of toast and tasks                                                                                                                                        | The name says nothing, `#lib` imports hide what is used                  |
-| Parallel input and form modules     | `task-input`, `todo-input`, `routine-input` (parsers) and `taskform`, `todoform`, `routineform` (form state), `quick*` (4 files) all repeat the same parse, limit and patch shape                                                       | Three places to change for one field                                     |
-| Dead code                           | 54 unused exports, 14 unused exported types, `OptionSelect.svelte`, 5 unused shadcn components (alert, badge, label, progress, select), duplicate `Clash` type in `core/calendar.ts` and `core/merge.ts`, unused `Reminder` type        | Noise for readers and for grep                                           |
-| 22 one-off migration scripts        | `scripts/add-*.ts`, 17 to 59 lines each, identical skeleton, only mentioned in `TODO.md` and docs. `db:push` and `deploy --db-push` replace them                                                                                        | 22 files for 5 lines of idea each                                        |
-| Tracked IDE config                  | `.idea/` has 10 tracked files                                                                                                                                                                                                           | Not source, pollutes diffs                                               |
-| Big components mix logic and markup | `NowHero` 861 (script 245), `DayTimeline` 675 (script 396, drag logic), `routes/+page.svelte` 655 (script 561, 52 handlers), `routes/edit/+page.svelte` 579 (script 296), `+layout.svelte` 315 (9 effects)                              | Rule says logic goes in pure modules, these hold it in the component     |
-| Comment weight                      | 2,881 comment lines in non-test source, densest in `flow.ts` (122), `core/repo.ts` (86), `struggle.ts` (70), `+page.svelte` (63)                                                                                                        | Many restate the code, each costs tokens on every read                   |
+The last column shows what steps 1 and 2 have already resolved.
+
+| Problem                             | Evidence                                                                                                                                                                                                                                | Why it hurts                                                             | Status                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Flat `src/lib`                      | 80 modules plus 70 tests side by side in one folder, no grouping                                                                                                                                                                        | Nothing says which files belong together, `ls` is 150 lines              | open (step 3)                                            |
+| Same name in several layers         | `flow`, `agent`, `assistant`, `calendar`, `schedule`, `plan`, `todos`, `events`, `activity`, `openai-key` exist in `lib/` and `core/` (some also in `server/`)                                                                          | Search for "flow" returns two files, the role is only in the folder      | open (step 3)                                            |
+| Files over 300 lines                | 26 source files, 27 test files (see P2 and P5)                                                                                                                                                                                          | Reading one concern costs the whole file                                 | open (steps 4 to 6)                                      |
+| One giant function                  | `flow()` in `flow.ts` is 480 lines (256 to 737), `dbRepo` 471, `localRepo` 406, `localBackend` 284                                                                                                                                      | Cannot be understood or tested in parts                                  | open (step 4)                                            |
+| Route boilerplate                   | 37 copies of `if (!locals.user) error(401, ...)` in 24 files, 18 copies of the `AssistantError` catch, 21 copies of `request.json().catch(...)`, `todos/+server.ts` already defines a local `answering` helper that others re-implement | 30 `+server.ts` files of 6 to 25 lines that differ only in the core call | done (step 2, `handler()`)                               |
+| Grab-bag `lib/index.ts`             | Is the sound player (`playSound`, `playTone`, `startRinging`) plus re-exports of toast and tasks                                                                                                                                        | The name says nothing, `#lib` imports hide what is used                  | open (step 3, the `addQuickTask` re-export is gone)      |
+| Parallel input and form modules     | `task-input`, `todo-input`, `routine-input` (parsers) and `taskform`, `todoform`, `routineform` (form state), `quick*` (4 files) all repeat the same parse, limit and patch shape                                                       | Three places to change for one field                                     | open (step 5)                                            |
+| Dead code                           | 54 unused exports and 14 unused exported types (almost all needlessly exported, not dead), `OptionSelect.svelte`, 5 unused shadcn components, unused `Reminder` type, two different types both named `Clash`                            | Noise for readers and for grep                                           | done (step 1), `knip` now guards it                      |
+| One-off migration scripts           | 23 `scripts/add-*.ts`, 17 to 59 lines each, identical skeleton. `db:push` and `deploy --db-push` replace them                                                                                                                           | 23 files for 5 lines of idea each                                        | done (step 1), one data migration still to check (see 7) |
+| Tracked IDE config                  | `.idea/` had 10 tracked files                                                                                                                                                                                                           | Not source, pollutes diffs                                               | done (step 1)                                            |
+| Big components mix logic and markup | `NowHero` 861 (script 245), `DayTimeline` 675 (script 396, drag logic), `routes/+page.svelte` 655 (script 561, 52 handlers), `routes/edit/+page.svelte` 579 (script 296), `+layout.svelte` 315 (9 effects)                              | Rule says logic goes in pure modules, these hold it in the component     | open (step 5)                                            |
+| Comment weight                      | 2,881 comment lines in non-test source, densest in `flow.ts` (122), `core/repo.ts` (86), `struggle.ts` (70), `+page.svelte` (63)                                                                                                        | Many restate the code, each costs tokens on every read                   | open (trimmed while each file is split)                  |
 
 Not a problem: exact duplicated blocks are low (1.18 %, jscpd), almost all in migration scripts and route wrappers.
 So the work is structure and naming, not copy-paste removal. The `core/` boundary (rules shared by server and
@@ -45,21 +47,22 @@ src/lib/
   quick/      quickadd.ts, quickroutine.ts, quickalarm.ts, quickhelp.ts
   alarms/     alarms.ts, alarmview.ts, schedule.ts, silence.ts, mute.ts, custom-sounds.ts, sounds.ts
   sound/      audio.ts, tones.ts, play.ts (from index.ts), speech.ts, voice.ts
-  assistant/  assistant.ts, agent.ts, guardrails.ts, openai.ts, openai-key.ts, tools/ (section 4)
+  assistant/  assistant.ts, agent.ts, guardrails.ts, openai.ts, openai-key.ts, tools/ (split in P2)
   core/ server/ local/ components/ ui/(shadcn)
 ```
 
-This grouping is a proposal. Step 1 produces the final mapping from the import graph (what imports what), so
+This grouping is a proposal. Step 3 produces the final mapping from the import graph (what imports what), so
 a module lands next to its heaviest user and no folder cycle appears. Target: no folder above 25 files, no
 flat module left in `src/lib/`.
 
-### Naming rules (added to `CLAUDE.md`)
+### Naming rules (added to `CLAUDE.md` in step 3)
 
 - A file name says its role. The same base name never appears in two folders. Where a client wrapper and a core
   rule share a topic, the client file gets the role suffix: `flow/engine.ts` and `core/flow.ts`, `app/todos-actions.ts`
   and `core/todos.ts`, `assistant/chat.ts` and `core/assistant.ts`.
 - `#lib` (the `index.ts` re-export) is removed. Import from the module, so the origin of a symbol is visible.
-- Constants are exported only when another file or a test uses them.
+  The one `knip` hint left (`package.json` `#lib` points at a `.js` file that does not exist) goes with it.
+- Constants are exported only when another file or a test uses them (applied in step 1, `knip` enforces it).
 
 ### Size rules, enforced
 
@@ -75,19 +78,22 @@ flat module left in `src/lib/`.
 
 Order is by risk and payoff. Each package is one or a few commits, verify between each.
 
-**P0. Guardrails and hygiene (no behavior risk)**
+**P0. Guardrails and hygiene** (done, `6d2ec90` to `33a4826`)
 
-1. Untrack `.idea/`, add it to `.gitignore`.
-2. Delete the 22 `scripts/add-*.ts` migrations (history keeps them). Update `TODO.md` and docs mentions, change
-   the `CLAUDE.md` line "or a one-off script in `scripts/`" to point at `deploy --db-push` only.
-3. Delete dead files: `OptionSelect.svelte`, unused shadcn components (re-add with the CLI when needed).
-   Verify `src/env.ts` is really unused before deleting (knip flags it, the build may read it).
-4. Un-export the unused constants and types knip lists (about 54 plus 14), delete the ones with no use at all
-   (`createAlarm` in `core/schedule.ts`, `describeCounts`, `addQuickTask` re-export, `agentSettings`, `chooseDisplay`,
-   `canRecord`, `soundLimits`, `parseCustomTone`, `reopenWelcome`, `candidatesFor`, `isFlowType`, `FLOW_TYPES`
-   if a re-check agrees). Merge the two `Clash` types. Rerun knip after, it must be quiet.
-5. Add `knip` (with a small `knip.json` that lists `scripts/` and the SvelteKit routes as entries) to
-   `verify` so dead code fails the gate.
+1. `.idea/` untracked. The `.*` rule in `.gitignore` already covered it, so no ignore change was needed.
+2. 23 `scripts/add-*.ts` migrations deleted (history keeps them), `CLAUDE.md` now points at `deploy --db-push` only.
+3. `OptionSelect.svelte` and the shadcn alert, badge, label, progress and select components deleted.
+   `src/env.ts` stays, SvelteKit reads it.
+4. About 85 module-private constants and types lost their `export` (`knip` list). Truly dead and removed:
+   `chooseDisplay`, the `addQuickTask` re-export, the `Reminder` type, `DEFAULT_QUIET`, `ChosenSource`,
+   `SCHEDULE_KINDS` (now a union type), an unused import. The rest of the symbols named in the first plan
+   (`createAlarm`, `describeCounts`, `agentSettings`, `canRecord`, `soundLimits`, `parseCustomTone`, `reopenWelcome`,
+   `candidatesFor`, `isFlowType`, `FLOW_TYPES`) were only exported needlessly and are used, so they stayed.
+   The two `Clash` types are different types, renamed `EventClash` and `PlanClash`. The unused test helpers
+   (`DAY`, `DAY_START_MS`, `SETTINGS`, `FakeWebSocket`) lost their `export`.
+5. `knip` added as a devDependency with `knip.json` and a `knip` script, run as the `unused code` step of the
+   full `bun run verify`. It ignores `drizzle.config.ts` (read by `drizzle-kit`) and the generated
+   `src/lib/components/ui/**`, and treats `src/env.ts` as an entry.
 
 **P1. Route and API boilerplate** (done, `8089441` to `252eec7`)
 
@@ -108,19 +114,19 @@ Order is by risk and payoff. Each package is one or a few commits, verify betwee
 
 **P2. Split the large pure modules** (largest payoff for agents)
 
-| File                                                                                          | Lines              | Split                                                                                                                                                                                                                                                                      |
-| --------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assistant-tools.ts`                                                                          | 870                | `parse.ts` (primitives), `tasks.ts`, `todos.ts`, `routines.ts`, `prep.ts`, `definitions.ts` (JSON schemas), `index.ts` is NOT recreated, callers import the part they need. The 300-line `DEFINITIONS` array moves with its parsers per domain so a tool lives in one file |
-| `flow.ts`                                                                                     | 836                | See section 4, `flow()` is 480 lines                                                                                                                                                                                                                                       |
-| `core/export.ts`                                                                              | 630                | `export-shape.ts` (types, version), `export-build.ts`, `export-parse.ts` (`parseExport` 98 lines), `export-import.ts` (`importExport` 89 lines)                                                                                                                            |
-| `struggle.ts`                                                                                 | 417                | by option: options builder, the answer handlers, the limits                                                                                                                                                                                                                |
-| `todos.ts` (client)                                                                           | 365                | CRUD actions vs flow answers (`answerCheck`, `struggleOn`, `takeBreak`)                                                                                                                                                                                                    |
-| `core/calendar.ts`, `server/calendar.ts`                                                      | 413, 453           | mapping events, clash and preview, sync loop                                                                                                                                                                                                                               |
-| `core/repo.ts`                                                                                | 402                | The `Repo` interface by area (tasks, todos, routines, flow, agent, schedule, settings), re-composed in one type. 86 comment lines also get trimmed                                                                                                                         |
-| `server/db-repo.ts`, `local/repo.ts`                                                          | 507, 457           | One file per area that mirrors the `core/repo.ts` split, `dbRepo` becomes a composition of area factories. The shared `src/test/repo-contract.ts` (829 lines) splits the same way, which keeps both repos honest                                                           |
-| `local/backend.ts`, `remote-backend.ts`                                                       | 370, 326           | Same area split, so adding a `Backend` method touches one area file per implementation (replaces the three-place rule in `CLAUDE.md`, still enforced by `BACKEND_METHODS`)                                                                                                 |
-| `server/account.ts`, `core/agent.ts`, `core/assistant.ts`, `plan.ts`, `pick.ts` (296 is fine) | 309, 351, 324, 318 | Small trims, one extraction each, many only need comment and dead code removal to fall under 300                                                                                                                                                                           |
-| `server/db/schema.ts`                                                                         | 308                | Leave as one file, it is declarative, list in `LONG`                                                                                                                                                                                                                       |
+| File                                                                 | Lines              | Split                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assistant-tools.ts`                                                 | 870                | `parse.ts` (primitives), `tasks.ts`, `todos.ts`, `routines.ts`, `prep.ts`, `definitions.ts` (JSON schemas), `index.ts` is NOT recreated, callers import the part they need. The 300-line `DEFINITIONS` array moves with its parsers per domain so a tool lives in one file |
+| `flow.ts`                                                            | 836                | See section 4, `flow()` is 480 lines                                                                                                                                                                                                                                       |
+| `core/export.ts`                                                     | 630                | `export-shape.ts` (types, version), `export-build.ts`, `export-parse.ts` (`parseExport` 98 lines), `export-import.ts` (`importExport` 89 lines)                                                                                                                            |
+| `struggle.ts`                                                        | 417                | by option: options builder, the answer handlers, the limits                                                                                                                                                                                                                |
+| `todos.ts` (client)                                                  | 365                | CRUD actions vs flow answers (`answerCheck`, `struggleOn`, `takeBreak`)                                                                                                                                                                                                    |
+| `core/calendar.ts`, `server/calendar.ts`                             | 413, 453           | mapping events, clash and preview, sync loop                                                                                                                                                                                                                               |
+| `core/repo.ts`                                                       | 402                | The `Repo` interface by area (tasks, todos, routines, flow, agent, schedule, settings), re-composed in one type. 86 comment lines also get trimmed                                                                                                                         |
+| `server/db-repo.ts`, `local/repo.ts`                                 | 507, 457           | One file per area that mirrors the `core/repo.ts` split, `dbRepo` becomes a composition of area factories. The shared `src/test/repo-contract.ts` (829 lines) splits the same way, which keeps both repos honest                                                           |
+| `local/backend.ts`, `remote-backend.ts`                              | 370, 326           | Same area split, so adding a `Backend` method touches one area file per implementation (replaces the three-place rule in `CLAUDE.md`, still enforced by `BACKEND_METHODS`)                                                                                                 |
+| `server/account.ts`, `core/agent.ts`, `core/assistant.ts`, `plan.ts` | 309, 351, 324, 318 | Small trims, one extraction each, many only need comment and dead code removal to fall under 300. `pick.ts` (296) is fine                                                                                                                                                  |
+| `server/db/schema.ts`                                                | 308                | Leave as one file, it is declarative, list in `LONG`                                                                                                                                                                                                                       |
 
 **P3. Collapse the parallel input and form modules**
 
@@ -161,7 +167,6 @@ Rule: a component script over about 80 lines means logic is in the wrong place.
   `core/export.test.ts` (745), `local/backend.test.ts` (692), and about 20 more. The split follows the source split,
   so each source file keeps one test file.
 - `src/test/repo-contract.ts` splits by area as in P2. `simulate.ts` (263) stays.
-- Remove unused test helpers (`FakeWebSocket`, `DAY`, `DAY_START_MS`, `SETTINGS`).
 - Update `UNTESTED` in `architecture.test.ts` as modules move.
 
 **P6. Docs and navigation (the DX goal itself)**
@@ -169,8 +174,8 @@ Rule: a component script over about 80 lines means logic is in the wrong place.
 - `CLAUDE.md`: add a 15 to 20 line "Where things live" map (folder to purpose) and the new naming and size rules.
   Keep the rest, do not grow the file.
 - One `README.md` section "Code map" (10 lines) pointing to the folders, so a new reader does not need the tree.
-- `docs/`: 4 plan files are largely history. `checks-and-tests-plan.md` (185) and `roadmap-1.0.md` (188) stay, mark
-  `feature-ideas.md` (341) stays as one document, drop `flow-plan.md` if the code now says the same (check first).
+- `docs/`: `checks-and-tests-plan.md` (185), `roadmap-1.0.md` (188) and `feature-ideas.md` (341, see decision 5)
+  stay. Drop `flow-plan.md` if the code now says the same (check first).
 - No per-folder README files (files for 5 lines). The map lives once, in `CLAUDE.md`.
 
 ## 4. The `flow()` function and the flow module
@@ -207,24 +212,34 @@ commit of a package. Moves and edits never share a commit, so `git log --follow`
 
 Expected result (targets, not promises): no source file over 300 lines except a short, reasoned `LONG` list
 (schema, generated shadcn), `src/lib` root holds only folders, no module under 25 lines that is not a route or
-config, route files 5 to 10 lines of intent, 22 fewer scripts, knip and the size test in the gate, and a
-`CLAUDE.md` map that makes a file findable in one lookup.
+config, route files 5 to 10 lines of intent, 23 fewer scripts (done), knip and the size test in the gate
+(knip done), and a `CLAUDE.md` map that makes a file findable in one lookup.
 
 ## 6. Decisions (settled 2026-10-19)
 
 1. **Folder grouping: yes.** Group the flat modules into domain folders (section 2). It touches about 150 files
    of imports, all mechanical, and it removes the 150-entry folder.
-2. **Migration scripts: delete all 23** (the first count of 22 was off by one, done). `db:push` and `deploy --db-push` replace them. No generic `scripts/sql.ts`
-   escape hatch, a future one-off is written when it is needed.
+2. **Migration scripts: delete all 23** (the first count of 22 was off by one, done). `db:push` and
+   `deploy --db-push` replace them. No generic `scripts/sql.ts` escape hatch, a future one-off is written when
+   it is needed.
 3. **`#lib` index import: dropped.** Import from the module so the origin of a symbol is visible.
 4. **Size rule: 300 lines for source, 400 for tests** (tests are long because they list cases).
 5. **`docs/feature-ideas.md`: leave as one document.** It is a brainstorm archive, not code, nobody reads it
    to change the app, so splitting it adds files for no gain. The size rule applies to code only.
-6. **Scope and order: one step at a time.** Steps 1 and 2 are done (`6d2ec90` to `33a4826`, `8089441` to
-   `252eec7`), the next step starts only when asked. The original idea was steps 1 to 3 first (hygiene, routes, folder move), since they give most of the DX
-   win at low risk. Then the splits one module at a time (step 4 onward), `flow` last.
+6. **Scope and order: one step at a time.** Steps 1 and 2 are done, the next step starts only when asked.
+   The original idea was steps 1 to 3 first (hygiene, routes, folder move), since they give most of the DX win at
+   low risk. Then the splits one module at a time (step 4 onward), `flow` last.
 
-## 7. Parked, out of scope
+## 7. Open items from steps 1 and 2
+
+- `scripts/add-flow-events.ts` was a data migration that `db:push` does not replace (it updated `users.ai_events`).
+  It is in git history at `0721884^`. Check whether production ever ran it, nobody has checked.
+- The `reminders` table in `schema.ts` is only used by `src/test/harness.test.ts` (parked in `TODO.md`).
+- The 500 path of the four model routes is covered on the `handler` helper only, not per route (parked in `TODO.md`).
+- Step 1 was done with a `sed` script for the mechanical `export` removal, against the rule to edit with tool
+  calls. The type check and tests passed afterwards. Later steps must use the Edit tool.
+
+## 8. Parked, out of scope
 
 Behavior changes, new features, schema changes, changing the `core/` boundary or the single `tasker` state object.
 Anything found on the way that is a bug goes into `TODO.md` as one line.
