@@ -38,6 +38,7 @@ Tests need 90 % line and function coverage over the whole report (`scripts/cover
 - **Logic goes in pure modules** (`src/lib/*.ts`, each with a test next to it). Components and routes only render or wire.
 - **One state object:** `tasker` in `src/lib/app.svelte.ts`. Do not split it.
 - **Components never call `fetch`.** They use `tasker.backend` (the `Backend` interface in `src/lib/backend.ts`). A new `Backend` method must be added to `remote-backend.ts`, `local/backend.ts` and `BACKEND_METHODS` in `local/deferred.ts`. Rules shared by server and device live in `src/lib/core/` and run against a `Repo`.
+- **Routes** that need a login are written with `handler()` (`#lib/server/route.js`): it answers 401 for a guest, gives `ctx`, `user` and `json()`, and maps `AssistantError` to its status. Only login, callback and logout are hand written (listed in `architecture.test.ts`).
 - **Time:** times are minutes since midnight, durations in minutes, a task belongs to `task.date` (`YYYY-MM-DD` in the user's timezone, helpers in `src/lib/time.ts`). Tasks never cross midnight, split them.
 - **Schema changes** must be applied afterwards: `bun run db:push`. Production: `bun run deploy --db-push`.
 - Task data never goes in `localStorage`. Only `src/lib/local/**` (IndexedDB) holds a guest's data.

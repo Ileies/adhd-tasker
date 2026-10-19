@@ -197,6 +197,33 @@ describe('pages', () => {
 	});
 });
 
+describe('routes', () => {
+	/** Routes that are not a signed in call, each with its reason. A new one can only join on purpose. */
+	const HAND_WRITTEN: Record<string, string> = {
+		'src/routes/login/+server.ts':
+			'a guest is the normal caller, only asking for services needs a login',
+		'src/routes/callback/+server.ts': 'finishes the sign in, so there is no user yet',
+		'src/routes/logout/+server.ts': 'signs out and redirects, it must also work for a stale session'
+	};
+	const routes = appCode.filter(({ path }) => /^src\/routes\/(.*\/)?\+server\.ts$/.test(path));
+
+	test('every +server route uses handler, or is listed with a reason', () => {
+		expect(routes.length).toBeGreaterThan(0);
+		expect(
+			routes
+				.filter(({ path, content }) => !content.includes('handler(') && !(path in HAND_WRITTEN))
+				.map(({ path }) => path)
+		).toEqual([]);
+	});
+
+	test('the hand written list names only existing routes that do not use handler', () => {
+		const stale = Object.keys(HAND_WRITTEN).filter(
+			(path) => !routes.some((route) => route.path === path && !route.content.includes('handler('))
+		);
+		expect(stale).toEqual([]);
+	});
+});
+
 describe('network access', () => {
 	test('fetch is only called by backends, adapters and server code, never by a component or a route page', () => {
 		expect(appCodeMentioning(/\bfetch\(/)).toEqual([
