@@ -359,7 +359,7 @@
 		const before = task.duration;
 		// The end is counted from the time it was placed at, the time it is saved at stays
 		void updateTask({ ...task, duration: extendTask(placed, now, 15) });
-		showToast(`${task.title}: 15 more minutes`, () => updateTask({ ...task, duration: before }));
+		showToast(`Keep going on ${task.title}`, () => updateTask({ ...task, duration: before }));
 	}
 
 	/** Moves a task that ran out to the next free slot today, or to tomorrow when nothing fits. */

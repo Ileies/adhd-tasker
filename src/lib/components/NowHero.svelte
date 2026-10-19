@@ -352,7 +352,7 @@
 					Done
 				</Button>
 				<Button size="lg" variant="outline" class={secondaryClass} onclick={() => onExtend(ended)}>
-					15 more min
+					Keep going
 				</Button>
 				<Button size="lg" variant="outline" class={secondaryClass} onclick={() => onLater(ended)}>
 					Move to later
@@ -379,7 +379,7 @@
 							Done
 						</Button>
 						<Button variant="outline" class={barButtonClass} onclick={() => onExtend(bar.ended)}>
-							15 more min
+							Keep going
 						</Button>
 						<Button variant="outline" class={barButtonClass} onclick={() => onLater(bar.ended)}>
 							Later
@@ -414,13 +414,8 @@
 				</p>
 			{/if}
 
-			<div>
-				<div class="tabular font-bold {compact ? 'text-5xl' : 'text-clock'}">
-					{formatMinutes(left)}
-				</div>
-				<div class="mt-1 text-lg opacity-90">
-					left, until {formatClock(task.startTime + task.duration)}
-				</div>
+			<div class="tabular font-bold {compact ? 'text-5xl' : 'text-clock'}">
+				Until {formatClock(task.startTime + task.duration)}
 			</div>
 
 			<div
@@ -463,7 +458,7 @@
 						class="h-16 px-8 text-xl hover:bg-current/10"
 						onclick={() => onExtend(task)}
 					>
-						15 more min
+						Keep going
 					</Button>
 				{/if}
 				{#if !endsOnItsOwn(task)}{@render stuckButton()}{/if}
@@ -533,10 +528,7 @@
 					/>
 				{/if}
 			{:else}
-				<div>
-					<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
-					<div class="mt-1 text-lg opacity-90">left in this session</div>
-				</div>
+				<div class="text-2xl font-semibold opacity-90">This session</div>
 
 				<div
 					class="h-4 w-full overflow-hidden rounded-full bg-current/20"
@@ -667,10 +659,7 @@
 				<h1 class="max-w-4xl text-4xl leading-tight font-bold md:text-6xl">
 					{activityById(hero.activity).text}
 				</h1>
-				<div>
-					<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
-					<div class="mt-1 text-lg opacity-90">left. I'll call you back.</div>
-				</div>
+				<div class="text-2xl font-semibold opacity-90">I'll call you back.</div>
 				<div
 					class="h-4 w-full overflow-hidden rounded-full bg-current/20"
 					role="progressbar"
@@ -729,11 +718,8 @@
 		<div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
 			<h1 class="text-display font-bold">Get ready</h1>
 			<p class="text-xl opacity-90 md:text-2xl">{hero.next.title}</p>
-			<div>
-				<div class="tabular text-clock font-bold">{formatMinutes(hero.left)}</div>
-				<div class="mt-1 text-lg opacity-90">
-					until it starts at {formatClock(hero.next.startTime)}
-				</div>
+			<div class="tabular text-clock font-bold">
+				Starts at {formatClock(hero.next.startTime)}
 			</div>
 			{@render reasonLine()}
 		</div>

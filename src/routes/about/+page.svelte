@@ -27,9 +27,9 @@
 	<p class="mt-2">
 		The home screen shows one task: the one that is running at this moment. When several overlap,
 		the one with the higher priority wins. The color shifts slowly as time runs out, and a bar
-		drains with it, so you can read the time left from across the room. Below it are the next tasks.
-		When a task runs over, you can finish it, give it 15 more minutes or move it to later. "I'm
-		stuck" offers one small first step and a short timer.
+		drains with it, so you can see the time left from across the room without reading a number.
+		Below it are the next tasks. When a task runs over, you can finish it, keep going or move it to
+		later. "I'm stuck" offers one small first step and a short timer.
 	</p>
 
 	<h2 id="plan" class="mt-8 scroll-mt-6 text-lg font-semibold lg:text-xl">Plan</h2>

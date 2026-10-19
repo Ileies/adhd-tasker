@@ -38,7 +38,7 @@
 	</DropdownMenu.Trigger>
 	<DropdownMenu.Content align="start" class="w-56">
 		<DropdownMenu.Item onSelect={() => onEdit(task)}>Edit</DropdownMenu.Item>
-		<DropdownMenu.Item onSelect={() => onExtend(task)}>15 more min</DropdownMenu.Item>
+		<DropdownMenu.Item onSelect={() => onExtend(task)}>Keep going</DropdownMenu.Item>
 		<DropdownMenu.Item onSelect={() => onLater(task)}>Move to later today</DropdownMenu.Item>
 		<DropdownMenu.Item onSelect={() => onTomorrow(task)}>Move to tomorrow</DropdownMenu.Item>
 		<DropdownMenu.Separator />

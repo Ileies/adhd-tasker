@@ -264,9 +264,9 @@ describe('tabTitle', () => {
 	const hero = (state: HeroState<RankTask, { title: string }>) => tabTitle(state);
 
 	test.each([
-		['active', [a], h(9, 20), '40 min - Write intro'],
-		['wrapping up', [a], h(9, 52), '8 min - Write intro'],
-		['a long task in hours', [task('Deep work', h(9), 240)], h(9, 20), '3 h 40 min - Deep work'],
+		['active', [a], h(9, 20), 'Write intro'],
+		['wrapping up', [a], h(9, 52), 'Write intro'],
+		['a long task', [task('Deep work', h(9), 240)], h(9, 20), 'Deep work'],
 		['time up', [a], h(10, 3), 'Time is up - Write intro']
 	])('%s', (_name, tasks, now, title) => {
 		expect(tabTitle(heroAt(tasks, now))).toBe(title);
@@ -311,10 +311,10 @@ describe('tabTitle', () => {
 	} as const;
 
 	test.each([
-		['a session', { ...session, check: null }, '18 min - Study B'],
+		['a session', { ...session, check: null }, 'Study B'],
 		['a check', { ...session, left: 0, check: ask(0) }, 'How far? - Study B'],
 		['a check asked again', { ...session, left: 0, check: ask(1) }, 'Still there? - Study B'],
-		['a break', { ...onBreak, check: null }, 'Break 6 min'],
+		['a break', { ...onBreak, check: null }, 'Break'],
 		['a break that is over', { ...onBreak, left: 0, check: ask(0) }, 'Break is over'],
 		['a break asked again', { ...onBreak, left: 0, check: ask(1) }, 'Still there?'],
 		['plan', { kind: 'plan', check: null }, "Plan what's next"],

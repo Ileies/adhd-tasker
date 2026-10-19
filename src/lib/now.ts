@@ -1,5 +1,4 @@
 import type { Check } from '#lib/checks.js';
-import { formatMinutes } from '#lib/format.js';
 import type { RankTask, Ranking } from '#lib/priority.js';
 
 /** The last minutes of a task are its wrap-up, at most this many... */
@@ -70,8 +69,8 @@ export function wrapUpWindow(duration: number): number {
 
 /**
  * What a task at a time or an appointment makes of the hero, `null` when nothing time-bound has the screen right now.
- * Built on `rank()`, which stays as it is so the server agrees. Time up needs no stored answer: Done, 15 more
- * minutes and moving the task all take it out of `missed`.
+ * Built on `rank()`, which stays as it is so the server agrees. Time up needs no stored answer: Done, Keep going
+ * (15 more minutes) and moving the task all take it out of `missed`.
  */
 export function timeBoundState<T extends RankTask>(
 	ranking: Ranking<T>,
@@ -114,21 +113,21 @@ export function heroDark<T extends RankTask, D>(hero: HeroState<T, D>): boolean 
 	return hero.kind === 'rest' && hero.why === 'night';
 }
 
-/** The browser tab title, so a tab in the background is still an anchor: `28 min - Write intro`. */
+/** The browser tab title, so a tab in the background is still an anchor: the task name, no countdown. */
 export function tabTitle<T extends RankTask, D extends { title: string }>(
 	hero: HeroState<T, D>
 ): string {
 	switch (hero.kind) {
 		case 'active':
 		case 'wrapping-up':
-			return `${formatMinutes(hero.left)} - ${hero.task.title}`;
+			return hero.task.title;
 		case 'todo':
 			if (hero.check)
 				return `${hero.check.level === 1 ? 'Still there?' : 'How far?'} - ${hero.todo.title}`;
-			return `${formatMinutes(hero.left)} - ${hero.todo.title}`;
+			return hero.todo.title;
 		case 'break':
 			if (hero.check) return hero.check.level === 1 ? 'Still there?' : 'Break is over';
-			return `Break ${formatMinutes(hero.left)}`;
+			return 'Break';
 		case 'time-up':
 			return `Time is up - ${hero.ended.title}`;
 		case 'ready':
