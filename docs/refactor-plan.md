@@ -89,16 +89,22 @@ Order is by risk and payoff. Each package is one or a few commits, verify betwee
 5. Add `knip` (with a small `knip.json` that lists `scripts/` and the SvelteKit routes as entries) to
    `verify` so dead code fails the gate.
 
-**P1. Route and API boilerplate**
+**P1. Route and API boilerplate** (done, `8089441` to `252eec7`)
 
-1. One helper in `src/lib/server/` (for example `route.ts`): `handler(fn)` that checks `locals.user`, reads the
-   JSON body once, maps `AssistantError` to an HTTP error, and passes `{ ctx, body, user }`. A route becomes
-   `export const POST = handler(({ ctx, body }) => createTodo(ctx, body))`.
-2. Convert the 24 routes with the guard, delete the local `answering` and `readBody` copies.
-3. Fold `schedule/display`, `schedule/[id]`, `agent/stuck`, `agent/cards/[id]`, `calendar/sync|all-day|write|import|preview`
-   only if they stay readable as routes. SvelteKit needs the files, so the target is fewer lines per file, not fewer files.
-4. A route test that a guest gets 401 from every `+server.ts` (the architecture test can list routes and check
-   that each uses `handler`).
+1. `handler(work, { failure? })` in `src/lib/server/route.ts` (with `route.test.ts`): answers 401 to a guest, builds
+   `ctx` on first use, gives the work `user`, `json(fallback)`, `url`, `params`, `cookies`, `request` and
+   `getClientAddress`, and maps `AssistantError` to an HTTP error. With `failure` set, other errors are logged and
+   answered as 500.
+2. All authenticated routes converted, the local `answering` and `readBody` copies are gone. Routes went from
+   1018 to 823 lines, 401 sites from 43 to 2 (the helper and `login`), `AssistantError` catches in routes from 15 to 0.
+3. Hand-written on purpose: `login` (a guest is the normal caller), `callback` (no user yet), `logout` (must work
+   for a stale session).
+4. The architecture test requires every `+server.ts` to use `handler` or be listed with a reason. The schedule,
+   agent and assistant routes got tests, written against the old code before the conversion.
+5. Behavior changes, all at the auth edge: a guest gets 401 before body validation on the calendar routes, the 401
+   text on the settings, openai-key, location and timezone routes is now "Login required", `withCalendar` takes
+   `{ email }` and no longer checks the login. The 500 path of the four model routes is tested on the helper only
+   (parked in `TODO.md`).
 
 **P2. Split the large pure modules** (largest payoff for agents)
 
@@ -189,7 +195,7 @@ steps:
 | Step | Packages                                                                       | Rough size           | Risk                                                      |
 | ---- | ------------------------------------------------------------------------------ | -------------------- | --------------------------------------------------------- |
 | 1    | P0 hygiene, knip in verify (done, `6d2ec90` to `33a4826`)                      | small                | none                                                      |
-| 2    | P1 route helper                                                                | small                | low, covered by route tests                               |
+| 2    | P1 route helper (done, `8089441` to `252eec7`)                                 | small                | low, covered by route tests                               |
 | 3    | Final folder mapping, then move files (git mv, update imports, no logic edits) | large but mechanical | low, the type check and 3 timezone test runs catch breaks |
 | 4    | P2 splits, `flow` last                                                         | large                | medium (flow)                                             |
 | 5    | P3 and P4                                                                      | large                | low to medium, UI needs a manual look                     |
@@ -214,8 +220,8 @@ config, route files 5 to 10 lines of intent, 22 fewer scripts, knip and the size
 4. **Size rule: 300 lines for source, 400 for tests** (tests are long because they list cases).
 5. **`docs/feature-ideas.md`: leave as one document.** It is a brainstorm archive, not code, nobody reads it
    to change the app, so splitting it adds files for no gain. The size rule applies to code only.
-6. **Scope and order: one step at a time.** Step 1 is done (`6d2ec90` to `33a4826`), the next step starts only
-   when asked. The original idea was steps 1 to 3 first (hygiene, routes, folder move), since they give most of the DX
+6. **Scope and order: one step at a time.** Steps 1 and 2 are done (`6d2ec90` to `33a4826`, `8089441` to
+   `252eec7`), the next step starts only when asked. The original idea was steps 1 to 3 first (hygiene, routes, folder move), since they give most of the DX
    win at low risk. Then the splits one module at a time (step 4 onward), `flow` last.
 
 ## 7. Parked, out of scope
