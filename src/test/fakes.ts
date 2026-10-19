@@ -112,7 +112,7 @@ export function expectEveryRequestValid(
  * A stand in for the Realtime WebSocket. The test drives it: `open()`, `receive(...)`, `fail()`, `drop()`.
  * `connect` is what `speak` takes, it remembers the url and the key it was opened with.
  */
-export class FakeWebSocket {
+class FakeWebSocket {
 	static readonly CONNECTING = 0;
 	static readonly OPEN = 1;
 	static readonly CLOSED = 3;

@@ -18,10 +18,10 @@ import { placeDay } from '#lib/placeday.js';
 import { coolingAt, liveRows, skipPatch, stepFor, stepsOf, type Struggle } from '#lib/struggle.js';
 import { Priority, TaskStatus } from '#lib/types.js';
 
-export const DAY = '2026-10-14';
-export const DAY_START_MS = Date.parse(`${DAY}T00:00:00Z`);
+const DAY = '2026-10-14';
+const DAY_START_MS = Date.parse(`${DAY}T00:00:00Z`);
 
-export const SETTINGS: FlowSettings = {
+const SETTINGS: FlowSettings = {
 	myDayStart: 7 * 60,
 	myDayEnd: 23 * 60,
 	overrunMinutes: 15,
