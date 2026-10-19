@@ -483,6 +483,11 @@ export function flow<T extends FlowTask, D extends FlowTodo>(
 		return (open(choice?.todoId ?? null) as D | undefined) ?? pinnedFor(sessionStart).todo;
 	};
 
+	// The day has not started and something at a time is about to: get ready for it, the morning can wait
+	const soon = ranking.upcoming[0];
+	if (!stretch && soon && soon.startTime - now < READY_MINUTES)
+		return { ...rest, present, current: { kind: 'ready', next: soon } };
+
 	if (!present || !stretch) {
 		const from = stretch ? stretch.anchor : null;
 		return {

@@ -41,6 +41,12 @@ describe('4.8 the morning (without the start call)', () => {
 		expect(state.next.map((task) => task.title)).toEqual(['Meds']);
 	});
 
+	test('opened late, with bed ten minutes away and nothing done, the hero gets ready for bed, not the morning', () => {
+		const day = new SimDay([simTask(10, hm(22, 45), 15, { title: 'Go to bed' })], studies());
+		const state = day.runTo(hm(22, 36));
+		expect(state.current).toMatchObject({ kind: 'ready', next: { title: 'Go to bed' } });
+	});
+
 	test('nothing is pinned or started before Start', () => {
 		const day = new SimDay([], studies());
 		day.runTo(hm(9));
