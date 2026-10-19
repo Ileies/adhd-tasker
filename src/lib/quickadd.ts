@@ -98,7 +98,7 @@ export function parseQuickTask(text: string, today?: DateKey): QuickTask {
 }
 
 /** Words that mark a line as an appointment: somebody else's time, it ends on its own (`docs/flow-plan.md` 5.10). */
-export const APPOINTMENT_WORDS = [
+const APPOINTMENT_WORDS = [
 	'exam',
 	'test',
 	'meeting',

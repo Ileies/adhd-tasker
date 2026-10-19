@@ -23,7 +23,7 @@ import { deviceTimezone, todayIn } from '#lib/time.js';
 export type MoveChoice = 'both' | 'account' | 'device';
 
 /** The window to take a move back, a decision about the whole plan gets more than the usual toast. */
-export const UNDO_MOVE_MS = 10_000;
+const UNDO_MOVE_MS = 10_000;
 
 const reasonOf = (error: unknown) =>
 	error instanceof BackendError && error.status === null

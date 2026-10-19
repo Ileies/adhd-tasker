@@ -35,7 +35,7 @@ export const BREAK_ACTIVITIES: readonly BreakActivity[] = [
 ];
 
 /** A meal this close makes a snack a bad idea. */
-export const MEAL_NEAR_MINUTES = 45;
+const MEAL_NEAR_MINUTES = 45;
 const MEAL_WORDS = /\b(breakfast|brunch|lunch|dinner|supper|meal|eat|food|snack)\b/i;
 
 export const isMeal = (title: string): boolean => MEAL_WORDS.test(title);

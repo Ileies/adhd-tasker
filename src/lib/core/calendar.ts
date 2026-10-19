@@ -10,7 +10,7 @@ import { addDays, localMoment, zonedToEpoch, type DateKey } from '#lib/time.js';
 import { Priority } from '#lib/types.js';
 
 /** How many days ahead events are read, from today. */
-export const WINDOW_DAYS = 14;
+const WINDOW_DAYS = 14;
 /** A task is never shorter, see `parseDuration`. */
 const MIN_DURATION = 5;
 const MAX_ALL_DAY_SPAN = 31;

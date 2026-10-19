@@ -12,8 +12,6 @@ import { deviceTimezone, type DateKey } from '#lib/time.js';
 
 /** Where a saved location came from: the internet address (account only), the browser's position or a city search. */
 export type LocationSource = 'ip' | 'device' | 'city';
-/** What the user can set by hand. `ip` is only ever written by the server. */
-export type ChosenSource = Exclude<LocationSource, 'ip'>;
 
 export interface Place {
 	name: string;
@@ -66,7 +64,7 @@ export function savedLocation(fields: LocationFields): (Place & { source: Locati
 }
 
 /** What the light window is based on. */
-export type Basis =
+type Basis =
 	| { kind: 'location'; name: string; source: LocationSource }
 	| { kind: 'timezone'; name: string }
 	| { kind: 'none' };

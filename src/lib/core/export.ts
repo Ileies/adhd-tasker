@@ -58,10 +58,10 @@ export type ExportedTask = Omit<
 };
 
 /** A routine as the file holds it. `through` keeps the days that were made, so a day the user deleted stays gone. */
-export type ExportedRoutine = Required<NewRoutine>;
+type ExportedRoutine = Required<NewRoutine>;
 
 /** A to-do as the file holds it. `parent` is an index into the file's task list (the appointment it prepares for). */
-export interface ExportedTodo extends Omit<Required<NewTodo>, 'parentId' | 'createdAt'> {
+interface ExportedTodo extends Omit<Required<NewTodo>, 'parentId' | 'createdAt'> {
 	parent: number | null;
 	createdAt: number;
 }
@@ -70,7 +70,7 @@ export interface ExportedTodo extends Omit<Required<NewTodo>, 'parentId' | 'crea
  * What the user answered today and before, for them to read. It is never imported: a session in progress
  * starts again after a move. Links are indexes into the file's lists.
  */
-export interface ExportedFlow {
+interface ExportedFlow {
 	at: number;
 	date: string;
 	type: FlowType;
@@ -79,7 +79,7 @@ export interface ExportedFlow {
 	data: Record<string, unknown>;
 }
 
-export interface ExportedAlarm {
+interface ExportedAlarm {
 	fireAt: number;
 	minutes: number | null;
 	repeat: Repeat;

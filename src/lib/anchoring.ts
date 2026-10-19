@@ -103,10 +103,10 @@ export const momentKey = (kind: 'overrun' | 'reminder' | 'wrap-up', date: string
 	`${kind}:${date}:${task.id}:${task.startTime}:${task.duration}`;
 
 /** The morning call, minutes after "Start working at": the chime, asked again after two minutes, then every quarter of an hour. */
-export const START_CALL_AGAIN_MINUTES = 2;
-export const START_CALL_EVERY_MINUTES = 15;
+const START_CALL_AGAIN_MINUTES = 2;
+const START_CALL_EVERY_MINUTES = 15;
 /** Away calls back this often while the user is gone. */
-export const AWAY_CALL_EVERY_MINUTES = 30;
+const AWAY_CALL_EVERY_MINUTES = 30;
 
 export interface CallMoment {
 	/** Changes every time the call sounds again, so a moment never sounds twice. */

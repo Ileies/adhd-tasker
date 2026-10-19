@@ -12,7 +12,7 @@ import { fitsInDay } from '#lib/task-input.js';
 import { isDateKey } from '#lib/time.js';
 import { Priority } from '#lib/types.js';
 
-export const ROUTINE_KINDS = ['block', 'appointment'] as const;
+const ROUTINE_KINDS = ['block', 'appointment'] as const;
 
 /** A person's routines are few: Lunch, Meds, Bed. The limit keeps a wrong file from filling the plan. */
 export const MAX_ROUTINES = 50;

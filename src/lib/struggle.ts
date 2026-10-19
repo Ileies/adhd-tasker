@@ -19,10 +19,10 @@ export const LOW_ENERGY_MINUTES = 60;
 /** ...the ones with at most this much left. */
 export const LOW_ENERGY_MAX_LEFT = 30;
 /** Bailing out of a fresh to-do in its first minutes gets this many minutes of trying first. */
-export const TRY_FIRST_MINUTES = 5;
+const TRY_FIRST_MINUTES = 5;
 /** The third "Something else" within this many minutes is a struggle. */
-export const ELSE_WINDOW_MINUTES = 30;
-export const ELSE_LIMIT = 3;
+const ELSE_WINDOW_MINUTES = 30;
+const ELSE_LIMIT = 3;
 /** The break after the second struggle that follows a break. */
 export const LONG_BREAK_MINUTES = 20;
 /** The break the check offers after this many minutes of work without one... */
@@ -30,7 +30,7 @@ export const OFFER_AFTER_MINUTES = 90;
 /** ...and how long it is. */
 export const OFFER_BREAK_MINUTES = 5;
 /** A to-do pushed away this often, on more than one day, is faced. */
-export const FACE_IT_SKIPS = 3;
+const FACE_IT_SKIPS = 3;
 /** The session a to-do is faced in, nothing to switch to. */
 export const FACE_IT_MINUTES = 10;
 

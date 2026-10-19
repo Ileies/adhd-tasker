@@ -48,15 +48,15 @@ export type SettingsPatch = Partial<
 >;
 
 /** The check-in chime in minutes, 0 is off. */
-export const CHECK_IN_MAX = 60;
+const CHECK_IN_MAX = 60;
 /** How long a session runs before the app asks how it is going, in minutes. */
-export const CHECK_MINUTES_LIMITS = { min: 5, max: 120 } as const;
+const CHECK_MINUTES_LIMITS = { min: 5, max: 120 } as const;
 /** How long a break runs, in minutes. */
-export const BREAK_MINUTES_LIMITS = { min: 3, max: 30 } as const;
+const BREAK_MINUTES_LIMITS = { min: 3, max: 30 } as const;
 /** How long before an appointment travel to it ends, in minutes. 0 is arriving on the dot. */
-export const ARRIVE_EARLY_LIMITS = { min: 0, max: 60 } as const;
+const ARRIVE_EARLY_LIMITS = { min: 0, max: 60 } as const;
 /** My day has to span at least this many minutes, or the timeline has nothing to show. */
-export const MY_DAY_MIN = 60;
+const MY_DAY_MIN = 60;
 
 const isBool = (value: unknown) => typeof value === 'boolean';
 const inRange = (min: number, max: number) => (value: unknown) =>

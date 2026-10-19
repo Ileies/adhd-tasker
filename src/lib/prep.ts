@@ -17,7 +17,7 @@ export const PREPARE_CHIPS = [30, 120, 300, 600, 1200];
 /** Travel shorter than this is not worth a block of its own. */
 export const MIN_TRAVEL_MINUTES = 5;
 /** An imported appointment gets the offer of preparation when it is this many days away or less. */
-export const PREP_WINDOW_DAYS = 14;
+const PREP_WINDOW_DAYS = 14;
 
 type Slot = Pick<Task, 'date' | 'startTime'>;
 type Placed = Slot & Pick<Task, 'duration'>;

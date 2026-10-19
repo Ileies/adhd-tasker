@@ -124,7 +124,7 @@ export function describeMove({ tasks, skipped, alarms, todos }: MoveResult): str
 }
 
 /** What a plan holds, in words: to-dos and alarms are only named when there are some. */
-export function describeCounts(tasks: number, alarms: number, todos = 0): string {
+function describeCounts(tasks: number, alarms: number, todos = 0): string {
 	return [
 		plural(tasks, 'task'),
 		...(todos ? [plural(todos, 'to-do')] : []),

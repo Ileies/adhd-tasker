@@ -11,7 +11,7 @@ import { TaskStatus } from '#lib/types.js';
 /** Nobody works every free minute: this share of them is what a plan may count on. */
 export const REALISTIC_SHARE = 0.6;
 /** A to-do group that needs more than this share of the realistic free time is tight. */
-export const TIGHT_FROM = 0.8;
+const TIGHT_FROM = 0.8;
 /** Days looked at, a due date further away is counted as this far. */
 export const HORIZON_DAYS = 365;
 
@@ -100,7 +100,7 @@ export function capacityOf(input: CapacityInput): Capacity {
 	};
 }
 
-export type Fit = 'on-track' | 'tight' | 'no-fit';
+type Fit = 'on-track' | 'tight' | 'no-fit';
 
 export type FitTodo = PickTodo;
 

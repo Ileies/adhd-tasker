@@ -6,7 +6,7 @@
 import { done, openLocalDb, transact, type UpgradeStep } from '#lib/local/db.js';
 import { isSoundSlot, type SoundSlot, type StoredSound } from '#lib/sounds.js';
 
-export const SOUNDS_DATABASE_NAME = 'adhd-tasker-sounds';
+const SOUNDS_DATABASE_NAME = 'adhd-tasker-sounds';
 
 const STEPS: UpgradeStep[] = [(db) => void db.createObjectStore('sounds', { keyPath: 'slot' })];
 

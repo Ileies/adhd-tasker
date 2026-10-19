@@ -8,8 +8,8 @@ import { roundCoord } from '#lib/location.js';
 
 export const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 /** A search needs at least this many letters, and a longer text is not a city name. */
-export const SEARCH_MIN = 2;
-export const SEARCH_MAX = 80;
+const SEARCH_MIN = 2;
+const SEARCH_MAX = 80;
 const RESULTS = 5;
 
 export class GeocodeError extends Error {

@@ -8,9 +8,9 @@ import type { Todo, TodoPatch } from '#lib/core/repo.js';
 import { ESTIMATE_LIMITS } from '#lib/todo-input.js';
 
 /** The first session after Start, I'm back, a Done or a time-bound item is this long, or the check interval when that is shorter. */
-export const WARMUP_MINUTES = 15;
+const WARMUP_MINUTES = 15;
 /** After two good answers in a row the next session is this much longer... */
-export const LONG_FACTOR = 1.5;
+const LONG_FACTOR = 1.5;
 /** ...but never longer than this. */
 export const MAX_SESSION_MINUTES = 60;
 /** A session is counted up to its length plus this many minutes, while its check waits for an answer. */
@@ -18,15 +18,15 @@ export const ANSWER_GRACE_MINUTES = 5;
 /** Time away from the screen counts after "I was working on it", but at most this much. */
 export const MAX_WORKED_MINUTES = 120;
 /** Keep going is offered at most this many times in a row, then the number is due. */
-export const KEEP_GOING_MAX = 2;
+const KEEP_GOING_MAX = 2;
 /** A gain below this share of the expected one is slow. */
-export const SLOW_SHARE = 0.5;
+const SLOW_SHARE = 0.5;
 /** A check never offers more than this: a to-do is finished with Done, never by a guess. */
 export const MAX_GUESS = 95;
 
 /** What the user said when the pace was slow, see `PACE_CHOICES`. */
 export type Pace = 'bigger' | 'unfocused' | 'hard';
-export const PACES: readonly Pace[] = ['bigger', 'unfocused', 'hard'];
+const PACES: readonly Pace[] = ['bigger', 'unfocused', 'hard'];
 
 export const PACE_CHOICES: readonly { pace: Pace; label: string }[] = [
 	{ pace: 'bigger', label: "It's bigger than I thought" },

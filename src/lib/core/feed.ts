@@ -8,7 +8,7 @@ import { findStuckReason } from '#lib/anchoring.js';
 import { AssistantError, type Ctx } from '#lib/core/context.js';
 import { emit } from '#lib/core/events.js';
 
-export interface FeedCard {
+interface FeedCard {
 	id: number;
 	kind: 'say' | 'ask';
 	text: string;

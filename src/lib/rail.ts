@@ -33,7 +33,7 @@ export function timeRange(task: { startTime: number; duration: number }): string
 }
 
 /** How many alarm lines the rail shows, so many timers cannot crowd the tasks. */
-export const ALARM_LINES = 4;
+const ALARM_LINES = 4;
 
 /** The alarms still to ring today in time order, each as `Alarm 15:40 Leave` (at most `ALARM_LINES`). */
 export function alarmLines(

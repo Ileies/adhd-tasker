@@ -26,7 +26,7 @@ import { formatClock24 } from '#lib/format.js';
 
 const AGENT_QUIET_MS = 60_000;
 
-export const agentSettings = (settings: Settings): AgentSettings => ({
+const agentSettings = (settings: Settings): AgentSettings => ({
 	autonomy: settings.aiAutonomy,
 	events: parseEvents(settings.aiEvents),
 	quietStart: settings.quietStart,

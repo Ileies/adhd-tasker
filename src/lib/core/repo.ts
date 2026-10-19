@@ -48,7 +48,7 @@ export type NewTask = Omit<
 	shift?: number;
 	routineId?: number | null;
 };
-export type TaskPatch = Partial<Omit<Task, 'id'>>;
+type TaskPatch = Partial<Omit<Task, 'id'>>;
 
 /**
  * A task at a time that repeats (`docs/flow-plan.md` 5.12). It is made into tasks 14 days ahead, one per day it has
@@ -209,7 +209,7 @@ export interface AgentAction {
 	createdAt: number;
 	undoneAt: number | null;
 }
-export type NewAgentAction = Omit<AgentAction, 'id' | 'undoneAt' | 'createdAt'> & {
+type NewAgentAction = Omit<AgentAction, 'id' | 'undoneAt' | 'createdAt'> & {
 	createdAt?: number;
 };
 
@@ -243,7 +243,7 @@ export interface Card {
 	createdAt: number;
 	resolvedAt: number | null;
 }
-export type NewCard = Pick<Card, 'kind' | 'text'> & {
+type NewCard = Pick<Card, 'kind' | 'text'> & {
 	options?: string[] | null;
 	eventId?: number | null;
 	createdAt: number;
@@ -264,7 +264,7 @@ export interface ScheduleEntry {
 	status: 'pending' | 'done' | 'cancelled';
 	createdAt: number;
 }
-export type NewEntry = Pick<ScheduleEntry, 'kind' | 'fireAt' | 'createdBy' | 'createdAt'> &
+type NewEntry = Pick<ScheduleEntry, 'kind' | 'fireAt' | 'createdBy' | 'createdAt'> &
 	Partial<
 		Pick<
 			ScheduleEntry,

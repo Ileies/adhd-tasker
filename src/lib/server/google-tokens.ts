@@ -8,7 +8,7 @@ import { decrypt, encrypt } from '#lib/server/crypto.js';
 import { db } from '#lib/server/db/index.js';
 import { calendarEvents, calendarSync, googleTokens, users } from '#lib/server/db/schema.js';
 
-export const GOOGLE_TOKEN_PURPOSE = 'google-refresh-token';
+const GOOGLE_TOKEN_PURPOSE = 'google-refresh-token';
 export const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
 /** Keeps the token of this user, replacing an older one (Google issues a new one on every consent). */

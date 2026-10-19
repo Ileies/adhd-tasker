@@ -2,9 +2,9 @@ import type { Check } from '#lib/checks.js';
 import type { RankTask, Ranking } from '#lib/priority.js';
 
 /** The last minutes of a task are its wrap-up, at most this many... */
-export const WRAP_UP_MINUTES = 10;
+const WRAP_UP_MINUTES = 10;
 /** ...or this share of a long task, whichever starts earlier, but never more than half of the task. */
-export const WRAP_UP_SHARE = 0.25;
+const WRAP_UP_SHARE = 0.25;
 /** The transition bar stays while the task that started in its place is younger than this. */
 export const BAR_MINUTES = 15;
 /** Time up stays on screen for this many overrun windows, unless it is answered earlier. */

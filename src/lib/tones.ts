@@ -5,7 +5,7 @@
  * and no visual effect at all, so there is nothing that could flash.
  */
 export const WAVES = ['sine', 'triangle', 'square', 'sawtooth'] as const;
-export type Wave = (typeof WAVES)[number];
+type Wave = (typeof WAVES)[number];
 
 export interface Note {
 	/** Pitch in Hz. */
@@ -150,7 +150,7 @@ export function toneNotes(tone: Tone): CustomTone {
 }
 
 /** Validates a custom sequence, the caps apply to anything the model defines. */
-export function parseCustomTone(
+function parseCustomTone(
 	value: unknown
 ): { ok: true; value: CustomTone } | { ok: false; error: string } {
 	const fail = (error: string) => ({ ok: false as const, error });

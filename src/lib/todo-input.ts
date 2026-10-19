@@ -5,11 +5,11 @@ import { Priority } from '#lib/types.js';
 
 /** The size of a to-do in minutes: at least one, at most 500 hours. */
 export const ESTIMATE_LIMITS = { min: 1, max: 30_000 } as const;
-export const MAX_NEXT_STEP = 200;
-export const MAX_DESCRIPTION = 1000;
+const MAX_NEXT_STEP = 200;
+const MAX_DESCRIPTION = 1000;
 
 /** What a user may set from the screens. `ended` is the engine's, it never comes in from outside. */
-export const USER_TODO_STATUSES: readonly TodoStatus[] = ['open', 'done', 'dropped'];
+const USER_TODO_STATUSES: readonly TodoStatus[] = ['open', 'done', 'dropped'];
 
 const isWhole = (value: unknown, min: number, max: number): value is number =>
 	typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;

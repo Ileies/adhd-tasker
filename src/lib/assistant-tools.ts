@@ -239,7 +239,7 @@ const TODO_RENAMES: Renames = {
 	parent_id: 'parentId',
 	status: 'status'
 };
-export const TODO_CLEARABLE: Record<string, string[]> = {
+const TODO_CLEARABLE: Record<string, string[]> = {
 	estimate: ['estimate'],
 	due: ['dueDate', 'dueTime'],
 	not_before: ['notBefore'],
@@ -270,7 +270,7 @@ const ROUTINE_RENAMES: Renames = {
 	first_day: 'firstDay',
 	last_day: 'lastDay'
 };
-export const ROUTINE_CLEARABLE: Record<string, string[]> = { last_day: ['lastDay'] };
+const ROUTINE_CLEARABLE: Record<string, string[]> = { last_day: ['lastDay'] };
 
 /** The body of `add_routine`, validated by `parseRoutineInput` when it is stored. */
 export const parseAddRoutine = (args: Args) =>
@@ -334,8 +334,8 @@ export function parseDeleteById(args: Args, what: 'todo' | 'routine'): Parsed<{ 
 }
 
 export const MAX_SAY = 200;
-export const MAX_OPTIONS = 3;
-export const MAX_OPTION = 40;
+const MAX_OPTIONS = 3;
+const MAX_OPTION = 40;
 
 /** Why the agent made a change, shown in the activity log. Optional, never fails a change. */
 export function parseReason(value: unknown): string | null {
@@ -840,12 +840,12 @@ const ALL_TOOLS: Tool[] = DEFINITIONS.map(({ function: fn }) => ({
 }));
 const pick = (...names: string[]) => ALL_TOOLS.filter((tool) => names.includes(tool.name));
 
-export const TASK_WRITE_TOOLS = ['add_task', 'update_task', 'delete_task'];
-export const TODO_WRITE_TOOLS = ['add_todo', 'update_todo', 'delete_todo', 'add_prep_steps'];
+const TASK_WRITE_TOOLS = ['add_task', 'update_task', 'delete_task'];
+const TODO_WRITE_TOOLS = ['add_todo', 'update_todo', 'delete_todo', 'add_prep_steps'];
 /** A routine changes fourteen days at once, so only the chat edits one, never an unprompted reaction. */
 export const ROUTINE_WRITE_TOOLS = ['add_routine', 'update_routine', 'delete_routine'];
-export const WRITE_TOOLS = [...TASK_WRITE_TOOLS, ...TODO_WRITE_TOOLS, ...ROUTINE_WRITE_TOOLS];
-export const READ_TOOLS = ['list_tasks', 'list_todos', 'list_routines'];
+const WRITE_TOOLS = [...TASK_WRITE_TOOLS, ...TODO_WRITE_TOOLS, ...ROUTINE_WRITE_TOOLS];
+const READ_TOOLS = ['list_tasks', 'list_todos', 'list_routines'];
 /** Tools that touch the schedule, not the plan. `set_alarm` puts something new in front of the user, so unprompted it needs autonomy act. */
 export const SCHEDULE_TOOLS = ['schedule_wakeup', 'set_alarm', 'play_tone', 'cancel_schedule'];
 export const ACT_ONLY_TOOLS = [...TASK_WRITE_TOOLS, ...TODO_WRITE_TOOLS, 'set_alarm'];

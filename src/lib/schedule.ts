@@ -3,8 +3,7 @@ import { addDays, isDateKey, todayIn, weekdayOf, zonedToEpoch } from '#lib/time.
 import { parseTone, type Tone } from '#lib/tones.js';
 
 /** Alarms ring on the client, wakeups wake the agent. Both are rows of the `schedule` table. */
-export const SCHEDULE_KINDS = ['wakeup', 'alarm'] as const;
-export type ScheduleKind = (typeof SCHEDULE_KINDS)[number];
+export type ScheduleKind = 'wakeup' | 'alarm';
 
 /**
  * How an alarm repeats: `none`, `daily`, `weekdays` (Monday to Friday) or `days:1,3,6`, a list of weekday numbers

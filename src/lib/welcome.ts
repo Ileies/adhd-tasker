@@ -25,7 +25,7 @@ export function answerWelcome() {
 }
 
 /** Shows the welcome again, as on the first visit. Only reachable while the plan is empty. */
-export function reopenWelcome() {
+function reopenWelcome() {
 	clearFlag('welcomed');
 	tasker.firstRun.welcomed = false;
 }

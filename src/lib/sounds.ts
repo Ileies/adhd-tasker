@@ -28,7 +28,7 @@ export const SOUND_LIMITS = {
 export const ALARM_LIMITS = { maxBytes: 3_000_000, maxMs: 15_000 } as const;
 
 /** The caps for one slot. */
-export const soundLimits = (slot?: SoundSlot): { maxBytes: number; maxMs: number } =>
+const soundLimits = (slot?: SoundSlot): { maxBytes: number; maxMs: number } =>
 	slot === 'alarm' ? ALARM_LIMITS : SOUND_LIMITS;
 
 /** What is kept per replaced sound. */

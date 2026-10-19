@@ -49,7 +49,7 @@ export const READY_MINUTES = 10;
 /** A session that a time-bound item cuts short is asked about this many minutes before the item... */
 export const EARLY_CHECK_MINUTES = 15;
 /** ...but only when this many minutes passed since the session started. */
-export const EARLY_CHECK_GAP_MINUTES = 10;
+const EARLY_CHECK_GAP_MINUTES = 10;
 /** An unanswered check is asked again after this many minutes ("Still there?")... */
 export const ASK_AGAIN_MINUTES = 2;
 /** ...and after this many the user is away. */
@@ -92,7 +92,7 @@ export interface FlowInput<T extends FlowTask, D extends FlowTodo> {
 }
 
 /** A stretch of work on one to-do, in epoch ms. `end` is the planned end, a session is cut short by a time-bound item. */
-export interface Session {
+interface Session {
 	start: number;
 	end: number;
 	/** Minutes it was meant to run. */

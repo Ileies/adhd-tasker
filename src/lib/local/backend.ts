@@ -38,7 +38,6 @@ import { speak as speakWith, transcribe as transcribeWith } from '#lib/core/voic
 import { openaiModel } from '#lib/openai.js';
 import { clientSettings, parseSettingsPatch } from '#lib/settings.js';
 import { isValidTimezone } from '#lib/time.js';
-import { TaskStatus } from '#lib/types.js';
 
 export interface LocalDeps {
 	repo: Repo;

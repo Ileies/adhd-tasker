@@ -41,7 +41,7 @@ export const OVERRUN_MINUTES = 15;
 /** Windows that ended longer ago than this are history, a restart must not announce them. */
 export const STALE_MINUTES = 90;
 
-export interface DetectedEvent {
+interface DetectedEvent {
 	type: 'task.switched' | 'task.missed' | 'task.overrun';
 	/** Stops the same fact from being logged twice, one row per key. */
 	key: string;

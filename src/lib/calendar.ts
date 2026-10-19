@@ -9,7 +9,7 @@ import { refreshAfterImport } from '#lib/data.js';
 import { showToast } from '#lib/toast.js';
 
 /** How often an open screen asks, the same as the server's own round. */
-export const SYNC_EVERY_MS = 5 * 60_000;
+const SYNC_EVERY_MS = 5 * 60_000;
 
 /** The all-day events of one day, for the line on Plan. A failed read leaves the line out. */
 export async function loadAllDay(date: string) {

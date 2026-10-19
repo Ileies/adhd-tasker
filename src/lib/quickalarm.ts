@@ -4,7 +4,7 @@ import { takeClock } from '#lib/quickadd.js';
 import { SCHEDULE_LIMITS, repeatFromDays, repeatText, type Repeat } from '#lib/schedule.js';
 
 /** What an alarm gets when the line does not name a label. */
-export const QUICK_ALARM_LABEL = 'Alarm';
+const QUICK_ALARM_LABEL = 'Alarm';
 
 const REPEAT_WEEKDAYS = /\b(?:every\s+weekday|weekdays?|mon(?:day)?\s*(?:to|-)\s*fri(?:day)?)\b/i;
 const REPEAT_DAILY = /\b(?:every\s*day|daily)\b/i;

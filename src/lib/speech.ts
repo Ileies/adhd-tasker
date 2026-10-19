@@ -63,7 +63,7 @@ let recognition: Recognition | undefined;
 /** Resolves with the final text once the browser recognition has ended. */
 let recognized: Promise<string> | undefined;
 
-export const canRecord = () =>
+const canRecord = () =>
 	typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
 /** A mic is offered with a saved key (OpenAI) or, without one, where the browser can recognise speech itself. */

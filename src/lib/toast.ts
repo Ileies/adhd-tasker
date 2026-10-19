@@ -4,10 +4,10 @@ const timers = new Map<number, ReturnType<typeof setTimeout>>();
 let nextId = 1;
 
 /** How long a toast stays, unless the caller needs the undo window to be longer. */
-export const TOAST_MS = 8000;
+const TOAST_MS = 8000;
 
 /** At most this many toasts show at once, the oldest makes room (its undo window ends with it). */
-export const MAX_TOASTS = 4;
+const MAX_TOASTS = 4;
 
 /** Shows a short confirmation under the ones already showing. With `undo` it offers a way back, so no action needs a confirm dialog. */
 export function showToast(message: string, undo?: () => unknown, durationMs = TOAST_MS) {

@@ -6,7 +6,7 @@ export const SHIFT_CHIPS = [0, 15, 30, 60, 120] as const;
 /** How far a task may be allowed to move at most. */
 export const MAX_SHIFT = 240;
 /** Moved tasks start on this grid, like everything dragged on Plan. */
-export const PLACE_GRID = 15;
+const PLACE_GRID = 15;
 
 export type PlaceTask = Pick<
 	Task,

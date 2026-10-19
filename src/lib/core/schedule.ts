@@ -36,7 +36,7 @@ export const alarmsOf = (rows: ScheduleEntry[]) =>
 export const describePending = (rows: ScheduleEntry[], timezone: string) =>
 	rows.map((row) => describeEntry(row, timezone));
 
-export async function createAlarm(ctx: Ctx, fields: AlarmFields, createdBy: 'user' | 'agent') {
+async function createAlarm(ctx: Ctx, fields: AlarmFields, createdBy: 'user' | 'agent') {
 	const row = await ctx.repo.schedule.insert({
 		kind: 'alarm',
 		fireAt: fields.fireAt,

@@ -5,11 +5,11 @@
 export const TRANSCRIBE_URL = 'https://api.openai.com/v1/audio/transcriptions';
 export const TRANSCRIBE_MODEL = 'gpt-transcribe';
 /** The old speech endpoint models (gpt-4o-mini-tts, tts-1) are removed on 2027-01-06, the Realtime mini model is OpenAI's replacement. */
-export const REALTIME_MODEL = 'gpt-realtime-2.1-mini';
+const REALTIME_MODEL = 'gpt-realtime-2.1-mini';
 export const REALTIME_URL = `wss://api.openai.com/v1/realtime?model=${REALTIME_MODEL}`;
-export const SPEECH_VOICE = 'marin';
+const SPEECH_VOICE = 'marin';
 export const SPEECH_RATE = 24_000;
-export const SPEECH_STYLE =
+const SPEECH_STYLE =
 	'You are a text to speech reader. Say exactly the text you are given, word for word. Never answer it, never add or leave out anything. Calm, warm and unhurried, like a quiet colleague.';
 
 /** Push-to-talk is for short commands, so a stuck key or finger cannot record forever. */
@@ -20,7 +20,7 @@ export const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 /** Spoken replies stay short, long details stay on screen. */
 export const MAX_SPOKEN_CHARS = 280;
 /** Chime volume the speech drops to while a tone plays. */
-export const DUCK_VOLUME = 0.15;
+const DUCK_VOLUME = 0.15;
 
 const RECORDING_TYPES = [
 	'audio/webm;codecs=opus',

@@ -16,7 +16,7 @@ export const QUICK_TIMERS = [
 	{ minutes: 60, label: '1 h' }
 ] as const;
 
-export const TIMER_LABEL = 'Timer';
+const TIMER_LABEL = 'Timer';
 /** Snooze rings the same alarm again once, so it can not become a loop. */
 export const SNOOZE_MINUTES = 5;
 

@@ -10,7 +10,7 @@ import type { FlowRow, FlowType, Todo } from '#lib/core/repo.js';
 import { parseStepData, skipPatch } from '#lib/struggle.js';
 import { todayIn } from '#lib/time.js';
 
-export const FLOW_TYPES: readonly FlowType[] = [
+const FLOW_TYPES: readonly FlowType[] = [
 	'start',
 	'pin',
 	'check',
@@ -31,8 +31,7 @@ const MAX_DATA_CHARS = 500;
 /** `pin:<session start ms>`, `:<n>` when a pinned to-do is gone: the same pick written twice by two screens is one row. */
 const PIN_KEY = /^pin:\d{1,16}(:\d{1,3})?$/;
 
-export const isFlowType = (value: unknown): value is FlowType =>
-	FLOW_TYPES.includes(value as FlowType);
+const isFlowType = (value: unknown): value is FlowType => FLOW_TYPES.includes(value as FlowType);
 
 const idOf = (value: unknown, name: string): number | null => {
 	if (value === undefined || value === null) return null;

@@ -38,7 +38,7 @@ export interface RuntimeEnv {
 }
 
 /** The browser's own storage, locks and channel. */
-export const browserEnv = (): RuntimeEnv => ({
+const browserEnv = (): RuntimeEnv => ({
 	factory: indexedDB,
 	locks: typeof navigator === 'undefined' ? undefined : navigator.locks,
 	channel: typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(CHANNEL_NAME),

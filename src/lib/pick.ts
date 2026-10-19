@@ -29,19 +29,19 @@ export type PickTodo = Pick<
 export const LOW_ENERGY_LINE = 'A short one while energy is low.';
 
 /** A to-do that is due today must still fit with this much to spare, otherwise it is urgent. */
-export const URGENT_SPARE_MINUTES = 30;
+const URGENT_SPARE_MINUTES = 30;
 /** A to-do without a due date is spread over this many days, so it still has a small need. */
-export const DAYS_WITHOUT_DUE = 30;
+const DAYS_WITHOUT_DUE = 30;
 /** What a to-do of unknown size is assumed to take, in minutes. */
-export const UNKNOWN_SIZE = 60;
+const UNKNOWN_SIZE = 60;
 /** The least a to-do has left to do, however far it is. */
-export const MIN_REMAINING = 5;
+const MIN_REMAINING = 5;
 /** Every to-do needs at least this much a day (or what is left of it), so a small one without a date is not starved by big ones. */
-export const MIN_NEED_MINUTES = 15;
+const MIN_NEED_MINUTES = 15;
 /** The to-do of the last session stays while it had less than this many minutes today. */
 export const CONTINUITY_MAX_MINUTES = 120;
 /** Weight by priority 1 (low) to 5 (critical). */
-export const WEIGHT: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 8 };
+const WEIGHT: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 8 };
 
 export interface PickInput<D extends PickTodo> {
 	/** Every to-do, any status: the picker takes the open ones that are due to be worked on. */
@@ -72,7 +72,7 @@ export interface PickInput<D extends PickTodo> {
 	shortOnly?: boolean;
 }
 
-export type PickWhy = 'urgent' | 'only' | 'continuity' | 'share' | 'short';
+type PickWhy = 'urgent' | 'only' | 'continuity' | 'share' | 'short';
 
 export interface Picked<D> {
 	todo: D;
@@ -149,7 +149,7 @@ function urgentLine(todo: PickTodo, date: string, remaining: number): string {
  * The to-dos a session may go to: the open ones that are ready, without the ones that cool down and, in the low energy
  * hour, only the short ones. With none left the cool down is dropped first and then the low energy filter.
  */
-export function candidatesFor<D extends PickTodo>(
+function candidatesFor<D extends PickTodo>(
 	input: Pick<PickInput<D>, 'todos' | 'date' | 'cooling' | 'shortOnly'>
 ): D[] {
 	const ready = input.todos.filter((todo) => isCandidate(todo, input.date));

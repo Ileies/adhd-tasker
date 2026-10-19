@@ -47,8 +47,6 @@ export const LIMITS = {
 	maxToolCalls: 4
 } as const;
 
-export const DEFAULT_QUIET = { start: 22 * 60, end: 7 * 60 } as const;
-
 export interface AgentSettings {
 	autonomy: Autonomy;
 	events: EventType[];

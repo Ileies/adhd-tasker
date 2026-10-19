@@ -9,7 +9,7 @@ export const OPENAI_URL = 'https://api.openai.com/v1/responses';
 export const MODEL = 'gpt-6-luna';
 export const SERVICE_TIER = 'flex';
 /** The cap includes the hidden reasoning tokens, OpenAI recommends reserving at least 25 000 for reasoning models. Replies stay short through the prompt. */
-export const MAX_OUTPUT_TOKENS = 25_000;
+const MAX_OUTPUT_TOKENS = 25_000;
 
 export type Effort = 'low' | 'medium' | 'high';
 
@@ -28,7 +28,7 @@ export const EFFORT_BY_USE = {
 export type Use = keyof typeof EFFORT_BY_USE;
 
 /** One output item of a response, passed back verbatim on the next round (nothing is stored server side). */
-export interface OutputItem {
+interface OutputItem {
 	type: string;
 	call_id?: string;
 	name?: string;

@@ -4,7 +4,7 @@ import { addDays } from '#lib/time.js';
 /** Quick durations next to the start time, in minutes. Anything else goes in the free field. */
 export const DURATION_CHIPS = [15, 30, 45, 60, 120];
 
-export const DAY_END = 1440;
+const DAY_END = 1440;
 
 export type DateChoice = 'today' | 'tomorrow' | 'other';
 
