@@ -21,6 +21,8 @@ Plans in `docs/`:
 - The sample week fills only the evenings and the weekend with to-dos (work or school on weekdays): watch whether a first time visitor during the day still sees what Now does
 - The `reminders` table in `schema.ts` is only used by `src/test/harness.test.ts`: drop it with the next schema change
 - `package.json` imports `#lib` points at `./src/lib/index.js`, knip hints it is not found (the file is `index.ts`). Goes away with the planned removal of the `#lib` index
+- The 500 path (`failure` option of `handler`) of the assistant, prep, speak and transcribe routes is tested on the helper only, no route test forces a model failure
+- `settings/+page.server.ts` (`unlinkGoogle`) still guards a guest itself with `fail(401, 'Sign in first')`, a form action does not fit `handler`
 - Flaky under the full parallel run: `local/runtime.test.ts` "erasing in one tab deletes the database and tells every other tab to start again" (once in `verify --quick`, passes alone)
 
 ## Later
