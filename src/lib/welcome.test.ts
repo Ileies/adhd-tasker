@@ -109,8 +109,13 @@ describe('addEssentials', () => {
 		await useLocalDevice();
 		await addEssentials(defaultTimes(), '2026-10-14', 12 * 60 + 8);
 		const today = await tasker.backend.tasks.load('2026-10-14');
-		expect(today.map((task) => task.title)).toEqual(['Lunch', 'Dinner', 'Go to bed']);
-		expect(tasker.routines).toHaveLength(5);
+		expect(today.map((task) => task.title)).toEqual([
+			'Lunch',
+			'Dinner',
+			'Brush teeth',
+			'Go to bed'
+		]);
+		expect(tasker.routines).toHaveLength(6);
 	});
 
 	test('the Undo removes the routines and their days again', async () => {

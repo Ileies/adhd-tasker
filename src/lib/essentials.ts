@@ -9,7 +9,7 @@ import { parseClock } from '#lib/taskform.js';
 import { addDays, type DateKey } from '#lib/time.js';
 import { Priority } from '#lib/types.js';
 
-export const ESSENTIAL_KEYS = ['meds', 'breakfast', 'lunch', 'dinner', 'bed'] as const;
+export const ESSENTIAL_KEYS = ['meds', 'breakfast', 'lunch', 'dinner', 'teeth', 'bed'] as const;
 export type EssentialKey = (typeof ESSENTIAL_KEYS)[number];
 
 export interface Essential {
@@ -38,6 +38,14 @@ export const ESSENTIALS: readonly Essential[] = [
 	},
 	{ key: 'lunch', title: 'Lunch', label: 'Lunch', time: at(12), duration: 45, shift: 60 },
 	{ key: 'dinner', title: 'Dinner', label: 'Dinner', time: at(18), duration: 60, shift: 60 },
+	{
+		key: 'teeth',
+		title: 'Brush teeth',
+		label: 'Brush teeth',
+		time: at(22, 30),
+		duration: 10,
+		shift: 0
+	},
 	{ key: 'bed', title: 'Go to bed', label: 'Bed time', time: at(22, 45), duration: 15, shift: 0 }
 ];
 

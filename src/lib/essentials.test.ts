@@ -22,11 +22,25 @@ describe('essentialRoutines', () => {
 			expect(parseRoutineInput(routine, 'create').ok).toBe(true);
 	});
 
-	test('meals may move for an appointment, meds and bed stay', () => {
+	test('teeth are brushed before bed, with a gap of their own', () => {
+		const [teeth, bed] = ['Brush teeth', 'Go to bed'].map((title) =>
+			essentialRoutines(defaultTimes()).find((routine) => routine.title === title)
+		);
+		expect(teeth!.startTime! + teeth!.duration!).toBeLessThanOrEqual(bed!.startTime!);
+	});
+
+	test('meals may move for an appointment, meds, teeth and bed stay', () => {
 		const shifts = Object.fromEntries(
 			essentialRoutines(defaultTimes()).map((routine) => [routine.title, routine.shift])
 		);
-		expect(shifts).toEqual({ Meds: 0, Breakfast: 60, Lunch: 60, Dinner: 60, 'Go to bed': 0 });
+		expect(shifts).toEqual({
+			Meds: 0,
+			Breakfast: 60,
+			Lunch: 60,
+			Dinner: 60,
+			'Brush teeth': 0,
+			'Go to bed': 0
+		});
 	});
 
 	test('an essential without a time or with null is left out', () => {
@@ -63,6 +77,7 @@ describe('essentialRoutines', () => {
 			Breakfast: '2026-10-15',
 			Lunch: '2026-10-14',
 			Dinner: '2026-10-14',
+			'Brush teeth': '2026-10-14',
 			'Go to bed': '2026-10-14'
 		});
 	});
@@ -74,12 +89,13 @@ describe('essentialRoutines', () => {
 	});
 
 	test('the form: a switch off or a bad time leaves an essential out', () => {
-		const on = { meds: true, breakfast: false, lunch: true, dinner: true, bed: true };
+		const on = { meds: true, breakfast: false, lunch: true, dinner: true, teeth: false, bed: true };
 		const clocks = {
 			meds: '08:30',
 			breakfast: '08:00',
 			lunch: '12:00',
 			dinner: 'soon',
+			teeth: '22:30',
 			bed: '23:15'
 		};
 		expect(essentialTimes(on, clocks)).toEqual({
@@ -87,6 +103,7 @@ describe('essentialRoutines', () => {
 			breakfast: null,
 			lunch: 12 * 60,
 			dinner: null,
+			teeth: null,
 			bed: 23 * 60 + 15
 		});
 	});

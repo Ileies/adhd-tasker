@@ -439,6 +439,14 @@ describe('sample day', () => {
 		expect(planChanges[0]).toContain('2026-10-14');
 	});
 
+	test('starting late in the evening marks nothing as done and leaves no past task today', async () => {
+		const { backend } = await setup();
+		const created = await backend.sample.start('2026-10-14', 22 * 60 + 35);
+		const today = created.filter((t) => t.date === '2026-10-14');
+		expect(today.map((t) => t.title).toSorted()).toEqual(['Brush teeth', 'Go to bed']);
+		expect(created.every((t) => t.status !== 'completed')).toBe(true);
+	});
+
 	test('starting again adds nothing', async () => {
 		const { backend } = await setup();
 		const first = await backend.sample.start('2026-10-14', 12 * 60);
@@ -487,10 +495,11 @@ describe('sample day', () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const routines = await backend.routines.load();
-		expect(routines.map((routine) => routine.title).slice(0, 4)).toEqual([
+		expect(routines.map((routine) => routine.title).slice(0, 5)).toEqual([
 			'Breakfast',
 			'Lunch',
 			'Dinner',
+			'Brush teeth',
 			'Go to bed'
 		]);
 		expect(routines.find((routine) => routine.title === 'Lunch')).toMatchObject({
@@ -504,12 +513,12 @@ describe('sample day', () => {
 		expect(lunches).toHaveLength(14);
 	});
 
-	test('what ended before now today is done, also for the routines', async () => {
+	test('what ended before now today is not made, so nothing is done or missed that the visitor never did', async () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60 + 8);
 		const today = await backend.tasks.load('2026-10-14');
 		const status = (title: string) => today.find((task) => task.title === title)?.status;
-		expect(status('Breakfast')).toBe(TaskStatus.Completed);
+		expect(status('Breakfast')).toBeUndefined();
 		expect(status('Lunch')).toBe(TaskStatus.Pending);
 		expect(status('Dinner')).toBe(TaskStatus.Pending);
 	});

@@ -316,18 +316,13 @@ export function localBackend(deps: LocalDeps): Backend {
 				await marks.writeTodos(todos);
 				// The routines are made one by one, then one pass makes the days ahead for all of them
 				const routines: number[] = [];
-				for (const patch of sampleRoutines()) {
-					const parsed = parseRoutineInput({ ...patch, firstDay: today }, 'create');
+				for (const patch of sampleRoutines({ today, minutes })) {
+					const parsed = parseRoutineInput({ firstDay: today, ...patch }, 'create');
 					if (!parsed.ok) throw new AssistantError(parsed.error, 400);
 					routines.push((await repo.routines.insert(newRoutineOf(parsed.value, today))).id);
 				}
 				await marks.writeRoutines(routines);
 				await makeRoutines(ctx(), today);
-				// Like the rest of the sample, what ended before now today is done already
-				for (const task of await sampleTasks()) {
-					if (task.date === today && task.startTime + task.duration <= minutes)
-						await repo.tasks.update(task.id, { status: TaskStatus.Completed });
-				}
 				deps.planChanged?.([today]);
 				return sampleTasks();
 			},

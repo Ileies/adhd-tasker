@@ -26,9 +26,13 @@ export const SAMPLE_DAYS = 7;
 /** The setup to-do is due today until this time of day, tomorrow after it. */
 const SETUP_TODAY_UNTIL = at(20);
 
-/** The routines of the sample: the meals and bed at their default times (not meds, most people take none) and work. */
-export const sampleRoutines = (): RoutinePatch[] => [
-	...essentialRoutines({ ...defaultTimes(), meds: null }),
+/**
+ * The routines of the sample: the meals, teeth and bed at their default times (not meds, most people take none) and
+ * work. With `now`, what is over for today starts tomorrow, so the first screen shows nothing the visitor "did" or
+ * missed: no done count they never earned, no missed card.
+ */
+export const sampleRoutines = (now?: { today: DateKey; minutes: number }): RoutinePatch[] => [
+	...essentialRoutines({ ...defaultTimes(), meds: null }, now),
 	...WORK.map(({ start, duration }) => ({
 		title: 'Work or school',
 		description: '',
@@ -36,7 +40,8 @@ export const sampleRoutines = (): RoutinePatch[] => [
 		duration,
 		priority: Medium,
 		kind: 'appointment' as const,
-		repeat: 'weekdays' as const
+		repeat: 'weekdays' as const,
+		...(now && { firstDay: start + duration <= now.minutes ? addDays(now.today, 1) : now.today })
 	}))
 ];
 

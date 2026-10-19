@@ -43,10 +43,29 @@ const gaps = (date: string) =>
 	});
 
 describe('sampleRoutines', () => {
-	test('the meals and bed, and no meds: most people take none', () => {
+	test('the meals, teeth and bed, and no meds: most people take none', () => {
 		const titles = sampleRoutines().map((routine) => routine.title);
-		expect(titles.slice(0, 4)).toEqual(['Breakfast', 'Lunch', 'Dinner', 'Go to bed']);
+		expect(titles.slice(0, 5)).toEqual([
+			'Breakfast',
+			'Lunch',
+			'Dinner',
+			'Brush teeth',
+			'Go to bed'
+		]);
 		expect(titles).not.toContain('Meds');
+	});
+
+	test('what is over for today starts tomorrow, so a first visitor has nothing done or missed already', () => {
+		const first = Object.fromEntries(
+			sampleRoutines({ today: TODAY, minutes: 22 * 60 + 35 }).map((routine) => [
+				`${routine.title}${routine.startTime}`,
+				routine.firstDay
+			])
+		);
+		expect(first['Brush teeth1350']).toBe(TODAY);
+		expect(first['Go to bed1365']).toBe(TODAY);
+		expect(first['Dinner1080']).toBe(addDays(TODAY, 1));
+		expect(first[`${WORK}540`]).toBe(addDays(TODAY, 1));
 	});
 
 	test('work or school runs on weekdays around lunch and ends on its own', () => {
@@ -62,7 +81,7 @@ describe('sampleRoutines', () => {
 	test('nothing else is in the week: every routine is a meal, bed or work', () => {
 		const titles = new Set(sampleRoutines().map((routine) => routine.title));
 		expect([...titles].toSorted()).toEqual(
-			['Breakfast', 'Dinner', 'Go to bed', 'Lunch', WORK].toSorted()
+			['Breakfast', 'Brush teeth', 'Dinner', 'Go to bed', 'Lunch', WORK].toSorted()
 		);
 	});
 
