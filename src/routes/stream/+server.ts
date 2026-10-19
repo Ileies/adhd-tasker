@@ -1,5 +1,5 @@
-import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { handler } from '#lib/server/route.js';
 import { subscribe, type StreamMessage } from '#lib/server/stream.js';
 import { announceDisplay } from '#lib/server/schedule.js';
 
@@ -9,9 +9,8 @@ const HEARTBEAT_MS = 25_000;
  * Server-Sent Events: tells the open screen about alarms, agent cards, schedule changes and which device plays sound.
  * Messages are hints, the client fetches the real data itself, so a missed message costs nothing.
  */
-export const GET: RequestHandler = async ({ locals, url, request }) => {
-	if (!locals.user) error(401, 'Login required');
-	const email = locals.user.email;
+export const GET: RequestHandler = handler(({ user, url, request }) => {
+	const { email } = user;
 	const device = url.searchParams.get('device')?.slice(0, 64) || null;
 
 	let close = () => {};
@@ -65,4 +64,4 @@ export const GET: RequestHandler = async ({ locals, url, request }) => {
 			'X-Accel-Buffering': 'no'
 		}
 	});
-};
+});
