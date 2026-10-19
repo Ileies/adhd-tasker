@@ -38,7 +38,7 @@ export interface PlanSummary {
 }
 
 /** Both plans want the same time of one day. */
-export interface Clash {
+interface PlanClash {
 	date: string;
 	device: ExportedTask[];
 	account: ExportedTask[];
@@ -48,7 +48,7 @@ export interface Comparison {
 	device: PlanSummary;
 	account: PlanSummary;
 	/** Oldest day first. */
-	clashes: Clash[];
+	clashes: PlanClash[];
 	/** Tasks on either side that are part of a clash. */
 	clashingTasks: number;
 }

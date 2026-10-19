@@ -137,10 +137,6 @@ export async function editAlarm(alarm: Alarm, fields: AlarmFields): Promise<stri
 	return null;
 }
 
-/** `null` lets every device play again. */
-export const chooseDisplay = (device: string | null) =>
-	tasker.backend.schedule.chooseDisplay(device);
-
 /** Rings the same alarm again in a few minutes, once: the ring after it offers no snooze. */
 export async function snoozeAlarm(): Promise<string | null> {
 	const current = tasker.schedule.ringing;

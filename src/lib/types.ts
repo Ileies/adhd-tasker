@@ -1,5 +1,4 @@
 import type { Task, TaskKind } from '#lib/core/repo.js';
-import type { reminders } from '#lib/server/db/schema.js';
 
 export enum Priority {
 	Low = 1,
@@ -31,4 +30,3 @@ export interface TaskForm {
 }
 
 export type { Task };
-export type Reminder = typeof reminders.$inferSelect;

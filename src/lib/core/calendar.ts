@@ -133,7 +133,7 @@ const overlaps = (a: Piece, b: Piece) =>
 	a.startTime < b.startTime + b.duration && b.startTime < a.startTime + a.duration;
 
 /** The event and the plan task it shares time with. */
-export interface Clash {
+interface EventClash {
 	date: DateKey;
 	event: { title: string; startTime: number; duration: number };
 	tasks: PlanSlot[];
@@ -147,7 +147,7 @@ export interface Preview {
 	/** Timed events that share time with a task of the plan. */
 	clashing: number;
 	/** Oldest day first. */
-	clashes: Clash[];
+	clashes: EventClash[];
 }
 
 /** Events with the pieces that were read for them, to count what an import would do. */
@@ -173,7 +173,7 @@ export function previewImport(
 	plan: PlanSlot[],
 	window: { from: DateKey; to: DateKey }
 ): Preview {
-	const clashes: Clash[] = [];
+	const clashes: EventClash[] = [];
 	let timed = 0;
 	let allDay = 0;
 	let clashing = 0;
