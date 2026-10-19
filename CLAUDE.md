@@ -39,7 +39,7 @@ Tests need 90 % line and function coverage over the whole report (`scripts/cover
 - **One state object:** `tasker` in `src/lib/app.svelte.ts`. Do not split it.
 - **Components never call `fetch`.** They use `tasker.backend` (the `Backend` interface in `src/lib/backend.ts`). A new `Backend` method must be added to `remote-backend.ts`, `local/backend.ts` and `BACKEND_METHODS` in `local/deferred.ts`. Rules shared by server and device live in `src/lib/core/` and run against a `Repo`.
 - **Time:** times are minutes since midnight, durations in minutes, a task belongs to `task.date` (`YYYY-MM-DD` in the user's timezone, helpers in `src/lib/time.ts`). Tasks never cross midnight, split them.
-- **Schema changes** must be applied afterwards: `bun run db:push`, or a one-off script in `scripts/` when drizzle-kit cannot run. Production: `bun run deploy --db-push`.
+- **Schema changes** must be applied afterwards: `bun run db:push`. Production: `bun run deploy --db-push`.
 - Task data never goes in `localStorage`. Only `src/lib/local/**` (IndexedDB) holds a guest's data.
 - No em dashes anywhere (an architecture test checks it).
 - Keep `/privacy` and `/terms` in sync when data handling changes (new fields, retention, third parties, cookies).
