@@ -437,10 +437,9 @@ export function calendarLinked(email: string): boolean {
  * ended, ask the user to link again), any other failure of Google 502, so a screen can say why.
  */
 export async function withCalendar<T>(
-	user: { email: string } | undefined,
+	user: { email: string },
 	work: (email: string) => Promise<T>
 ) {
-	if (!user) error(401, 'Login required');
 	if (!calendarLinked(user.email)) error(409, 'Link Google Calendar first');
 	try {
 		return await work(user.email);
