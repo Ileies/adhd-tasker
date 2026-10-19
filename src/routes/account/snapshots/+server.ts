@@ -1,11 +1,10 @@
-import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { listSnapshots } from '#lib/server/account.js';
+import { handler } from '#lib/server/route.js';
 
 /** The plans that can still be brought back, newest first. */
-export const GET: RequestHandler = ({ locals }) => {
-	if (!locals.user) error(401, 'Login required');
-	return Response.json(listSnapshots(locals.user.email, Date.now()), {
+export const GET: RequestHandler = handler(({ user }) =>
+	Response.json(listSnapshots(user.email, Date.now()), {
 		headers: { 'Cache-Control': 'no-store' }
-	});
-};
+	})
+);
