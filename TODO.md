@@ -19,7 +19,8 @@ Plans in `docs/`:
 - Google Calendar, real run: import, move, done and a forced conflict on a real calendar, by hand (only fakes so far)
 - Google verification (`docs/google-verification.md`): remove Tasks and Keep from `GOOGLE_SERVICES` first, record the demo video, submit. The consent screen must allow the Calendar scope
 - Component test for the Calendar write select in Settings, and a test for the stream `calendar` hint in `src/lib/stream.ts`
-- The sample week's weekday has three long gaps for to-dos and no block for the work: watch whether a first time visitor finds that clear
+- The sample week fills only the evenings and the weekend with to-dos (work or school on weekdays): watch whether a first time visitor during the day still sees what Now does
+- Flaky under the full parallel run: `local/runtime.test.ts` "erasing in one tab deletes the database and tells every other tab to start again" (once in `verify --quick`, passes alone)
 
 ## Later
 
