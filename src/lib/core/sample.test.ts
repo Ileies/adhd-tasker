@@ -59,27 +59,17 @@ function week(today: string, now: number) {
 const minute = fc.integer({ min: 0, max: DAY_MINUTES - 1 });
 
 describe('sampleDay', () => {
-	test('covers today and the six days after it, one task each', () => {
-		const dates = sampleDay(TODAY, 12 * 60 + 8).map((task) => task.date);
-		expect(dates).toEqual(Array.from({ length: SAMPLE_DAYS }, (_, index) => addDays(TODAY, index)));
-	});
-
-	test('the evening slot before dinner changes with the weekday', () => {
-		const evening = sampleDay(TODAY, 12 * 60)
-			.filter((task) => task.kind === undefined)
-			.map((task) => task.title);
-		expect(new Set(evening).size).toBe(SAMPLE_DAYS - 1);
-	});
-
-	test('one appointment two days ahead takes the evening slot of its day', () => {
-		const appointments = sampleDay(TODAY, 0).filter((task) => task.kind === 'appointment');
-		expect(appointments).toHaveLength(1);
-		expect(appointments[0]).toMatchObject({
-			title: 'Dentist',
-			date: addDays(TODAY, 2),
-			startTime: 17 * 60 + 30
+	test('the only task of its own is the exam, four days ahead, the rest is routines and to-dos', () => {
+		const tasks = sampleDay(TODAY, 12 * 60 + 8);
+		expect(tasks).toHaveLength(1);
+		expect(tasks[0]).toMatchObject({
+			title: 'Math exam',
+			kind: 'appointment',
+			date: addDays(TODAY, 4),
+			startTime: 14 * 60,
+			duration: 120
 		});
-		expect(sampleDay(TODAY, 0).filter((task) => task.date === addDays(TODAY, 2))).toHaveLength(1);
+		expect(addDays(TODAY, 4) <= addDays(TODAY, SAMPLE_DAYS - 1)).toBe(true);
 	});
 
 	test('what ended before now today is done, everything else is open', () => {
@@ -99,16 +89,15 @@ describe('sampleRoutines', () => {
 	test('the essentials come first, then the repeating blocks of an ordinary day', () => {
 		const titles = sampleRoutines().map((routine) => routine.title);
 		expect(titles.slice(0, 5)).toEqual(['Meds', 'Breakfast', 'Lunch', 'Dinner', 'Go to bed']);
-		expect(titles).toContain('Emails and messages');
+		expect(titles).toContain('Lecture: Algorithms');
 		expect(titles).toContain('Exercise or a long walk');
 	});
 
-	test('emails repeat on weekdays, the weekend has its own blocks', () => {
-		const repeat = (title: string) =>
-			sampleRoutines().find((routine) => routine.title === title)?.repeat;
-		expect(repeat('Emails and loose ends')).toBe('weekdays');
-		expect(repeat('A hobby or a project')).toBe('days:0,6');
-		expect(repeat('Brush teeth')).toBe('daily');
+	test("the lecture is somebody else's time on weekdays, the weekend has its own block", () => {
+		const find = (title: string) => sampleRoutines().find((routine) => routine.title === title);
+		expect(find('Lecture: Algorithms')).toMatchObject({ repeat: 'weekdays', kind: 'appointment' });
+		expect(find('Go out: friends, sport or fresh air')?.repeat).toBe('days:0,6');
+		expect(find('Wind down: screens off, read')?.repeat).toBe('daily');
 	});
 
 	test('no block is made for the work itself, a weekday keeps three long stretches for to-dos', () => {
@@ -154,7 +143,7 @@ describe('sampleTodos', () => {
 describe('the sample week', () => {
 	test('a full day: lunch (a routine) is running at 12:08 and the walk is next', () => {
 		const today = week(TODAY, 12 * 60 + 8).filter((task) => task.date === TODAY);
-		expect(today.length).toBeGreaterThanOrEqual(15);
+		expect(today.length).toBeGreaterThanOrEqual(10);
 		const ranked = rank(today, 12 * 60 + 8);
 		expect(ranked.current?.title).toBe('Lunch');
 		expect(ranked.upcoming[0]?.title).toBe('Short walk outside');
@@ -168,15 +157,18 @@ describe('the sample week', () => {
 		expect(plan.travel).toMatchObject({
 			kind: 'travel',
 			parentId: appointment.id,
-			startTime: 16 * 60 + 50,
+			startTime: 13 * 60 + 20,
 			duration: 30
 		});
-		expect(plan.todos).toHaveLength(2);
+		expect(plan.todos.map((todo) => [todo.title, todo.estimate])).toEqual([
+			['Study for the Math exam', 8 * 60],
+			['Pack student ID, pens and calculator', 5]
+		]);
 		for (const todo of plan.todos)
 			expect(todo).toMatchObject({
 				parentId: appointment.id,
 				dueDate: appointment.date,
-				dueTime: 16 * 60 + 50
+				dueTime: 13 * 60 + 20
 			});
 	});
 
@@ -197,20 +189,32 @@ describe('the sample week', () => {
 		}
 	);
 
-	test('the gaps are left for to-dos and none is longer than two hours', () => {
+	test('every day keeps a stretch of at least three hours for the work, whatever the time of the start', () => {
 		fc.assert(
 			fc.property(minute, (now) => {
 				const byDay = Map.groupBy(week(TODAY, now), (task) => task.date);
 				for (const tasks of byDay.values()) {
+					// The day of the exam is the one day that is not for the work
+					if (tasks.some((task) => task.kind === 'appointment' && task.title === 'Math exam'))
+						continue;
 					const sorted = tasks.toSorted((a, b) => a.startTime - b.startTime);
-					for (const [index, task] of sorted.entries()) {
-						if (index === 0 || task.startTime > 22 * 60) continue;
-						const gap = task.startTime - (sorted[index - 1].startTime + sorted[index - 1].duration);
-						expect(gap).toBeLessThanOrEqual(120);
-					}
+					const gaps = sorted.flatMap((task, index) =>
+						index === 0
+							? []
+							: [task.startTime - (sorted[index - 1].startTime + sorted[index - 1].duration)]
+					);
+					expect(Math.max(...gaps)).toBeGreaterThanOrEqual(180);
 				}
 			}),
 			{ numRuns: 20 }
 		);
+	});
+
+	test('the study step and the lab report are big enough that Now has something to rotate between', () => {
+		const big = [
+			...sampleTodos(TODAY, 0),
+			...SAMPLE_PREP.steps.map((step) => ({ estimate: step.minutes }))
+		].filter((todo) => (todo.estimate ?? 0) >= 120);
+		expect(big).toHaveLength(2);
 	});
 });

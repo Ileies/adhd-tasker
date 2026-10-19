@@ -468,7 +468,10 @@ describe('sample day', () => {
 
 	test('a sample task the user already deleted is no longer counted', async () => {
 		const { backend } = await setup();
-		const [first, ...rest] = await backend.sample.start('2026-10-14', 12 * 60);
+		const created = await backend.sample.start('2026-10-14', 12 * 60);
+		// Not the exam: deleting an appointment takes its travel with it
+		const first = created.find((task) => task.kind === 'block')!;
+		const rest = created.filter((task) => task !== first);
 		await backend.tasks.delete(first.id);
 		expect((await backend.sample.ids()).sort()).toEqual(rest.map((t) => t.id).sort());
 		expect(await backend.sample.clear()).toBe(rest.length);
@@ -545,7 +548,7 @@ describe('sample day', () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const tasks = await backend.tasks.since('2026-10-14');
-		const appointment = tasks.find((task) => task.kind === 'appointment')!;
+		const appointment = tasks.find((task) => task.title === 'Math exam')!;
 		const travel = tasks.find((task) => task.kind === 'travel');
 		expect(travel).toMatchObject({ parentId: appointment.id, date: appointment.date });
 		const todos = await backend.todos.load();
@@ -553,7 +556,7 @@ describe('sample day', () => {
 		const steps = todos.filter((todo) => todo.parentId === appointment.id);
 		expect(steps).toHaveLength(2);
 		for (const step of steps)
-			expect(step).toMatchObject({ dueDate: appointment.date, dueTime: 16 * 60 + 50 });
+			expect(step).toMatchObject({ dueDate: appointment.date, dueTime: 13 * 60 + 20 });
 	});
 
 	test('clearing removes the to-dos of the sample and leaves one the user made', async () => {
