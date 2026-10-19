@@ -25,8 +25,7 @@ import { GeocodeError, searchPlaces } from '#lib/core/geocode.js';
 import { checkOpenaiKey } from '#lib/core/openai-key.js';
 import { rateLimit } from '#lib/core/rate.js';
 import type { Repo, Task } from '#lib/core/repo.js';
-import { SAMPLE_PREP, sampleDay, sampleRoutines, sampleTodos } from '#lib/core/sample.js';
-import { prepPlan } from '#lib/prep.js';
+import { sampleRoutines, sampleTodos } from '#lib/core/sample.js';
 import type { SampleMarks } from '#lib/local/marks.js';
 import {
 	addUserAlarm,
@@ -311,19 +310,7 @@ export function localBackend(deps: LocalDeps): Backend {
 				const existing = await sampleTasks();
 				if (existing.length) return existing;
 				// Written straight to the repo, like an import: the user did not plan these, so no event wakes the agent
-				const created: Task[] = [];
-				for (const task of sampleDay(today, minutes)) created.push(await repo.tasks.insert(task));
-				// The appointment comes with its travel and the steps to prepare, as the prep sheet makes them
 				const todos: number[] = [];
-				const appointment = created.find((task) => task.kind === 'appointment');
-				if (appointment) {
-					const { arriveEarlyMinutes } = await repo.settings.get();
-					const prep = prepPlan(appointment, SAMPLE_PREP, arriveEarlyMinutes);
-					if (prep.travel) created.push(await repo.tasks.insert(prep.travel));
-					for (const todo of prep.todos)
-						todos.push((await repo.todos.insert({ ...todo, createdAt: now() })).id);
-				}
-				await marks.write(created.map((task) => task.id));
 				for (const todo of sampleTodos(today, minutes))
 					todos.push((await repo.todos.insert({ ...todo, createdAt: now() })).id);
 				await marks.writeTodos(todos);

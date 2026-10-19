@@ -2,7 +2,7 @@
 import { describe, expect, setDefaultTimeout, test } from 'bun:test';
 import { BackendError } from '#lib/backend.js';
 import type { Hint, Model } from '#lib/core/context.js';
-import { sampleRoutines } from '#lib/core/sample.js';
+import { sampleRoutines, sampleTodos } from '#lib/core/sample.js';
 import { localBackend } from '#lib/local/backend.js';
 import type { ResponseBody } from '#lib/openai.js';
 import { Priority, TaskStatus } from '#lib/types.js';
@@ -432,7 +432,7 @@ describe('sample day', () => {
 	test('starting adds the sample tasks, marks them and tells the other tabs', async () => {
 		const { backend, planChanges } = await setup();
 		const created = await backend.sample.start('2026-10-14', 12 * 60);
-		expect(created.length).toBeGreaterThanOrEqual(100);
+		expect(created.length).toBeGreaterThanOrEqual(50);
 		expect((await backend.sample.ids()).sort()).toEqual(created.map((t) => t.id).sort());
 		expect(await backend.tasks.load('2026-10-14')).not.toHaveLength(0);
 		expect(planChanges).toHaveLength(1);
@@ -452,7 +452,7 @@ describe('sample day', () => {
 		const mine = await backend.tasks.create({ ...task, title: 'Mine' });
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const removed = await backend.sample.clear();
-		expect(removed).toBeGreaterThanOrEqual(100);
+		expect(removed).toBeGreaterThanOrEqual(50);
 		expect((await backend.tasks.since('2000-01-01')).map((t) => t.id)).toEqual([mine.id]);
 		expect(await backend.sample.ids()).toEqual([]);
 	});
@@ -487,8 +487,7 @@ describe('sample day', () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const routines = await backend.routines.load();
-		expect(routines.map((routine) => routine.title).slice(0, 5)).toEqual([
-			'Meds',
+		expect(routines.map((routine) => routine.title).slice(0, 4)).toEqual([
 			'Breakfast',
 			'Lunch',
 			'Dinner',
@@ -544,19 +543,18 @@ describe('sample day', () => {
 		expect(await backend.tasks.since('2000-01-01')).toHaveLength(created.length);
 	});
 
-	test('the week has to-dos, and an appointment with travel and steps that belong to it', async () => {
+	test('the week has its to-dos and only the days of its routines', async () => {
 		const { backend } = await setup();
 		await backend.sample.start('2026-10-14', 12 * 60);
 		const tasks = await backend.tasks.since('2026-10-14');
-		const appointment = tasks.find((task) => task.title === 'Appointment')!;
-		const travel = tasks.find((task) => task.kind === 'travel');
-		expect(travel).toMatchObject({ parentId: appointment.id, date: appointment.date });
+		expect(tasks.length).toBeGreaterThan(0);
+		expect(tasks.every((task) => task.routineId !== null)).toBe(true);
 		const todos = await backend.todos.load();
-		expect(todos.map((todo) => todo.title)).toContain('Set up ADHD Tasker');
-		const steps = todos.filter((todo) => todo.parentId === appointment.id);
-		expect(steps).toHaveLength(2);
-		for (const step of steps)
-			expect(step).toMatchObject({ dueDate: appointment.date, dueTime: 13 * 60 + 20 });
+		expect(todos.map((todo) => todo.title).toSorted()).toEqual(
+			sampleTodos('2026-10-14', 12 * 60)
+				.map((todo) => todo.title)
+				.toSorted()
+		);
 	});
 
 	test('clearing removes the to-dos of the sample and leaves one the user made', async () => {
