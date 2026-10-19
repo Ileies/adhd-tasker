@@ -4,6 +4,7 @@ import { error } from '@sveltejs/kit';
 import { AssistantError } from '#lib/core/context.js';
 import { handler } from '#lib/server/route.js';
 import { resetDb } from '#test/db.js';
+import { failureOf } from '#test/errors.js';
 import { TEST_DATE, TEST_EMAIL, callRoute, makeTask, makeUser } from '#test/fixtures.js';
 
 beforeEach(resetDb);
@@ -101,7 +102,7 @@ describe('handler', () => {
 			const route = handler(() => {
 				throw new Error('boom');
 			});
-			await expect(callRoute(route, { user })).rejects.toThrow('boom');
+			expect((await failureOf(callRoute(route, { user }))).message).toBe('boom');
 		});
 
 		test('with a failure message any other error is logged and answered as 500', async () => {
