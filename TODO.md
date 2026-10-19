@@ -9,6 +9,7 @@ Plans in `docs/`:
 
 ## Now
 
+- Deploy script: the server runs the app as the systemd unit `adhd-tasker.service` now (pm2 is gone from its PATH), so `bun run deploy` fails at its pm2 steps after the build. Make `scripts/deploy.ts` restart the unit (`systemctl restart adhd-tasker`, it takes a few seconds, a short 502 meanwhile) and update the Deployment section of `CLAUDE.md`. Until then: deploy, then restart the unit by hand
 - Tag `docs/roadmap-1.0.md` (pillar I, Flow) and `docs/feature-ideas.md` with what the flow plan built (the list is in `docs/flow-plan.md` section 4)
 - Assistant by hand with a real key: "Suggest steps" for an appointment, an imported appointment answered by a question and by `add_prep_steps` in act, "It feels too big" on a to-do, a rotation, a routine made and undone in the chat. Only fakes so far. A guest who saved their settings before keeps their old list of events (`aiEvents`), an account gets the two new events from `scripts/add-flow-events.ts`
 - Visual pass, by eye: only the wide light and phone dark views of Now, Plan, the session hero and Settings were checked. Not checked: the check, "Still there?", Away and break heroes, the prep sheet, the "Tight" and "Does not fit" lines, wide dark, a visible focus ring on every interactive element, 44 px targets on phones. Also one type scale and the same section spacing on every page
