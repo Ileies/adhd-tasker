@@ -17,6 +17,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
+		"knip": "knip --no-progress",
 		"db:push": "drizzle-kit push",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio"
@@ -45,6 +46,7 @@
 		"fake-indexeddb": "^6.2.5",
 		"fast-check": "^4.10.2",
 		"globals": "^17.6.0",
+		"knip": "^6.42.1",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^3.5.2",
 		"prettier-plugin-tailwindcss": "^0.8.0",

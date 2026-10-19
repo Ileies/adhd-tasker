@@ -11,7 +11,8 @@
  * 3. timezones    the same tests without coverage in UTC+14 and in a half hour offset with DST
  * 4. types        bun run check
  * 5. lint         eslint . (type aware)
- * 6. build        bun run build
+ * 6. unused code  knip: unused files, exports and dependencies (`knip.json`)
+ * 7. build        bun run build
  *
  * `--quick` runs steps 1 to 4, the check before every commit. Deploy runs all of them.
  */
@@ -58,6 +59,7 @@ const steps: Step[] = [
 		? []
 		: [
 				{ name: 'lint', cmd: [bun, 'x', 'eslint', '.'] },
+				{ name: 'unused code', cmd: [bun, 'x', 'knip', '--no-progress'] },
 				{ name: 'build', cmd: [bun, 'run', 'build'], needs: 'types' }
 			])
 ];

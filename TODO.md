@@ -10,7 +10,7 @@ Plans in `docs/`:
 ## Now
 
 - Tag `docs/roadmap-1.0.md` (pillar I, Flow) and `docs/feature-ideas.md` with what the flow plan built (the list is in `docs/flow-plan.md` section 4)
-- Assistant by hand with a real key: "Suggest steps" for an appointment, an imported appointment answered by a question and by `add_prep_steps` in act, "It feels too big" on a to-do, a rotation, a routine made and undone in the chat. Only fakes so far. A guest who saved their settings before keeps their old list of events (`aiEvents`), an account gets the two new events from `scripts/add-flow-events.ts`
+- Assistant by hand with a real key: "Suggest steps" for an appointment, an imported appointment answered by a question and by `add_prep_steps` in act, "It feels too big" on a to-do, a rotation, a routine made and undone in the chat. Only fakes so far. A guest who saved their settings before keeps their old list of events (`aiEvents`), an account gets the two new events only from the data migration `scripts/add-flow-events.ts` (deleted, git history `0721884^`), check whether production ran it
 - Visual pass, by eye: only the wide light and phone dark views of Now, Plan, the session hero and Settings were checked. Not checked: the check, "Still there?", Away and break heroes, the prep sheet, the "Tight" and "Does not fit" lines, wide dark, a visible focus ring on every interactive element, 44 px targets on phones. Also one type scale and the same section spacing on every page
 - Run a real week on it (the milestone "usable") and see whether the capacity line (60 % realistic share, tight from 80 %) cries wolf. Routine days exist only 14 days ahead, so a due date further out counts the days after them as free
 - Essentials: the step for a new account (only a guest sees the welcome), and a hard check that keeps meds, meals and bed from being deleted (the assistant only has a rule in its prompt)
@@ -19,6 +19,8 @@ Plans in `docs/`:
 - Google verification (`docs/google-verification.md`): remove Tasks and Keep from `GOOGLE_SERVICES` first, record the demo video, submit. The consent screen must allow the Calendar scope
 - Component test for the Calendar write select in Settings, and a test for the stream `calendar` hint in `src/lib/stream.ts`
 - The sample week fills only the evenings and the weekend with to-dos (work or school on weekdays): watch whether a first time visitor during the day still sees what Now does
+- The `reminders` table in `schema.ts` is only used by `src/test/harness.test.ts`: drop it with the next schema change
+- `package.json` imports `#lib` points at `./src/lib/index.js`, knip hints it is not found (the file is `index.ts`). Goes away with the planned removal of the `#lib` index
 - Flaky under the full parallel run: `local/runtime.test.ts` "erasing in one tab deletes the database and tells every other tab to start again" (once in `verify --quick`, passes alone)
 
 ## Later

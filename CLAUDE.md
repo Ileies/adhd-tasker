@@ -25,7 +25,7 @@ bun run dev
 bun run check            # svelte-kit sync, svelte-check, tsc for service worker and scripts
 bun run test             # short output; -v for full. Prefer over plain `bun test`
 bun run verify --quick   # format, tests, timezones, types (~20 s). Run once per batch before committing
-bun run verify           # the full gate, also lint and build. Deploy runs it
+bun run verify           # the full gate, also lint, unused code (knip) and build. Deploy runs it
 bun run db:push          # apply schema to SQLite
 bun run deploy           # see Deployment
 ```
