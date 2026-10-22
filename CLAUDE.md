@@ -40,7 +40,7 @@ Tests need 90 % line and function coverage over the whole report (`scripts/cover
 - **Components never call `fetch`.** They use `tasker.backend` (the `Backend` interface in `src/lib/backend.ts`). A new `Backend` method must be added to `remote-backend.ts`, `local/backend.ts` and `BACKEND_METHODS` in `local/deferred.ts`. Rules shared by server and device live in `src/lib/core/` and run against a `Repo`.
 - **Routes** that need a login are written with `handler()` (`#lib/server/route.js`): it answers 401 for a guest, gives `ctx`, `user` and `json()`, and maps `AssistantError` to its status. Only login, callback and logout are hand written (listed in `architecture.test.ts`).
 - **Time:** times are minutes since midnight, durations in minutes, a task belongs to `task.date` (`YYYY-MM-DD` in the user's timezone, helpers in `src/lib/time.ts`). Tasks never cross midnight, split them.
-- **Schema changes** must be applied afterwards: `bun run db:push`. Production: `bun run deploy --db-push`.
+- **Schema changes** must be applied afterwards: `bun run db:push`. Production: apply the schema separately, then `bun run deploy --schema-applied`.
 - Task data never goes in `localStorage`. Only `src/lib/local/**` (IndexedDB) holds a guest's data.
 - No em dashes anywhere (an architecture test checks it).
 - Keep `/privacy` and `/terms` in sync when data handling changes (new fields, retention, third parties, cookies).
@@ -75,7 +75,7 @@ Tests need 90 % line and function coverage over the whole report (`scripts/cover
 
 ## Deployment
 
-`bun run deploy` deploys the committed HEAD to `tasker.ileies.de` (ssh alias `ros`, clone at `/var/www/adhd-tasker`, systemd `adhd-tasker.service`, port 3002): preflight (`verify` in full), build on the server (`DATABASE_URL` is baked in from its `.env`), database backup, restart, health checks. A change to `schema.ts` stops the deploy unless `--db-push` or `--schema-applied` is given. Other flags: `--push`, `--dry-run`, `--skip-check`, `--force`, `--host <alias>`. The unit itself is defined in `/etc/nixos/hosts/pronix/default.nix`, deploy does not rewrite it.
+`bun run deploy` builds the working tree locally using the target's `.env`, syncs `build/` over rsync to `tasker.ileies.de` (SSH alias `ros`, directory `/var/www/adhd-tasker`, systemd `adhd-tasker.service`, port 3002), backs up SQLite while stopped, starts the service and checks HTTP. The service runs `bun ./index.js`. Apply schema changes separately, then pass `--schema-applied` to record the schema hash (also required on first deployment). Other flags: `--dry-run`, `--skip-check`, `--host <alias>`, `--remote-root <directory>`, `--port <port>`, `--url <url>`. Git commits and pushes are independent. The unit is defined in `/etc/nixos/hosts/pronix/default.nix`; deploy does not rewrite it. See README.md for details.
 
 ## Working rules
 

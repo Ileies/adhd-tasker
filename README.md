@@ -74,7 +74,7 @@ Environment variables (all read at build time):
 | `bun run format`    | Auto-format                                                 |
 | `bun run db:push`   | Apply the schema to the database                            |
 | `bun run db:studio` | Drizzle Studio                                              |
-| `bun run deploy`    | Deploy the committed HEAD to the server (see below)         |
+| `bun run deploy`    | Build locally and deploy via rsync over SSH (see below)     |
 
 ## Project Layout
 
@@ -110,7 +110,11 @@ Times are stored as minutes since midnight, each task belongs to a dated day (`Y
 
 ## Deployment
 
-`bun run deploy` pushes nothing by default: it takes the committed HEAD of the current branch, resets the server's clone to it, installs, builds on the server (the database path is baked in from the server's `.env`), stops `adhd-tasker.service` for the database backup and optional migration, restarts it with `systemctl restart adhd-tasker.service` and verifies the service and site. The restart takes a few seconds, with a short 502 possible meanwhile. Failures show the service's journal logs. It refuses to start when `bun run verify` fails, the systemd unit is missing, or `schema.ts` changed since the server's commit unless `--db-push` (apply it) or `--schema-applied` (applied by hand) is given. Useful flags: `--push`, `--dry-run`, `--db-push`, `--schema-applied`, `--skip-check` (skips `verify`), `--force` (deploy the committed HEAD despite uncommitted changes). The NixOS service owns the Bun executable and runtime environment (`NODE_ENV=production`, `PORT=3002`, `BODY_SIZE_LIMIT=8M`). The app runs as a single process, which the event stream requires.
+`bun run deploy` builds the current working tree locally and copies the contents of `build/` directly to `/var/www/adhd-tasker/` using rsync over SSH. The repository lives at `/projects/private/adhd-tasker` on pronix; deployment also works from an external checkout with Bun, rsync and SSH installed. The default target is the SSH alias `ros`; use `--host root@your-server` for another connection. The target must have Bun, rsync and the `adhd-tasker.service` systemd unit configured to run `bun ./index.js` from the deployment directory. SSH requires permission to manage that service and write the deployment directory.
+
+The script reads the target's `.env` over SSH and uses it for the local build because SvelteKit embeds private environment values. It runs `bun run verify` and builds before stopping the target service, backs up SQLite including WAL files, syncs the build, starts systemd, and checks HTTP. `.env`, database files, `db-backups/` and the schema record are excluded from rsync deletion. Git commits, pushes and pulls are independent of deployment. Existing backups are retained.
+
+Options: `--host <alias|user@server>`, `--remote-root <directory>`, `--port <port>`, `--url <public-url>`, `--dry-run` (build and preview rsync without modifying the target), and `--skip-check` (skip verify; still build). Schema changes must be applied separately to the target database before deploying with `--schema-applied`; this is also required for the first deployment without a schema record. Subsequent deployments compare the source schema hash against `.deploy-schema` on the target. Build artifacts contain production secrets and must be kept private. The app runs as a single process on port 3002, which the event stream requires.
 
 ## Roadmap
 
