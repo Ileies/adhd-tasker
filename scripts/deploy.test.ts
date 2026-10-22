@@ -102,6 +102,14 @@ describe('deploy', () => {
 		);
 	});
 
+	test('passes the rsync destination without literal shell quotes', async () => {
+		const result = await deploy('healthy', ['--schema-applied']);
+		expect(result.code, JSON.stringify(result)).toBe(0);
+		expect(result.commands.find((c) => c.command === 'rsync')!.script).toEndWith(
+			'ros:/var/www/adhd-tasker/'
+		);
+	});
+
 	test('refuses a missing service before building or syncing', async () => {
 		const result = await deploy('missing', ['--schema-applied']);
 		expect(result.code).toBe(1);
