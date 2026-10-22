@@ -17,7 +17,7 @@ plugin({
 			loader: 'object'
 		}));
 		build.module('$app/env/private', () => ({
-			exports: { GOOGLE_CLIENT_SECRET: 'test-secret', DATABASE_URL: ':memory:' },
+			exports: { GOOGLE_CLIENT_SECRET: 'test-secret', DATA_DIR: '.' },
 			loader: 'object'
 		}));
 		build.module('$app/env/public', () => ({

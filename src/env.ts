@@ -4,5 +4,5 @@ export const variables = defineEnvVars({
 	PUBLIC_GOOGLE_CLIENT_ID: { public: true, static: true },
 	PUBLIC_REDIRECT_URI: { public: true, static: true },
 	GOOGLE_CLIENT_SECRET: { static: true },
-	DATABASE_URL: { static: true }
+	DATA_DIR: { static: true }
 });

@@ -7,7 +7,6 @@
 import { $ } from 'bun';
 import { createHash } from 'node:crypto';
 import { relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
 const args = process.argv.slice(2);
@@ -100,16 +99,10 @@ const filters = [
 	'--exclude=node_modules/',
 	'--exclude=.deploy-schema'
 ];
-// Protect a configured database even when its filename does not end in .db.
-const rawDb = productionEnv.DATABASE_URL || 'local.db';
-const dbFile = rawDb.startsWith('file:')
-	? fileURLToPath(new URL(rawDb, 'file://' + ROOT + '/'))
-	: resolve(ROOT, rawDb);
-const dbRelative = relative(ROOT, dbFile);
-if (dbRelative && !dbRelative.startsWith('../')) {
-	for (const suffix of ['', '-wal', '-shm']) {
-		filters.push(`--exclude=/${dbRelative}${suffix}`);
-	}
+// Protect everything in a configured data directory inside the deployment root.
+const dataRelative = relative(ROOT, resolve(ROOT, productionEnv.DATA_DIR || 'data'));
+if (dataRelative && dataRelative !== '..' && !dataRelative.startsWith('../')) {
+	filters.push(`--exclude=/${dataRelative}/`);
 }
 const destination = `${HOST}:${quote(ROOT + '/')}`;
 if (DRY) {
@@ -124,9 +117,8 @@ step('Stopping service and backing up the database');
 // while the service is stopped. No database path or secret enters a shell command.
 const backupScript = `
 const { existsSync, mkdirSync, copyFileSync } = require('node:fs');
-const { basename } = require('node:path');
-const raw = Bun.env.DATABASE_URL || 'local.db';
-const db = raw.startsWith('file:') ? require('node:url').fileURLToPath(new URL(raw, 'file://' + process.cwd() + '/')) : raw;
+const { basename, join } = require('node:path');
+const db = join(Bun.env.DATA_DIR || 'data', 'local.db');
 if (!existsSync(db)) throw new Error('Target database is missing; refusing deployment');
 mkdirSync('db-backups', { recursive: true });
 const stamp = new Date().toISOString().replaceAll(':', '-');

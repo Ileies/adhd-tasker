@@ -1,5 +1,5 @@
 /**
- * The app's own `db` on an in-memory SQLite database (`DATABASE_URL` is `:memory:` in tests).
+ * The app's own `db` on an in-memory SQLite database (`building` is true in tests).
  * With `--isolate` every test file gets its own database.
  */
 import { is, sql } from 'drizzle-orm';

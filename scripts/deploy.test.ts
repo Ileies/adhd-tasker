@@ -29,7 +29,7 @@ appendFileSync(process.env.DEPLOY_TRACE, JSON.stringify({ command, script }) + '
 const scenario = process.env.DEPLOY_SCENARIO;
 if (command === 'ssh') {
 	if (script.includes('systemctl cat') && scenario === 'missing') process.exit(1);
-	else if (script.includes('cat') && script.includes('/.env')) console.log('DATABASE_URL=local.db');
+	else if (script.includes('cat') && script.includes('/.env')) console.log('DATA_DIR=' + (scenario === 'custom-data-dir' ? 'persistent data' : ''));
 	else if (script.includes('systemctl stop') && scenario === 'stop-fails') process.exit(1);
 	else if (script.includes('bun -e') && scenario === 'backup-fails') process.exit(1);
 	else if (script.includes('systemctl is-active --quiet') && scenario === 'unhealthy') process.exit(1);
@@ -89,8 +89,17 @@ describe('deploy', () => {
 		expect(sync).toBeGreaterThan(backup);
 		expect(start).toBeGreaterThan(sync);
 		expect(health).toBeGreaterThan(start);
-		expect(commands[sync]!.script).toContain('--exclude=/local.db');
+		expect(commands[sync]!.script).toContain('--exclude=*.db*');
+		expect(commands[sync]!.script).toContain('--exclude=/data/');
 		expect(commands[sync]!.script).toContain('--exclude=.env*');
+	});
+
+	test('protects a configured data directory from rsync deletion', async () => {
+		const result = await deploy('custom-data-dir', ['--schema-applied']);
+		expect(result.code, JSON.stringify(result)).toBe(0);
+		expect(result.commands.find((c) => c.command === 'rsync')!.script).toContain(
+			'--exclude=/persistent data/'
+		);
 	});
 
 	test('refuses a missing service before building or syncing', async () => {
