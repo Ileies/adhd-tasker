@@ -104,7 +104,7 @@ const dataRelative = relative(ROOT, resolve(ROOT, productionEnv.DATA_DIR || 'dat
 if (dataRelative && dataRelative !== '..' && !dataRelative.startsWith('../')) {
 	filters.push(`--exclude=/${dataRelative}/`);
 }
-const destination = `${HOST}:${quote(ROOT + '/')}`;
+const destination = `${HOST}:${ROOT}/`;
 if (DRY) {
 	step('Preview rsync');
 	await $`rsync -az --delete --dry-run --itemize-changes ${filters} -e ${'ssh -o ConnectTimeout=10'} -- ${resolve(PROJECT, 'build') + '/'} ${destination}`;
