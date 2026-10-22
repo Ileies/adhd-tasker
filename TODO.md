@@ -9,6 +9,7 @@ Plans in `docs/`:
 
 ## Now
 
+- Investigate parallel test runs stalling under Bun 1.4.2 in the sandbox; all 3222 tests pass when run serially.
 - Tag `docs/roadmap-1.0.md` (pillar I, Flow) and `docs/feature-ideas.md` with what the flow plan built (the list is in `docs/flow-plan.md` section 4)
 - Assistant by hand with a real key: "Suggest steps" for an appointment, an imported appointment answered by a question and by `add_prep_steps` in act, "It feels too big" on a to-do, a rotation, a routine made and undone in the chat. Only fakes so far. A guest who saved their settings before keeps their old list of events (`aiEvents`), an account gets the two new events only from the data migration `scripts/add-flow-events.ts` (deleted, git history `0721884^`), check whether production ran it
 - Visual pass, by eye: only the wide light and phone dark views of Now, Plan, the session hero and Settings were checked. Not checked: the check, "Still there?", Away and break heroes, the prep sheet, the "Tight" and "Does not fit" lines, wide dark, a visible focus ring on every interactive element, 44 px targets on phones. Also one type scale and the same section spacing on every page
