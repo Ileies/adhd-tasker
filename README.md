@@ -35,7 +35,7 @@ The app works fully without AI. Without a key the agent stays silent.
 | Auth       | Google OAuth 2.0 (PKCE) and One Tap via Arctic                 |
 | AI         | OpenAI Responses API with the user's own key, stored encrypted |
 | Runtime    | Bun                                                            |
-| Deployment | `adapter-node` + systemd                                       |
+| Deployment | `adapter-bun` + systemd                                        |
 
 ## Getting Started
 
