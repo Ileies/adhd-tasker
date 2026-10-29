@@ -16,7 +16,7 @@ Judge every decision against this: does it reduce cognitive load, minimize decis
 
 ## Stack
 
-SvelteKit + Svelte 5 (runes only, no stores) + Tailwind 4 + shadcn-svelte (`bun x shadcn-svelte@latest add <name>`), SQLite + Drizzle (`local.db`), Google OAuth with PKCE (Arctic) plus One Tap, `adapter-bun`, Bun everywhere. Env vars are declared in `src/env.ts` (static, baked in at build time), see `.env.example`.
+SvelteKit + Svelte 5 (runes only, no stores) + Tailwind 4 + shadcn-svelte (`bun x shadcn-svelte@latest add <name>`), SQLite + Drizzle (`local.db`), Google OAuth with PKCE (Arctic) plus One Tap, `adapter-bun`, Bun everywhere. Env vars are declared in `src/env.ts`: OAuth values are baked in at build time; `DATA_DIR` is read when the server starts. See `.env.example`.
 
 ## Commands
 

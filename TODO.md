@@ -9,6 +9,7 @@ Plans in `docs/`:
 
 ## Now
 
+- Deployment backup and rsync protection read `DATA_DIR` from the target's `.env`; also respect the service environment when systemd sets a different data directory.
 - Production shutdown reaches the 90 second systemd timeout during deployment; investigate why the Bun process does not exit after SIGTERM.
 - Investigate parallel test runs stalling under Bun 1.4.2 in the sandbox; all 3222 tests pass when run serially.
 - Tag `docs/roadmap-1.0.md` (pillar I, Flow) and `docs/feature-ideas.md` with what the flow plan built (the list is in `docs/flow-plan.md` section 4)

@@ -52,14 +52,14 @@ bun run dev
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
-Environment variables (all read at build time):
+Environment variables (OAuth configuration is read at build time; `DATA_DIR` is read when the server starts):
 
 | Variable                  | Meaning                                                                                                                                                               |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client id                                                                                                                                                |
 | `GOOGLE_CLIENT_SECRET`    | Google OAuth client secret. Also signs sessions and derives the key that encrypts saved OpenAI keys, so changing it logs everyone out and requires pasting keys again |
 | `PUBLIC_REDIRECT_URI`     | OAuth callback, e.g. `http://localhost:5173/callback` for local dev. Must be registered in your Google client                                                         |
-| `DATA_DIR`                | Directory containing SQLite `local.db`, created automatically. Defaults to `data`                                                                                     |
+| `DATA_DIR`                | Runtime directory containing SQLite `local.db`, created automatically. Defaults to `data`; relative paths use the server's working directory                          |
 
 ## Commands
 
